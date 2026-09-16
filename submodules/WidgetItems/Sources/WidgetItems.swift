@@ -1,4 +1,5 @@
 import Foundation
+import RGAppGroupIdentifier
 
 public enum WidgetCodingError: Error {
     case generic
@@ -353,14 +354,10 @@ public struct WidgetPresentationData: Codable, Equatable {
     }
     
     public static func getForExtension() -> WidgetPresentationData {
-        let appBundleIdentifier = Bundle.main.bundleIdentifier!
-        guard let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) else {
-            return WidgetPresentationData.default
-        }
-        let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
-        
-        let appGroupName = "group.\(baseAppBundleId)"
-        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        // MARK: Regram — must resolve the container the same way the app does; a re-signing
+        // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
+        // account to read and the app with data it cannot see.
+        let maybeAppGroupUrl = rgDataContainerURL()
         
         guard let appGroupUrl = maybeAppGroupUrl else {
             return WidgetPresentationData.default

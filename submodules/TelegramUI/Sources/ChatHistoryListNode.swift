@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -87,6 +88,9 @@ struct ChatHistoryView {
     let locationInput: ChatHistoryLocationInput?
     let ignoreMessagesInTimestampRange: ClosedRange<Int32>?
     let ignoreMessageIds: Set<MessageId>
+    // MARK: Regram — messages the content filter removed from this view; see its use in
+    // processDisplayedItemRangeChanged.
+    var rgFilteredOutCount: Int = 0
 }
 
 enum ChatHistoryViewTransitionReason {
@@ -339,6 +343,8 @@ final class ChatHistoryTransactionOpaqueState {
 }
 
 private func extractAssociatedData(
+    translateToLanguageRG: String?,
+    translationSettings: TranslationSettings,
     chatLocation: ChatLocation,
     view: MessageHistoryView,
     automaticDownloadNetworkType: MediaAutoDownloadNetworkType,
@@ -428,7 +434,7 @@ private func extractAssociatedData(
         automaticDownloadPeerId = message.peerId
     }
     
-    return ChatMessageItemAssociatedData(automaticDownloadPeerType: automaticMediaDownloadPeerType, automaticDownloadPeerId: automaticDownloadPeerId, automaticDownloadNetworkType: automaticDownloadNetworkType, preferredStoryHighQuality: preferredStoryHighQuality, isRecentActions: false, subject: subject, contactsPeerIds: contactsPeerIds, channelDiscussionGroup: channelDiscussionGroup, animatedEmojiStickers: animatedEmojiStickers, additionalAnimatedEmojiStickers: additionalAnimatedEmojiStickers, currentlyPlayingMessageId: currentlyPlayingMessageId, isCopyProtectionEnabled: isCopyProtectionEnabled, availableReactions: availableReactions, availableMessageEffects: availableMessageEffects, savedMessageTags: savedMessageTags, defaultReaction: defaultReaction, areStarReactionsEnabled: areStarReactionsEnabled, isPremium: isPremium, accountPeer: accountPeer, alwaysDisplayTranscribeButton: alwaysDisplayTranscribeButton, topicAuthorId: topicAuthorId, hasBots: hasBots, translateToLanguage: translateToLanguage, maxReadStoryId: maxReadStoryId, recommendedChannels: recommendedChannels, audioTranscriptionTrial: audioTranscriptionTrial, chatThemes: chatThemes, deviceContactsNumbers: deviceContactsNumbers, isInline: isInline, showSensitiveContent: showSensitiveContent, isSuspiciousPeer: isSuspiciousPeer, accountCountry: accountCountry, isParticipant: isParticipant, invitedOn: invitedOn)
+    return ChatMessageItemAssociatedData(translateToLanguageRG: translateToLanguageRG, translationSettings: translationSettings, /* MARK: Regram */ automaticDownloadPeerType: automaticMediaDownloadPeerType, automaticDownloadPeerId: automaticDownloadPeerId, automaticDownloadNetworkType: automaticDownloadNetworkType, preferredStoryHighQuality: preferredStoryHighQuality, isRecentActions: false, subject: subject, contactsPeerIds: contactsPeerIds, channelDiscussionGroup: channelDiscussionGroup, animatedEmojiStickers: animatedEmojiStickers, additionalAnimatedEmojiStickers: additionalAnimatedEmojiStickers, currentlyPlayingMessageId: currentlyPlayingMessageId, isCopyProtectionEnabled: isCopyProtectionEnabled, availableReactions: availableReactions, availableMessageEffects: availableMessageEffects, savedMessageTags: savedMessageTags, defaultReaction: defaultReaction, areStarReactionsEnabled: areStarReactionsEnabled, isPremium: isPremium, accountPeer: accountPeer, alwaysDisplayTranscribeButton: alwaysDisplayTranscribeButton, topicAuthorId: topicAuthorId, hasBots: hasBots, translateToLanguage: translateToLanguage, maxReadStoryId: maxReadStoryId, recommendedChannels: recommendedChannels, audioTranscriptionTrial: audioTranscriptionTrial, chatThemes: chatThemes, deviceContactsNumbers: deviceContactsNumbers, isInline: isInline, showSensitiveContent: showSensitiveContent, isSuspiciousPeer: isSuspiciousPeer, accountCountry: accountCountry, isParticipant: isParticipant, invitedOn: invitedOn)
 }
 
 private extension ChatHistoryLocationInput {
@@ -812,6 +818,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         self.messageTransitionNode = messageTransitionNode
         self.mode = mode
         
+        if RGSimpleSettings.shared.disableSnapDeletionEffect { self.allowDustEffect = false }
         if let data = context.currentAppConfiguration.with({ $0 }).data {
             if let _ = data["ios_killswitch_disable_unread_alignment"] {
                 self.enableUnreadAlignment = false
@@ -998,7 +1005,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
         self.translationProcessingManager.process = { [weak self, weak context] messageIds in
             if let context, let translationLang = self?.translationLang {
-                let _ = translateMessageIds(context: context, messageIds: Array(messageIds.map(\.messageId)), fromLang: translationLang.fromLang, toLang: translationLang.toLang).startStandalone()
+                let _ = translateMessageIds(context: context, messageIds: Array(messageIds.map(\.messageId)), fromLang: translationLang.fromLang, toLang: translationLang.toLang, viaText: !context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal).startStandalone()
             }
         }
         self.factCheckProcessingManager.process = { [weak context] messageIds in
@@ -1185,10 +1192,45 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                         }
                     }
                 }
+                // MARK: Regram — advance the read marker past trailing filtered-out messages.
+                //
+                // A message the content filter hides has no item node, so the visible-node scan
+                // above never counts it. When such a message is the newest in a chat, the read
+                // marker would stop at the last *visible* message and the chat-list unread badge
+                // would stay forever on a message the user can never open. Only the trailing run the
+                // filter actually hides is folded in: the first non-hidden entry (which owns a node
+                // and was already counted, or is simply not yet on screen) stops the walk, so nothing
+                // is ever marked read while still off-screen. Gated on being scrolled to the bottom —
+                // reaching the bottom is what "everything below is seen" already means upstream.
+                if let historyView = (strongSelf.listView.opaqueTransactionState as? ChatHistoryTransactionOpaqueState)?.historyView,
+                   historyView.originalView.laterId == nil, !historyView.originalView.holeLater,
+                   strongSelf.isScrollAtBottomPosition,
+                   let lastEntry = historyView.originalView.entries.last,
+                   maxMessage == nil || maxMessage! < lastEntry.message.index {
+                    let accountPeerId = strongSelf.context.account.peerId
+                    let rgContentFilter = RGContentFilterState(accountPeerId: accountPeerId)
+                    if !rgContentFilter.isEmpty {
+                        for entry in historyView.originalView.entries.reversed() {
+                            let message = entry.message
+                            if let maxMessage, message.index <= maxMessage {
+                                break
+                            }
+                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+                                if !message.flags.intersection(.IsIncomingMask).isEmpty {
+                                    if maxMessage == nil || maxMessage! < message.index {
+                                        maxMessage = message.index
+                                    }
+                                }
+                            } else {
+                                break
+                            }
+                        }
+                    }
+                }
                 if let maxMessage {
                     strongSelf.updateMaxVisibleReadIncomingMessageIndex(maxMessage)
                 }
-                
+
                 strongSelf.messageReadMetricsTracker?.reportUserActivity()
                 strongSelf.updateMessageReadTracker()
             }
@@ -1857,9 +1899,17 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         
         let chatThemes = self.context.engine.themes.getChatThemes(accountManager: self.context.sharedContext.accountManager)
         
-        let deviceContactsNumbers = self.context.sharedContext.deviceContactPhoneNumbers.get()
+        // MARK: Regram — start from an empty set instead of waiting for the device contact list.
+        // `deviceContactPhoneNumbers` stays valueless for as long as the contacts permission is
+        // undetermined (DeviceContactDataManager returns early in that state), and the transition
+        // below only fires once every input has produced a value. Waiting on it therefore means the
+        // history transition never runs at all, the history node never becomes ready, and pushing
+        // the chat controller silently does nothing — tapping a chat looks like a dead tap. The
+        // value is only used to decorate phone numbers, so an empty set is a correct starting point.
+        let deviceContactsNumbers = Signal<Set<String>, NoError>.single(Set())
+        |> then(self.context.sharedContext.deviceContactPhoneNumbers.get())
         |> distinctUntilChanged
-        
+
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: self.context.currentAppConfiguration.with { $0 })
         
         let preferredStoryHighQuality: Signal<Bool, NoError> = combineLatest(
@@ -1904,11 +1954,32 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 return historyViewUpdateValue
             }
         }
-                
+
+        // MARK: Regram — re-emit the current history view whenever the message-filter rules or
+        // the hidden-sender list change, so the visible messages are re-filtered right away. The
+        // transition below is otherwise only recomputed when Postbox pushes an update, which is why
+        // a freshly added rule used to leave the matching message on screen until something else
+        // happened.
+        //
+        // Every update is passed straight through first and the change signal only appends extra
+        // re-deliveries, so the chat's first render can never be gated on anything in here.
+        historyViewUpdate = historyViewUpdate
+        |> mapToSignal { update -> Signal<(ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>), NoError> in
+            return .single(update)
+            |> then(
+                rgContentFiltersDidChange()
+                |> map { _ -> (ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>) in
+                    return update
+                }
+            )
+        }
+
+
         let startTime = CFAbsoluteTimeGetCurrent()
         var measure_isFirstTime = true
         let messageViewQueue = Queue.mainQueue()
         let historyViewTransitionDisposable = (combineLatest(queue: messageViewQueue,
+            self.context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings]) |> take(1),
             historyViewUpdate |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_historyViewUpdate"),
             self.chatPresentationDataPromise.get() |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_chatPresentationData"),
             selectedMessages |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_selectedMessages"),
@@ -1935,7 +2006,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             chatThemes |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_chatThemes"),
             deviceContactsNumbers |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_deviceContactsNumbers"),
             contentSettings |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_contentSettings")
-        ) |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_firstChatHistoryTransition")).startStrict(next: { [weak self] update, chatPresentationData, selectedMessages, updatingMedia, networkType, preferredStoryHighQuality, animatedEmojiStickers, additionalAnimatedEmojiStickers, customChannelDiscussionReadState, customThreadOutgoingReadState, availableReactions, availableMessageEffects, savedMessageTags, defaultReaction, accountPeer, accountCountry, suggestAudioTranscription, promises, topicAuthorId, translationState, maxReadStoryId, recommendedChannels, audioTranscriptionTrial, chatThemes, deviceContactsNumbers, contentSettings in
+        ) |> debug_measureTimeToFirstEvent(label: "chatHistoryNode_firstChatHistoryTransition")).startStrict(next: { [weak self] sharedData, /* MARK: Regram */ update, chatPresentationData, selectedMessages, updatingMedia, networkType, preferredStoryHighQuality, animatedEmojiStickers, additionalAnimatedEmojiStickers, customChannelDiscussionReadState, customThreadOutgoingReadState, availableReactions, availableMessageEffects, savedMessageTags, defaultReaction, accountPeer, accountCountry, suggestAudioTranscription, promises, topicAuthorId, translationState, maxReadStoryId, recommendedChannels, audioTranscriptionTrial, chatThemes, deviceContactsNumbers, contentSettings in
             let (historyAppearsCleared, pendingUnpinnedAllMessages, pendingRemovedMessages, currentlyPlayingMessageIdAndType, scrollToMessageId, chatHasBots, allAdMessages) = promises
             
             if measure_isFirstTime {
@@ -1944,6 +2015,13 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 let deltaTime = (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0
                 print("Chat load time: \(deltaTime) ms")
                 #endif
+            }
+            
+            let translationSettings: TranslationSettings
+            if let current = sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) {
+                translationSettings = current
+            } else {
+                translationSettings = TranslationSettings.defaultSettings
             }
             
             func applyHole() {
@@ -2163,14 +2241,20 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     displayForNotConsumed: suggestAudioTranscription.1,
                     providedByGroupBoost: audioTranscriptionProvidedByBoost
                 )
-                
-                var translateToLanguage: (fromLang: String, toLang: String)?
-                if let translationState, (isPremium || autoTranslate)  && translationState.isEnabled {
-                    var languageCode = translationState.toLang ?? chatPresentationData.strings.baseLanguageCode
+
+                // MARK: Regram
+                // var translateToLanguage: (fromLang: String, toLang: String)?
+                // if let translationState, (isPremium || autoTranslate)  && translationState.isEnabled {
+                    var languageCode = translationState?.toLang ?? chatPresentationData.strings.baseLanguageCode
                     let rawSuffix = "-raw"
                     if languageCode.hasSuffix(rawSuffix) {
                         languageCode = String(languageCode.dropLast(rawSuffix.count))
                     }
+                    languageCode = normalizeTranslationLanguage(languageCode)
+                    let translateToLanguageRG = languageCode
+                // }
+                var translateToLanguage: (fromLang: String, toLang: String)?
+                if let translationState, (isPremium || autoTranslate || true) && translationState.isEnabled {
                     translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), normalizeTranslationLanguage(languageCode))
                 }
                 
@@ -2179,7 +2263,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     isSuspiciousPeer = true
                 }
                 
-                let associatedData = extractAssociatedData(chatLocation: chatLocation, view: view, automaticDownloadNetworkType: networkType, preferredStoryHighQuality: preferredStoryHighQuality, animatedEmojiStickers: animatedEmojiStickers, additionalAnimatedEmojiStickers: additionalAnimatedEmojiStickers, subject: subject, currentlyPlayingMessageId: currentlyPlayingMessageIdAndType?.0, isCopyProtectionEnabled: isCopyProtectionEnabled, availableReactions: availableReactions, availableMessageEffects: availableMessageEffects, savedMessageTags: savedMessageTags, defaultReaction: defaultReaction.0, areStarReactionsEnabled: defaultReaction.1, isPremium: isPremium, alwaysDisplayTranscribeButton: alwaysDisplayTranscribeButton, accountPeer: accountPeer, topicAuthorId: topicAuthorId, hasBots: chatHasBots, translateToLanguage: translateToLanguage?.toLang, maxReadStoryId: maxReadStoryId, recommendedChannels: recommendedChannels, audioTranscriptionTrial: audioTranscriptionTrial, chatThemes: chatThemes, deviceContactsNumbers: deviceContactsNumbers, isInline: !rotated, showSensitiveContent: contentSettings.ignoreContentRestrictionReasons.contains("sensitive"), isSuspiciousPeer: isSuspiciousPeer, accountCountry: accountCountry)
+                let associatedData = extractAssociatedData(translateToLanguageRG: translateToLanguageRG, translationSettings: translationSettings, /* MARK: Regram */ chatLocation: chatLocation, view: view, automaticDownloadNetworkType: networkType, preferredStoryHighQuality: preferredStoryHighQuality, animatedEmojiStickers: animatedEmojiStickers, additionalAnimatedEmojiStickers: additionalAnimatedEmojiStickers, subject: subject, currentlyPlayingMessageId: currentlyPlayingMessageIdAndType?.0, isCopyProtectionEnabled: isCopyProtectionEnabled, availableReactions: availableReactions, availableMessageEffects: availableMessageEffects, savedMessageTags: savedMessageTags, defaultReaction: defaultReaction.0, areStarReactionsEnabled: defaultReaction.1, isPremium: isPremium, alwaysDisplayTranscribeButton: alwaysDisplayTranscribeButton, accountPeer: accountPeer, topicAuthorId: topicAuthorId, hasBots: chatHasBots, translateToLanguage: translateToLanguage?.toLang, maxReadStoryId: maxReadStoryId, recommendedChannels: recommendedChannels, audioTranscriptionTrial: audioTranscriptionTrial, chatThemes: chatThemes, deviceContactsNumbers: deviceContactsNumbers, isInline: !rotated, showSensitiveContent: contentSettings.ignoreContentRestrictionReasons.contains("sensitive"), isSuspiciousPeer: isSuspiciousPeer, accountCountry: accountCountry)
                 
                 var includeEmbeddedSavedChatInfo = false
                 if case let .replyThread(message) = chatLocation, message.peerId == context.account.peerId, !rotated {
@@ -2240,7 +2324,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     pinToTopStableId: pinToTopStableId
                 )
                 let lastHeaderId = filteredEntries.last.flatMap { listMessageDateHeaderId(timestamp: $0.index.timestamp) } ?? 0
-                let processedView = ChatHistoryView(originalView: view, filteredEntries: filteredEntries, associatedData: associatedData, lastHeaderId: lastHeaderId, id: id, locationInput: update.2, ignoreMessagesInTimestampRange: update.3, ignoreMessageIds: update.4)
+                let processedView = ChatHistoryView(originalView: view, filteredEntries: filteredEntries, associatedData: associatedData, lastHeaderId: lastHeaderId, id: id, locationInput: update.2, ignoreMessagesInTimestampRange: update.3, ignoreMessageIds: update.4, rgFilteredOutCount: updatedChatHistoryEntriesForViewState.rgFilteredOutCount)
                 let previousValueAndVersion = previousView.swap((processedView, update.1, selectedMessages, allAdMessages.version))
                 let _ = chatHistoryEntriesForViewState.swap(updatedChatHistoryEntriesForViewState)
                 let previous = previousValueAndVersion?.0
@@ -3424,6 +3508,22 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             return VisibleMessageRange(lowerBound: range.lowerBound, upperBound: range.upperBound)
         })
         
+        // MARK: Regram — request a window large enough to still fill the screen after the
+        // content filter has removed entries from it. The window is a fixed *message* count
+        // (historyMessageCount), so hiding messages leaves a list too short to cover the
+        // viewport; the range checks below then stay permanently satisfied and fire a fresh
+        // Navigation on every scroll tick, each one a postbox read plus a main-thread rebuild
+        // and list transition. Asking for the dropped messages back keeps the visible count
+        // roughly constant, so the loading logic behaves as it does with no filter at all.
+        //
+        // Capped, because the compensation is otherwise self-amplifying: a wider window takes in
+        // more filtered messages, which raises the count, which widens the next request again. In a
+        // heavily filtered chat that walks the window up towards the whole history, and every
+        // rebuild then reads and re-examines all of it on the main thread. The cap trades "always
+        // exactly a full screen" for a bounded cost — at the limit a very heavily filtered stretch
+        // shows a shorter list, which is the milder failure.
+        let rgAdjustedHistoryMessageCount = min(historyMessageCount + historyView.rgFilteredOutCount, historyMessageCount * 3)
+
         if let loaded = displayedRange.visibleRange, let firstEntry = historyView.filteredEntries.first, let lastEntry = historyView.filteredEntries.last {
             var mathesFirst = false
             if loaded.firstIndex <= 5 {
@@ -3465,17 +3565,33 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 }
             }
             
+            // Anchor the next window on the edge of the *loaded* view, not of the
+            // visible one. Entries hidden by the message filter are dropped after the view is built,
+            // so `firstEntry`/`lastEntry` can sit well inside the loaded range; anchoring there asks
+            // for a window that mostly overlaps the one already held, which makes little or no
+            // progress and re-runs the whole rebuild-and-transition on every scroll tick — the jank
+            // is visible exactly where hidden messages are. The unfiltered edge always extends past
+            // what is loaded, and equals the visible edge when nothing is hidden.
+            var earliestAnchorIndex = firstEntry.index
+            if let originalEarliest = historyView.originalView.entries.first?.index, originalEarliest < earliestAnchorIndex {
+                earliestAnchorIndex = originalEarliest
+            }
+            var latestAnchorIndex = lastEntry.index
+            if let originalLatest = historyView.originalView.entries.last?.index, originalLatest > latestAnchorIndex {
+                latestAnchorIndex = originalLatest
+            }
+
             if mathesFirst && historyView.originalView.laterId != nil {
-                let locationInput: ChatHistoryLocation = .Navigation(index: .message(lastEntry.index), anchorIndex: .message(lastEntry.index), count: historyMessageCount, highlight: false)
+                let locationInput: ChatHistoryLocation = .Navigation(index: .message(latestAnchorIndex), anchorIndex: .message(latestAnchorIndex), count: rgAdjustedHistoryMessageCount, highlight: false)
                 if self.chatHistoryLocationValue?.content != locationInput {
                     self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
                 }
             } else if mathesFirst, historyView.originalView.laterId == nil, !historyView.originalView.holeLater, let chatHistoryLocationValue = self.chatHistoryLocationValue, !chatHistoryLocationValue.isAtUpperBound, historyView.originalView.anchorIndex != .upperBound {
                 if self.chatHistoryLocationValue == historyView.locationInput {
-                    self.chatHistoryLocationValue = ChatHistoryLocationInput(content: .Navigation(index: .upperBound, anchorIndex: .upperBound, count: historyMessageCount, highlight: false), id: self.takeNextHistoryLocationId())
+                    self.chatHistoryLocationValue = ChatHistoryLocationInput(content: .Navigation(index: .upperBound, anchorIndex: .upperBound, count: rgAdjustedHistoryMessageCount, highlight: false), id: self.takeNextHistoryLocationId())
                 }
             } else if mathesLast {
-                let locationInput: ChatHistoryLocation = .Navigation(index: .message(firstEntry.index), anchorIndex: .message(firstEntry.index), count: historyMessageCount, highlight: false)
+                let locationInput: ChatHistoryLocation = .Navigation(index: .message(earliestAnchorIndex), anchorIndex: .message(earliestAnchorIndex), count: rgAdjustedHistoryMessageCount, highlight: false)
                 if historyView.originalView.earlierId != nil {
                     if self.chatHistoryLocationValue?.content != locationInput {
                         self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
@@ -3492,8 +3608,18 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     }
                 }
             }
+        } else if historyView.filteredEntries.isEmpty, historyView.originalView.earlierId != nil, let originalEarliest = historyView.originalView.entries.first?.index {
+            // MARK: Regram — the whole loaded window was hidden by the message filter, so the list
+            // is empty and the branch above (which needs a visible range) can never run. Without this
+            // the chat would sit blank forever instead of reaching into older messages. Each step
+            // anchors strictly earlier than the current window, so this walks back and terminates at
+            // the start of the history.
+            let locationInput: ChatHistoryLocation = .Navigation(index: .message(originalEarliest), anchorIndex: .message(originalEarliest), count: rgAdjustedHistoryMessageCount, highlight: false)
+            if self.chatHistoryLocationValue?.content != locationInput {
+                self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
+            }
         }
-        
+
         var containsPlayableWithSoundItemNode = false
         self.forEachVisibleItemNode { itemNode in
             if let chatItemView = itemNode as? ChatMessageItemView, chatItemView.playMediaWithSound() != nil {

@@ -153,6 +153,11 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
     private var buttonNode: SolidRoundedButtonNode?
     private var buttonIconNode: ASImageNode?
     private let buttonPanel = ComponentView<Empty>()
+    // MARK: Regram — the action buttons live under the navigation bar, not in the bottom panel:
+    // share + delete on the left, picture-in-picture / speed / fullscreen on the right. Hosted by
+    // GalleryFooterNode via `galleryTopPanelView`.
+    private let rgTopPanel = ComponentView<Empty>()
+    private var rgTopPanelItems: (left: [GlassControlGroupComponent.Item], right: [GlassControlGroupComponent.Item]) = ([], [])
     
     private var textSelectionNode: TextSelectionNode?
     
@@ -586,6 +591,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                 })
             case .quote:
                 break
+            case .rgAddToMessageFilter: // MARK: Regram — chat-only action
+                break
             }
         })
         
@@ -633,9 +640,13 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         self.scrollNode.addSubnode(self.textNode)
         self.scrollNode.addSubnode(textSelectionNode)
         
-        //self.contentNode.addSubnode(self.backwardButton)
-        //self.contentNode.addSubnode(self.forwardButton)
-        //self.contentNode.addSubnode(self.playbackControlButton)
+        // MARK: Regram — back in the tree. Upstream commented these out when it moved playback onto a
+        // large overlay centred on the video, which is far too easy to hit by accident; these live in
+        // the footer instead, on their own row between the scrubber and the action buttons. Their
+        // targets, long-press-to-seek and play/pause state plumbing were all left intact below.
+        self.contentNode.addSubnode(self.backwardButton)
+        self.contentNode.addSubnode(self.forwardButton)
+        self.contentNode.addSubnode(self.playbackControlButton)
         self.playbackControlButton.addSubnode(self.playPauseIconNode)
         
         self.contentNode.addSubnode(self.statusNode)
@@ -1174,6 +1185,46 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         self.hasExpandedCaptionPromise.set(scrollView.contentOffset.y > 1.0)
     }
     
+    // MARK: Regram — the strip of action buttons under the navigation bar. `updateLayout` above
+    // collects the items; GalleryFooterNode calls these two to size and place the view, because only
+    // it knows where the navigation bar ends.
+    override var galleryTopPanelView: UIView? {
+        return self.rgTopPanel.view
+    }
+
+    override func updateGalleryTopPanel(width: CGFloat, leftInset: CGFloat, rightInset: CGFloat, transition: ContainedViewLayoutTransition) -> CGRect {
+        let items = self.rgTopPanelItems
+        if items.left.isEmpty && items.right.isEmpty {
+            return CGRect()
+        }
+        var insets = UIEdgeInsets()
+        insets.left = 8.0 + leftInset
+        insets.right = 8.0 + rightInset
+        if leftInset <= 32.0 {
+            insets.left += 18.0
+            insets.right += 18.0
+        }
+        let size = self.rgTopPanel.update(
+            transition: ComponentTransition(transition),
+            component: AnyComponent(GlassControlPanelComponent(
+                theme: defaultDarkColorPresentationTheme,
+                leftItem: items.left.isEmpty ? nil : GlassControlPanelComponent.Item(
+                    items: items.left,
+                    background: .panel
+                ),
+                centralItem: nil,
+                rightItem: items.right.isEmpty ? nil : GlassControlPanelComponent.Item(
+                    items: items.right,
+                    background: .panel
+                ),
+                centerAlignmentIfPossible: false
+            )),
+            environment: {},
+            containerSize: CGSize(width: width - insets.left - insets.right, height: 44.0)
+        )
+        return CGRect(origin: CGPoint(x: insets.left, y: 0.0), size: size)
+    }
+
     override func updateLayout(size: CGSize, metrics: LayoutMetrics, leftInset: CGFloat, rightInset: CGFloat, bottomInset: CGFloat, contentInset: CGFloat, transition: ContainedViewLayoutTransition) -> LayoutInfo {
         self.validLayout = (size, metrics, leftInset, rightInset, bottomInset, contentInset)
         
@@ -1295,6 +1346,12 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             }
         }
         
+        // MARK: Regram — ⟲15 / play-pause / ⟳15 take over the 44pt row upstream reserved at the
+        // bottom for the action buttons, which now sit in a strip under the navigation bar instead.
+        // Reusing that slot rather than adding a row leaves every panel-height calculation below
+        // exactly as upstream wrote it.
+        let rgPlaybackRowHeight: CGFloat = 44.0
+
         if let scrubberView = self.scrubberView, scrubberView.superview == self.view {
             panelHeight += 10.0
             if isLandscape {
@@ -1302,7 +1359,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             } else {
                 panelHeight += 34.0
             }
-            
+
             var scrubberY: CGFloat = 0.0
             if self.textNode.isHidden || !displayCaption {
                 panelHeight += 8.0
@@ -1368,13 +1425,23 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                         isOpen: false
                     )), insets: .zero),
                     action: { [weak self] in
-                        guard let self, let buttonPanelView = self.buttonPanel.view as? GlassControlPanelComponent.View else {
+                        guard let self else {
                             return
                         }
-                        if let centerItemView = buttonPanelView.centerItemView, let itemView = centerItemView.itemView(id: AnyHashable("settings")) {
-                            self.settingsButtonPressed(sourceView: itemView)
-                        } else if let rightItemView = buttonPanelView.rightItemView, let itemView = rightItemView.itemView(id: AnyHashable("settings")) {
-                            self.settingsButtonPressed(sourceView: itemView)
+                        // MARK: Regram — the settings popup anchors to its own button, which now
+                        // lives in the top strip. The bottom panel is still searched as a fallback so
+                        // any footer that keeps its buttons there goes on working.
+                        for panel in [self.rgTopPanel, self.buttonPanel] {
+                            guard let panelView = panel.view as? GlassControlPanelComponent.View else {
+                                continue
+                            }
+                            if let centerItemView = panelView.centerItemView, let itemView = centerItemView.itemView(id: AnyHashable("settings")) {
+                                self.settingsButtonPressed(sourceView: itemView)
+                                return
+                            } else if let rightItemView = panelView.rightItemView, let itemView = rightItemView.itemView(id: AnyHashable("settings")) {
+                                self.settingsButtonPressed(sourceView: itemView)
+                                return
+                            }
                         }
                     }
                 ))
@@ -1446,43 +1513,23 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             centerControlItems = []
         }
         
-        let buttonPanelSize = self.buttonPanel.update(
-            transition: ComponentTransition(transition),
-            component: AnyComponent(GlassControlPanelComponent(
-                theme: defaultDarkColorPresentationTheme,
-                leftItem: leftControlItems.isEmpty ? nil : GlassControlPanelComponent.Item(
-                    items: leftControlItems,
-                    background: .panel
-                ),
-                centralItem: centerControlItems.isEmpty ? nil : GlassControlPanelComponent.Item(
-                    items: centerControlItems,
-                    background: .panel
-                ),
-                rightItem: rightControlItems.isEmpty ? nil : GlassControlPanelComponent.Item(
-                    items: rightControlItems,
-                    background: .panel
-                ),
-                centerAlignmentIfPossible: true
-            )),
-            environment: {},
-            containerSize: CGSize(width: size.width - buttonPanelInsets.left - buttonPanelInsets.right, height: 44.0)
-        )
-        let buttonPanelFrame = CGRect(origin: CGPoint(x: buttonPanelInsets.left, y: panelHeight - buttonPanelInsets.bottom - buttonPanelSize.height), size: buttonPanelSize)
-        if let buttonPanelView = self.buttonPanel.view {
-            if buttonPanelView.superview == nil {
-                self.contentNode.view.addSubview(buttonPanelView)
-            }
-            ComponentTransition(transition).setFrame(view: buttonPanelView, frame: buttonPanelFrame)
-        }
+        // MARK: Regram — the action buttons are handed to the top strip instead of being laid out
+        // here. Share and delete are grouped together on the left; everything upstream put in the
+        // middle (picture-in-picture, speed, fullscreen, and the per-media-type extras) goes right.
+        // Stored rather than built here because GalleryFooterNode drives the top strip's layout —
+        // this node is bottom-anchored and does not know where the navigation bar ends.
+        self.rgTopPanelItems = (left: leftControlItems + rightControlItems, right: centerControlItems)
 
+
+        let rgPlaybackRowY = panelHeight - buttonPanelInsets.bottom - rgPlaybackRowHeight
         if let image = self.backwardButton.backgroundIconNode.image {
-            self.backwardButton.frame = CGRect(origin: CGPoint(x: floor((width - image.size.width) / 2.0) - 66.0, y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
+            self.backwardButton.frame = CGRect(origin: CGPoint(x: floor((width - image.size.width) / 2.0) - 66.0, y: rgPlaybackRowY + floorToScreenPixels((rgPlaybackRowHeight - image.size.height) * 0.5)), size: image.size)
         }
         if let image = self.forwardButton.backgroundIconNode.image {
-            self.forwardButton.frame = CGRect(origin: CGPoint(x: floor((width - image.size.width) / 2.0) + 66.0, y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - image.size.height) * 0.5)), size: image.size)
+            self.forwardButton.frame = CGRect(origin: CGPoint(x: floor((width - image.size.width) / 2.0) + 66.0, y: rgPlaybackRowY + floorToScreenPixels((rgPlaybackRowHeight - image.size.height) * 0.5)), size: image.size)
         }
-        
-        self.playbackControlButton.frame = CGRect(origin: CGPoint(x: floor((width - 44.0) / 2.0), y: panelHeight - buttonPanelInsets.bottom - 44.0 + floorToScreenPixels((44.0 - 44.0) * 0.5)), size: CGSize(width: 44.0, height: 44.0))
+
+        self.playbackControlButton.frame = CGRect(origin: CGPoint(x: floor((width - 44.0) / 2.0), y: rgPlaybackRowY + floorToScreenPixels((rgPlaybackRowHeight - 44.0) * 0.5)), size: CGSize(width: 44.0, height: 44.0))
         self.playPauseIconNode.frame = self.playbackControlButton.bounds.offsetBy(dx: 2.0, dy: -2.0)
         
         let statusSize = CGSize(width: 28.0, height: 28.0)

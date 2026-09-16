@@ -1,3 +1,8 @@
+// MARK: Regram
+import RGSimpleSettings
+import RGSettingsUI
+import RGStrings
+import CountrySelectionUI
 import Foundation
 import UIKit
 import Display
@@ -18,11 +23,12 @@ import PeerNameColorItem
 import BoostLevelIconComponent
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
-private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
+private let enabledPrivateBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag] // MARK: Regram
 
 enum InfoSection: Int, CaseIterable {
     case unofficial
     case community
+    case regram
     case groupLocation
     case calls
     case personalChannel
@@ -37,7 +43,7 @@ enum InfoSection: Int, CaseIterable {
 }
 
 func infoItems(
-    data: PeerInfoScreenData?,
+    nearestChatParticipant: (String?, Int32?), showProfileId: Bool, data: PeerInfoScreenData?,
     context: AccountContext,
     presentationData: PresentationData,
     interaction: PeerInfoInteraction,
@@ -53,6 +59,13 @@ func infoItems(
     }
     
     var currentPeerInfoSection: InfoSection = .peerInfo
+
+    // MARK: Regram
+    var rgItemId = 0
+    var idText = ""
+    var isMutualContact = false
+    //    var isUser = false
+    //    let lang = presentationData.strings.baseLanguageCode
         
     var items: [InfoSection: [PeerInfoScreenItem]] = [:]
     for section in InfoSection.allCases {
@@ -97,6 +110,7 @@ func infoItems(
         let ItemReport = 6002
         let ItemBlock = 6003
         let ItemEncryptionKey = 6004
+        let ItemRGHideSenderMessages = 6005 // MARK: Regram
         let ItemBalanceHeader = 7000
         let ItemBalanceTon = 7001
         let ItemBalanceStars = 7002
@@ -114,6 +128,10 @@ func infoItems(
         if let cachedUserData = data.cachedData as? CachedUserData, cachedUserData.flags.contains(.unofficialSecurityRisk) {
             items[.unofficial]!.append(PeerInfoScreenInfoItem(id: 0, title: "", text: .markdown(presentationData.strings.PeerInfo_UnofficialSecurityRisk(EnginePeer(user).compactDisplayTitle).string), style: .compact, linkAction: nil))
         }
+        // MARK: Regram
+        isMutualContact = user.flags.contains(.mutualContact)
+        idText = String(user.id.id._internalGetInt64Value())
+//        isUser = true
         
         if !callMessages.isEmpty {
             items[.calls]!.append(PeerInfoScreenCallListItem(id: ItemCallList, messages: callMessages))
@@ -155,7 +173,7 @@ func infoItems(
             ))
         }
         
-        if let phone = user.phone {
+        if let phone = user.phone, !(RGSimpleSettings.shared.hidePhoneInSettings && isMyProfile) {
             let formattedPhone = formatPhoneNumber(context: context, number: phone)
             let label: String
             if formattedPhone.hasPrefix("+888 ") {
@@ -419,6 +437,15 @@ func infoItems(
                     }
                 }
                 
+                // MARK: Regram — client-side hiding. Unlike Conversation_BlockUser this tells the
+                // server nothing: the sender's messages are dropped locally from every group, comment
+                // thread and chat they post in, and the other side sees no change at all. Offered for
+                // bots as well — a noisy bot in a group is one of the main reasons to want this.
+                let rgPeerId = user.id.toInt64()
+                items[currentPeerInfoSection]!.append(PeerInfoScreenSwitchItem(id: ItemRGHideSenderMessages, text: "BlockUser.Block".i18n(presentationData.strings.baseLanguageCode), value: RGSimpleSettings.shared.isPeerBlocked(rgPeerId), icon: PresentationResourcesSettings.block, isLocked: false, toggled: { value in
+                    RGSimpleSettings.shared.setPeerBlocked(rgPeerId, blocked: value)
+                }))
+
                 if let encryptionKeyFingerprint = data.encryptionKeyFingerprint {
                     items[currentPeerInfoSection]!.append(PeerInfoScreenDisclosureEncryptionKeyItem(id: ItemEncryptionKey, text: presentationData.strings.Profile_EncryptionKey, fingerprint: encryptionKeyFingerprint, action: {
                         interaction.openEncryptionKey()
@@ -543,6 +570,10 @@ func infoItems(
             }
         }
     } else if case let .channel(channel) = data.peer {
+        // MARK: Regram
+        idText = "-100" + String(channel.id.id._internalGetInt64Value())
+        let ItemRGRecentActions = 20
+        
         let ItemUsername = 1
         let ItemUsernameInfo = 2
         let ItemAbout = 3
@@ -725,7 +756,7 @@ func infoItems(
 
                 if case .broadcast = channel.info {
                     var canEditMembers = false
-                    if channel.hasPermission(.banMembers) {
+                    if channel.adminRights != nil || channel.flags.contains(.isCreator) { // MARK: Regram
                         canEditMembers = true
                     }
                     if canEditMembers {
@@ -807,6 +838,14 @@ func infoItems(
                     items[section]!.append(PeerInfoScreenDisclosureItem(id: ItemEdit, label: .none, text: settingsTitle, icon: PresentationResourcesSettings.settings, action: {
                         interaction.openEditing()
                     }))
+     
+                    // MARK: Regram
+                    if channel.hasPermission(.banMembers) || channel.flags.contains(.isCreator) {
+                        items[section]!.append(PeerInfoScreenDisclosureItem(id: ItemRGRecentActions, label: .none, text: presentationData.strings.Group_Info_AdminLog, icon: PresentationResourcesSettings.recentActions, action: {
+                            interaction.openRecentActions()
+                        }))
+                    }
+                    //
                 }
                 
                 if channel.hasPermission(.manageDirect), let personalChannel = data.personalChannel {
@@ -826,6 +865,9 @@ func infoItems(
             }
         }
     } else if case let .legacyGroup(group) = data.peer {
+        // MARK: Regram
+        idText = String(group.id.id._internalGetInt64Value())
+         
         if let cachedData = data.cachedData as? CachedGroupData {
             let aboutText: String?
             if group.isFake {
@@ -903,6 +945,162 @@ func infoItems(
         }
     }
     
+    // MARK: Regram
+    if showProfileId {
+        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: "id: \(idText)", text: "", textColor: .primary, action: nil, longTapAction: { sourceNode in
+            interaction.openPeerInfoContextMenu(.copy(idText), sourceNode, nil)
+        }, requestLayout: { _ in
+            interaction.requestLayout(false)
+        }))
+        rgItemId += 1
+    }
+    
+    if RGSimpleSettings.shared.showDC {
+        var dcId: Int? = nil
+//        var dcLocation: String = ""
+        var phoneCountryText = ""
+        
+        var dcLabel = ""
+        var dcText: String = ""
+        
+        if let cachedData = data.cachedData as? CachedUserData, let phoneCountry = cachedData.peerStatusSettings?.phoneCountry {
+            var countryName = ""
+            let countriesConfiguration = context.currentCountriesConfiguration.with { $0 }
+            if let country = countriesConfiguration.countries.first(where: { $0.id == phoneCountry }) {
+                countryName = country.localizedName ?? country.name
+            } else if phoneCountry == "FT" {
+                countryName = presentationData.strings.Chat_NonContactUser_AnonymousNumber
+            } else if phoneCountry == "TS" {
+                countryName = "Test"
+            }
+            phoneCountryText = emojiFlagForISOCountryCode(phoneCountry) + " " + countryName
+        }
+        if let peer = data.peer, let smallProfileImage = peer.smallProfileImage, let cloudResource = smallProfileImage.resource as? CloudPeerPhotoSizeMediaResource {
+            dcId = cloudResource.datacenterId
+            
+//            switch (dcId) {
+//                case 1:
+//                    dcLocation = "Miami"
+//                case 2:
+//                    dcLocation = "Amsterdam"
+//                case 3:
+//                    dcLocation = "Miami"
+//                case 4:
+//                    dcLocation = "Amsterdam"
+//                case 5:
+//                    dcLocation = "Singapore"
+//                default:
+//                    break
+//            }
+        }
+        
+        if let dcId = dcId {
+            dcLabel = "dc: \(dcId)"
+            if phoneCountryText.isEmpty {
+//                if !dcLocation.isEmpty {
+//                    dcLabel += " \(dcLocation)"
+//                }
+            } else {
+                dcText = "\(phoneCountryText)"
+            }
+        } else if !phoneCountryText.isEmpty {
+            dcLabel = "dc: ?"
+            dcText = phoneCountryText
+        }
+
+        if !dcText.isEmpty || !dcLabel.isEmpty {
+            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: dcLabel, text: dcText, textColor: .primary, action: nil, longTapAction: { sourceNode in
+                interaction.openPeerInfoContextMenu(.aboutDC, sourceNode, nil)
+            }, requestLayout: { _ in
+                interaction.requestLayout(false)
+            }))
+            rgItemId += 1
+        }
+    }
+    
+    if RGSimpleSettings.shared.showCreationDate {
+        if let channelCreationTimestamp = data.channelCreationTimestamp {
+            let creationDateString = stringForDate(timestamp: channelCreationTimestamp, strings: presentationData.strings)
+            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.Created", presentationData.strings.baseLanguageCode, creationDateString), text: "", action: nil, longTapAction: { sourceNode in
+                interaction.openPeerInfoContextMenu(.copy(creationDateString), sourceNode, nil)
+            }, requestLayout: { _ in
+                interaction.requestLayout(false)
+            }))
+            rgItemId += 1
+        }
+    }
+    
+    if let invitedAt = nearestChatParticipant.1 {
+        let joinedDateString = stringForDate(timestamp: invitedAt, strings: presentationData.strings)
+        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.JoinedDateTitle", presentationData.strings.baseLanguageCode, nearestChatParticipant.0 ?? "chat") , text: joinedDateString, action: nil, longTapAction: { sourceNode in
+            interaction.openPeerInfoContextMenu(.copy(joinedDateString), sourceNode, nil)
+        }, requestLayout: { _ in
+            interaction.requestLayout(false)
+        }))
+        rgItemId += 1
+    }
+    
+    if RGSimpleSettings.shared.showRegDate {
+        var regDateString = ""
+        if let cachedData = data.cachedData as? CachedUserData, let registrationDate = cachedData.peerStatusSettings?.registrationDate {
+            let components = registrationDate.components(separatedBy: ".")
+            if components.count == 2, let first = Int32(components[0]), let second = Int32(components[1]) {
+                let month = first - 1
+                let year = second - 1900
+                regDateString = stringForMonth(strings: presentationData.strings, month: month, ofYear: year)
+            }
+        }
+        // MARK: Regram — the branch above is Telegram's own `registration_month`, which is exact. This
+        // one is interpolated from the user id (see rgEstimateRegDate) and is only ever approximate,
+        // so it is marked with "~" and never rendered down to a day — the old `default` branch printed
+        // a full date, which reads as exact. Precision follows the width of the estimated window: a
+        // wide one means the id fell in a sparsely anchored stretch, where a month would be overclaiming.
+        if let regDate = data.regDate, regDateString.isEmpty {
+            let regTimestamp = Int32((regDate.from + regDate.to) / 2)
+            let estimatedDate = Date(timeIntervalSince1970: Double(regTimestamp))
+            let windowIsWide = (regDate.to - regDate.from) > 400 * 86_400
+            switch (context.currentAppConfiguration.with { $0 }.rgWebSettings.global.regdateFormat) {
+                case "year":
+                    regDateString = stringForDateWithoutDayAndMonth(date: estimatedDate, strings: presentationData.strings)
+                default:
+                    if windowIsWide {
+                        regDateString = stringForDateWithoutDayAndMonth(date: estimatedDate, strings: presentationData.strings)
+                    } else {
+                        regDateString = stringForDateWithoutDay(date: estimatedDate, strings: presentationData.strings)
+                    }
+            }
+            regDateString = "~\(regDateString)"
+        }
+        if !regDateString.isEmpty {
+            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.RegDate", presentationData.strings.baseLanguageCode), text: regDateString, action: nil, longTapAction: { sourceNode in
+                interaction.openPeerInfoContextMenu(.copy(regDateString), sourceNode, nil)
+            }, requestLayout: { _ in
+                interaction.requestLayout(false)
+            }))
+            rgItemId += 1
+        }
+    }
+    if isMutualContact {
+        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("MutualContact.Label", presentationData.strings.baseLanguageCode), text: "", action: nil, longTapAction: { _ in }, requestLayout: { _ in
+            interaction.requestLayout(false)
+        }))
+        rgItemId += 1
+    }
+    
+    
+    // MARK: Regram — per-chat switch for the keyword filter, offered for every peer type. Rules
+    // are global by default, and a group where the keyword is legitimate traffic needs an off switch
+    // that does not require editing every rule's scope. Hidden senders are unaffected: hiding a
+    // person has to hold wherever they post.
+    if !isMyProfile, let rgFilterPeerId = data.peer?.id.toInt64() {
+        items[.regram] = items[.regram] ?? []
+        let rgLang = presentationData.strings.baseLanguageCode
+        items[.regram]!.append(PeerInfoScreenSwitchItem(id: 9500, text: "MessageFilter.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isMessageFilterEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
+            RGSimpleSettings.shared.setMessageFilterEnabled(value, forPeer: rgFilterPeerId)
+        }))
+        items[.regram]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
+    }
+
     var result: [(AnyHashable, [PeerInfoScreenItem])] = []
     for section in InfoSection.allCases {
         if let sectionItems = items[section], !sectionItems.isEmpty {
@@ -1296,7 +1494,7 @@ func editingItems(data: PeerInfoScreenData?, boostStatus: ChannelBoostStatus?, s
                 }
                 
                 var canEditMembers = false
-                if channel.hasPermission(.banMembers) && (channel.adminRights != nil || channel.flags.contains(.isCreator)) {
+                if /*channel.hasPermission(.banMembers) &&*/ (channel.adminRights != nil || channel.flags.contains(.isCreator)) { // MARK: Regram
                     canEditMembers = true
                 }
                 if canEditMembers {

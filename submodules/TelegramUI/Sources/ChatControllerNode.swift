@@ -1,4 +1,6 @@
 import Foundation
+import RGSimpleSettings
+import RGPangu
 import UIKit
 import AsyncDisplayKit
 import Postbox
@@ -1814,8 +1816,21 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         var dismissedAccessoryPanelNode: AccessoryPanelNode?
         var dismissedInputContextPanelNode: ChatInputContextPanelNode?
         var dismissedOverlayContextPanelNode: ChatInputContextPanelNode?
-        
-        let inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction)
+        // MARK: Regram
+        var inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction)
+        if RGSimpleSettings.shared.hideChannelBottomButton {
+            // We still need the panel for messages multi-select or search. Likely can break in future.
+            if self.chatPresentationInterfaceState.interfaceState.selectionState != nil || self.chatPresentationInterfaceState.search != nil {
+                self.inputPanelBackgroundNode.isHidden = false
+            } else if (inputPanelNodes.primary != nil || inputPanelNodes.secondary != nil)  {
+                // So there should be some panel, but user don't want it. Let's check if our logic will hide it
+                inputPanelNodes = inputPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.inputPanelNode, currentSecondaryPanel: self.secondaryInputPanelNode, textInputPanelNode: self.textInputPanelNode, chatControllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction, forceHideChannelButton: true)
+                if inputPanelNodes.primary == nil && inputPanelNodes.secondary == nil {
+                    // Looks like we're eligible to hide the panel, let's remove safe area fill as well
+                    self.inputPanelBackgroundNode.isHidden = true
+                }
+            }
+        }
         
         let inputPanelBottomInset = max(insets.bottom, inputPanelBottomInsetTerm)
         
@@ -5047,15 +5062,41 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             if peerId?.namespace != Namespaces.Peer.SecretChat, let interactiveEmojis = self.interactiveEmojis, interactiveEmojis.emojis.contains(trimmedInputText), effectiveInputText.attribute(ChatTextInputAttributes.customEmoji, at: 0, effectiveRange: nil) == nil {
                 messages.append(.message(text: "", attributes: [], inlineStickers: [:], mediaReference: AnyMediaReference.standalone(media: TelegramMediaDice(emoji: trimmedInputText)), threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: []))
             } else {
-                let inputText = convertMarkdownToAttributes(effectiveInputText)
-                
+                // MARK: Regram — pangu spacing.
+                //
+                // Applied here, on the attributed string, rather than on the text+entities pair the
+                // messages are built from: entities are derived from this string's attribute runs a
+                // few lines below, so inserting characters now costs no offset arithmetic and cannot
+                // leave an entity pointing at the wrong range.
+                //
+                // Monospace and blockquote spans are excluded because a space inserted into code
+                // changes the code. customEmoji is excluded from inheritance so the space can never be
+                // tagged as one glyph of an emoji entity.
+                //
+                // The dice/interactive-emoji branch above is deliberately upstream of this: a lone
+                // emoji has no CJK/Latin boundary, and routing it through here would only risk
+                // disturbing the exact-match check that selects it.
+                let spacedInputText: NSAttributedString
+                if RGSimpleSettings.shared.panguSpacing {
+                    spacedInputText = Pangu.spaced(
+                        effectiveInputText,
+                        skippingAttributes: [
+                            ChatTextInputAttributes.monospace,
+                            ChatTextInputAttributes.block,
+                            ChatTextInputAttributes.collapsedBlock
+                        ],
+                        nonInheritedAttributes: [ChatTextInputAttributes.customEmoji]
+                    )
+                } else {
+                    spacedInputText = effectiveInputText
+                }
+
+                let inputText = convertMarkdownToAttributes(spacedInputText)
+
                 var mediaReference: AnyMediaReference?
                 var webpage: TelegramMediaWebpage?
-                if let urlPreview = self.chatPresentationInterfaceState.urlPreview {
-                    if self.chatPresentationInterfaceState.interfaceState.composeDisableUrlPreviews.contains(urlPreview.url) {
-                    } else {
-                        webpage = urlPreview.webPage
-                    }
+                if let urlPreview = self.chatPresentationInterfaceState.urlPreview, !RGSimpleSettings.shared.disableLinkPreview, !self.chatPresentationInterfaceState.interfaceState.composeDisableUrlPreviews.contains(urlPreview.url) {
+                    webpage = urlPreview.webPage
                 }
                 mediaReference = webpage.flatMap(AnyMediaReference.standalone)
                 
@@ -5077,7 +5118,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     var attributes: [MessageAttribute] = [RichTextMessageAttribute(instantPage: instantPage(from: composeContent), fullInstantPage: nil)]
 
                     // url-preview attribute parity (duplicated, not shared, to keep the text loop byte-identical)
-                    if let urlPreview = self.chatPresentationInterfaceState.urlPreview {
+                    if RGSimpleSettings.shared.disableLinkPreview {
+                        attributes.append(OutgoingContentInfoMessageAttribute(flags: [.disableLinkPreviews]))
+                    } else if let urlPreview = self.chatPresentationInterfaceState.urlPreview {
                         if self.chatPresentationInterfaceState.interfaceState.composeDisableUrlPreviews.contains(urlPreview.url) {
                             attributes.append(OutgoingContentInfoMessageAttribute(flags: [.disableLinkPreviews]))
                         } else {
@@ -5113,7 +5156,9 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                                 attributes.append(TextEntitiesMessageAttribute(entities: entities))
                             }
                             
-                            if let urlPreview = self.chatPresentationInterfaceState.urlPreview {
+                            if RGSimpleSettings.shared.disableLinkPreview {
+                                attributes.append(OutgoingContentInfoMessageAttribute(flags: [.disableLinkPreviews]))
+                            } else if let urlPreview = self.chatPresentationInterfaceState.urlPreview {
                                 if self.chatPresentationInterfaceState.interfaceState.composeDisableUrlPreviews.contains(urlPreview.url) {
                                     attributes.append(OutgoingContentInfoMessageAttribute(flags: [.disableLinkPreviews]))
                                 } else {

@@ -1,0 +1,10 @@
+/* Settings bundle, zh-Hans */
+"Reset.Title" = "故障排除";
+"Reset.Toggle" = "重置元数据";
+"Reset.Notice" = "当 app 卡住无法打开时使用。不会退出账号,但所有私密聊天会丢失。";
+"HardReset.Title" = "";
+"HardReset.Toggle" = "全部重置";
+"HardReset.Notice" = "清除所有账号的元数据、缓存消息和媒体。通常不会退出账号,但请自行承担风险。所有私密聊天会丢失。";
+"FullWipe.Title" = "危险区域";
+"FullWipe.Toggle" = "抹掉所有数据";
+"FullWipe.Notice" = "下次启动时会先要求确认,然后退出所有账号并删除全部本地文件、缓存和设置 —— 包括删除 app 后通常仍会保留的共享容器。用于彻底从零开始。";

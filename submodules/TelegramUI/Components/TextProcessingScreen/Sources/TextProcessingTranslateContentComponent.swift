@@ -362,8 +362,15 @@ final class TextProcessingTranslateContentComponent: Component {
                     if baseLang.hasSuffix(rawSuffix) {
                         baseLang = String(baseLang.dropLast(rawSuffix.count))
                     }
+                    // MARK: Regram — the target language has to be normalized the same way the source
+                    // language above already is. Stripping only "-raw" leaves script/region suffixes
+                    // behind, and the Chinese packs are the ones that carry them: "zh-hans-raw" became
+                    // "zh-hans", which is in no supported-language list, so the request came back
+                    // TO_LANG_INVALID and the translation silently produced nothing. Picking a language
+                    // by hand supplied a bare "zh" and worked, which is why it only failed until then.
+                    baseLang = normalizeTranslationLanguage(baseLang)
                     var toLanguage = baseLang
-                    
+
                     let fromLanguage = component.externalState.sourceLanguage ?? ""
                     if toLanguage == fromLanguage {
                         if fromLanguage == "en" {

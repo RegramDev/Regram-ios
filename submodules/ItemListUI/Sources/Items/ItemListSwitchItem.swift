@@ -34,6 +34,9 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
     let disableLeadingInset: Bool
     let maximumNumberOfLines: Int
     let noCorners: Bool
+    // MARK: Regram — opt-in drag-to-reorder. Off everywhere except the Regram message-menu
+    // order screen, so no other settings list changes behaviour.
+    let isReorderable: Bool
     public let sectionId: ItemListSectionId
     let style: ItemListStyle
     let updated: (Bool) -> Void
@@ -41,7 +44,7 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
     let action: (() -> Void)?
     public let tag: ItemListItemTag?
     
-    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
+    public init(presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, icon: UIImage? = nil, title: String, text: String? = nil, textColor: TextColor = .primary, titleBadgeComponent: AnyComponent<Empty>? = nil, value: Bool, type: ItemListSwitchItemNodeType = .regular, enableInteractiveChanges: Bool = true, enabled: Bool = true, displayLocked: Bool = false, disableLeadingInset: Bool = false, maximumNumberOfLines: Int = 1, noCorners: Bool = false, isReorderable: Bool = false, sectionId: ItemListSectionId, style: ItemListStyle, updated: @escaping (Bool) -> Void, activatedWhileDisabled: @escaping () -> Void = {}, action: (() -> Void)? = nil, tag: ItemListItemTag? = nil) {
         self.presentationData = presentationData
         self.systemStyle = systemStyle
         self.icon = icon
@@ -57,6 +60,7 @@ public class ItemListSwitchItem: ListViewItem, ItemListItem {
         self.disableLeadingInset = disableLeadingInset
         self.maximumNumberOfLines = maximumNumberOfLines
         self.noCorners = noCorners
+        self.isReorderable = isReorderable
         self.sectionId = sectionId
         self.style = style
         self.updated = updated
@@ -237,9 +241,19 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
     
     override public func didLoad() {
         super.didLoad()
-        
+
         (self.switchNode.view as? UISwitch)?.addTarget(self, action: #selector(self.switchValueChanged(_:)), for: .valueChanged)
         self.switchGestureNode.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.tapGesture(_:))))
+    }
+
+    // MARK: Regram — the whole row is a drag handle when the item opts in. Its list must also set
+    // `reorderingRequiresLongPress`, or a plain pan would start a drag and the list could not scroll.
+    // The switch keeps its own gesture, so toggling still works.
+    override public func isReorderable(at point: CGPoint) -> Bool {
+        guard let item = self.item, item.isReorderable else {
+            return false
+        }
+        return !self.switchGestureNode.frame.contains(point)
     }
     
     public func displayHighlight() {
@@ -340,7 +354,10 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                 insets.bottom = 0.0
             }
             
-            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: item.title, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: item.maximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: params.width - leftInset - params.rightInset - 64.0, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            // MARK: Regram
+            let titleConstrainedWidth = max(1.0, params.width - leftInset - params.rightInset - (item.maximumNumberOfLines == 1 ? 64.0 : 84.0))
+            //
+            let (titleLayout, titleApply) = makeTitleLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: item.title, font: titleFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor), backgroundColor: nil, maximumNumberOfLines: item.maximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: titleConstrainedWidth, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
             contentSize.height = max(contentSize.height, titleLayout.size.height + topInset * 2.0)
             
@@ -510,7 +527,7 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                     if textLayoutAndApply != nil {
                         titleOriginY = topInset + 1.0
                     }
-                    let titleFrame = CGRect(origin: CGPoint(x: leftInset, y: titleOriginY), size: titleLayout.size)
+                    let titleFrame = CGRect(origin: CGPoint(x: leftInset, y: titleOriginY), size: CGSize(width: titleConstrainedWidth, height: titleLayout.size.height))
                     transition.updatePosition(node: strongSelf.titleNode, position: titleFrame.origin)
                     strongSelf.titleNode.bounds = CGRect(origin: CGPoint(), size: titleFrame.size)
                     

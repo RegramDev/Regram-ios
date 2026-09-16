@@ -1,5 +1,6 @@
 import Foundation
 import Postbox
+import RGSimpleSettings
 
 public let anonymousSavedMessagesId: Int64 = 2666000
 
@@ -30,6 +31,13 @@ public extension Peer {
             break
         }
         
+        // MARK: Regram
+        let chatId = self.id.id._internalGetInt64Value()
+        if contentSettings.appConfiguration.rgWebSettings.global.forceReasons.contains(chatId) {
+            return "Unavailable in Regram due to App Store Guidelines"
+        } else if contentSettings.appConfiguration.rgWebSettings.global.unforceReasons.contains(chatId) {
+            return nil
+        }
         if let restrictionInfo = restrictionInfo {
             for rule in restrictionInfo.rules {
                 if rule.reason == "sensitive" {
@@ -37,7 +45,7 @@ public extension Peer {
                 }
                 if rule.platform == "all" || rule.platform == platform || contentSettings.addContentRestrictionReasons.contains(rule.platform) {
                     if !contentSettings.ignoreContentRestrictionReasons.contains(rule.reason) {
-                        return rule.text
+                        return rule.text + "\n" + "\(rule.reason)-\(rule.platform)"
                     }
                 }
             }
@@ -225,6 +233,11 @@ public extension Peer {
     }
     
     var isPremium: Bool {
+        // MARK: Regram — local Premium, see RGLocalPremium.swift. Only the signed-in accounts are
+        // affected; every other peer keeps the flag the server sent.
+        if rgIsLocalPremiumPeerId(self.id) {
+            return true
+        }
         switch self {
         case let user as TelegramUser:
             return user.flags.contains(.isPremium)
@@ -252,6 +265,11 @@ public extension Peer {
     }
     
     var isCopyProtectionEnabled: Bool {
+        // MARK: Regram — every forward/save/screenshot gate in the UI reads this one property,
+        // so overriding it here re-enables saving from restricted chats everywhere at once.
+        if RGSimpleSettings.shared.allowSavingProtectedContent {
+            return false
+        }
         switch self {
         case let group as TelegramGroup:
             return group.flags.contains(.copyProtectionEnabled)
@@ -320,6 +338,9 @@ public extension Peer {
     }
     
     var nameColor: PeerColor? {
+        if RGSimpleSettings.shared.accountColorsSaturation == 0 { // MARK: Regram
+            return nil
+        }
         switch self {
         case let user as TelegramUser:
             if let nameColor = user.nameColor {

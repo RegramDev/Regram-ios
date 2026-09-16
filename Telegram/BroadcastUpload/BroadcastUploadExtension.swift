@@ -9,6 +9,7 @@ import AudioToolbox
 import TelegramCore
 import CoreMedia
 import AVFoundation
+import RGAppGroupIdentifier
 
 private func rootPathForBasePath(_ appGroupPath: String) -> String {
     return appGroupPath + "/telegram-data"
@@ -315,15 +316,10 @@ private final class EmbeddedBroadcastUploadImpl: BroadcastUploadImpl {
     }
 
     override public func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
-        guard let appBundleIdentifier = Bundle.main.bundleIdentifier, let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) else {
-            self.finishWithError()
-            return
-        }
-
-        let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
-
-        let appGroupName = "group.\(baseAppBundleId)"
-        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+        // MARK: Regram — must resolve the container the same way the app does; a re-signing
+        // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
+        // account to read and the app with data it cannot see.
+        let maybeAppGroupUrl = rgDataContainerURL()
 
         guard let appGroupUrl = maybeAppGroupUrl else {
             self.finishWithError()

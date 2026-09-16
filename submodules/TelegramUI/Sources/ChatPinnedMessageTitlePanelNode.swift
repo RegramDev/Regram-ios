@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import Display
@@ -506,9 +507,9 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
         }
         
         if currentTranslateToLanguageUpdated || messageUpdated, let message = interfaceState.pinnedMessage?.message {
-            if let translation = message.attributes.first(where: { $0 is TranslationMessageAttribute }) as? TranslationMessageAttribute, translation.toLang == translateToLanguage?.toLang {
-            } else if let translateToLanguage {
-                self.translationDisposable.set(translateMessageIds(context: self.context, messageIds: [message.id], fromLang: translateToLanguage.fromLang, toLang: translateToLanguage.toLang).startStrict())
+            if let translation = message.attributes.first(where: { $0 is TranslationMessageAttribute }) as? TranslationMessageAttribute, translation.toLang == translateToLanguage?.toLang || translation.toLang.hasPrefix("\(translateToLanguage?.toLang ?? "")-") /* MARK: Regram */ {
+            } else if let translateToLanguage  {
+                self.translationDisposable.set(translateMessageIds(context: self.context, messageIds: [message.id], fromLang: translateToLanguage.fromLang, toLang: translateToLanguage.toLang, viaText: !self.context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal).startStrict())
             }
         }
         

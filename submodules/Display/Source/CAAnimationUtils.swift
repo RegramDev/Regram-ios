@@ -1,6 +1,24 @@
 import UIKit
 import UIKitRuntimeUtils
 
+// MARK: Regram
+/// Scales an animation's playback speed so a canned spring finishes in the requested duration.
+///
+/// The obvious `speed * Float(animation.duration / duration)` divides by a caller-supplied value: a
+/// duration of zero yields infinity (or NaN when both sides are zero), which is then handed to the
+/// animation engine. CoreAnimation used to ignore such an animation; iOS 26's AnimationKit traps on
+/// it instead, and because the trap happens on the animation manager's tick thread the crash report
+/// contains no frame of the code that created it. Falling back to the unscaled speed keeps the
+/// animation valid and merely ignores an impossible duration.
+private func rgScaledAnimationSpeed(_ speed: Float, _ animationDuration: Double, _ requestedDuration: Double) -> Float {
+    guard requestedDuration.isFinite, requestedDuration > 0.0, animationDuration.isFinite else {
+        return speed
+    }
+    let value = speed * Float(animationDuration / requestedDuration)
+    return value.isFinite ? value : speed
+}
+
+
 @objc private class CALayerAnimationDelegate: NSObject, CAAnimationDelegate {
     private let keyPath: String?
     var completion: ((Bool) -> Void)?
@@ -107,7 +125,7 @@ public extension CALayer {
             if k != 0 && k != 1 {
                 speed = Float(1.0) / k
             }
-            animation.speed = speed * Float(animation.duration / duration)
+            animation.speed = rgScaledAnimationSpeed(speed, animation.duration, duration)
             animation.isAdditive = additive
             if !delay.isZero {
                 animation.beginTime = self.convertTime(CACurrentMediaTime(), from: nil) + delay * UIView.animationDurationFactor()
@@ -133,7 +151,7 @@ public extension CALayer {
                     speed = Float(1.0) / k
                 }
                 
-                animation.speed = speed * Float(animation.duration / duration)
+                animation.speed = rgScaledAnimationSpeed(speed, animation.duration, duration)
                 animation.isAdditive = additive
                 
                 if !delay.isZero {
@@ -160,7 +178,7 @@ public extension CALayer {
                     speed = Float(1.0) / k
                 }
                 
-                animation.speed = speed * Float(animation.duration / duration)
+                animation.speed = rgScaledAnimationSpeed(speed, animation.duration, duration)
                 animation.isAdditive = additive
                 
                 if !delay.isZero {
@@ -327,7 +345,7 @@ public extension CALayer {
             animation.fillMode = .both
         }
         
-        animation.speed = speed * Float(animation.duration / duration)
+        animation.speed = rgScaledAnimationSpeed(speed, animation.duration, duration)
         animation.isAdditive = additive
         
         adjustFrameRate(animation: animation)
@@ -357,7 +375,7 @@ public extension CALayer {
             animation.fillMode = .both
         }
         
-        animation.speed = speed * Float(animation.duration / duration)
+        animation.speed = rgScaledAnimationSpeed(speed, animation.duration, duration)
         animation.isAdditive = additive
         
         adjustFrameRate(animation: animation)

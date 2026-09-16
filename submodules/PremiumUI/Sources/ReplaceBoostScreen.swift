@@ -190,7 +190,8 @@ private final class ReplaceBoostScreenComponent: CombinedComponent {
                         }
                     },
                     tapAction: { _, _ in
-                        giftPremium()
+                        // MARK: Regram
+                        if ({ return false }()) { giftPremium() }
                     }
                 ),
                 environment: {},

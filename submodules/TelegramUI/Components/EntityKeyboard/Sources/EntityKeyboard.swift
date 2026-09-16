@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import Display
@@ -569,6 +570,11 @@ public final class EntityKeyboardComponent: Component {
             
             let emojiContentItemIdUpdated = ActionSlot<(AnyHashable, AnyHashable?, ComponentTransition)>()
             if let emojiContent = component.emojiContent {
+                // MARK: Regram
+                if RGSimpleSettings.shared.defaultEmojisFirst {
+                    emojiContent.panelItemGroups = rgPatchEmojiKeyboardItems(emojiContent.panelItemGroups)
+                    emojiContent.contentItemGroups = rgPatchEmojiKeyboardItems(emojiContent.contentItemGroups)
+                }
                 contents.append(AnyComponentWithIdentity(id: "emoji", component: AnyComponent(emojiContent)))
                 var topEmojiItems: [EntityKeyboardTopPanelComponent.Item] = []
                 for itemGroup in emojiContent.panelItemGroups {

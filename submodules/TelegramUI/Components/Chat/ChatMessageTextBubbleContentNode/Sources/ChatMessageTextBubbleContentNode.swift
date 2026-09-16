@@ -1294,7 +1294,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         return super.hitTest(point, with: event)
     }
     
-    private func updateIsTranslating(_ isTranslating: Bool, showTextAsPlaceholder: Bool) {
+    public func updateIsTranslating(_ isTranslating: Bool, showTextAsPlaceholder: Bool) {
         guard let item = self.item else {
             return
         }
@@ -1681,6 +1681,9 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 textSelectionNode.enableQuote = enableQuote
                 textSelectionNode.enableTranslate = enableOtherActions
                 textSelectionNode.enableShare = enableOtherActions && enableCopy
+                // MARK: Regram — only incoming messages can be filtered, so offering it on
+                // your own text would be a dead action.
+                textSelectionNode.enableAddToMessageFilter = enableOtherActions && item.message.effectivelyIncoming(item.context.account.peerId)
                 textSelectionNode.menuSkipCoordnateConversion = !enableOtherActions
                 self.textSelectionNode = textSelectionNode
                 self.containerNode.addSubnode(textSelectionNode)

@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -543,8 +544,8 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
         
         self.applyItemNodeAsCurrent(id: .all, itemNode: itemNode)
         
-        let panRecognizer = InteractiveTransitionGestureRecognizer(target: self, action: #selector(self.panGesture(_:)), allowedDirections: { [weak self] _ in
-            guard let self, self.availableFilters.count > 1 || (self.controller?.isStoryPostingAvailable == true && !(self.context.sharedContext.callManager?.hasActiveCall ?? false)) else {
+        let panRecognizer = InteractiveTransitionGestureRecognizer(target: self, action: #selector(self.panGesture(_:)), allowedDirections: { [weak self] _ in // MARK: Regram
+            guard let self, self.availableFilters.count > 1 || (self.controller?.isStoryPostingAvailable == true && !(self.context.sharedContext.callManager?.hasActiveCall ?? false) && !RGSimpleSettings.shared.disableSwipeToRecordStory) else {
                 return []
             }
             guard case .chatList(.root) = self.location else {
@@ -566,7 +567,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
             } else {
                 return [.rightEdge]
             }
-        }, edgeWidth: .widthMultiplier(factor: 1.0 / 6.0, min: 22.0, max: 80.0))
+        }, edgeWidth: RGSimpleSettings.shared.disableChatSwipeOptions ? .widthMultiplier(factor: 1.0 / 6.0, min: 0.0, max: 0.0) : .widthMultiplier(factor: 1.0 / 6.0, min: 22.0, max: 80.0))
         panRecognizer.delegate = self.wrappedGestureRecognizerDelegate
         panRecognizer.delaysTouchesBegan = false
         panRecognizer.cancelsTouchesInView = true
@@ -595,8 +596,13 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     }
     
     @objc private func panGesture(_ recognizer: UIPanGestureRecognizer) {
-        let filtersLimit = self.filtersLimit.flatMap({ $0 + 1 }) ?? Int32(self.availableFilters.count)
-        let maxFilterIndex = min(Int(filtersLimit), self.availableFilters.count) - 1
+        // MARK: Regram
+        var _availableFilters = self.availableFilters
+        if RGSimpleSettings.shared.allChatsHidden {
+            _availableFilters.removeAll { $0 == .all }
+        }
+        let filtersLimit = self.filtersLimit.flatMap({ $0 + 1 }) ?? Int32(_availableFilters.count)
+        let maxFilterIndex = min(Int(filtersLimit), _availableFilters.count) - 1
         
         switch recognizer.state {
         case .began:
@@ -631,7 +637,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 }
             }
         case .changed:
-            if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let selectedIndex = self.availableFilters.firstIndex(where: { $0.id == self.selectedId }) {
+            if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let selectedIndex = _availableFilters.firstIndex(where: { $0.id == self.selectedId }) {
                 let translation = recognizer.translation(in: self.view)
                 var transitionFraction = translation.x / layout.size.width
                 
@@ -649,7 +655,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     hasLiveStream = true
                 }
                      
-                if case .compact = layout.metrics.widthClass, self.controller?.isStoryPostingAvailable == true && !(self.context.sharedContext.callManager?.hasActiveCall ?? false) {
+                if case .compact = layout.metrics.widthClass, self.controller?.isStoryPostingAvailable == true && !(self.context.sharedContext.callManager?.hasActiveCall ?? false) && !RGSimpleSettings.shared.disableSwipeToRecordStory {
                     if hasLiveStream {
                         if translation.x >= 30.0 {
                             self.panRecognizer?.cancel()
@@ -707,7 +713,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                 self.pinnedHeaderDisplayFractionUpdated?(transition)
             }
         case .cancelled, .ended:
-            if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let selectedIndex = self.availableFilters.firstIndex(where: { $0.id == self.selectedId }) {
+            if let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight: originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = self.validLayout, let selectedIndex = _availableFilters.firstIndex(where: { $0.id == self.selectedId }) {
                 let translation = recognizer.translation(in: self.view)
                 let velocity = recognizer.velocity(in: self.view)
                 var directionIsToRight: Bool?
@@ -744,7 +750,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     } else {
                         updatedIndex = max(updatedIndex - 1, 0)
                     }
-                    let switchToId = self.availableFilters[updatedIndex].id
+                    let switchToId = _availableFilters[updatedIndex].id
                     if switchToId != self.selectedId, let itemNode = self.itemNodes[switchToId] {
                         let _ = itemNode
                         self.selectedId = switchToId
@@ -1143,6 +1149,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
     private var tapRecognizer: UITapGestureRecognizer?
     var navigationBar: NavigationBar?
     let navigationBarView = ComponentView<Empty>()
+    let rgFoldersView = ComponentView<Empty>()
     weak var controller: ChatListControllerImpl?
     
     private var toolbar: ComponentView<Empty>?
@@ -1218,6 +1225,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         self.backgroundColor = presentationData.theme.chatList.backgroundColor
         
         self.addSubnode(self.mainContainerNode)
+        
         
         self.mainContainerNode.contentOffsetChanged = { [weak self] offset, listView in
             self?.contentOffsetChanged(offset: offset, listView: listView, isPrimary: true)
@@ -1408,7 +1416,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         self.searchDisplayController?.updatePresentationData(presentationData)
     }
     
-    private func updateNavigationBar(layout: ContainerViewLayout, deferScrollApplication: Bool, transition: ComponentTransition) -> (navigationHeight: CGFloat, storiesInset: CGFloat) {
+    private func updateNavigationBar(layout: ContainerViewLayout, deferScrollApplication: Bool, transition: ComponentTransition) -> (tabs: AnyComponent<Empty>?, navigationHeight: CGFloat, storiesInset: CGFloat) {
         let headerContent = self.controller?.updateHeaderContent()
         
         var panels: [HeaderPanelContainerComponent.Panel] = []
@@ -1426,6 +1434,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                             return
                         }
                         switch notice {
+                        case let .rgUrl(id, _, _, url, needAuth, permanent):
+                            self.effectiveContainerNode.currentItemNode.interaction?.openRGAnnouncement(id, url, needAuth, permanent)
                         case .clearStorage:
                             self.effectiveContainerNode.currentItemNode.interaction?.openStorageManagement()
                         case .setupPassword:
@@ -1512,8 +1522,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }
         
         var navigationHeaderPanels: AnyComponent<Empty>?
+        var tabs: AnyComponent<Empty>? // MARK: Regram
         if self.controller?.tabContainerData != nil || !panels.isEmpty {
-            var tabs: AnyComponent<Empty>?
             if let tabContainerData = self.controller?.tabContainerData, tabContainerData.0.count > 1 {
                 let folderFilterIndex: (ChatListFilterTabEntryId, [ChatListFilterTabEntry]) -> Int? = { id, entries in
                     var index = 0
@@ -1554,7 +1564,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         switch entry {
                         case .all:
                             id = Int32.min
-                            title = HorizontalTabsComponent.Tab.Title(text: self.presentationData.strings.ChatList_Tabs_All, entities: [], enableAnimations: false)
+                            title = HorizontalTabsComponent.Tab.Title(text: rgUseShortAllChatsTitle(true) ? self.presentationData.strings.ChatList_Tabs_All : self.presentationData.strings.ChatList_Tabs_AllChats, entities: [], enableAnimations: false)
                             isMainTab = true
                         case let .filter(idValue, text, unread):
                             id = AnyHashable(idValue)
@@ -1652,7 +1662,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 
             navigationHeaderPanels = AnyComponent(HeaderPanelContainerComponent(
                 theme: self.presentationData.theme,
-                tabs: tabs,
+                tabs: (self.controller?.tabContainerData?.1 ?? false) ? nil : tabs, // MARK: Regram
                 panels: panels
             ))
         }
@@ -1734,9 +1744,9 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             }
             transition.setFrame(view: navigationBarComponentView, frame: CGRect(origin: CGPoint(), size: navigationBarSize))
             
-            return (navigationBarSize.height, 0.0)
+            return (tabs, navigationBarSize.height, 0.0)
         } else {
-            return (0.0, 0.0)
+            return (tabs, 0.0, 0.0)
         }
     }
     
@@ -1843,6 +1853,21 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         storiesInset = navigationBarLayout.storiesInset
         
         self.containerLayout = (layout, navigationBarHeight, visualNavigationHeight, cleanNavigationBarHeight, storiesInset)
+
+        // MARK: Regram
+        let rgComponentTransition = ComponentTransition(transition)
+        let rgDisplayTabsAtBottom = self.controller?.tabContainerData?.1 ?? false
+        let rgShouldDisplayBottomFolders = rgDisplayTabsAtBottom && self.isSearchDisplayControllerActive == nil
+        let rgFoldersSize = self.rgFoldersView.update(
+            transition: rgComponentTransition,
+            component: AnyComponent(HeaderPanelContainerComponent(
+                theme: self.presentationData.theme,
+                tabs: navigationBarLayout.tabs,
+                panels: []
+            )),
+            environment: {},
+            containerSize: layout.size
+        )
         
         var insets = layout.insets(options: [.input])
         insets.top += navigationBarHeight
@@ -1945,6 +1970,11 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 })
             }
         }
+
+        // MARK: Regram
+        if rgShouldDisplayBottomFolders && rgFoldersSize.height > 0.0 {
+            insets.bottom += rgFoldersSize.height + 16.0 + 8.0
+        }
         
         var childrenLayout = layout
         childrenLayout.intrinsicInsets = UIEdgeInsets(top: visualNavigationHeight, left: childrenLayout.intrinsicInsets.left, bottom: childrenLayout.intrinsicInsets.bottom, right: childrenLayout.intrinsicInsets.right)
@@ -2009,6 +2039,43 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             navigationBarComponentView.deferScrollApplication = false
             navigationBarComponentView.applyCurrentScroll(transition: ComponentTransition(transition))
         }
+        
+        // MARK: Regram
+        if let rgFoldersView = self.rgFoldersView.view as? HeaderPanelContainerComponent.View {
+            if rgShouldDisplayBottomFolders && rgFoldersSize.height > 0.0 {
+                rgFoldersView.layer.removeAnimation(forKey: "opacity")
+                rgFoldersView.alpha = 1.0
+                if rgFoldersView.superview == nil {
+                    self.view.addSubview(rgFoldersView)
+                    if transition.isAnimated {
+                        rgFoldersView.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.23)
+                    }
+                }
+                
+                // Magic
+//                var heightInset: CGFloat = 0.0
+//                if case .forum = self.location {
+//                    heightInset = 4.0
+//                }
+//                var tabBarHeight: CGFloat
+                let bottomInset: CGFloat = layout.insets(options: []).bottom
+//                if !layout.safeInsets.left.isZero {
+//                    tabBarHeight = 34.0 + bottomInset
+//                } else {
+//                    tabBarHeight = 49.0 - heightInset + bottomInset
+//                }
+                //
+                // TODO(regram):
+                rgComponentTransition.setFrame(view: rgFoldersView, frame: CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - bottomInset - rgFoldersSize.height - 16.0), size: rgFoldersSize))
+            } else {
+                rgFoldersView.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.2, removeOnCompletion: false, completion: { [weak rgFoldersView] completed in
+                    if completed {
+                        rgFoldersView?.removeFromSuperview()
+                    }
+                })
+            }
+        }
+        //
     }
     
     @MainActor

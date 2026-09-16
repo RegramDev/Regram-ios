@@ -5,6 +5,7 @@ import AsyncDisplayKit
 import Display
 import TelegramPresentationData
 import TextFormat
+import RGStrings
 
 private extension CGRect {
     var center: CGPoint {
@@ -213,6 +214,7 @@ public enum TextSelectionAction: Equatable {
     case speak
     case translate
     case quote(range: Range<Int>)
+    case rgAddToMessageFilter // MARK: Regram
 }
 
 public final class TextSelectionNode: ASDisplayNode {
@@ -284,6 +286,9 @@ public final class TextSelectionNode: ASDisplayNode {
     public var enableQuote: Bool = false
     public var enableTranslate: Bool = true
     public var enableShare: Bool = true
+    // MARK: Regram — off by default so the item only shows where `performAction` handles it
+    // (chat message text); gallery and story captions keep the stock menu.
+    public var enableAddToMessageFilter: Bool = false
     
     public var menuSkipCoordnateConversion: Bool = false
     
@@ -807,6 +812,17 @@ public final class TextSelectionNode: ASDisplayNode {
         } else if self.enableShare {
             actions.append(ContextMenuAction(content: .text(title: self.strings.Conversation_ContextMenuShare, accessibilityLabel: self.strings.Conversation_ContextMenuShare), action: { [weak self] in
                 self?.performAction(string, .share)
+                self?.cancelSelection()
+            }))
+        }
+
+        // MARK: Regram — copy the exact selected text and add it to the message filter. Scoped to
+        // the selection rather than the whole message: a keyword is usually a phrase inside a
+        // message, so filtering on the entire body would only ever match that one message.
+        if self.enableAddToMessageFilter {
+            let rgTitle = "MessageFilter.CopyAsKeyword".i18n(self.strings.baseLanguageCode)
+            actions.append(ContextMenuAction(content: .text(title: rgTitle, accessibilityLabel: rgTitle), action: { [weak self] in
+                self?.performAction(string, .rgAddToMessageFilter)
                 self?.cancelSelection()
             }))
         }

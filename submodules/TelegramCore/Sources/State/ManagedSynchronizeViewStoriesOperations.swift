@@ -119,6 +119,12 @@ func managedSynchronizeViewStoriesOperations(postbox: Postbox, network: Network,
 }
 
 private func pushStoriesAreSeen(postbox: Postbox, network: Network, stateManager: AccountStateManager, peer: Peer, operation: SynchronizeViewStoriesOperation) -> Signal<Void, NoError> {
+    // MARK: Regram — ghost mode: the story stays marked seen locally (so the ring clears and it is not
+    // re-shown), we just never tell the author. Completing retires the queued operation.
+    if RGGhostMode.suppressStoryViews {
+        return .complete()
+    }
+
     guard let inputPeer = apiInputPeer(peer) else {
         return .complete()
     }

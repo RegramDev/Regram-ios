@@ -1,5 +1,11 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
+sgDeps = [
+    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Regram/RGInputToolbar:RGInputToolbar"
+]
+
+
 swift_library(
     name = "MessageInputPanelComponent",
     module_name = "MessageInputPanelComponent",
@@ -9,7 +15,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = [
+    deps = sgDeps + [
         "//submodules/Display",
         "//submodules/ComponentFlow",
         "//submodules/AppBundle",

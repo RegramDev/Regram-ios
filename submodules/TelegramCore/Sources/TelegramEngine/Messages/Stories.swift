@@ -2,6 +2,7 @@ import Foundation
 import SwiftSignalKit
 import Postbox
 import TelegramApi
+import RGSimpleSettings
 
 public enum EngineStoryInputMedia {
     case image(dimensions: PixelDimensions, data: Data, stickers: [TelegramMediaFile])
@@ -338,7 +339,8 @@ public enum Stories {
             self.isCloseFriends = isCloseFriends
             self.isContacts = isContacts
             self.isSelectedContacts = isSelectedContacts
-            self.isForwardingDisabled = isForwardingDisabled
+            // MARK: Regram — story save/download gating reads this flag throughout the UI.
+            self.isForwardingDisabled = isForwardingDisabled && !RGSimpleSettings.shared.allowDownloadingStories
             self.isEdited = isEdited
             self.isMy = isMy
             self.myReaction = myReaction
@@ -387,7 +389,7 @@ public enum Stories {
             self.isCloseFriends = try container.decodeIfPresent(Bool.self, forKey: .isCloseFriends) ?? false
             self.isContacts = try container.decodeIfPresent(Bool.self, forKey: .isContacts) ?? false
             self.isSelectedContacts = try container.decodeIfPresent(Bool.self, forKey: .isSelectedContacts) ?? false
-            self.isForwardingDisabled = try container.decodeIfPresent(Bool.self, forKey: .isForwardingDisabled) ?? false
+            self.isForwardingDisabled = (try container.decodeIfPresent(Bool.self, forKey: .isForwardingDisabled) ?? false) && !RGSimpleSettings.shared.allowDownloadingStories
             self.isEdited = try container.decodeIfPresent(Bool.self, forKey: .isEdited) ?? false
             self.isMy = try container.decodeIfPresent(Bool.self, forKey: .isMy) ?? false
             self.myReaction = try container.decodeIfPresent(MessageReaction.Reaction.self, forKey: .myReaction)
@@ -2072,6 +2074,15 @@ func _internal_deleteStories(account: Account, peerId: PeerId, ids: [Int32]) -> 
 
 func _internal_markStoryAsSeen(account: Account, peerId: PeerId, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
     if asPinned {
+        // MARK: Regram — ghost mode: this branch is a pure view report (profile/pinned story), so it is
+        // dropped whole. The `else` branch below must NOT be gated the same way: it writes the local
+        // maxReadId and injects the local read update, and skipping that would leave stories
+        // permanently unseen on this device. Its network half is the SynchronizeViewStoriesOperation,
+        // which is suppressed separately in pushStoriesAreSeen.
+        if RGGhostMode.suppressStoryViews {
+            return .complete()
+        }
+
         return account.postbox.transaction { transaction -> Api.InputPeer? in
             return transaction.getPeer(peerId).flatMap(apiInputPeer)
         }

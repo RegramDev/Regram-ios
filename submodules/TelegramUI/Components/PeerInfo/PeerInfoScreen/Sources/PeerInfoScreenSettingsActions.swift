@@ -1,3 +1,5 @@
+import RGStrings
+import RGSettingsUI
 import Foundation
 import UIKit
 import Display
@@ -44,6 +46,20 @@ extension PeerInfoScreenNode {
             }
         }
         switch section {
+        case .regram:
+            self.controller?.push(rgSettingsController(context: self.context))
+        case .regramPro:
+            if self.context.sharedContext.immediateRGStatus.status > 1 {
+                self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
+            } else {
+                if let payWallController = self.context.sharedContext.makeRGPayWallController(context: self.context) {
+                    self.controller?.present(payWallController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                } else {
+                    self.controller?.present(self.context.sharedContext.makeRGUpdateIOSController(), animated: true)
+                }
+            }
+        case .nsfw:
+            self.controller?.push(rgNSFWController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()
         case .edit:
@@ -217,15 +233,15 @@ extension PeerInfoScreenNode {
                 guard let strongSelf = self else {
                     return
                 }
-                var maximumAvailableAccounts: Int = 3
+                var maximumAvailableAccounts: Int = maximumRegramNumberOfAccounts
                 if accountAndPeer?.1.isPremium == true && !strongSelf.context.account.testingEnvironment {
-                    maximumAvailableAccounts = 4
+                    maximumAvailableAccounts = maximumRegramNumberOfAccounts
                 }
                 var count: Int = 1
                 for (accountContext, peer, _) in accountsAndPeers {
                     if !accountContext.account.testingEnvironment {
                         if peer.isPremium {
-                            maximumAvailableAccounts = 4
+                            maximumAvailableAccounts = maximumRegramNumberOfAccounts
                         }
                         count += 1
                     }
@@ -245,7 +261,23 @@ extension PeerInfoScreenNode {
                         navigationController.pushViewController(controller)
                     }
                 } else {
-                    strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
+                    // MARK: Regram
+                    if count + 1 > maximumSafeNumberOfAccounts {
+                        let presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }
+                        let alertController = textAlertController(context: strongSelf.context, updatedPresentationData: strongSelf.controller?.updatedPresentationData, title: presentationData.strings.ChatList_DeleteSavedMessagesConfirmationTitle, text: i18n("Auth.AccountBackupReminder", presentationData.strings.baseLanguageCode), actions: [
+                            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {
+                                strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
+                            })
+                        ])
+                        if let controller = strongSelf.controller {
+                            controller.present(alertController, in: .window(.root))
+                        } else {
+                            strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
+                        }
+                    } else {
+                        strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
+                    }
+                    //
                 }
             })
         case .logout:

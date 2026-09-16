@@ -1446,7 +1446,13 @@ extension ChatControllerImpl {
             let (accountPeer, limits, premiumLimits) = result
             let isPremium = accountPeer?.isPremium ?? false
 
-            strongSelf.present(legacyICloudFilePicker(theme: strongSelf.presentationData.theme, hasMultiselection: true, documentTypes: documentTypes, completion: { [weak self] urls in
+            // MARK: Regram — `.import` instead of the default `.open`. Open mode hands back
+            // security-scoped URLs whose sandbox extension iOS only grants when the provisioning
+            // profile carries the matching document entitlements; a third-party signing profile does
+            // not, so `startAccessingSecurityScopedResource()` fails and picking a file does nothing.
+            // Import mode has the system copy the file into our own Inbox first, which needs no
+            // extension and works under any profile. The copy is removed once it has been uploaded.
+            strongSelf.present(legacyICloudFilePicker(theme: strongSelf.presentationData.theme, mode: .import, hasMultiselection: true, documentTypes: documentTypes, completion: { [weak self] urls in
                 if let strongSelf = self, !urls.isEmpty {
                     var signals: [Signal<ICloudFileDescription?, NoError>] = []
                     for url in urls {

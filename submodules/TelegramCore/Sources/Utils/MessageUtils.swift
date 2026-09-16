@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import TelegramApi
+import RGSimpleSettings
 
 public extension MessageFlags {
     var isSending: Bool {
@@ -391,6 +392,11 @@ public extension Message {
     }
     
     func isCopyProtected() -> Bool {
+        // MARK: Regram — message-level counterpart of Peer.isCopyProtectionEnabled. The gallery
+        // save/share buttons and capture protection read this one, so it needs the same override.
+        if RGSimpleSettings.shared.allowSavingProtectedContent {
+            return false
+        }
         if self.flags.contains(.CopyProtected) {
             return true
         } else if let group = self.peers[self.id.peerId] as? TelegramGroup, group.flags.contains(.copyProtectionEnabled) {

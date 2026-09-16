@@ -1,3 +1,5 @@
+import RGGTranslate
+import RGSimpleSettings
 import Foundation
 import SwiftSignalKit
 import Postbox
@@ -131,6 +133,13 @@ public extension TelegramEngine {
 
         public func searchMessages(location: SearchMessagesLocation, query: String, state: SearchMessagesState?, centerId: MessageId? = nil, limit: Int32 = 100) -> Signal<(SearchMessagesResult, SearchMessagesState), NoError> {
             return _internal_searchMessages(account: self.account, location: location, query: query, state: state, centerId: centerId, limit: limit)
+            // TODO(regram): Try to fallback on error when searching. RX is hard...
+            |> mapToSignal { result -> Signal<(SearchMessagesResult, SearchMessagesState), NoError> in
+                if (result.0.totalCount > 0) {
+                    return .single(result)
+                }
+                return _internal_searchMessages(account: self.account, location: location, query: query, state: state, centerId: centerId, limit: limit, forceLocal: true)
+            }
         }
         
         public func getSearchMessageCount(location: SearchMessagesLocation, query: String) -> Signal<Int?, NoError> {
@@ -211,6 +220,11 @@ public extension TelegramEngine {
         }
 
         public func addSecretChatMessageScreenshot(peerId: PeerId) -> Signal<Never, NoError> {
+            // MARK: Regram — Anti-screenshot. Every screenshot detection site (chat, gallery,
+            // secret media preview) funnels through here, so suppressing it here covers them all.
+            if RGSimpleSettings.shared.antiScreenshotNotification {
+                return .complete()
+            }
             return _internal_addSecretChatMessageScreenshot(account: self.account, peerId: peerId)
             |> ignoreValues
         }
@@ -253,6 +267,24 @@ public extension TelegramEngine {
 
         public func getMessagesLoadIfNecessary(_ messageIds: [MessageId], strategy: GetMessagesStrategy = .cloud(skipLocal: false)) -> Signal<GetMessagesResult, GetMessagesError> {
             return _internal_getMessagesLoadIfNecessary(messageIds, postbox: self.account.postbox, network: self.account.network, accountPeerId: self.account.peerId, strategy: strategy)
+        }
+
+        /// The locally stored messages of each peer, newest first, capped at `limit` per peer. For
+        /// callers that need to look past the top message of a chat without opening a history view;
+        /// nothing is fetched from the network.
+        public func locallyStoredRecentMessages(peerIds: [EnginePeer.Id], limit: Int) -> Signal<[EnginePeer.Id: [EngineMessage]], NoError> {
+            return self.account.postbox.transaction { transaction -> [EnginePeer.Id: [EngineMessage]] in
+                var result: [EnginePeer.Id: [EngineMessage]] = [:]
+                for peerId in peerIds {
+                    var messages: [EngineMessage] = []
+                    transaction.withAllMessages(peerId: peerId, reversed: true, { message in
+                        messages.append(EngineMessage(message))
+                        return messages.count < limit
+                    })
+                    result[peerId] = messages
+                }
+                return result
+            }
         }
 
         public func markMessageContentAsConsumedInteractively(messageId: MessageId) -> Signal<Void, NoError> {
@@ -468,8 +500,8 @@ public extension TelegramEngine {
             return _internal_updateStarsReactionPrivacy(account: self.account, messageId: id, privacy: privacy)
         }
 
-        public func requestChatContextResults(botId: PeerId, peerId: PeerId, query: String, location: Signal<(Double, Double)?, NoError> = .single(nil), offset: String, incompleteResults: Bool = false, staleCachedResults: Bool = false) -> Signal<RequestChatContextResultsResult?, RequestChatContextResultsError> {
-            return _internal_requestChatContextResults(account: self.account, botId: botId, peerId: peerId, query: query, location: location, offset: offset, incompleteResults: incompleteResults, staleCachedResults: staleCachedResults)
+        public func requestChatContextResults(IQTP: Bool = false, botId: PeerId, peerId: PeerId, query: String, location: Signal<(Double, Double)?, NoError> = .single(nil), offset: String, incompleteResults: Bool = false, staleCachedResults: Bool = false) -> Signal<RequestChatContextResultsResult?, RequestChatContextResultsError> {
+            return _internal_requestChatContextResults(IQTP: IQTP, account: self.account, botId: botId, peerId: peerId, query: query, location: location, offset: offset, incompleteResults: incompleteResults, staleCachedResults: staleCachedResults)
         }
 
         public func removeRecentlyUsedHashtag(string: String) -> Signal<Void, NoError> {
@@ -670,10 +702,10 @@ public extension TelegramEngine {
                 }
                 |> castError(TranslationError.self)
                 |> mapToSignal { inputPeer in
-                    return _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id)
+                    return rgWrappedTranslateSingle(text: text, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id))
                 }
             } else {
-                return _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone)
+                return rgWrappedTranslateSingle(text: text, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone))
             }
         }
         
@@ -710,7 +742,7 @@ public extension TelegramEngine {
         }
 
         public func translate(texts: [(String, [MessageTextEntity])], toLang: String, tone: TranslationTone = .neutral) -> Signal<[(String, [MessageTextEntity])], TranslationError> {
-            return _internal_translateTexts(network: self.account.network, texts: texts, toLang: toLang, tone: tone)
+            return rgWrappedTranslateMultiple(texts: texts,toLang: toLang, default: _internal_translateTexts(network: self.account.network, texts: texts, toLang: toLang, tone: tone))
         }
 
         public func translateRichMessage(messageId: EngineMessage.Id, toLang: String, tone: TranslationTone = .neutral) -> Signal<InstantPage?, TranslationError> {
@@ -732,6 +764,11 @@ public extension TelegramEngine {
         
         public func translateMessages(messageIds: [EngineMessage.Id], fromLang: String?, toLang: String, enableLocalIfPossible: Bool, tone: TranslationTone = .neutral) -> Signal<Never, TranslationError> {
             return _internal_translateMessages(account: self.account, messageIds: messageIds, fromLang: fromLang, toLang: toLang, enableLocalIfPossible: enableLocalIfPossible, tone: tone)
+        }
+
+        // MARK: Regram
+        public func translateMessagesViaText(messagesDict: [EngineMessage.Id: String], fromLang: String?, toLang: String, generateEntitiesFunction: @escaping (String) -> [MessageTextEntity], enableLocalIfPossible: Bool) -> Signal<Never, TranslationError> {
+            return _internal_translateMessagesViaText(account: self.account, messagesDict: messagesDict, fromLang: fromLang, toLang: toLang, enableLocalIfPossible: enableLocalIfPossible, generateEntitiesFunction: generateEntitiesFunction)
         }
         
         public func togglePeerMessagesTranslationHidden(peerId: EnginePeer.Id, hidden: Bool) -> Signal<Never, NoError> {
@@ -1618,6 +1655,10 @@ public extension TelegramEngine {
         }
         
         public func markStoryAsSeen(peerId: EnginePeer.Id, id: Int32, asPinned: Bool) -> Signal<Never, NoError> {
+            // MARK: Regram
+            if RGSimpleSettings.shared.isStealthModeEnabled {
+                return .never()
+            }
             return _internal_markStoryAsSeen(account: self.account, peerId: peerId, id: id, asPinned: asPinned)
         }
         
@@ -2011,4 +2052,78 @@ func _internal_monoforumPerformSuggestedPostAction(account: Account, id: EngineM
             return .complete()
         }
     }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// MARK: Regram
+/// Routes a plain string to the third-party service the user picked in Settings. Also used as the
+/// fallback when Telegram's own translation API fails.
+func rgExternalTranslate(_ text: String, _ toLang: String) -> Signal<String, TranslateFetchError> {
+    switch RGSimpleSettings.shared.translationBackendEnum {
+    case .google:
+        return googleTranslate(text, toLang)
+    default:
+        return gtranslate(text, toLang)
+    }
+}
+
+private func rgWrappedTranslateSingle(
+    text: String,
+    toLang: String,
+    `default`: Signal<(String, [MessageTextEntity])?, TranslationError>
+) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
+    if RGSimpleSettings.shared.translationBackendIsExternal {
+        return rgExternalTranslate(text, toLang)
+            |> map { ($0, []) }
+            |> mapError { _ in .generic }
+    }
+
+    return `default`
+        |> `catch` { originalError in
+            rgExternalTranslate(text, toLang)
+                |> map { ($0, []) }
+                |> mapError { _ in originalError }
+        }
+}
+
+private func rgWrappedTranslateMultiple(
+    texts: [(String, [MessageTextEntity])],
+    toLang: String,
+    `default`: Signal<[(String, [MessageTextEntity])], TranslationError>
+) -> Signal<[(String, [MessageTextEntity])], TranslationError> {
+    if RGSimpleSettings.shared.translationBackendIsExternal {
+        let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, _) in
+            rgExternalTranslate(text, toLang)
+                |> map { ($0, []) }
+                |> mapError { _ in .generic }
+        }
+        return combineLatest(translatedSignals)
+    }
+
+    return `default`
+        |> `catch` { originalError in
+            let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, _) in
+                rgExternalTranslate(text, toLang)
+                    |> map { ($0, []) }
+                    |> mapError { _ in originalError }
+            }
+            return combineLatest(translatedSignals)
+        }
 }

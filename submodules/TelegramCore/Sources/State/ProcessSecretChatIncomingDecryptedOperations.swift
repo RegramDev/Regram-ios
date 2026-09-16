@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import TelegramApi
+import RGSimpleSettings
 
 import EncryptionProvider
 
@@ -295,7 +296,10 @@ func processSecretChatIncomingDecryptedOperations(encryptionProvider: Encryption
                                                 }
                                             }
                                         }
-                                        _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: filteredMessageIds)
+                                        // MARK: Regram — Anti-revoke (secret chats)
+                                        if !RGSimpleSettings.shared.antiRevoke {
+                                            _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: filteredMessageIds)
+                                        }
                                     }
                                 case .clearHistory:
                                     _internal_clearHistory(transaction: transaction, mediaBox: mediaBox, peerId: peerId, threadId: nil, namespaces: .all)

@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import Display
@@ -4644,6 +4645,8 @@ public final class StoryItemSetContainerComponent: Component {
                             case .translate:
                                 self.sendMessageContext.performTranslateTextAction(view: self, text: text.string, entities: [])
                             case .quote:
+                                break
+                            case .rgAddToMessageFilter: // MARK: Regram — chat-only action
                                 break
                             }
                         },

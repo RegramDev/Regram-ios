@@ -138,6 +138,17 @@ private var declaredEncodables: Void = {
     declareEncodable(SourceReferenceMessageAttribute.self, f: { SourceReferenceMessageAttribute(decoder: $0) })
     declareEncodable(SourceAuthorInfoMessageAttribute.self, f: { SourceAuthorInfoMessageAttribute(decoder: $0) })
     declareEncodable(EditedMessageAttribute.self, f: { EditedMessageAttribute(decoder: $0) })
+    // MARK: Regram — registered under BOTH type-name hashes on purpose.
+    //
+    // Postbox keys a stored object by murMurHashString32("\(type(of: object))"), computed at encode
+    // time (Coding.swift). Renaming this class from SGRevokedMessageAttribute therefore splits the
+    // data in two: rows written before the rename carry the old name's hash, rows written after carry
+    // the new one. Registering only one of them silently drops the other, and the visible symptom is
+    // narrow — anti-revoke keeps the message either way, it just loses the "deleted" indicator.
+    //
+    // The second line can be removed once no install can still hold pre-rename rows.
+    declareEncodable(RGRevokedMessageAttribute.self, f: { RGRevokedMessageAttribute(decoder: $0) })
+    declareEncodable(typeHash: persistentHash32("SGRevokedMessageAttribute"), { RGRevokedMessageAttribute(decoder: $0) })
     declareEncodable(ReplyMarkupMessageAttribute.self, f: { ReplyMarkupMessageAttribute(decoder: $0) })
     declareEncodable(OutgoingChatContextResultMessageAttribute.self, f: { OutgoingChatContextResultMessageAttribute(decoder: $0) })
     declareEncodable(HttpReferenceMediaResource.self, f: { HttpReferenceMediaResource(decoder: $0) })
@@ -221,6 +232,8 @@ private var declaredEncodables: Void = {
     declareEncodable(AuthSessionInfoAttribute.self, f: { AuthSessionInfoAttribute(decoder: $0) })
     declareEncodable(TranslationMessageAttribute.self, f: { TranslationMessageAttribute(decoder: $0) })
     declareEncodable(TranslationMessageAttribute.Additional.self, f: { TranslationMessageAttribute.Additional(decoder: $0) })
+    // MARK: Regram
+    declareEncodable(QuickTranslationMessageAttribute.self, f: { QuickTranslationMessageAttribute(decoder: $0) })
     declareEncodable(SynchronizeAutosaveItemOperation.self, f: { SynchronizeAutosaveItemOperation(decoder: $0) })
     declareEncodable(TelegramMediaStory.self, f: { TelegramMediaStory(decoder: $0) })
     declareEncodable(SynchronizeViewStoriesOperation.self, f: { SynchronizeViewStoriesOperation(decoder: $0) })

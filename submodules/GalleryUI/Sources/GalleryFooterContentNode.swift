@@ -50,6 +50,26 @@ open class GalleryFooterContentNode: ASDisplayNode {
     open func updateLayout(size: CGSize, metrics: LayoutMetrics, leftInset: CGFloat, rightInset: CGFloat, bottomInset: CGFloat, contentInset: CGFloat, transition: ContainedViewLayoutTransition) -> LayoutInfo {
         return LayoutInfo(height: 0.0, needsShadow: false)
     }
+
+    // MARK: Regram — a content node may want a strip of controls under the navigation bar rather than
+    // in the bottom panel. It cannot place one itself: this node is bottom-anchored and sized to the
+    // panel, so anything at the top would have to be pushed out through a negative offset derived
+    // from a top inset it is never given. `GalleryFooterNode` spans the whole screen and does know
+    // the navigation bar height, so it hosts the view and this pair of hooks hands it over.
+    /// The view to host at the top of the screen, or nil to have none.
+    open var galleryTopPanelView: UIView? {
+        return nil
+    }
+
+    /// Lays the top panel out for `width` and returns the frame it wants, in a coordinate space whose
+    /// origin is the top of the area below the navigation bar. The footer applies the vertical offset
+    /// and sets the frame; returning an empty rect means "nothing to show".
+    ///
+    /// Called before `galleryTopPanelView` is read, since a `ComponentView` has no view until its
+    /// first update.
+    open func updateGalleryTopPanel(width: CGFloat, leftInset: CGFloat, rightInset: CGFloat, transition: ContainedViewLayoutTransition) -> CGRect {
+        return CGRect()
+    }
     
     open func animateIn(transition: ContainedViewLayoutTransition) {
         self.alpha = 0.0

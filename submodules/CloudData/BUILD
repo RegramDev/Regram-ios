@@ -13,6 +13,7 @@ swift_library(
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/EncryptionProvider:EncryptionProvider",
+        "//submodules/CloudData/RGCloudKitGuard:RGCloudKitGuard",
     ],
     visibility = [
         "//visibility:public",

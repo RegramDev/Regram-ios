@@ -12,10 +12,17 @@ import TextFormat
 import Markdown
 import Display
 import TelegramStringFormatting
+import RGSimpleSettings
 
 struct ChatHistoryEntriesForViewState {
     private var messageStableIdToLocalId: [UInt32: Int64] = [:]
-    
+
+    // MARK: Regram — how many messages the content filter removed from the last pass. The loaded
+    // window is a fixed message count, so dropping entries after the fact leaves the list too short
+    // to fill the screen; the caller adds this back to the count it requests. See its use in
+    // ChatHistoryListNode.processDisplayedItemRangeChanged.
+    var rgFilteredOutCount: Int = 0
+
     init() {
     }
     
@@ -140,6 +147,15 @@ func chatHistoryEntriesForView(
         }
     }
     
+    // Build the filter state once per view: decoding the rules and compiling their regexes is too
+    // expensive to repeat per entry.
+    let accountPeerId = context.account.peerId
+    let rgContentFilter = RGContentFilterState(accountPeerId: accountPeerId)
+    // Reset per pass: the state is carried over from the previous call, so this would otherwise
+    // accumulate. Written directly rather than via a local + `defer`, because a `defer` runs after
+    // the return value has already been copied and would never be observed by the caller.
+    currentState.rgFilteredOutCount = 0
+
     var count = 0
     loop: for entry in view.entries {
         var message = entry.message
@@ -154,6 +170,12 @@ func chatHistoryEntriesForView(
             continue
         }
         
+        // MARK: Regram — message filter and hidden senders.
+        if !rgContentFilter.isEmpty, rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+            currentState.rgFilteredOutCount += 1
+            continue loop
+        }
+
         if case let .replyThread(replyThreadMessage) = location, replyThreadMessage.isForumPost {
             for media in message.media {
                 if let action = media as? TelegramMediaAction {

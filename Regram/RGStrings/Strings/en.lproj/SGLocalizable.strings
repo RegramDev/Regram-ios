@@ -1,0 +1,369 @@
+"Settings.ContentSettings" = "Content Settings";
+
+"Settings.Tabs.Header" = "TABS";
+"Settings.Tabs.HideTabBar" = "Hide Tab bar";
+"Settings.Tabs.ShowContacts" = "Show Contacts Tab";
+"Settings.Tabs.ShowNames" = "Show Tab Names";
+"Settings.Tabs.SearchButton" = "Search Button";
+"Settings.Tabs.WideTabBar" = "Wide Tab bar";
+"Settings.Tabs.WideTabBar.Notice" = "Keeps the full width of Tab bar when some tabs are hidden.";
+
+"Settings.Folders.BottomTab" = "Folders at Bottom";
+"Settings.Folders.BottomTabStyle" = "Bottom Folders Style";
+
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.ios" = "iOS";
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.telegram" = "Telegram";
+/* Example: Hide "All Chats" */
+"Settings.Folders.AllChatsHidden" = "Hide \"%@\"";
+"Settings.Folders.RememberLast" = "Open Last Folder";
+"Settings.Folders.RememberLast.Notice" = "Regram will open the last used folder when you restart the app or switch accounts.";
+
+"Settings.Folders.CompactNames" = "Smaller spacing";
+"Settings.Folders.AllChatsTitle" = "\"All Chats\" title";
+"Settings.Folders.AllChatsTitle.short" = "Short";
+"Settings.Folders.AllChatsTitle.long" = "Long";
+/* Default behaviour for All Chats Folder Title. "All Chats" title: Default */
+"Settings.Folders.AllChatsTitle.none" = "Default";
+
+
+"Settings.ChatList.Header" = "CHAT LIST";
+"Settings.CompactChatList" = "Compact Chat List";
+"Settings.CompactMessagePreview" = "Compact Message Preview";
+"Settings.ChatList.Lines" = "Chat List Lines";
+"Settings.ChatList.Lines.1" = "1 line";
+"Settings.ChatList.Lines.2" = "2 lines";
+"Settings.ChatList.Lines.3" = "3 lines (Default)";
+
+"Mention.UserIdLink" = "Mention as Link";
+"Mention.UserIdLink.Notice" = "Long-pressing an avatar to mention inserts the display name as a link to the user, instead of @username.";
+"NSFW.Title" = "NSFW";
+"NSFW.Notice" = "Shows an NSFW row in Settings (between My Profile and Proxy) that opens an in-app web section. 18+ only.";
+"LocalPremium.Title" = "Local Premium";
+"LocalPremium.Notice" = "Treats your accounts as Premium inside this app, so Premium-only screens, options and limits unlock. Nothing is sent to Telegram: anything the server checks — premium stickers and reactions, emoji status, real limits — still needs a subscription.";
+"LinkPreview.Disable" = "Disable Previews for Sent Links";
+"LinkPreview.Disable.Notice" = "Sends links without webpage previews. The preview can still appear while composing, and messages from other people are unaffected.";
+"NSFW.Tab.Recommend" = "Recommended";
+"NSFW.Recommend.Header" = "Recommended";
+"NSFW.Recommend.Subtitle" = "Tap a code to open it, or search by keyword.";
+"NSFW.Recommend.SearchPlaceholder" = "Search code or keyword";
+"NSFW.AgeGate.Title" = "18+ Content";
+"NSFW.AgeGate.Text" = "This section contains adult material intended for viewers 18 years or older. By continuing you confirm you are of legal age in your jurisdiction.";
+"NSFW.AgeGate.Confirm" = "I am 18 or older";
+"NSFW.AgeGate.Leave" = "Leave";
+"Settings.Profiles.DefaultTabGroupsInCommon" = "Open on Groups in Common";
+"Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "Show the Groups tab first when opening a user or bot you share groups with.";
+"Settings.Profiles.Header" = "PROFILES";
+
+"Settings.Stories.Hide" = "Hide Stories";
+"Settings.Stories.WarnBeforeView" = "Ask Before Viewing";
+"Settings.Stories.DisableSwipeToRecord" = "Disable Swipe to Record";
+
+"Settings.Translation.QuickTranslateButton" = "Quick Translate button";
+"Settings.Translation.Backend" = "Service";
+/* Do not translate */
+"Settings.Translation.Backend.default" = "Telegram";
+/* Do not translate */
+"Settings.Translation.Backend.gtranslate" = "GTranslate";
+/* Do not translate */
+"Settings.Translation.Backend.google" = "Google";
+"Settings.Translation.Backend.system" = "System";
+"Settings.Translation.Backend.Notice" = "Regram will fallback to %@ if selected translation service is not available.";
+
+"Settings.Transcription.Header" = "VOICE-TO-TEXT";
+"Settings.Transcription.Backend" = "Service";
+/* Do not translate */
+"Settings.Transcription.Backend.default" = "Telegram";
+/* Do not translate */
+"Settings.Transcription.Backend.apple" = "Apple";
+"Settings.Transcription.Backend.Notice" = "Regram will fallback to %@ if selected transcription service is not available.";
+
+"Stories.Warning.Author" = "Author";
+"Stories.Warning.ViewStory" = "View Story?";
+/* Author will be able to see that you viewed their Story */
+"Stories.Warning.Notice" = "%@ WILL BE ABLE TO SEE that you viewed their Story.";
+"Stories.Warning.NoticeStealth" = "%@ will not be able to see that you viewed their Story.";
+
+"Settings.Photo.Quality.Notice" = "Quality of uploaded photos and stories.";
+"Settings.Photo.SendLarge" = "Send HD Photos";
+"Settings.Photo.SendLarge.Notice" = "Increase the side limit on compressed images to 2560px.";
+
+"Settings.VideoNotes.Header" = "ROUND VIDEOS";
+"Settings.VideoNotes.StartWithRearCam" = "Start with Rear Camera";
+
+"Settings.CustomColors.Header" = "ACCOUNT COLORS";
+"Settings.CustomColors.Saturation" = "SATURATION";
+/* Make sure to escape Percentage sign % */
+"Settings.CustomColors.Saturation.Notice" = "Set to 0%% to disable account colors.";
+
+"Settings.UploadsBoost" = "Upload Boost";
+"Settings.DownloadsBoost" = "Download Boost";
+"Settings.DownloadsBoost.Notice" = "Increases number of parallel connections and size of file chunks. In case your network can't handle the load, try different options that suits your connection.";
+"Settings.DownloadsBoost.none" = "Disabled";
+"Settings.DownloadsBoost.medium" = "Medium";
+"Settings.DownloadsBoost.maximum" = "Maximum";
+
+"Settings.ShowProfileID" = "Show Profile ID";
+"Settings.ShowDC" = "Show Data Center";
+"Settings.ShowCreationDate" = "Show Chat Creation Date";
+"Settings.ShowCreationDate.Notice" = "The creation date may be unknown for some chats.";
+
+"Settings.ShowRegDate" = "Show Registration Date";
+"Settings.ShowRegDate.Notice" = "The registration date is approximate.";
+
+"Settings.SendWithReturnKey" = "Send with \"return\" key";
+"Settings.HidePhoneInSettingsUI" = "Hide Phone in Settings";
+"Settings.HidePhoneInSettingsUI.Notice" = "This will only hide your phone number from the settings interface. To hide it from others, go to Privacy and Security.";
+
+"PasscodeSettings.AutoLock.InFiveSeconds" = "If away for 5 seconds";
+
+"ProxySettings.UseSystemDNS" = "Use system DNS";
+"ProxySettings.UseSystemDNS.Notice" = "Use system DNS to bypass timeout if you don't have access to Google DNS";
+
+/* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
+"Common.NoTelegramPremiumNeeded" = "You **don't need** %@!";
+"Common.RestartRequired" = "Restart required";
+"Common.RestartNow" = "Restart Now";
+"Common.OpenTelegram" = "Open Telegram";
+"Common.UseTelegramForPremium" = "Please note that to get Telegram Premium, you must use the official Telegram app. Once you have obtained Telegram Premium, all its features will become available in Regram.";
+"Common.UpdateOS" = "iOS update required";
+"Common.KnowWhatYouDo" = "Please, change these settings only if you know what they do.";
+
+"Message.HoldToShowOrReport" = "Hold to Show or Report.";
+
+"Auth.AccountBackupReminder" = "Make sure you have a backup access method. Keep a SIM for SMS or an additional session logged in to avoid being locked out.";
+"Auth.UnofficialAppCodeTitle" = "You can get the code only with official app";
+
+"Settings.SmallReactions" = "Small Reactions";
+"Settings.HideReactions" = "Hide Reactions";
+
+"ContextMenu.SaveToCloud" = "Save to Cloud";
+"ContextMenu.SelectFromUser" = "Select from Author";
+
+"Settings.ContextMenu" = "CONTEXT MENU";
+"Settings.ContextMenu.Customize" = "Customize Menu";
+"Settings.ContextMenu.Notice" = "Disabled entries will be available in \"Regram\" sub-menu.";
+
+
+"Settings.ChatSwipeOptions" = "Chat List Swipe Options";
+"Settings.DeleteChatSwipeOption" = "Swipe to Delete Chat";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextChannelSameLocationSwipeProgress */
+"Settings.PullToNextChannel" = "Pull to Next Unread Channel";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextUnreadTopicSwipeProgress */
+"Settings.PullToNextTopic" = "Pull to Next Topic";
+"Settings.GalleryCamera" = "Camera in Gallery";
+"Settings.GalleryCameraPreview" = "Camera Preview in Gallery";
+/* "Send Message As..." button */
+"Settings.SendAsButton" = "\"%@\" Button";
+"Settings.SnapDeletionEffect" = "Message Deletion Effects";
+
+"Settings.Stickers.Size" = "SIZE";
+"Settings.Stickers.Timestamp" = "Show Timestamp";
+
+"Settings.RecordingButton" = "Voice Recording Button";
+
+"Settings.DefaultEmojisFirst" = "Standard emojis first";
+"Settings.DefaultEmojisFirst.Notice" = "Show standard emojis before premium in emoji keyboard";
+
+/* Date when chat was created. "created: 24 May 2016" */
+"Chat.Created" = "created: %@";
+
+/* Date when user joined the chat. "Joined Regram Chat" */
+"Chat.JoinedDateTitle" = "Joined %@";
+/* Date when user registered in Telegram. Will be shown like "Registered\n24 May 2016" */
+"Chat.RegDate" = "Registered";
+
+"Settings.messageDoubleTapActionOutgoingEdit" = "Double-tap to edit message";
+
+"Settings.wideChannelPosts" = "Wide posts in channels";
+"Settings.ForceEmojiTab" = "Emoji tab first";
+
+"Settings.forceBuiltInMic" = "Force Device Microphone";
+"Settings.forceBuiltInMic.Notice" = "If enabled, app will use only device microphone even if headphones are connected.";
+
+"Settings.showChannelBottomButton" = "Channel Bottom Panel";
+
+"Settings.secondsInMessages" = "Seconds in Messages";
+
+"Settings.CallConfirmation" = "Call Confirmation";
+"Settings.CallConfirmation.Notice" = "Regram will ask for your confirmation before making a call.";
+
+/* Confirmation before making a Call */
+"CallConfirmation.Audio.Title" = "Make a Call?";
+
+/* Confirmation before making a Video Call */
+"CallConfirmation.Video.Title" = "Make a Video Call?";
+
+"MutualContact.Label" = "mutual contact";
+
+"Settings.swipeForVideoPIP" = "Video PIP with Swipe";
+"Settings.swipeForVideoPIP.Notice" = "If enabled, swiping video will open it in Picture-in-Picture mode.";
+
+"SessionBackup.Title" = "Accounts Backup";
+"SessionBackup.Sessions.Title" = "Sessions";
+"SessionBackup.Actions.Backup" = "Backup to Keychain";
+"SessionBackup.Actions.Restore" = "Restore from Keychain";
+"SessionBackup.Actions.DeleteAll" = "Delete Keychain Backup";
+"SessionBackup.Actions.DeleteOne" = "Delete from Backup";
+"SessionBackup.Actions.RemoveFromApp" = "Remove from App";
+"SessionBackup.LastBackupAt" = "Last Backup: %@";
+"SessionBackup.RestoreOK" = "OK. Sessions restored: %@";
+"SessionBackup.LoggedIn" = "Logged In";
+"SessionBackup.LoggedOut" = "Logged Out";
+"SessionBackup.DeleteAll.Title" = "Delete All Sessions?";
+"SessionBackup.DeleteAll.Text" = "All sessions will be removed from Keychain.\n\nAccounts will not be logged out from Regram.";
+"SessionBackup.DeleteSingle.Title" = "Delete 1 (one) Session?";
+"SessionBackup.DeleteSingle.Text" = "%@ session will be removed from Keychain.\n\nAccount will not be logged out from Regram.";
+"SessionBackup.RemoveFromApp.Title" = "Remove account from App?";
+"SessionBackup.RemoveFromApp.Text" = "%@ session WILL BE REMOVED from Regram! Session will remain active, so you can restore it later.";
+"SessionBackup.Notice" = "Sessions are encrypted and stored in the device Keychain. Sessions never leave your device.\n\nIMPORTANT: To restore sessions on a new device or after an OS reset, you MUST enable encrypted backups, otherwise Keychain won't be transfered.\n\nNOTE: Sessions may still be revoked by Telegram or from another device.";
+
+"MessageFilter.Title" = "Message Filter";
+"MessageFilter.SubTitle" = "Remove distractions and hide messages matching the rules below.
+Matching is case-insensitive.";
+"MessageFilter.Keywords.Title" = "Keywords";
+"MessageFilter.InputPlaceholder" = "Enter keyword";
+
+"InputToolbar.Title" = "Formatting Panel";
+
+"Notifications.MentionsAndReplies.Title" = "@Mentions and Replies";
+"Notifications.MentionsAndReplies.value.default" = "Default";
+"Notifications.MentionsAndReplies.value.silenced" = "Muted";
+"Notifications.MentionsAndReplies.value.disabled" = "Disabled";
+"Notifications.PinnedMessages.Title" = "Pinned Messages";
+"Notifications.PinnedMessages.value.default" = "Default";
+"Notifications.PinnedMessages.value.silenced" = "Muted";
+"Notifications.PinnedMessages.value.disabled" = "Disabled";
+
+
+"PayWall.Text" = "Supercharged with Pro features";
+
+"PayWall.SessionBackup.Title" = "Accounts Backup";
+"PayWall.SessionBackup.Notice" = "Log-in to accounts without code, even after reinstall. Secure storage with on-device Keychain.";
+"PayWall.SessionBackup.Description" = "Changing device or deleting Regram is no longer an issue. Restore all Sessions that are still Active on Telegram servers.";
+
+"PayWall.MessageFilter.Title" = "Message Filter";
+"PayWall.MessageFilter.Notice" = "Hide SPAM, promotions and annoying messages.";
+"PayWall.MessageFilter.Description" = "Create a list of keywords you don't want to see and Regram will hide messages containing them.";
+
+"PayWall.Notifications.Title" = "Disable @mentions and replies";
+"PayWall.Notifications.Notice" = "Hide or mute non-important notifications.";
+"PayWall.Notifications.Description" = "No more Pinned Messages or @mentions when you need some peace of mind.";
+
+"PayWall.InputToolbar.Title" = "Formatting Panel";
+"PayWall.InputToolbar.Notice" = "Bold, Italic, Links? Formatting with just a single tap.";
+"PayWall.InputToolbar.Description" = "Apply and clear Formatting or insert new lines like a Pro.";
+
+"PayWall.AppIcons.Title" = "Unique App Icons and Badges";
+"PayWall.AppIcons.Notice" = "Customize Regram look on your home screen and screenshots.";
+
+"PayWall.About.Title" = "About Regram Pro";
+"PayWall.About.Notice" = "Free version of Regram provides dozens of features and improvements over Telegram app. Innovating and keeping Regram in sync with monthly Telegram updates is a huge effort that requires a lot of time and expensive hardware.\n\nRegram is an open-source app that respects your privacy and doesn't bother you with ads. Subscribing to Regram Pro you get access to exclusive features and support an independent developer.";
+/* DO NOT TRANSLATE */
+"PayWall.About.Signature" = "@Kylmakalle";
+/* DO NOT TRANSLATE */
+"PayWall.About.SignatureURL" = "https://t.me/Kylmakalle";
+
+"PayWall.ProSupport.Title" = "Troubles with payment?";
+"PayWall.ProSupport.Contact" = "No worries!";
+
+"PayWall.RestorePurchases" = "Restore Purchases";
+"PayWall.Terms" = "Terms of Service";
+"PayWall.Privacy" = "Privacy Policy";
+"PayWall.TermsURL" = "https://swiftgram.app/terms";
+"PayWall.PrivacyURL" = "https://swiftgram.app/privacy";
+"PayWall.Notice.Markdown" = "By subscribing to Regram Pro you agree to the [Regram Terms of Service](%1$@) and [Privacy Policy](%2$@).";
+"PayWall.Notice.Raw" = "By subscribing to Regram Pro you agree to the Regram Terms of Service and Privacy Policy.";
+
+"PayWall.Button.OpenPro" = "Use Pro features";
+"PayWall.Button.Purchasing" = "Purchasing...";
+"PayWall.Button.Restoring" = "Restoring Purchases...";
+"PayWall.Button.Validating" = "Validating Purchase...";
+"PayWall.Button.PaymentsUnavailable" = "Payments unavailable";
+"PayWall.Button.BuyInAppStore" = "Subscribe in App Store version";
+"PayWall.Button.Subscribe" = "Subscribe for %@ / month";
+"PayWall.Button.ContactingAppStore" = "Contacting App Store...";
+
+"Paywall.Error.Title" = "Error";
+"PayWall.ValidationError" = "Validation Error";
+"PayWall.ValidationError.TryAgain" = "Something went wrong during purchase validation. No worries! Try to Restore Purchases a bit later.";
+"PayWall.ValidationError.Expired" = "Your subscription expired. Subscribe again to regain access to Pro features.";
+
+"AppBadge.Title" = "App Badge";
+"AppBadge.Notice" = "Customize App Badge shown on screenshots";
+
+"Settings.NY.Header" = "HOLIDAY EFFECTS";
+"Settings.NY.Style" = "Style";
+"Settings.NY.Style.default" = "Disabled";
+"Settings.NY.Style.snow" = "Snow";
+"Settings.NY.Style.lightning" = "Lightning";
+"Settings.NY.Notice" = "Available for a limited time only!";
+
+
+// MARK: Ghost Mode & Anti-deletion
+"AntiFeatures.Header" = "ANTI-DELETION & RESTRICTIONS";
+"AntiFeatures.Notice" = "Only affects what is kept on this device. Messages you delete yourself are still removed.";
+"AntiFeatures.Revoke" = "Keep deleted messages";
+"AntiFeatures.AutoDelete" = "Ignore auto-delete timer";
+"AntiFeatures.SelfDestruct" = "Ignore self-destruct timer";
+"AntiFeatures.Screenshot" = "Don't notify on screenshot";
+"AntiFeatures.SaveProtected" = "Allow saving protected content";
+"AntiFeatures.SaveProtectedStories" = "Allow saving protected stories";
+"AntiFeatures.DisableAds" = "Hide sponsored messages";
+"MessageFilter.InputPlaceholderRegex" = "Enter regular expression";
+"MessageFilter.Regex" = "Regular expression";
+"MessageFilter.Regex.Notice" = "Matching is case-insensitive. Regular expressions use ICU syntax; an invalid pattern cannot be added.";
+"MessageFilter.Export" = "Export Rules";
+"MessageFilter.Import" = "Import Rules";
+"MessageFilter.Transfer" = "Export / Import";
+"MessageFilter.Add" = "Add Keyword";
+"MessageFilter.Rules.Notice" = "Tap a rule to limit it to specific chats. Touch and hold for more options.";
+"MessageFilter.Rule.Regex" = "Regex";
+"MessageFilter.Rule.AllChats" = "All chats";
+"MessageFilter.Rule.SelectedChats" = "Selected chats";
+"MessageFilter.Rule.InvalidRegex" = "Invalid pattern";
+"MessageFilter.Rule.MakeRegex" = "Treat as regular expression";
+"MessageFilter.Rule.MakePlain" = "Treat as plain text";
+"MessageFilter.Rule.Delete" = "Delete";
+"MessageFilter.SelectChats.Title" = "Filter in Chats";
+"MessageFilter.AddToFilter" = "Add to Filter";
+"MessageFilter.Added" = "Added to the message filter.";
+"MessageFilter.AlreadyExists" = "Already in the message filter.";
+"BlockUser.Block" = "Hide This User's Messages";
+"HiddenUsers.Title" = "Hidden Users";
+"HiddenUsers.Notice" = "Messages from these users and bots are hidden everywhere. Swipe left to unhide; tap to open the profile.";
+"HiddenUsers.Empty" = "No hidden users yet. Open a user's or bot's profile and turn on \"Hide This User's Messages\".";
+"MessageFilter.CopyAsKeyword" = "Copy & Add to Filter";
+"Repeat.WithReply" = "Repeat (Forward)";
+"Repeat.Plain" = "Repeat (Copy)";
+"Repeat.ForwardNoQuote" = "Send Copy to Another Chat";
+
+"FreshInstall.Title" = "Data From a Previous Install";
+"FreshInstall.Text" = "Deleting this app does not remove its data — iOS keeps the shared container, so the accounts and settings from the previous install are still here.\n\nKeep using them, or start over?";
+"FreshInstall.Keep" = "Keep Existing Data";
+"FreshInstall.Erase" = "Erase and Start Over";
+"FreshInstall.Ready" = "Ready to Erase";
+"FreshInstall.ReadyText" = "The app will now close. Open it again to confirm and erase everything.";
+
+"MessageFilter.Rule.LimitToChats" = "Limit to Specific Chats";
+"MessageFilter.Rule.EditTitle" = "Edit Keyword";
+"MessageFilter.Rule.EditMessage" = "Messages containing this text will be hidden.";
+"MessageFilter.Rule.EditMessageRegex" = "Messages matching this regular expression will be hidden.";
+"MessageFilter.PerChat.Title" = "Message Filter";
+"MessageFilter.PerChat.Notice" = "When off, the message filter is ignored in this chat.";
+"EraseData.Title" = "Erase All Data";
+"EraseData.Notice" = "Logs out every account and deletes all local data, caches and settings. Use this to start over — deleting the app does not clear its data, because iOS keeps the shared container alive.";
+"EraseData.Confirm" = "This logs out every account and deletes all local data of this app. This cannot be undone.";
+"EraseData.Action" = "Erase Everything and Close";
+"Common.Save" = "Save";
+"Common.Cancel" = "Cancel";
+
+"Ghost.Header" = "GHOST MODE";
+"Ghost.Notice" = "Stops this device from reporting what you look at. Nothing changes on your side: chats still read as read and stories still clear. Sending a message still puts you online — that part is decided by the server, not by the app.";
+"Ghost.DontReadMessages" = "Don't send read receipts";
+"Ghost.DontReadStories" = "Don't report story views";
+"Ghost.DontSendOnline" = "Never appear online";
+"Ghost.DontSendTyping" = "Don't send typing status";
+"Pangu.Title" = "Pangu spacing";
+"Pangu.Notice" = "Inserts a space between CJK characters and adjacent Latin letters or digits in messages you send. Code and quote blocks are left untouched.";

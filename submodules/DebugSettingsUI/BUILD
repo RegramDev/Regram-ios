@@ -1,5 +1,12 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
+sgdeps = [
+    "//Regram/RGDebugUI:RGDebugUI",
+    "//Regram/RGLogging:RGLogging",
+    "//Regram/RGLoggingComposer:RGLoggingComposer",
+    "//Regram/RGSimpleSettings:RGSimpleSettings"
+]
+
 swift_library(
     name = "DebugSettingsUI",
     module_name = "DebugSettingsUI",
@@ -9,7 +16,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = [
+    deps = sgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",

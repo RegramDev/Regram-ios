@@ -1,3 +1,5 @@
+import RGSimpleSettings
+import RGStrings
 import Foundation
 import UIKit
 import Postbox
@@ -583,6 +585,20 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     var translationStateDisposable: Disposable?
     var premiumGiftSuggestionDisposable: Disposable?
+    
+    // MARK: Regram
+    private var rgShowHiddenPinnedMessagesObserver: NSObjectProtocol?
+    public var overlayTitle: String? {
+         var title: String?
+        if let threadInfo = self.contentData?.state.threadInfo {
+             title = threadInfo.title
+        } else if let peerView = self.contentData?.state.peerView {
+             if let peer = peerViewMainPeer(peerView) {
+                 title = EnginePeer(peer).displayTitle(strings: self.presentationData.strings, displayOrder: self.presentationData.nameDisplayOrder)
+             }
+         }
+         return title
+     }
     
     var currentSpeechHolder: SpeechSynthesizerHolder?
     
@@ -1669,6 +1685,21 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             self.controllerInteraction?.isOpeningMediaSignal = openChatMessageParams.blockInteraction.get()
             
             return context.sharedContext.openChatMessage(openChatMessageParams)
+        }, rgGetChatPredictedLang: { [weak self] in
+            if let strongSelf = self {
+                var result: String?
+                if let chatPeerId = strongSelf.chatLocation.peerId {
+                    result = RGSimpleSettings.shared.outgoingLanguageTranslation[RGSimpleSettings.makeOutgoingLanguageTranslationKey(accountId: strongSelf.context.account.peerId.id._internalGetInt64Value(), peerId: chatPeerId.id._internalGetInt64Value())]
+                }
+                return result ?? strongSelf.contentData?.state.predictedChatLanguage
+            }
+            return nil
+        }, rgStartMessageEdit: { [weak self] message in
+            if let strongSelf = self {
+                if canEditMessage(context: strongSelf.context, limitsConfiguration: strongSelf.context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message) {
+                    strongSelf.interfaceInteraction?.setupEditMessage(message.id, { _ in })
+                }
+            }
         }, openPeer: { [weak self] peer, navigation, fromMessage, source in
             var expandAvatar = false
             if case let .groupParticipant(storyStats, avatarHeaderNode) = source {
@@ -4316,6 +4347,19 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             switch action {
             case .copy:
                 storeAttributedTextInPasteboard(text)
+            // MARK: Regram — copy the selected text and add it to the message filter as a plain
+            // substring rule that applies everywhere; the Pro screen is where it can be narrowed
+            // to specific chats or switched to a regular expression.
+            case .rgAddToMessageFilter:
+                let pattern = text.string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !pattern.isEmpty {
+                    if canCopy {
+                        storeAttributedTextInPasteboard(text)
+                    }
+                    let added = RGSimpleSettings.shared.addMessageFilterRule(RGMessageFilterRule(pattern: pattern))
+                    let lang = self.presentationData.strings.baseLanguageCode
+                    self.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: (added ? "MessageFilter.Added" : "MessageFilter.AlreadyExists").i18n(lang), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false }), in: .current)
+                }
             case .share:
                 let f = { [weak self] in
                     guard let self else {
@@ -6909,6 +6953,33 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 return state.updatedInterfaceState({ $0.withUpdatedSelectedMessages(messageIds) })
             })
         }
+
+        // MARK: Regram
+        self.rgShowHiddenPinnedMessagesObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("SGShowHiddenPinnedMessages"),
+            object: nil,
+            queue: nil,
+            using: { [weak self] notification in
+                guard
+                    let self = self,
+                    let peerId = self.chatLocation.peerId,
+                    let notificationPeerId = notification.object as? PeerId,
+                    peerId == notificationPeerId
+                else {
+                    return
+                }
+
+                self.updateChatPresentationInterfaceState(animated: true, interactive: true, {
+                    $0.updatedInterfaceState {
+                        $0.withUpdatedMessageActionsState { value in
+                            var value = value
+                            value.closedPinnedMessageId = nil
+                            return value
+                        }
+                    }
+                })
+            }
+        )
     }
     
     required public init(coder aDecoder: NSCoder) {
@@ -6962,6 +7033,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
 
     deinit {
+        // MARK: Regram
+        if let observer = rgShowHiddenPinnedMessagesObserver { NotificationCenter.default.removeObserver(observer) }
         let _ = ChatControllerCount.modify { value in
             return value - 1
         }
@@ -7480,9 +7553,37 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 topMessage,
                 referenceMessage ?? .single(nil)
             )
+            // MARK: Regram — re-evaluate when the filter rules change, so pinning does not become
+            // a way for a hidden message to stay on screen. Every value is passed through first and
+            // the change signal only appends re-deliveries, so nothing here can delay the panel.
+            |> mapToSignal { value -> Signal<(PinnedHistory, TopMessage?, PinnedReferenceMessage?), NoError> in
+                return .single(value)
+                |> then(
+                    rgContentFiltersDidChange()
+                    |> map { _ -> (PinnedHistory, TopMessage?, PinnedReferenceMessage?) in
+                        return value
+                    }
+                )
+            }
             |> map { pinnedMessages, topMessage, referenceMessage -> ChatPinnedMessage? in
                 var message: ChatPinnedMessage?
-                
+
+                // MARK: Regram — drop hidden messages from the candidates rather than from the
+                // result, so the panel falls back to the next visible pinned message instead of
+                // disappearing. `totalCount` is left alone: it counts what is pinned in the chat,
+                // which is what the "1 of N" label and the pinned-list screen refer to.
+                var pinnedMessages = pinnedMessages
+                var topMessage = topMessage
+                let rgContentFilter = RGContentFilterState(accountPeerId: context.account.peerId)
+                if !rgContentFilter.isEmpty {
+                    pinnedMessages.messages = pinnedMessages.messages.filter { entry in
+                        return !rgContentFilter.shouldHide(message: EngineMessage(entry.message))
+                    }
+                    if let topMessageValue = topMessage, rgContentFilter.shouldHide(message: EngineMessage(topMessageValue.message)) {
+                        topMessage = nil
+                    }
+                }
+
                 let topMessageId: MessageId
                 if pinnedMessages.messages.isEmpty {
                     return nil
@@ -9987,6 +10088,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     func displayMediaRecordingTooltip() {
+        if ({ return true })() { return } // MARK: Regram
         guard let peer = self.presentationInterfaceState.renderedPeer?.peer else {
             return
         }

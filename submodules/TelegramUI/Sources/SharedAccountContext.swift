@@ -1,3 +1,9 @@
+// MARK: Regram
+import RGIAP
+import RGPayWall
+import RGProUI
+import RGSimpleSettings
+//
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -284,6 +290,14 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         return self.immediateExperimentalUISettingsValue.with { $0 }
     }
     private var experimentalUISettingsDisposable: Disposable?
+
+    // MARK: Regram
+    private var immediateRGStatusValue = Atomic<RGStatus>(value: RGStatus.default)
+    public var immediateRGStatus: RGStatus {
+        return self.immediateRGStatusValue.with { $0 }
+    }
+    private var rgStatusDisposable: Disposable?
+    public var RGIAP: RGIAPManager?
     
     public var presentGlobalController: (ViewController, Any?) -> Void = { _, _ in }
     public var presentCrossfadeController: () -> Void = {}
@@ -529,6 +543,18 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                 GlassBackgroundView.useCustomGlassImpl = settings.fakeGlass
             }
         })
+        // MARK: Regram
+        let immediateRGStatusValue = self.immediateRGStatusValue
+        self.rgStatusDisposable = (self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.rgStatus])
+        |> deliverOnMainQueue).start(next: { sharedData in
+            if let settings = sharedData.entries[ApplicationSpecificSharedDataKeys.rgStatus]?.get(RGStatus.self) {
+                let _ = immediateRGStatusValue.swap(settings)
+                RGSimpleSettings.shared.ephemeralStatus = settings.status
+                RGSimpleSettings.shared.status = settings.status
+            }
+        })
+        self.initRGIAP(isMainApp: applicationBindings.isMainApp)
+        //
         
         let _ = self.contactDataManager?.personNameDisplayOrder().start(next: { order in
             let _ = updateContactSettingsInteractively(accountManager: accountManager, { settings in
@@ -1117,8 +1143,20 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         self.callPeerDisposable?.dispose()
     }
     
+    // MARK: Regram
+    var didPerformRGUISettingsMigration = false
+    //
+    // MARK: Regram
+    func rgPrimaryAccountContextForMigration() -> AccountContext? {
+        return self.activeAccountsValue?.primary
+    }
+    //
     private var didPerformAccountSettingsImport = false
+    
     private func performAccountSettingsImportIfNecessary() {
+        // MARK: Regram
+        self.performRGUISettingsMigrationIfNecessary()
+        //
         if self.didPerformAccountSettingsImport {
             return
         }
@@ -4628,4 +4666,65 @@ private func useFlatModalCallsPresentation(context: AccountContext) -> Bool {
         return false
     }
     return true
+}
+
+
+
+// MARK: Regram
+extension SharedAccountContextImpl {
+    func initRGIAP(isMainApp: Bool) {
+        if isMainApp {
+            self.RGIAP = RGIAPManager()
+        } else {
+            self.RGIAP = nil
+        }
+    }
+    
+    public func makeRGProController(context: AccountContext) -> ViewController {
+        let controller = rgProController(context: context)
+        return controller
+    }
+
+    public func makeRGPayWallController(context: AccountContext) -> ViewController? {
+        guard #available(iOS 13.0, *) else {
+            return nil
+        }
+        guard let rgIAP = self.RGIAP else {
+            return nil
+        }
+
+        let statusSignal = self.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.rgStatus])
+        |> map { sharedData -> Int64 in
+            let rgStatus = sharedData.entries[ApplicationSpecificSharedDataKeys.rgStatus]?.get(RGStatus.self) ?? RGStatus.default
+            return rgStatus.status
+        }
+
+        let proController = self.makeRGProController(context: context)
+        let rgWebSettings = context.currentAppConfiguration.with { $0 }.rgWebSettings
+        let presentationData = self.currentPresentationData.with { $0 }
+        var payWallController: ViewController? = nil
+        let openUrl: ((String, Bool) -> Void) = { [weak self, weak context] url, forceExternal in
+            guard let strongSelf = self, let strongContext = context, let strongPayWallController = payWallController else {
+                return
+            }
+            let navigationController = strongPayWallController.navigationController as? NavigationController
+            Queue.mainQueue().async {
+                strongSelf.openExternalUrl(context: strongContext, urlContext: .generic, url: url, forceExternal: forceExternal, presentationData: presentationData, navigationController: navigationController, dismissInput: {})
+            }
+        }
+        
+        var supportUrl: String? = nil
+        if let supportUrlString = rgWebSettings.global.proSupportUrl, !supportUrlString.isEmpty, let data = Data(base64Encoded: supportUrlString), let decodedString = String(data: data, encoding: .utf8) {
+            supportUrl = decodedString
+        }
+        payWallController = rgPayWallController(statusSignal: statusSignal, replacementController: proController, presentationData: presentationData, RGIAPManager: rgIAP, openUrl: openUrl, paymentsEnabled: rgWebSettings.global.paymentsEnabled, canBuyInBeta: rgWebSettings.user.canBuyInBeta, openAppStorePage: self.applicationBindings.openAppStorePage, proSupportUrl: supportUrl)
+        return payWallController
+    }
+    
+    public func makeRGUpdateIOSController() -> ViewController {
+        let presentationData = self.currentPresentationData.with { $0 }
+        let controller = textAlertController(sharedContext: self, title: nil, text: "Common.UpdateOS".i18n(presentationData.strings.baseLanguageCode), actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {
+        })])
+        return controller
+    }
 }

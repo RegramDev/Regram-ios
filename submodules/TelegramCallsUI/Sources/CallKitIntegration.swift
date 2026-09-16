@@ -1,3 +1,4 @@
+import RGAppGroupIdentifier
 import Foundation
 import UIKit
 import CallKit
@@ -20,7 +21,7 @@ public final class CallKitIntegration {
         return false
         #else
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            return Locale.current.regionCode?.lowercased() != "cn"
+            return Locale.current.regionCode?.lowercased() != "cn" && !(UserDefaults(suiteName: rgAppGroupIdentifier())?.bool(forKey: "legacyNotificationsFix") ?? false)
         } else {
             return false
         }
@@ -89,6 +90,15 @@ public final class CallKitIntegration {
     }
     
     private func donateIntent(peerId: EnginePeer.Id, displayTitle: String, localContactId: String?) {
+        // MARK: Regram — every `INInteraction` entry point asserts the Siri entitlement and calls
+        // `abort()` when the running signature does not carry it, from inside a `dispatch_once` where
+        // the exception cannot be caught. This runs on every outgoing call, so on a build re-signed
+        // without Siri it would take the app down each time one is placed. Donating the intent only
+        // feeds Siri suggestions, so skipping it costs nothing that build could use anyway.
+        guard rgSignatureGrants(RGEntitlement.siri) else {
+            return
+        }
+
         let handle = INPersonHandle(value: "tg\(peerId.id._internalGetInt64Value())", type: .unknown)
         let contact = INPerson(personHandle: handle, nameComponents: nil, displayName: displayTitle, image: nil, contactIdentifier: localContactId, customIdentifier: "tg\(peerId.id._internalGetInt64Value())")
     
@@ -158,7 +168,8 @@ class CallKitProviderDelegate: NSObject, CXProviderDelegate {
     }
     
     private static func providerConfiguration() -> CXProviderConfiguration {
-        let providerConfiguration = CXProviderConfiguration(localizedName: "Telegram")
+        // MARK: Regram
+        let providerConfiguration = CXProviderConfiguration(localizedName: "Regram")
         
         providerConfiguration.supportsVideo = true
         providerConfiguration.maximumCallsPerCallGroup = 1

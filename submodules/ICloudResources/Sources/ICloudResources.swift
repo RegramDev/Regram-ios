@@ -121,12 +121,30 @@ private func audioArtworkData(from asset: AVURLAsset) -> Data? {
     return nil
 }
 
+// MARK: Regram
+/// `startAccessingSecurityScopedResource()` returns false both when access is genuinely denied and
+/// when the URL simply is not security-scoped (a file already inside our sandbox, such as one the
+/// document picker imported for us). Only the first case is a failure; the second must not abort
+/// the upload, or picking a local file silently does nothing.
+private func rgBeginAccess(_ url: URL) -> (ok: Bool, didStart: Bool) {
+    if url.startAccessingSecurityScopedResource() {
+        return (true, true)
+    }
+    return (FileManager.default.isReadableFile(atPath: url.path), false)
+}
+
 private func descriptionWithUrl(_ url: URL) -> ICloudFileDescription? {
     if #available(iOSApplicationExtension 9.0, iOS 9.0, *) {
-        guard url.startAccessingSecurityScopedResource() else {
+        let access = rgBeginAccess(url)
+        guard access.ok else {
             return nil
         }
-        
+        defer {
+            if access.didStart {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
         guard let urlData = try? url.bookmarkData(options: URL.BookmarkCreationOptions.suitableForBookmarkFile, includingResourceValuesForKeys: nil, relativeTo: nil) else {
             return nil
         }
@@ -184,9 +202,7 @@ private func descriptionWithUrl(_ url: URL) -> ICloudFileDescription? {
             fileSize: fileSize,
             audioMetadata: audioMetadata
         )
-        
-        url.stopAccessingSecurityScopedResource()
-        
+
         return result
     } else {
         return nil
@@ -298,11 +314,13 @@ public func fetchICloudFileResource(resource: ICloudFileResource) -> Signal<Engi
             }
         }
         
-        guard url.startAccessingSecurityScopedResource() else {
+        // MARK: Regram — see rgBeginAccess: an in-sandbox copy is not security-scoped and must
+        // still be uploadable.
+        guard rgBeginAccess(url).ok else {
             subscriber.putCompletion()
             return EmptyDisposable
         }
-        
+
         let complete = {
             if resource.thumbnail {
                 let tempFile = EngineTempBox.shared.tempFile(fileName: "thumb.jpg")

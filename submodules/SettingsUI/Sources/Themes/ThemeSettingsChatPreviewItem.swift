@@ -70,7 +70,11 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
     
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
-        async {
+        // MARK: Regram — main queue, not the caller's background `async`. The message items this
+        // lays out deliver their configuration callback via Queue.mainQueue().async, which only runs
+        // inline when already on main; off-main it was deferred and the layout below force-unwrapped
+        // a node that had not been produced yet.
+        Queue.mainQueue().async {
             let node = ThemeSettingsChatPreviewItemNode()
             let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
             
@@ -173,7 +177,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
             }
             
             var nodes: [ListViewItemNode] = []
-            if let messageNodes = currentNodes {
+            if let messageNodes = currentNodes, messageNodes.count == items.count {
                 nodes = messageNodes
                 for i in 0 ..< items.count {
                     let itemNode = messageNodes[i]
@@ -198,8 +202,14 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                         itemNode = node
                         apply().1(ListViewItemApply(isOnScreen: true))
                     })
-                    itemNode!.isUserInteractionEnabled = false
-                    messageNodes.append(itemNode!)
+                    guard let itemNode else {
+                        // Configuration did not complete synchronously. The short list is not cached
+                        // (see the count check where messageNodes is stored), so the next layout
+                        // pass builds the set again rather than indexing past the end.
+                        break
+                    }
+                    itemNode.isUserInteractionEnabled = false
+                    messageNodes.append(itemNode)
                 }
                 nodes = messageNodes
             }
@@ -219,7 +229,7 @@ class ThemeSettingsChatPreviewItemNode: ListViewItemNode {
                     
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(), size: contentSize)
                     
-                    strongSelf.messageNodes = nodes
+                    strongSelf.messageNodes = nodes.count == items.count ? nodes : nil
                     var topOffset: CGFloat = 4.0
                     for node in nodes {
                         if node.supernode == nil {

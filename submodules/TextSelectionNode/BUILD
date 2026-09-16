@@ -14,6 +14,7 @@ swift_library(
         "//submodules/Display:Display",
         "//submodules/TelegramPresentationData:TelegramPresentationData",
         "//submodules/TextFormat:TextFormat",
+        "//Regram/RGStrings:RGStrings",
     ],
     visibility = [
         "//visibility:public",

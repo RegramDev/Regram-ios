@@ -1,3 +1,6 @@
+// MARK: Regram
+import RGSimpleSettings
+
 import Foundation
 import Postbox
 import TelegramApi
@@ -10,6 +13,9 @@ import NetworkLogging
 #endif
 
 import EncryptionProvider
+#if os(iOS)
+import RGCloudKitGuard
+#endif
 
 public enum ConnectionStatus: Equatable {
     case waitingForNetwork
@@ -504,8 +510,8 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             }
             
             let useTempAuthKeys: Bool = true
-            
-            let context = MTContext(serialization: serialization, encryptionProvider: arguments.encryptionProvider, apiEnvironment: apiEnvironment, isTestingEnvironment: testingEnvironment, useTempAuthKeys: useTempAuthKeys)
+            let forceLocalDNS: Bool = RGSimpleSettings.shared.localDNSForProxyHost
+            let context = MTContext(serialization: serialization, encryptionProvider: arguments.encryptionProvider, apiEnvironment: apiEnvironment, isTestingEnvironment: testingEnvironment, useTempAuthKeys: useTempAuthKeys, forceLocalDNS: forceLocalDNS)
             
             if let networkSettings = networkSettings {
                 let useNetworkFramework: Bool
@@ -1315,6 +1321,12 @@ class Keychain: NSObject, MTKeychain {
 #if os(iOS)
 func makeCloudDataContext(encryptionProvider: EncryptionProvider) -> CloudDataContext? {
     if #available(iOS 10.0, *) {
+        // MARK: Regram — no usable CloudKit container (re-signed build) is reported the same way
+        // as an OS without CloudKit: no context at all. Callers already handle nil, and this keeps
+        // the failure out of the fetch/retry machinery entirely.
+        if !RGCloudKitGuard.isCloudKitProvisioned() {
+            return nil
+        }
         return CloudDataContextImpl(encryptionProvider: encryptionProvider)
     } else {
         return nil

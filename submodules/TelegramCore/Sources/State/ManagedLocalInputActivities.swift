@@ -142,6 +142,25 @@ private func actionFromActivity(_ activity: PeerInputActivity?) -> Api.SendMessa
 }
 
 private func requestActivity(postbox: Postbox, network: Network, accountPeerId: PeerId, peerId: PeerId, threadId: Int64?, activity: PeerInputActivity?) -> Signal<Void, NoError> {
+    // MARK: Regram — ghost mode: no input activity leaves the device. Gating here, before the peer is
+    // even resolved, covers typing, recording, upload progress, choosing a sticker and emoji
+    // interactions, for both cloud and secret chats.
+    //
+    // `speakingInGroupCall` is deliberately exempt. You have explicitly joined a call, so presence is
+    // not the secret it is elsewhere, and dropping it would stop other participants from seeing who is
+    // talking — that degrades the call for everyone rather than hiding anything about you.
+    if RGGhostMode.suppressInputActivity {
+        // Pattern-matched rather than compared: the case carries a timestamp, so any given
+        // .speakingInGroupCall value is never equal to another one.
+        var isSpeakingInGroupCall = false
+        if let activity, case .speakingInGroupCall = activity {
+            isSpeakingInGroupCall = true
+        }
+        if !isSpeakingInGroupCall {
+            return .complete()
+        }
+    }
+
     return postbox.transaction { transaction -> Signal<Void, NoError> in
         if let peer = transaction.getPeer(peerId) {
             if peerId == accountPeerId {

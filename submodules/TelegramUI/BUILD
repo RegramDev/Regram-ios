@@ -5,6 +5,35 @@ load(
     "telegram_bundle_id",
 )
 
+sgdeps = [
+    "//Regram/RGSettingsUI:RGSettingsUI",
+    "//Regram/RGConfig:RGConfig",
+    "//Regram/RGAPIWebSettings:RGAPIWebSettings",
+    "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
+    "//Regram/RGLogging:RGLogging",
+    "//Regram/RGStrings:RGStrings",
+    "//Regram/RGActionRequestHandlerSanitizer:RGActionRequestHandlerSanitizer",
+    "//Regram/Wrap:Wrap",
+    "//Regram/RGDeviceToken:RGDeviceToken",
+    "//Regram/RGDebugUI:RGDebugUI",
+    "//Regram/RGIAP:RGIAP",
+    "//Regram/RGPayWall:RGPayWall",
+    "//Regram/RGProUI:RGProUI",
+    "//Regram/RGGHSettings:RGGHSettings",
+    "//Regram/RGPangu:RGPangu",
+    # "//Regram/RGContentAnalysis:RGContentAnalysis"
+]
+
+sgsrcs = [
+    "//Regram/RGDBReset:RGDBReset",
+    "//Regram/RGShowMessageJson:RGShowMessageJson",
+    "//Regram/ChatControllerImplExtension:ChatControllerImplExtension",
+    "//Regram/RGSharedAccountContextMigration:RGSharedAccountContextMigration",
+    "//Regram/RGOutgoingTranslationLanguageSelection:RGOutgoingTranslationLanguageSelection",
+    "//Regram/RGSafariControllerUrlOpening:RGSafariControllerUrlOpening"
+]
 
 filegroup(
     name = "TelegramUIResources",
@@ -44,11 +73,11 @@ swift_library(
     module_name = "TelegramUI",
     srcs = glob([
         "Sources/**/*.swift",
-    ]),
+    ]) + sgsrcs,
     copts = [
         "-warnings-as-errors",
     ],
-    deps = [
+    deps = sgdeps + [
         "//third-party/recaptcha:RecaptchaEnterprise",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/SSignalKit/SSignalKit:SSignalKit",

@@ -241,12 +241,19 @@ public func stringForMessageTimestampStatus(
     }
     
     if case .minimal = format {
-        
+
     } else {
         if let authorTitle = authorTitle, !authorTitle.isEmpty {
             dateText = "\(authorTitle), \(dateText)"
         }
     }
-    
+
+    // MARK: Regram — anti-revoke indicator. A message the sender recalled that anti-revoke kept is
+    // tagged with RGRevokedMessageAttribute; show a trash icon before its timestamp so it is
+    // recognisable as deleted.
+    if message.rgIsRevoked {
+        dateText = "🗑 \(dateText)"
+    }
+
     return dateText
 }

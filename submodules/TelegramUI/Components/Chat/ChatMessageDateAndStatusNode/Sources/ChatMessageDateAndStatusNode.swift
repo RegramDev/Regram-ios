@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -1474,5 +1475,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
 }
 
 public func shouldDisplayInlineDateReactions(message: EngineMessage, isPremium: Bool, forceInline: Bool) -> Bool {
-    return false
+    // MARK: Regram
+    // With 10.13 it now hides reactions in favor of message effect badge
+    return RGSimpleSettings.shared.hideReactions
 }

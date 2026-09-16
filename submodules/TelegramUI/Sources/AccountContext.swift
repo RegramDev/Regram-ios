@@ -1,3 +1,6 @@
+import RGStrings
+import RGSimpleSettings
+
 import Foundation
 import SwiftSignalKit
 import UIKit
@@ -265,8 +268,16 @@ public final class AccountContextImpl: AccountContext {
     private var audioTranscriptionTrialDisposable: Disposable?
     public private(set) var audioTranscriptionTrial: AudioTranscription.TrialState
     
-    public private(set) var isPremium: Bool
-    
+    private var isPremiumValue: Bool
+    public var isPremium: Bool {
+        // MARK: Regram — local Premium. Read through the switch rather than off the stored value so
+        // that flipping it takes effect without waiting for the account peer to be re-fetched.
+        if RGSimpleSettings.shared.localPremium {
+            return true
+        }
+        return self.isPremiumValue
+    }
+
     private var isFrozenDisposable: Disposable?
     public private(set) var isFrozen: Bool
     
@@ -277,13 +288,16 @@ public final class AccountContextImpl: AccountContext {
         self.sharedContextImpl = sharedContext
         self.account = account
         self.engine = TelegramEngine(account: account)
-        
+
+        // MARK: Regram — local Premium applies to every account signed in on this device.
+        rgRegisterLocalPremiumAccountPeerId(account.peerId)
+
         self.imageCache = DirectMediaImageCache(account: account)
         
         self.userLimits = EngineConfiguration.UserLimits(UserLimitsConfiguration.defaultValue)
         self.peerNameColors = PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors)
         self.audioTranscriptionTrial = AudioTranscription.TrialState.defaultValue
-        self.isPremium = false
+        self.isPremiumValue = false
         self.isFrozen = false
         
         self.downloadedMediaStoreManager = DownloadedMediaStoreManagerImpl(postbox: account.postbox, accountManager: sharedContext.accountManager)
@@ -449,7 +463,7 @@ public final class AccountContextImpl: AccountContext {
             guard let self = self else {
                 return
             }
-            self.isPremium = isPremium
+            self.isPremiumValue = isPremium
             self.userLimits = userLimits
         })
         
@@ -820,6 +834,8 @@ public final class AccountContextImpl: AccountContext {
     }
     
     public func requestCall(peerId: PeerId, isVideo: Bool, completion: @escaping () -> Void) {
+        // MARK: Regram
+        let makeCall = {
         guard let callResult = self.sharedContext.callManager?.requestCall(context: self, peerId: peerId, isVideo: isVideo, endCurrentIfAny: false) else {
             return
         }
@@ -886,6 +902,19 @@ public final class AccountContextImpl: AccountContext {
             }
         } else {
             completion()
+        }
+        // MARK: Regram
+        }
+        if RGSimpleSettings.shared.confirmCalls {
+            let presentationData = self.sharedContext.currentPresentationData.with { $0 }
+            self.sharedContext.mainWindow?.present(textAlertController(context: self, title: nil, text: isVideo ? i18n("CallConfirmation.Video.Title", presentationData.strings.baseLanguageCode) : i18n("CallConfirmation.Audio.Title", presentationData.strings.baseLanguageCode), actions: [TextAlertAction(type: .genericAction, title: presentationData.strings.Common_No, action: {}), TextAlertAction(type: .destructiveAction, title: presentationData.strings.Common_Yes, action: { [weak self] in
+                guard let _ = self else {
+                    return
+                }
+                makeCall()
+            })]), on: .root)
+        } else {
+            makeCall()
         }
     }
     

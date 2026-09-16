@@ -12,13 +12,19 @@ import ItemListPeerItem
 import DeviceAccess
 import TelegramStringFormatting
 import PeerNameColorItem
+import RGSimpleSettings
+import RGStrings
 
 enum SettingsSection: Int, CaseIterable {
     case edit
     case phone
     case accounts
     case myProfile
+    // MARK: Regram — sits between My Profile and Proxy; only populated when the NSFW switch is on.
+    case nsfw
     case proxy
+    case regram
+    case regramPro
     case apps
     case shortcuts
     case advanced
@@ -27,7 +33,7 @@ enum SettingsSection: Int, CaseIterable {
     case support
 }
 
-func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentationData: PresentationData, interaction: PeerInfoInteraction, isExpanded: Bool) -> [(AnyHashable, [PeerInfoScreenItem])] {
+func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: AccountContext, presentationData: PresentationData, interaction: PeerInfoInteraction, isExpanded: Bool) -> [(AnyHashable, [PeerInfoScreenItem])] {
     guard let data = data else {
         return []
     }
@@ -77,6 +83,28 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         items[.edit]!.append(PeerInfoScreenActionItem(id: 3, text: presentationData.strings.Settings_SetUsername, icon: UIImage(bundleImageName: "Settings/SetUsername"), action: {
             interaction.openSettings(.username)
         }))
+    }
+    
+    // MARK: Regram
+    if showProfileId {
+        var idText = ""
+        
+        if let peer = data.peer {
+            idText = String(peer.id.id._internalGetInt64Value())
+        }
+        
+        items[.edit]!.append(
+            PeerInfoScreenActionItem(
+                id: 100,
+                text: "ID: \(idText)",
+                color: .accent,
+                action: {
+                    UIPasteboard.general.string = idText
+                    
+                    interaction.notifyTextCopied()
+                }
+            )
+        )
     }
     
     if let settings = data.globalSettings {
@@ -142,15 +170,27 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
                 }))
             }
             
-            items[.accounts]!.append(PeerInfoScreenActionItem(id: 100, text: presentationData.strings.Settings_AddAccount, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), action: {
-                interaction.openSettings(.addAccount)
-            }))
+//            items[.accounts]!.append(PeerInfoScreenActionItem(id: 100, text: presentationData.strings.Settings_AddAccount, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), action: {
+//                interaction.openSettings(.addAccount)
+//            }))
         }
+        // MARK: Regram
+        items[.accounts]!.append(PeerInfoScreenActionItem(id: 1000, text: presentationData.strings.Settings_AddAccount, icon: PresentationResourcesItemList.plusIconImage(presentationData.theme), action: {
+            interaction.openSettings(.addAccount)
+        }))
         
         items[.myProfile]!.append(PeerInfoScreenDisclosureItem(id: 0, text: presentationData.strings.Settings_MyProfile, icon: PresentationResourcesSettings.myProfile, action: {
             interaction.openSettings(.profile)
         }))
-        
+
+        // MARK: Regram — NSFW row, between My Profile and Proxy. Only shown when the Regram Pro switch
+        // is on; the same style/placement the user asked for.
+        if RGSimpleSettings.shared.nsfwEnabled {
+            items[.nsfw]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "NSFW.Title".i18n(presentationData.strings.baseLanguageCode), icon: PresentationResourcesSettings.nsfw, action: {
+                interaction.openSettings(.nsfw)
+            }))
+        }
+
         if !settings.proxySettings.servers.isEmpty {
             let proxyType: String
             if settings.proxySettings.enabled, let activeServer = settings.proxySettings.activeServer {
@@ -169,6 +209,39 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         }
     }
     
+    // let locale = presentationData.strings.baseLanguageCode
+    // MARK: Regram
+    let hasNewRGFeatures = {
+        return false
+    }
+    let regramLabel: PeerInfoScreenDisclosureItem.Label
+    if hasNewRGFeatures() {
+        regramLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
+    } else {
+        regramLabel = .none
+    }
+
+    let hasNewRGProFeatures = {
+        return false
+    }
+    let regramProLabel: PeerInfoScreenDisclosureItem.Label
+    if hasNewRGProFeatures() {
+        regramProLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
+    } else {
+        regramProLabel = .none
+    }
+    
+    
+    let rgWebSettings = context.currentAppConfiguration.with({ $0 }).rgWebSettings
+    if rgWebSettings.global.paymentsEnabled || context.sharedContext.immediateRGStatus.status > 1 {
+        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Regram Pro", icon: PresentationResourcesSettings.regramPro, action: {
+            interaction.openSettings(.regramPro)
+        }))
+    }
+    items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 1, label: regramLabel, text: "Regram", icon: PresentationResourcesSettings.regram, action: {
+        interaction.openSettings(.regram)
+    }))
+
     var appIndex = 1000
     if let settings = data.globalSettings {
         for bot in settings.bots {
@@ -296,8 +369,8 @@ func settingsItems(data: PeerInfoScreenData?, context: AccountContext, presentat
         }))
     }
     if let starsState = data.starsState {
-        if !isPremiumDisabled || starsState.balance > StarsAmount.zero {
-            items[.payment]!.append(PeerInfoScreenDisclosureItem(id: 105, label: .text(""), text: presentationData.strings.Settings_SendGift, icon: PresentationResourcesSettings.premiumGift, action: {
+        if (!isPremiumDisabled || starsState.balance > StarsAmount.zero) && rgWebSettings.global.canGrant {
+            items[.payment]!.append(PeerInfoScreenDisclosureItem(id: 105, label: .text(""), text: "Telegram Gifts", icon: PresentationResourcesSettings.premiumGift, action: {
                 interaction.openSettings(.premiumGift)
             }))
         }

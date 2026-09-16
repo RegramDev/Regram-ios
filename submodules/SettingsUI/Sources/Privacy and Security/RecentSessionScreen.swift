@@ -434,8 +434,8 @@ private final class RecentSessionSheetContent: CombinedComponent {
                 var appVersion = session.appVersion
                 appVersion = appVersion.replacingOccurrences(of: "APPSTORE", with: "").replacingOccurrences(of: "BETA", with: "Beta").trimmingTrailingSpaces()
                 applicationTitle = strings.AuthSessions_View_Application
-                applicationString =  "\(session.appName) \(appVersion)"
-                ipString = nil
+                applicationString = "\(session.appName) \(appVersion)"
+                ipString = session.ip // MARK: Regram
                 dateString = nil
                 locationString = session.country
                 
@@ -525,6 +525,15 @@ private final class RecentSessionSheetContent: CombinedComponent {
                 clientSectionFooter = nil
                 connectedBot = subjectConnectedBot
             }
+
+            // MARK: Regram
+            let rgApiIdString: String?
+            if case let .session(session) = component.subject {
+                rgApiIdString = RGRecentSessionApiId.string(for: session)
+            } else {
+                rgApiIdString = nil
+            }
+            //
             
             let titleFont = Font.bold(24.0)
             let title = title.update(
@@ -594,6 +603,12 @@ private final class RecentSessionSheetContent: CombinedComponent {
                     )
                 ))
             )
+
+            // MARK: Regram
+            if let rgApiIdString {
+                clientSectionItems.append(rgRecentSessionApiIdItem(apiIdString: rgApiIdString, theme: theme, presentationData: presentationData, strings: strings, controller: state.controller))
+            }
+            //
             
             if let ipString {
                 clientSectionItems.append(

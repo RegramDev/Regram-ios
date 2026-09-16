@@ -453,7 +453,11 @@ final class TextProcessingLanguageSelectionComponent: Component {
                 if languageCode.hasSuffix(rawSuffix) {
                     languageCode = String(languageCode.dropLast(rawSuffix.count))
                 }
-                
+                // MARK: Regram — same normalization as the translate content component. The list is
+                // keyed by bare codes, so an unnormalized "zh-hans" matched nothing here and the
+                // user's own language was never pinned to the top of the picker.
+                languageCode = normalizeTranslationLanguage(languageCode)
+
                 if !topIds.contains(languageCode), let item = self.mainItems.first(where: { $0.languageCode == languageCode }) {
                     self.mainItems.insert(TextProcessingLanguageSelectionComponent.Language(
                         id: "top-" + item.id,

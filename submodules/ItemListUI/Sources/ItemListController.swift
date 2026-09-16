@@ -232,6 +232,17 @@ open class ItemListController: ViewController, KeyShortcutResponder, Presentable
     
     public var willScrollToTop: (() -> Void)?
     
+    // MARK: Regram — reordering starts on a plain pan by default, which fights scrolling on a list
+    // whose rows are draggable anywhere rather than only by a handle. Stored rather than applied
+    // directly because callers configure the controller before its node is loaded.
+    private var reorderingRequiresLongPress: Bool = false
+    public func setReorderingRequiresLongPress(_ value: Bool) {
+        self.reorderingRequiresLongPress = value
+        if self.isNodeLoaded {
+            self.controllerNode.listNode.reorderingRequiresLongPress = value
+        }
+    }
+
     public func setReorderEntry<T: ItemListNodeEntry>(_ f: @escaping (Int, Int, [T]) -> Signal<Bool, NoError>) {
         self.reorderEntry = { a, b, list in
             return f(a, b, list.map { $0 as! T })
@@ -593,6 +604,7 @@ open class ItemListController: ViewController, KeyShortcutResponder, Presentable
         displayNode.searchActivated = self.searchActivated
         displayNode.reorderEntry = self.reorderEntry
         displayNode.reorderCompleted = self.reorderCompleted
+        displayNode.listNode.reorderingRequiresLongPress = self.reorderingRequiresLongPress
         displayNode.afterTransactionCompleted = self.afterTransactionCompleted
         displayNode.listNode.experimentalSnapScrollToItem = self.experimentalSnapScrollToItem
         displayNode.listNode.didScrollWithOffset = self.didScrollWithOffset

@@ -148,7 +148,13 @@ public func effectiveIgnoredTranslationLanguages(context: AccountContext, ignore
     if baseLang.hasSuffix(rawSuffix) {
         baseLang = String(baseLang.dropLast(rawSuffix.count))
     }
-    
+    // MARK: Regram — this set is matched against codes that have been through
+    // normalizeTranslationLanguage, so it has to hold the normalized form too. Unnormalized,
+    // "zh-hans" never matched a detected "zh" and the app offered to translate Chinese text into
+    // Chinese. It only stayed hidden while the device language happened to match the app language,
+    // because systemLanguageCodes() below already strips the suffix.
+    baseLang = normalizeTranslationLanguage(baseLang)
+
     var dontTranslateLanguages = Set<String>()
     if let ignoredLanguages = ignoredLanguages {
         dontTranslateLanguages = Set(ignoredLanguages)
@@ -186,7 +192,7 @@ public func canTranslateChats(context: AccountContext) -> Bool {
     default:
         break
     }
-    return chatTranslationAvailable
+    return chatTranslationAvailable || true // MARK: Regram
 }
 
 public func canTranslateText(context: AccountContext, text: String, showTranslate: Bool, showTranslateIfTopical: Bool = false, ignoredLanguages: [String]?) -> (canTranslate: Bool, language: String?) {
@@ -206,7 +212,7 @@ public func canTranslateText(context: AccountContext, text: String, showTranslat
     default:
         break
     }
-    
+    translateButtonAvailable = true // MARK: Regram
     let showTranslate = showTranslate && translateButtonAvailable
         
     if #available(iOS 12.0, *) {

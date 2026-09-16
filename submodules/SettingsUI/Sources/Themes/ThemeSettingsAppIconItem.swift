@@ -376,10 +376,67 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                             var name = "Icon"
                             var bordered = true
                             switch icon.name {
-                                case "BlueIcon":
+                                case "SGDefault":
                                     name = item.strings.Appearance_AppIconDefault
+                                    bordered = false
+                                case "SGBlack":
+                                    name = "Black"
+                                    bordered = false
+                                case "SGLegacy":
+                                    name = "Legacy"
+                                    bordered = false
+                                case "SGInverted":
+                                    name = "Inverted"
+                                case "SGWhite":
+                                    name = "White"
+                                case "SGNight":
+                                    name = "Night"
+                                    bordered = false
+                                case "SGSky":
+                                    name = "Sky"
+                                    bordered = false
+                                case "SGTitanium":
+                                    name = "Titanium"
+                                    bordered = false
+                                case "SGNeon":
+                                    name = "Neon"
+                                    bordered = false
+                                case "SGNeonBlue":
+                                    name = "Neon Blue"
+                                    bordered = false
+                                case "SGGlass":
+                                    name = "Glass"
+                                    bordered = false
+                                case "SGSparkling":
+                                    name = "Sparkling"
+                                    bordered = false
+                                case "SGBeta":
+                                    name = "β Beta"
+                                    bordered = false
+                                case "SGPro":
+                                    name = "Pro"
+                                    bordered = false
+                                case "SGGold":
+                                    name = "Gold"
+                                    bordered = false
+                                case "SGDucky":
+                                    name = "Ducky"
+                                    bordered = false
+                                case "SGDay":
+                                    name = "Day"
+                                    bordered = false
+                                case "RGAnime":
+                                    name = "Regram"
+                                    bordered = false
+                                case "RGSilver":
+                                    name = "Silver"
+                                    bordered = false
+                                case "BlueIcon":
+                                    // Not Appearance_AppIconDefault: that string is already used by
+                                    // SGDefault above, and two rows labelled "Default" is unusable.
+                                    name = "Telegram"
                                 case "BlackIcon":
-                                    name = item.strings.Appearance_AppIconDefaultX
+                                    name = "Telegram X"
                                 case "BlueClassicIcon":
                                     name = item.strings.Appearance_AppIconClassic
                                 case "BlackClassicIcon":
@@ -390,7 +447,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                 case "BlackFilledIcon":
                                     name = item.strings.Appearance_AppIconFilledX
                                     bordered = false
-                                case "WhiteFilled":
+                                case "WhiteFilledIcon":
                                     name = "⍺ White"
                                 case "New1":
                                     name = item.strings.Appearance_AppIconNew1
@@ -406,7 +463,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = icon.name
                             }
                         
-                            imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
+                            imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isRGPro, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
                                 item.updated(icon)
                             })
                         }

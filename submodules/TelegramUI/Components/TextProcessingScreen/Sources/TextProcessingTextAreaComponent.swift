@@ -519,9 +519,11 @@ final class TextProcessingTextAreaComponent: Component {
                             break
                         case .quote:
                             break
+                        case .rgAddToMessageFilter: // MARK: Regram — chat-only action
+                            break
                         }
                     })
-                    
+
                     textSelectionNode.enableLookup = true
                     textSelectionNode.enableTranslate = false
                     textSelectionNode.menuSkipCoordnateConversion = false

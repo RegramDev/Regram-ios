@@ -633,6 +633,13 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                     controller?.replace(with: c)
                 }
                 pushControllerImpl?(controller)
+            // MARK: Regram
+            } else if icon.isRGPro && context.sharedContext.immediateRGStatus.status < 2 {
+                if let payWallController = context.sharedContext.makeRGPayWallController(context: context) {
+                    presentControllerImpl?(payWallController, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                } else {
+                    presentControllerImpl?(context.sharedContext.makeRGUpdateIOSController(), nil)
+                }
             } else {
                 currentAppIconName.set(icon.name)
                 context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { _ in
@@ -1098,7 +1105,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
             ApplicationSpecificSharedDataKeys.presentationThemeSettings,
             ApplicationSpecificSharedDataKeys.chatSettings,
             ApplicationSpecificSharedDataKeys.mediaDisplaySettings,
-            SharedDataKeys.chatThemes
+            SharedDataKeys.chatThemes,
+            ApplicationSpecificSharedDataKeys.rgStatus // MARK: Regram
         ]),
         cloudThemes.get(),
         availableAppIcons,
@@ -1113,7 +1121,9 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         let chatSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.chatSettings]?.get(ChatSettings.self) ?? ChatSettings.defaultSettings
         let mediaSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.mediaDisplaySettings]?.get(MediaDisplaySettings.self) ?? MediaDisplaySettings.defaultSettings
         
-        let isPremium = peerView.peers[peerView.peerId]?.isPremium ?? false
+        // MARK: Regram
+        let rgStatus = sharedData.entries[ApplicationSpecificSharedDataKeys.rgStatus]?.get(RGStatus.self) ?? RGStatus.default
+        let isPremium = rgStatus.status > 1
         
         let themeReference: PresentationThemeReference
         if presentationData.autoNightModeTriggered {

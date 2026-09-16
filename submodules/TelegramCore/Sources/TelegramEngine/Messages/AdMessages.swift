@@ -2,6 +2,7 @@ import Foundation
 import Postbox
 import SwiftSignalKit
 import TelegramApi
+import RGSimpleSettings
 
 private class AdMessagesHistoryContextImpl {
     final class CachedMessage: Equatable, Codable {
@@ -635,6 +636,11 @@ public class AdMessagesHistoryContext {
     public let messageId: EngineMessage.Id?
     
     public var state: Signal<(interPostInterval: Int32?, messages: [Message], startDelay: Int32?, betweenDelay: Int32?), NoError> {
+        // MARK: Regram — every sponsored-message consumer subscribes to this signal, so emitting
+        // an empty state here removes ads from chats and the chat list without touching call sites.
+        if RGSimpleSettings.shared.disableAllAds {
+            return .single((nil, [], nil, nil))
+        }
         return Signal { subscriber in
             let disposable = MetaDisposable()
             

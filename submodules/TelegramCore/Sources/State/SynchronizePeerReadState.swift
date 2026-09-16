@@ -166,6 +166,25 @@ enum PeerReadStateValidationError {
 }
 
 private func validatePeerReadState(network: Network, postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId) -> Signal<Never, PeerReadStateValidationError> {
+    // MARK: Regram — ghost mode: skip validation entirely and confirm the operation.
+    //
+    // This is not an optimisation, it avoids a livelock. Ghost mode makes local and server read state
+    // diverge by design: we have read the messages, the server still thinks they are unread. The
+    // comparison below reacts to exactly that shape — server count != 0 while the local
+    // maxIncomingReadId is ahead — by returning .retry, and the manager respins the operation on
+    // error. Since ghost mode guarantees the condition never clears, that is an unbounded retry loop.
+    //
+    // Confirming without fetching keeps the local read state authoritative, which is the intent of the
+    // switch. The trade-off is that reads performed on another device are no longer picked up through
+    // this path while the switch is on; the update loop's updateReadHistoryInbox still delivers them.
+    if RGGhostMode.suppressReadReceipts {
+        return postbox.transaction { transaction -> Void in
+            transaction.confirmSynchronizedIncomingReadState(peerId)
+        }
+        |> castError(PeerReadStateValidationError.self)
+        |> ignoreValues
+    }
+
     let readStateWithInitialState = dialogReadState(network: network, postbox: postbox, peerId: peerId)
     
     let maybeAppliedReadState = readStateWithInitialState
@@ -227,6 +246,16 @@ private func validatePeerReadState(network: Network, postbox: Postbox, stateMana
 }
 
 private func pushPeerReadState(network: Network, postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, readState: PeerReadState) -> Signal<PeerReadState, PeerReadStateValidationError> {
+    // MARK: Regram — ghost mode: swallow the read receipt but report the push as successful.
+    //
+    // Returning the unchanged readState (rather than erroring or completing empty) is load-bearing.
+    // The caller compares this against the local state and, on a match, calls
+    // confirmSynchronizedIncomingReadState to dequeue the operation. Failing here instead would leave
+    // the operation queued and ManagedSynchronizePeerReadStates would respin it forever.
+    if RGGhostMode.suppressReadReceipts {
+        return .single(readState)
+    }
+
     if peerId.namespace == Namespaces.Peer.SecretChat {
         return inputSecretChat(postbox: postbox, peerId: peerId)
         |> mapToSignal { inputPeer -> Signal<PeerReadState, PeerReadStateValidationError> in

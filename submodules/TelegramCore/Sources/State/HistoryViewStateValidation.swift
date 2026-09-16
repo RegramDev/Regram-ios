@@ -2,6 +2,7 @@ import Foundation
 import Postbox
 import SwiftSignalKit
 import TelegramApi
+import RGSimpleSettings
 import MtProtoKit
 
 
@@ -984,7 +985,11 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                         return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: updatedTags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
                                     })
                                 } else {
-                                    _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                                    // MARK: Regram — Anti-revoke. History validation prunes anything the server no
+                                    // longer returns, which would silently undo the kept messages.
+                                    if !RGSimpleSettings.shared.antiRevoke {
+                                        _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                                    }
                                     Logger.shared.log("HistoryValidation", "deleting message \(id) in \(id.peerId)")
                                 }
                             }
@@ -1167,7 +1172,11 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                 
                     for id in removedMessageIds {
                         if !validMessageIds.contains(id) {
-                            _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                            // MARK: Regram — Anti-revoke. History validation prunes anything the server no
+                            // longer returns, which would silently undo the kept messages.
+                            if !RGSimpleSettings.shared.antiRevoke {
+                                _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                            }
                             Logger.shared.log("HistoryValidation", "deleting thread message \(id) in \(id.peerId)")
                         }
                     }

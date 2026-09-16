@@ -1,3 +1,6 @@
+import RGConfig
+import RGAPIWebSettings
+import RGLogging
 import Foundation
 import UIKit
 @preconcurrency import WebKit
@@ -251,7 +254,7 @@ public final class WebAppController: ViewController, AttachmentContainable {
         
         private var validLayout: (ContainerViewLayout, CGFloat)?
         
-        init(context: AccountContext, controller: WebAppController) {
+        init(userScripts: [WKUserScript] = [], context: AccountContext, controller: WebAppController) {
             #if DEBUG
             let _ = registeredProtocols
             #endif
@@ -272,7 +275,9 @@ public final class WebAppController: ViewController, AttachmentContainable {
                 self.backgroundColor = self.presentationData.theme.list.plainBackgroundColor
             }
             
-            let webView = WebAppWebView(account: context.account)
+            // MARK: Regram
+            // TODO(regram): Supply locally installed user scripts through `userScripts`.
+            let webView = WebAppWebView(userScripts: userScripts, account: context.account)
             webView.alpha = 0.0
             webView.navigationDelegate = self
             webView.uiDelegate = self
@@ -3577,6 +3582,7 @@ public final class WebAppController: ViewController, AttachmentContainable {
     fileprivate let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     private var presentationDataDisposable: Disposable?
     
+    private var viewWillDisappearCalled = false
     private var hasSettings = false
     
     public var openUrl: (String, Bool, Bool, @escaping () -> Void) -> Void = { _, _, _, _ in }
@@ -4022,6 +4028,9 @@ public final class WebAppController: ViewController, AttachmentContainable {
                     }, dismissInput: {}, contentContext: nil, progress: nil, completion: nil)
                 })
             })))
+
+            // MARK: Regram
+            // TODO(regram): Add an action that opens the user-script management webpage.
             
             items.append(.action(ContextMenuActionItem(text: presentationData.strings.WebApp_PrivacyPolicy, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Privacy"), color: theme.contextMenu.primaryColor)
@@ -4141,6 +4150,24 @@ public final class WebAppController: ViewController, AttachmentContainable {
         self.controllerNode.setupWebView()
     }
     
+    
+    // MARK: Regram
+    override final public func viewWillDisappear(_ animated: Bool) {
+        if !self.viewWillDisappearCalled {
+            self.viewWillDisappearCalled = true
+            self.updateRGWebSettingsIfNeeded()
+        }
+        super.viewWillDisappear(animated)
+    }
+    
+    private func updateRGWebSettingsIfNeeded() {
+        if let url = self.url, let parsedUrl = URL(string: url), parsedUrl.host?.lowercased() == RG_API_WEBAPP_URL_PARSED.host?.lowercased() {
+            RGLogger.shared.log("WebApp", "Closed webapp")
+            updateRGWebSettingsInteractivelly(context: self.context)
+        }
+    }
+    
+
     public func requestDismiss(completion: @escaping () -> Void) {
         if self.controllerNode.needDismissConfirmation {
             let alertController = textAlertController(

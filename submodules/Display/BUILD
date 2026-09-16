@@ -1,15 +1,24 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
+sgsrc = [
+    "//Regram/RGAppBadgeOffset:RGAppBadgeOffset"
+]
+
+sgdeps = [
+    "//submodules/Utils/DeviceModel",
+    "//Regram/RGSimpleSettings:RGSimpleSettings",
+]
+
 swift_library(
     name = "Display",
     module_name = "Display",
-    srcs = glob([
+    srcs = sgsrc + glob([
         "Source/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = [
+    deps = sgdeps + [
     	"//submodules/ObjCRuntimeUtils:ObjCRuntimeUtils",
     	"//submodules/UIKitRuntimeUtils:UIKitRuntimeUtils",
         "//submodules/AppBundle:AppBundle",

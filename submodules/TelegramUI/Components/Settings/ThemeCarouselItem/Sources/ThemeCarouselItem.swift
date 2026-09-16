@@ -577,7 +577,16 @@ public class ThemeCarouselThemeItem: ListViewItem, ItemListItem, ListItemCompone
     }
 
     public func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
-        async {
+        // MARK: Regram — main queue, not the caller's background `async`. This node owns a nested
+        // `ListViewImpl`, whose `init` reaches `self.view` to attach its scroller and gesture
+        // recognizers, so constructing it here built UIViews on `com.apple.root.user-interactive-qos`.
+        // A node the list then discards was released on that same background queue, and the UIKit
+        // objects underneath it were deallocated off-main — an EXC_BAD_ACCESS inside the autorelease
+        // pool drain, with no app frame on the crashing thread to point at the cause.
+        //
+        // Same failure and same fix as ThemeSettingsChatPreviewItem. Costs off-main layout for this
+        // one row, which is a settings screen a few items long.
+        Queue.mainQueue().async {
             let node = ThemeCarouselThemeItemNode()
             let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
 

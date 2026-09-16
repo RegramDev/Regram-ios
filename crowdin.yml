@@ -1,0 +1,6 @@
+files:
+  - source: Regram/RGStrings/Strings/en.lproj/SGLocalizable.strings
+    translation: /Regram/RGStrings/Strings/%osx_code%/SGLocalizable.strings
+    translation_replace:
+      zh-Hans: zh-hans
+      zh-Hant: zh-hant

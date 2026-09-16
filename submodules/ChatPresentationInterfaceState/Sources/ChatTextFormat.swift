@@ -1,17 +1,18 @@
 import Foundation
+import RGSimpleSettings
 import TextFormat
 import TelegramCore
 import AccountContext
 
-public func chatTextInputAddFormattingAttribute(_ state: ChatTextInputState, attribute: NSAttributedString.Key, value: Any?) -> ChatTextInputState {
+public func chatTextInputAddFormattingAttribute(forceRemoveAll: Bool = false, _ state: ChatTextInputState, attribute: NSAttributedString.Key, value: Any?) -> ChatTextInputState {
     if !state.selectionRange.isEmpty {
         let nsRange = NSRange(location: state.selectionRange.lowerBound, length: state.selectionRange.count)
         var addAttribute = true
         var attributesToRemove: [NSAttributedString.Key] = []
         state.inputText.enumerateAttributes(in: nsRange, options: .longestEffectiveRangeNotRequired) { attributes, range, _ in
             for (key, _) in attributes {
-                if key == attribute {
-                    if nsRange == range {
+                if key == attribute || forceRemoveAll {
+                    if nsRange == range || forceRemoveAll {
                         addAttribute = false
                         attributesToRemove.append(key)
                     }
@@ -225,25 +226,45 @@ public func chatTextInputAddMentionAttribute(_ state: ChatTextInputState, peer: 
     
     let range = NSMakeRange(state.selectionRange.startIndex, state.selectionRange.endIndex - state.selectionRange.startIndex)
     
+    // MARK: Regram — opt-in: the display name carrying a public `t.me/<username>` link instead of a
+    // bare `@username`. Off by default, so the gesture behaves as upstream unless the user asks
+    // otherwise (Regram Pro ▸ mention as link).
+    //
+    // A plain URL entity rather than the native `textMention`: a mention entity is validated by the
+    // server against the sender's access to that user and is dropped when it fails, while the link
+    // survives sending, forwarding and copying anywhere. The link is built from the username (not the
+    // numeric user id), so it resolves the same everywhere `t.me/<username>` does. Users without a
+    // username fall through to upstream behaviour, since there is no username to link to.
+    if RGSimpleSettings.shared.mentionAsUserIdLink, let addressName = peer.addressName, !addressName.isEmpty, !peer.compactDisplayTitle.isEmpty {
+        let url = "https://t.me/\(addressName)"
+        let replacementText = NSMutableAttributedString()
+        replacementText.append(NSAttributedString(string: peer.compactDisplayTitle, attributes: [ChatTextInputAttributes.textUrl: ChatTextInputTextUrlAttribute(url: url)]))
+        replacementText.append(NSAttributedString(string: " "))
+
+        inputText.replaceCharacters(in: range, with: replacementText)
+
+        let selectionPosition = range.lowerBound + replacementText.length
+
+        return ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition)
+    }
+
     if let addressName = peer.addressName, !addressName.isEmpty {
         let replacementText = "@\(addressName) "
-        
+
         inputText.replaceCharacters(in: range, with: replacementText)
-        
+
         let selectionPosition = range.lowerBound + (replacementText as NSString).length
-        
+
         return ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition)
     } else if !peer.compactDisplayTitle.isEmpty {
         let replacementText = NSMutableAttributedString()
         replacementText.append(NSAttributedString(string: peer.compactDisplayTitle, attributes: [ChatTextInputAttributes.textMention: ChatTextInputTextMentionAttribute(peerId: peer.id)]))
         replacementText.append(NSAttributedString(string: " "))
-        
-        let updatedRange = NSRange(location: range.location , length: range.length)
-        
-        inputText.replaceCharacters(in: updatedRange, with: replacementText)
-        
-        let selectionPosition = updatedRange.lowerBound + replacementText.length
-        
+
+        inputText.replaceCharacters(in: range, with: replacementText)
+
+        let selectionPosition = range.lowerBound + replacementText.length
+
         return ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition)
     } else {
         return state

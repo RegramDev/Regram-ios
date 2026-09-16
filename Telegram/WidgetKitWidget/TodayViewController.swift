@@ -17,6 +17,7 @@ import OpenSSLEncryptionProvider
 import WidgetItemsUtils
 
 import GeneratedSources
+import RGAppGroupIdentifier
 
 struct ParsedPeer {
     var accountId: Int64
@@ -81,8 +82,10 @@ private func getCommonTimeline(friends: [Friend]?, in context: TimelineProviderC
     
     let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
     
-    let appGroupName = "group.\(baseAppBundleId)"
-    let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+    // MARK: Regram — must resolve the container the same way the app does; a re-signing
+    // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
+    // account to read and the app with data it cannot see.
+    let maybeAppGroupUrl = rgDataContainerURL()
     
     guard let appGroupUrl = maybeAppGroupUrl else {
         completion(Timeline(entries: [SimpleEntry(date: entryDate, contents: .recent)], policy: .atEnd))

@@ -1,15 +1,24 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
+sgdeps = [
+    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Regram/RGAPIWebSettings:RGAPIWebSettings",
+    "//Regram/RGAPIToken:RGAPIToken"
+]
+sgsrcs = [
+    "//Regram/RGChatListSimpleSettingsSignal:RGChatListSimpleSettingsSignal",
+]
+
 swift_library(
     name = "ChatListUI",
     module_name = "ChatListUI",
     srcs = glob([
         "Sources/**/*.swift",
-    ]),
+    ]) + sgsrcs,
     copts = [
         "-warnings-as-errors",
     ],
-    deps = [
+    deps = sgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

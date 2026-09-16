@@ -124,12 +124,15 @@ public extension TelegramEngine {
                 apiEmojiStatus = .emojiStatusEmpty
             }
             
+            // MARK: Regram — local Premium, see `setEmojiStatus` below.
+            rgStoreLocalPremiumEmojiStatus(peerId: peerId, status: emojiStatus)
+
             let remoteApply = self.account.network.request(Api.functions.account.updateEmojiStatus(emojiStatus: apiEmojiStatus))
             |> `catch` { _ -> Signal<Api.Bool, NoError> in
                 return .single(.boolFalse)
             }
             |> ignoreValues
-            
+
             return self.account.postbox.transaction { transaction -> Void in
                 if let file, let patternFile {
                     transaction.storeMediaIfNotPresent(media: file)
@@ -149,7 +152,12 @@ public extension TelegramEngine {
         
         public func setEmojiStatus(file: TelegramMediaFile?, expirationDate: Int32?) -> Signal<Never, NoError> {
             let peerId = self.account.peerId
-            
+            let emojiStatus = file.flatMap({ PeerEmojiStatus(content: .emoji(fileId: $0.fileId.id), expirationDate: expirationDate) })
+
+            // MARK: Regram — local Premium. The server drops this for a non-Premium account and
+            // pushes the empty status back, so remember the pick and read it back from there.
+            rgStoreLocalPremiumEmojiStatus(peerId: peerId, status: emojiStatus)
+
             let remoteApply = self.account.network.request(Api.functions.account.updateEmojiStatus(emojiStatus: file.flatMap({ file in
                 var flags: Int32 = 0
                 if let _ = expirationDate {
@@ -173,7 +181,7 @@ public extension TelegramEngine {
                 }
                 
                 if let peer = transaction.getPeer(peerId) as? TelegramUser {
-                    updatePeersCustom(transaction: transaction, peers: [peer.withUpdatedEmojiStatus(file.flatMap({ PeerEmojiStatus(content: .emoji(fileId: $0.fileId.id), expirationDate: expirationDate) }))], update: { _, updated in
+                    updatePeersCustom(transaction: transaction, peers: [peer.withUpdatedEmojiStatus(emojiStatus)], update: { _, updated in
                         updated
                     })
                 }

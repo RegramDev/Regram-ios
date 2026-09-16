@@ -1,3 +1,17 @@
+// MARK: Regram
+import StoreKit
+import RGIAP
+import RGAPI
+import RGDeviceToken
+import RGAPIToken
+
+import RGActionRequestHandlerSanitizer
+import RGGHSettings
+import RGAPIWebSettings
+import RGLogging
+import RGStrings
+import RGSimpleSettings
+import RGAppGroupIdentifier
 import UIKit
 import SwiftSignalKit
 import Display
@@ -286,8 +300,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             return existingSession
         }
         
-        let baseAppBundleId = Bundle.main.bundleIdentifier!
-        let appGroupName = "group.\(baseAppBundleId)"
+        // Resolves the container the bundle is actually entitled to, which is not always
+        // "group.<bundleid>" once the build has been re-signed by a third-party service.
+        let appGroupName = rgAppGroupIdentifier()
 
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
         configuration.sharedContainerIdentifier = appGroupName
@@ -413,7 +428,17 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         self.window = window
         self.nativeWindow = window
-        
+        // MARK: Regram
+        // Both run before any database is opened; the wipe must come first since it is the more
+        // destructive of the two and makes the other moot.
+        if rgFullWipeIfNeeded(present: self.mainWindow?.presentNative, beforePresent: { self.window?.makeKeyAndVisible() }) {
+            return true
+        }
+        if rgHardReset(present: self.mainWindow?.presentNative, beforePresent: { self.window?.makeKeyAndVisible() }) {
+            return true
+        }
+        //
+
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
         
         if !UIDevice.current.isBatteryMonitoringEnabled {
@@ -528,9 +553,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let appVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "unknown"
         
         let baseAppBundleId = Bundle.main.bundleIdentifier!
-        let appGroupName = "group.\(baseAppBundleId)"
-        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
-        
+        let maybeAppGroupUrl = rgDataContainerURL()
+
         let buildConfig = BuildConfig(baseAppBundleId: baseAppBundleId)
         self.buildConfig = buildConfig
         let signatureDict = BuildConfigExtra.signatureDict()
@@ -642,7 +666,16 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         )
         
         guard let appGroupUrl = maybeAppGroupUrl else {
-            self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
+            // MARK: Regram — upstream presents this alert on a window that has not been made
+            // key yet, so it renders as a plain black screen with no indication of what went wrong.
+            // Make the window visible first, and name the group, so that the most likely failure of
+            // a re-signed build is diagnosable on sight.
+            self.window?.makeKeyAndVisible()
+            self.mainWindow?.presentNative(UIAlertController(
+                title: nil,
+                message: "Error 2\n\nNo container for app group:\n\(rgOwnAppGroupIdentifier())",
+                preferredStyle: .alert
+            ))
             return true
         }
         
@@ -672,7 +705,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             rootPath = rootPathForBasePath(appGroupUrl.path)
         }
         if !isUITest {
-            performAppGroupUpgrades(appGroupPath: appGroupUrl.path, rootPath: rootPath)
+        performAppGroupUpgrades(appGroupPath: appGroupUrl.path, rootPath: rootPath)
         }
         
         let deviceSpecificEncryptionParameters = BuildConfig.deviceSpecificEncryptionParameters(rootPath, baseAppBundleId: baseAppBundleId)
@@ -910,7 +943,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 }
             })
         }, requestSiriAuthorization: { completion in
-            if #available(iOS 10, *) {
+            // MARK: Regram — gated on isSiriEnabled like `siriAuthorization` below.
+            //
+            // Every `INPreferences` entry point runs `-[INPreferences
+            // assertThisProcessHasSiriEntitlement]`, which calls `abort()` — from inside a
+            // `dispatch_once`, so the exception cannot be caught — when the running process was not
+            // signed with `com.apple.developer.siri`. A re-signed build only has whatever its
+            // signing profile grants, and a free Apple ID grants none of it, so an unguarded call
+            // here terminates the app on a device that merely lacks the entitlement.
+            if buildConfig.isSiriEnabled, rgSignatureGrants(RGEntitlement.siri), #available(iOS 10, *) {
                 INPreferences.requestSiriAuthorization { status in
                     if case .authorized = status {
                         completion(true)
@@ -922,7 +963,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 completion(false)
             }
         }, siriAuthorization: {
-            if buildConfig.isSiriEnabled {
+            if buildConfig.isSiriEnabled, rgSignatureGrants(RGEntitlement.siri) {
                 if #available(iOS 10, *) {
                     switch INPreferences.siriAuthorizationStatus() {
                     case .authorized:
@@ -965,6 +1006,53 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 icons.append(PresentationAppIcon(name: "Premium", imageName: "Premium", isPremium: true))
                 icons.append(PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo", isPremium: true))
                 icons.append(PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack", isPremium: true))
+                
+                
+                // MARK: Regram
+                icons = [
+                    // MARK: Regram — the default entry applies `setAlternateIconName(nil)`, i.e. the
+                    // primary icon, which this build ships as Regram. Its thumbnail has to match that
+                    // or the picker offers a Swiftgram tile that produces a Regram home screen.
+                    PresentationAppIcon(name: "SGDefault", imageName: "RGAnime", isDefault: true),
+                    PresentationAppIcon(name: "SGBlack", imageName: "SGBlack"),
+                    PresentationAppIcon(name: "SGLegacy", imageName: "SGLegacy"),
+                    PresentationAppIcon(name: "SGInverted", imageName: "SGInverted"),
+                    PresentationAppIcon(name: "SGWhite", imageName: "SGWhite"),
+                    PresentationAppIcon(name: "SGNight", imageName: "SGNight"),
+                    PresentationAppIcon(name: "SGSky", imageName: "SGSky"),
+                    PresentationAppIcon(name: "SGTitanium", imageName: "SGTitanium"),
+                    PresentationAppIcon(isRGPro: true, name: "SGPro", imageName: "SGPro"),
+                    PresentationAppIcon(isRGPro: true, name: "SGDay", imageName: "SGDay"),
+                    PresentationAppIcon(isRGPro: true, name: "SGGold", imageName: "SGGold"),
+                    RGSimpleSettings.shared.duckyAppIconAvailable ? PresentationAppIcon(isRGPro: true, name: "SGDucky", imageName: "SGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
+                    PresentationAppIcon(name: "SGNeon", imageName: "SGNeon"),
+                    PresentationAppIcon(name: "SGNeonBlue", imageName: "SGNeonBlue"),
+                    PresentationAppIcon(name: "SGGlass", imageName: "SGGlass"),
+                    PresentationAppIcon(name: "SGSparkling", imageName: "SGSparkling"),
+                    // MARK: Regram — no separate "RGAnime" entry: it is the primary icon now, so it is
+                    // already offered above as the default. The alticon asset stays in the bundle so
+                    // that anyone who applied it as an alternate before this change keeps a valid icon.
+                    PresentationAppIcon(name: "RGSilver", imageName: "RGSilver"),
+                    // Stock Telegram icons. Swiftgram replaces the whole list above rather than
+                    // appending, which is why these have to be re-added explicitly. Not marked
+                    // isPremium: this build has no Premium gate to check them against.
+                    PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon"),
+                    PresentationAppIcon(name: "BlackIcon", imageName: "BlackIcon"),
+                    PresentationAppIcon(name: "BlueClassicIcon", imageName: "BlueClassicIcon"),
+                    PresentationAppIcon(name: "BlackClassicIcon", imageName: "BlackClassicIcon"),
+                    PresentationAppIcon(name: "BlueFilledIcon", imageName: "BlueFilledIcon"),
+                    PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon"),
+                    PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"),
+                    PresentationAppIcon(name: "New1", imageName: "New1"),
+                    PresentationAppIcon(name: "New2", imageName: "New2"),
+                    PresentationAppIcon(name: "Premium", imageName: "Premium"),
+                    PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo"),
+                    PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack"),
+                ]
+
+                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+                    icons.append(PresentationAppIcon(name: "SGBeta", imageName: "SGBeta"))
+                }
                 
                 return icons
             } else {
@@ -1172,7 +1260,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     return .single(nil)
                 }
             }
-            
             let wakeupManager = SharedWakeupManager(beginBackgroundTask: { name, expiration in
                 let id = application.beginBackgroundTask(withName: name, expirationHandler: expiration)
                 Logger.shared.log("App \(self.episodeId)", "Begin background task \(name): \(id)")
@@ -1204,7 +1291,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             
             return .single(sharedApplicationContext)
         })
-            
+        
         self.context.set(self.sharedContextPromise.get()
         |> deliverOnMainQueue
         |> mapToSignal { sharedApplicationContext -> Signal<AuthorizedApplicationContext?, NoError> in
@@ -1242,7 +1329,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             |> deliverOnMainQueue
             |> map { accountAndSettings -> AuthorizedApplicationContext? in
                 return accountAndSettings.flatMap { context, callListSettings in
-                    return AuthorizedApplicationContext(sharedApplicationContext: sharedApplicationContext, mainWindow: self.mainWindow, context: context as! AccountContextImpl, accountManager: sharedApplicationContext.sharedContext.accountManager, showCallsTab: callListSettings.showTab, reinitializedNotificationSettings: {
+                    return AuthorizedApplicationContext(sharedApplicationContext: sharedApplicationContext, mainWindow: self.mainWindow, context: context as! AccountContextImpl, accountManager: sharedApplicationContext.sharedContext.accountManager, showContactsTab: callListSettings.showContactsTab, showCallsTab: callListSettings.showTab, reinitializedNotificationSettings: {
                         let _ = (self.context.get()
                         |> take(1)
                         |> deliverOnMainQueue).start(next: { context in
@@ -1319,6 +1406,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             var network: Network?
             if let context = context {
                 network = context.context.account.network
+                // MARK: Regram
+                rgDBResetIfNeeded(databasePath: context.context.sharedContext.accountManager.basePath + "/db", present: self.mainWindow?.presentNative)
             }
             
             Logger.shared.log("App \(self.episodeId)", "received context \(String(describing: context)) account \(String(describing: context?.context.account.id)) network \(String(describing: network))")
@@ -1364,6 +1453,21 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     self.registerForNotifications(context: context.context, authorize: authorizeNotifications)
                     
                     self.resetIntentsIfNeeded(context: context.context)
+                    
+                    // MARK: Regram
+                    updateRGWebSettingsInteractivelly(context: context.context)
+                    updateRGGHSettingsInteractivelly(context: context.context)
+                    let _ = (context.context.sharedContext.presentationData.start(next: { presentationData in
+                        RGLocalizationManager.shared.downloadLocale(presentationData.strings.baseLanguageCode)
+                    }))
+                    if #available(iOS 13.0, *) {
+                        let _ = Task {
+                            let primaryContext = await self.getPrimaryContext(anyContext: context.context)
+                            RGLogger.shared.log("SGIAP", "Verifying Status \(primaryContext.sharedContext.immediateRGStatus.status) for: \(primaryContext.account.peerId.id._internalGetInt64Value())")
+                            let _ = await self.fetchRGStatus(primaryContext: primaryContext)
+                        }
+                    }
+                    
                 }))
             } else {
                 self.mainWindow.viewController = nil
@@ -1433,6 +1537,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 authContextReadyDisposable.set(nil)
             }
         }))
+        
+        
+        // MARK: Regram
+        if #available(iOS 13.0, *) {
+            self.setupIAP()
+        }
 
 
         let logoutDataSignal: Signal<(AccountManager, Set<PeerId>), NoError> = self.sharedContextPromise.get()
@@ -1513,9 +1623,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
         
         if let url = launchOptions?[.url] {
-            if let url = url as? URL, url.scheme == "tg" || url.scheme == buildConfig.appSpecificUrlScheme {
-                self.openUrlWhenReady(url: url, external: true)
-            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):"), let url = URL(string: urlString) {
+            if let url = url as? URL, url.scheme == "tg" || url.scheme == "sg" || url.scheme == buildConfig.appSpecificUrlScheme {
+                self.openUrlWhenReady(url: rgActionRequestHandlerSanitizer(url), external: true)
+            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("sg:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):"), let url = URL(string: urlString) {
                 self.openUrlWhenReady(url: url, external: true)
             }
         }
@@ -1989,6 +2099,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
     
     func runForegroundTasks() {
+        
+        
+        var rgTasksLaunched: Bool = false
+        
         let _ = (self.sharedContextPromise.get()
         |> take(1)
         |> deliverOnMainQueue).start(next: { sharedApplicationContext in
@@ -1996,6 +2110,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
              |> take(1)
              |> deliverOnMainQueue).start(next: { activeAccounts in
                 for (_, context, _) in activeAccounts.accounts {
+                    // MARK: Regram
+                    if !rgTasksLaunched {
+                        updateRGWebSettingsInteractivelly(context: context)
+                        updateRGGHSettingsInteractivelly(context: context)
+                        rgTasksLaunched = true
+                    }
                     (context.downloadedMediaStoreManager as? DownloadedMediaStoreManagerImpl)?.runTasks()
                 }
             })
@@ -2511,6 +2631,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         }
         |> deliverOnMainQueue).start(next: { sharedContext, context, authContext in
+            let url = rgActionRequestHandlerSanitizer(url)
             if let authContext = authContext, let confirmationCode = parseConfirmationCodeUrl(sharedContext: sharedContext, url: url) {
                 authContext.rootController.applyConfirmationCode(confirmationCode)
             } else if let context = context {
@@ -3137,7 +3258,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let _ = (context.sharedContext.accountManager.transaction { transaction in
             let settings = transaction.getSharedData(ApplicationSpecificSharedDataKeys.intentsSettings)?.get(IntentsSettings.self) ?? IntentsSettings.defaultSettings
             if !settings.initiallyReset || settings.account == nil {
-                if #available(iOS 10.0, *) {
+                // MARK: Regram — `INInteraction` asserts the Siri entitlement the same way
+                // `INPreferences` does, and this runs on every account setup, so an unentitled
+                // build aborted here too. Gated on the same flag as the authorization calls.
+                if self.buildConfig?.isSiriEnabled ?? false, rgSignatureGrants(RGEntitlement.siri), #available(iOS 10.0, *) {
                     Queue.mainQueue().async {
                         INInteraction.deleteAll()
                     }
@@ -3327,5 +3451,181 @@ final class UpdateSettings: Codable, Equatable {
     
     static func ==(lhs: UpdateSettings, rhs: UpdateSettings) -> Bool {
         return lhs.url == rhs.url
+    }
+}
+
+// MARK: Regram
+@available(iOS 13.0, *)
+extension AppDelegate {
+
+    func setupIAP() {
+        NotificationCenter.default.addObserver(forName: .RGIAPHelperPurchaseNotification, object: nil, queue: nil) { [weak self] notification in
+            RGLogger.shared.log("SGIAP", "Got SGIAPHelperPurchaseNotification")
+            guard let strongSelf = self else { return }
+            if let transactions = notification.object as? [SKPaymentTransaction] {
+                let _ = (strongSelf.context.get()
+                |> take(1)
+                |> deliverOnMainQueue).start(next: { [weak strongSelf] context in
+                    guard let veryStrongSelf = strongSelf else {
+                        RGLogger.shared.log("SGIAP", "Finishing transactions \(transactions.map({ $0.transactionIdentifier ?? "nil" }).joined(separator: ", "))")
+                        let defaultPaymentQueue = SKPaymentQueue.default()
+                        for transaction in transactions {
+                            defaultPaymentQueue.finishTransaction(transaction)
+                        }
+                        return
+                    }
+                    guard let context = context else {
+                        RGLogger.shared.log("SGIAP", "Empty app context (how?)")
+                        
+                        RGLogger.shared.log("SGIAP", "Finishing transactions \(transactions.map({ $0.transactionIdentifier ?? "nil" }).joined(separator: ", "))")
+                        let defaultPaymentQueue = SKPaymentQueue.default()
+                        for transaction in transactions {
+                            defaultPaymentQueue.finishTransaction(transaction)
+                        }
+                        return
+                    }
+                    RGLogger.shared.log("SGIAP", "Got context for SGIAPHelperPurchaseNotification")
+                    let _ = Task {
+                        await veryStrongSelf.sendReceiptForVerification(primaryContext: context.context)
+                        await veryStrongSelf.fetchRGStatus(primaryContext: context.context)
+                        
+                        RGLogger.shared.log("SGIAP", "Finishing transactions \(transactions.map({ $0.transactionIdentifier ?? "nil" }).joined(separator: ", "))")
+                        let defaultPaymentQueue = SKPaymentQueue.default()
+                        for transaction in transactions {
+                            defaultPaymentQueue.finishTransaction(transaction)
+                        }
+                    }
+                })
+            } else {
+                RGLogger.shared.log("SGIAP", "Wrong object in SGIAPHelperPurchaseNotification")
+                #if DEBUG
+                preconditionFailure("Wrong object in SGIAPHelperPurchaseNotification")
+                #endif
+            }
+        }
+    }
+    
+    func getPrimaryContext(anyContext context: AccountContext, fallbackToCurrent: Bool = false) async -> AccountContext {
+        var primaryUserId: Int64 = Int64(RGSimpleSettings.shared.primaryUserId) ?? 0
+        if primaryUserId == 0 {
+            primaryUserId = context.account.peerId.id._internalGetInt64Value()
+        }
+
+        var primaryContext = try? await getContextForUserId(context: context, userId: primaryUserId).awaitable()
+        if let primaryContext = primaryContext {
+            RGLogger.shared.log("SGIAP", "Got primary context for user id: \(primaryContext.account.peerId.id._internalGetInt64Value())")
+            return primaryContext
+        } else {
+            primaryContext = context
+            let newPrimaryUserId = context.account.peerId.id._internalGetInt64Value()
+            RGLogger.shared.log("SGIAP", "Primary context for user id \(primaryUserId) is nil! Falling back to current context with user id: \(newPrimaryUserId)")
+            return context
+        }
+    }
+    
+    func sendReceiptForVerification(primaryContext: AccountContext) async {
+        guard let receiptData = getPurchaceReceiptData() else {
+            return
+        }
+        
+        let encodedReceiptData = receiptData.base64EncodedData(options: [])
+
+        var deviceToken: String?
+        var apiToken: String?
+        do {
+            async let deviceTokenTask = getDeviceToken().awaitable()
+            async let apiTokenTask = getRGApiToken(context: primaryContext).awaitable()
+            
+            (deviceToken, apiToken) = try await (deviceTokenTask, apiTokenTask)
+        } catch {
+            RGLogger.shared.log("SGIAP", "Error getting device token or API token: \(error)")
+            return
+        }
+
+        if let deviceToken, let apiToken {
+            do {
+                let _ = try await postRGReceipt(token: apiToken,
+                                                deviceToken: deviceToken,
+                                                encodedReceiptData: encodedReceiptData).awaitable()
+            } catch let error as SignalCompleted {
+                let _ = error
+            } catch {
+                RGLogger.shared.log("SGIAP", "Error: \(error)")
+            }
+        }
+    }
+    
+    func fetchRGStatus(primaryContext: AccountContext) async {
+        // TODO(regram): Stuck on getting shouldKeepConnection
+        // Perhaps, we can drop on some timeout?
+//        let currentShouldKeepConnection = await (primaryContext.account.network.shouldKeepConnection.get() |> take(1) |> deliverOnMainQueue).awaitable()
+        guard !primaryContext.account.testingEnvironment else {
+            return
+        }
+        let currentShouldKeepConnection = false
+        let userId = primaryContext.account.peerId.id._internalGetInt64Value()
+//        RGLogger.shared.log("SGIAP", "User id \(userId) currently keeps connection: \(currentShouldKeepConnection)")
+        if !currentShouldKeepConnection {
+            RGLogger.shared.log("SGIAP", "Asking user id \(userId) to keep connection: true")
+            primaryContext.account.network.shouldKeepConnection.set(.single(true))
+        }
+        // MARK: Regram
+        let rgIqtpQueryString = makeIqtpQuery("s")
+        //
+        let iqtpResponse = try? await rgIqtpQuery(engine: primaryContext.engine, query: rgIqtpQueryString).awaitable()
+        guard let iqtpResponse = iqtpResponse else {
+            RGLogger.shared.log("SGIAP", "IQTP response is nil!")
+//            if !currentShouldKeepConnection {
+//                RGLogger.shared.log("SGIAP", "Setting user id \(userId) keep connection back to false")
+//                primaryContext.account.network.shouldKeepConnection.set(.single(false))
+//            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .RGIAPHelperValidationErrorNotification, object: nil, userInfo: ["error": "PayWall.ValidationError.TryAgain"])
+            }
+            return
+        }
+        RGLogger.shared.log("SGIAP", "Got IQTP response: \(iqtpResponse)")
+        let _ = try? await updateRGStatusInteractively(accountManager: primaryContext.sharedContext.accountManager, { value in
+            var value = value
+
+            let newStatus: Int64
+            if let status = Int64(iqtpResponse.value) {
+                newStatus = status
+            } else {
+                RGLogger.shared.log("SGIAP", "Can't parse IQTP response into status!")
+                newStatus = value.status // unparseable
+            }
+            
+            let userId = primaryContext.account.peerId.id._internalGetInt64Value()
+            if value.status != newStatus {
+                RGLogger.shared.log("SGIAP", "Updating \(userId) status \(value.status) -> \(newStatus)")
+                if newStatus > 1 {
+                    let stringUserId = String(userId)
+                    if RGSimpleSettings.shared.primaryUserId != stringUserId {
+                        RGLogger.shared.log("SGIAP", "Setting new primary user id: \(userId)")
+                        RGSimpleSettings.shared.primaryUserId = stringUserId
+                    }
+                } else {
+                    RGLogger.shared.log("SGIAP", "Status expired")
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .RGIAPHelperValidationErrorNotification, object: nil, userInfo: ["error": "PayWall.ValidationError.Expired"])
+                    }
+                }
+                value.status = newStatus
+            } else {
+                RGLogger.shared.log("SGIAP", "Status \(value.status) for \(userId) hasn't changed")
+                if newStatus < 2 {
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .RGIAPHelperValidationErrorNotification, object: nil, userInfo: ["error": "PayWall.ValidationError.TryAgain"])
+                    }
+                }
+            }
+            return value
+        }).awaitable()
+
+//        if !currentShouldKeepConnection {
+//            RGLogger.shared.log("SGIAP", "Setting user id \(userId) keep connection back to false")
+//            primaryContext.account.network.shouldKeepConnection.set(.single(false))
+//        }
     }
 }

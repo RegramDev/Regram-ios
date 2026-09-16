@@ -9,6 +9,9 @@ import ComponentDisplayAdapters
 public final class GalleryFooterNode: ASDisplayNode {
     private let edgeEffectView: EdgeEffectView
     private var contentsFrame = CGRect()
+    // MARK: Regram — hitTest below only lets touches through inside `contentsFrame`, i.e. the
+    // bottom panel. The top strip lives outside it and would be untappable without this.
+    private var rgTopPanelFrame = CGRect()
     
     private var currentThumbnailPanelHeight: CGFloat?
     private var currentFooterContentNode: GalleryFooterContentNode?
@@ -122,6 +125,27 @@ public final class GalleryFooterNode: ASDisplayNode {
             backgroundLayoutInfo = backgroundLayoutInfoValue
             
             footerTransition.updateFrame(node: footerContentNode, frame: CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - backgroundLayoutInfoValue.height + verticalOffset), size: CGSize(width: layout.size.width, height: backgroundLayoutInfoValue.height)))
+
+            // MARK: Regram — the content node's strip of action buttons, hosted here rather than
+            // inside it: the content node is bottom-anchored and sized to the bottom panel, so it has
+            // no way to reach the area under the navigation bar. Slides up out of view with the same
+            // gesture that hides the rest of the chrome, mirroring the navigation bar itself.
+            let rgTopPanelRect = footerContentNode.updateGalleryTopPanel(width: layout.size.width, leftInset: layout.safeInsets.left, rightInset: layout.safeInsets.right, transition: footerTransition)
+            if let rgTopPanelView = footerContentNode.galleryTopPanelView, !rgTopPanelRect.isEmpty {
+                if rgTopPanelView.superview !== self.view {
+                    self.view.addSubview(rgTopPanelView)
+                }
+                let rgTopPanelSpacing: CGFloat = 8.0
+                var rgTopPanelFrame = rgTopPanelRect.offsetBy(dx: 0.0, dy: navigationBarHeight + rgTopPanelSpacing)
+                if isHidden {
+                    rgTopPanelFrame.origin.y = -rgTopPanelFrame.height - rgTopPanelSpacing
+                }
+                ComponentTransition(footerTransition).setFrame(view: rgTopPanelView, frame: rgTopPanelFrame)
+                ComponentTransition(footerTransition).setAlpha(view: rgTopPanelView, alpha: self.visibilityAlpha)
+                self.rgTopPanelFrame = isHidden ? CGRect() : rgTopPanelFrame
+            } else {
+                self.rgTopPanelFrame = CGRect()
+            }
             if let dismissedCurrentFooterContentNode = dismissedCurrentFooterContentNode {
                 let contentTransition = ContainedViewLayoutTransition.animated(duration: 0.4, curve: .spring)
                 footerContentNode.animateIn(fromHeight: dismissedCurrentFooterContentNode.bounds.height, previousContentNode: dismissedCurrentFooterContentNode, transition: contentTransition)
@@ -198,7 +222,10 @@ public final class GalleryFooterNode: ASDisplayNode {
         if let overlayResult = self.currentOverlayContentNode?.hitTest(point, with: event) {
             return overlayResult
         }
-        if !self.contentsFrame.contains(point) || self.visibilityAlpha < 1.0 {
+        if !self.contentsFrame.contains(point) && !self.rgTopPanelFrame.contains(point) {
+            return nil
+        }
+        if self.visibilityAlpha < 1.0 {
             return nil
         }
         let result = super.hitTest(point, with: event)

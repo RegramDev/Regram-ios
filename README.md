@@ -1,3 +1,14 @@
+# Regram
+
+Supercharged Telegram fork for iOS.
+
+Regram is an unofficial fork of the
+[official Telegram iOS client](https://github.com/TelegramMessenger/Telegram-iOS). Fork-specific code
+lives under `Regram/`, and changes to upstream files are tagged with a `MARK: Regram` comment so they
+stay easy to find when merging upstream.
+
+Regram's compilation steps are the same as for the official app. Below you'll find a complete compilation guide based on the official app.
+
 # Telegram iOS Source Code Compilation Guide
 
 We welcome all developers to use our API and source code to create applications on our platform.
@@ -16,7 +27,7 @@ There are several things we require from **all developers** for the moment.
 ## Get the Code
 
 ```
-git clone --recursive -j8 https://github.com/TelegramMessenger/Telegram-iOS.git
+git clone --recursive -j8 https://github.com/RegramDev/Regram-ios.git
 ```
 
 ## Setup Xcode
@@ -29,7 +40,7 @@ Install Xcode (directly from https://developer.apple.com/download/applications o
 ```
 openssl rand -hex 8
 ```
-2. Create a new Xcode project. Use `Telegram` as the Product Name. Use `org.{identifier from step 1}` as the Organization Identifier.
+2. Create a new Xcode project. Use `Regram` as the Product Name. Use `org.{identifier from step 1}` as the Organization Identifier.
 3. Open `Keychain Access` and navigate to `Certificates`. Locate `Apple Development: your@email.address (XXXXXXXXXX)` and double tap the certificate. Under `Details`, locate `Organizational Unit`. This is the Team ID.
 4. Edit `build-system/template_minimal_development_configuration.json`. Use data from the previous steps.
 

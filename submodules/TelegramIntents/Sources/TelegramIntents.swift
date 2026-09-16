@@ -1,3 +1,4 @@
+import RGAppGroupIdentifier
 import Foundation
 import UIKit
 import Intents
@@ -200,6 +201,13 @@ public func donateSendMessageIntent(account: Account, sharedContext: SharedAccou
                 let recipient = INPerson(personHandle: recipientHandle, nameComponents: nameComponents, displayName: displayTitle, image: personImage, contactIdentifier: nil, customIdentifier: "tg\(peer.id.toInt64())")
                
                 let intent = INSendMessageIntent(recipients: [recipient], content: nil, speakableGroupName: INSpeakableString(spokenPhrase: displayTitle), conversationIdentifier: "tg\(peer.id.toInt64())", serviceName: nil, sender: nil)
+                // MARK: Regram — `INInteraction` asserts the Siri entitlement and calls abort()
+                // when the running signature does not carry it, from inside a `dispatch_once` where
+                // the exception cannot be caught. Donating only feeds Siri suggestions, so a build
+                // re-signed without Siri simply skips it.
+                guard rgSignatureGrants(RGEntitlement.siri) else {
+                    return
+                }
                 let interaction = INInteraction(intent: intent, response: nil)
                 interaction.direction = .outgoing
                 interaction.groupIdentifier = "sendMessage_\(peer.id.toInt64())"
@@ -214,13 +222,15 @@ public func donateSendMessageIntent(account: Account, sharedContext: SharedAccou
 }
 
 public func deleteSendMessageIntents(peerId: EnginePeer.Id) {
-    if #available(iOS 10.0, *) {
+    // MARK: Regram — see donateSendMessageIntent below; every INInteraction entry point aborts
+    // the process when the running signature lacks the Siri entitlement.
+    if rgSignatureGrants(RGEntitlement.siri), #available(iOS 10.0, *) {
         INInteraction.delete(with: "sendMessage_\(peerId.toInt64())")
     }
 }
 
 public func deleteAllSendMessageIntents() {
-    if #available(iOS 10.0, *) {
+    if rgSignatureGrants(RGEntitlement.siri), #available(iOS 10.0, *) {
         INInteraction.deleteAll()
     }
 }

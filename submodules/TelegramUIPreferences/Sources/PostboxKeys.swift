@@ -2,6 +2,7 @@ import Foundation
 import TelegramCore
 
 private enum ApplicationSpecificPreferencesKeyValues: Int32 {
+    case RGUISettings = 900
     case voipDerivedState = 16
     case chatArchiveSettings = 17
     case chatListFilterSettings = 18
@@ -12,6 +13,7 @@ private enum ApplicationSpecificPreferencesKeyValues: Int32 {
 }
 
 public struct ApplicationSpecificPreferencesKeys {
+    public static let RGUISettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.RGUISettings.rawValue)
     public static let voipDerivedState: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.voipDerivedState.rawValue)
     public static let chatArchiveSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatArchiveSettings.rawValue)
     public static let chatListFilterSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatListFilterSettings.rawValue)
@@ -28,6 +30,8 @@ public struct ApplicationSpecificPreferencesKeys {
 }
 
 private enum ApplicationSpecificSharedDataKeyValues: Int32 {
+    // MARK: Regram
+    case rgStatus = 999
     case inAppNotificationSettings = 0
     case presentationPasscodeSettings = 1
     case automaticMediaDownloadSettings = 2
@@ -54,6 +58,8 @@ private enum ApplicationSpecificSharedDataKeyValues: Int32 {
 }
 
 public struct ApplicationSpecificSharedDataKeys {
+    // MARK: Regram
+    public static let rgStatus: EngineDataBuffer = applicationSpecificSharedDataKey(ApplicationSpecificSharedDataKeyValues.rgStatus.rawValue)
     public static let inAppNotificationSettings: EngineDataBuffer = applicationSpecificSharedDataKey(ApplicationSpecificSharedDataKeyValues.inAppNotificationSettings.rawValue)
     public static let presentationPasscodeSettings: EngineDataBuffer = applicationSpecificSharedDataKey(ApplicationSpecificSharedDataKeyValues.presentationPasscodeSettings.rawValue)
     public static let automaticMediaDownloadSettings: EngineDataBuffer = applicationSpecificSharedDataKey(ApplicationSpecificSharedDataKeyValues.automaticMediaDownloadSettings.rawValue)

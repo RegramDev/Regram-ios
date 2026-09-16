@@ -17,6 +17,12 @@ load(
     "ios_test_runner",
 )
 
+# MARK: Regram
+load("@build_bazel_rules_apple//apple:watchos.bzl",
+    "watchos_application",
+    "watchos_extension",
+)
+
 load("@build_bazel_rules_apple//apple:resources.bzl",
     "swift_intent_library",
 )
@@ -158,9 +164,14 @@ genrule(
         "GeneratedPresentationStrings/Sources/PresentationStrings.m",
         "GeneratedPresentationStrings/Resources/PresentationStrings.data",
     ],
+    # MARK: Regram
+    visibility = [
+        "//visibility:public",
+    ],
 )
 
 minimum_os_version = "13.0"
+minimum_watchos_version="7.0" # MARK: Regram
 
 notificationServiceExtensionVersion = "v1"
 
@@ -269,9 +280,12 @@ filegroup(
     name = "AppStringResources",
     srcs = [
         "Telegram-iOS/en.lproj/Localizable.strings",
+        "//Regram/RGStrings:RGLocalizableStrings",
     ] + [
         "{}.lproj/Localizable.strings".format(language) for language in empty_languages
     ],
+    # MARK: Regram
+    visibility = ["//visibility:public",],
 )
 
 filegroup(
@@ -296,42 +310,53 @@ filegroup(
 )
 
 filegroup(
-    name = "AppIcons",
-    srcs = glob([
-        "Telegram-iOS/AppIcons.xcassets/**/*",
-    ], exclude = ["Telegram-iOS/AppIcons.xcassets/**/.*"]),
-)
-
-filegroup(
     name = "DefaultAppIcon",
     srcs = glob([
         "Telegram-iOS/DefaultAppIcon.xcassets/**/*",
     ], exclude = ["Telegram-iOS/DefaultAppIcon.xcassets/**/.*"]),
 )
 
-filegroup(
-    name = "DefaultIcon",
-    srcs = glob([
-        "Telegram-iOS/AppIcons.xcassets/BlueIcon.appiconset/*.png",
-    ]),
-)
-
+# MARK: Regram alternative icons
 alternate_icon_folders = [
-    "BlackIcon",
-    "BlackClassicIcon",
-    "BlackFilledIcon",
+    "SGDefault",
+    "SGBlack",
+    "SGLegacy",
+    "SGInverted",
+    "SGWhite",
+    "SGNight",
+    "SGSky",
+    "SGTitanium",
+    "SGNeon",
+    "SGNeonBlue",
+    "SGGlass",
+    "SGSparkling",
+    "SGBeta",
+    "SGPro",
+    "SGGold",
+    "SGDucky",
+    "SGDay",
+    # MARK: Regram — custom icons
+    "RGAnime",
+    "RGSilver",
+    # Stock Telegram icons, restored from upstream (Swiftgram replaces the list wholesale).
     "BlueIcon",
+    "BlackIcon",
     "BlueClassicIcon",
+    "BlackClassicIcon",
     "BlueFilledIcon",
+    "BlackFilledIcon",
     "WhiteFilledIcon",
     "New1",
     "New2",
     "Premium",
-    "PremiumBlack",
     "PremiumTurbo",
+    "PremiumBlack"
 ]
 
-composer_icon_folders = ["Telegram"]
+# MARK: Regram — the *primary* icon, which is also the one iOS draws on every notification.
+# Notifications always use the primary icon and never follow `setAlternateIconName`, so picking
+# Regram from the in-app icon list cannot change them; only this can.
+composer_icon_folders = ["Regram"]
 
 [
     filegroup(
@@ -366,13 +391,15 @@ objc_library(
     ],
 )
 
+RGRESOURCES = ["//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGPayWall:RGPayWallAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
+
 swift_library(
     name = "Lib",
     module_name = "Lib",
     srcs = glob([
         "Telegram-iOS/Application.swift",
     ]),
-    data = [
+    data = RGRESOURCES + [
         ":Icons",
         ":AppResources",
         ":AppIntentVocabularyResources",
@@ -434,6 +461,17 @@ plist_fragment(
                 <string>tonsite</string>
             </array>
         </dict>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>CFBundleURLName</key>
+            <string>{telegram_bundle_id}.custom</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>regram</string>
+                <string>sg</string>
+            </array>
+        </dict>
     </array>
     """.format(
         telegram_bundle_id = telegram_bundle_id,
@@ -492,7 +530,9 @@ official_carplay_fragment = """
 <key>com.apple.developer.carplay-messaging</key>
 <true/>
 """
-carplay_fragment = official_carplay_fragment if telegram_bundle_id in official_bundle_ids else ""
+# MARK: Regram — approval-only, same as the two fragments below; there is no upside to
+# declaring an entitlement no signing profile available to this build will ever grant.
+carplay_fragment = official_carplay_fragment if False else ""  # MARK: Regram — approval-only; no profile available to a re-signed build grants these, so declaring them buys nothing and can make a strict signer refuse the IPA.
 
 icloud_fragment = "" if not telegram_enable_icloud else """
 <key>com.apple.developer.icloud-services</key>
@@ -520,6 +560,8 @@ associated_domains_fragment = "" if telegram_bundle_id not in official_bundle_id
     <string>applinks:telegram.me</string>
     <string>applinks:t.me</string>
     <string>applinks:*.t.me</string>
+    <string>applinks:swiftgram.app</string>
+    <string>webcredentials:swiftgram.app</string>
     <string>webcredentials:t.me</string>
     <string>webcredentials:telegram.org</string>
 </array>
@@ -551,13 +593,16 @@ official_communication_notifications_fragment = """
 <key>com.apple.developer.usernotifications.communication</key>
 <true/>
 """
-communication_notifications_fragment = official_communication_notifications_fragment if telegram_bundle_id in official_bundle_ids else ""
+communication_notifications_fragment = official_communication_notifications_fragment # if telegram_bundle_id in official_bundle_ids else ""
 
 official_notification_filtering_fragment = """
 <key>com.apple.developer.usernotifications.filtering</key>
 <true/>
 """
-notification_filtering_fragment = official_notification_filtering_fragment if telegram_bundle_id == "ph.telegra.Telegraph" else ""
+# MARK: Regram — Apple grants this only on request, so a re-signed build's profile never
+# carries it. A signing tool that copies entitlements through instead of replacing them then
+# produces an IPA iOS refuses to install, so a publicly distributed build must not claim it.
+notification_filtering_fragment = official_notification_filtering_fragment if False else ""  # MARK: Regram — approval-only; no profile available to a re-signed build grants these, so declaring them buys nothing and can make a strict signer refuse the IPA.
 
 store_signin_fragment = """
 <key>com.apple.developer.applesignin</key>
@@ -571,7 +616,8 @@ official_background_gpu_fragment = """
 <key>com.apple.developer.background-tasks.continued-processing.gpu</key>
 <true/>
 """
-background_gpu_fragment = official_background_gpu_fragment if telegram_bundle_id == "ph.telegra.Telegraph" else ""
+# MARK: Regram — same approval-only restriction as notification filtering above.
+background_gpu_fragment = official_background_gpu_fragment if False else ""  # MARK: Regram — approval-only; no profile available to a re-signed build grants these, so declaring them buys nothing and can make a strict signer refuse the IPA.
 
 plist_fragment(
     name = "TelegramEntitlements",
@@ -629,7 +675,7 @@ plist_fragment(
     template =
     """
     <key>CFBundleDisplayName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     """
 )
 
@@ -867,6 +913,14 @@ genrule(
     cmd_bash =
 """
     echo 'for f in $$1/*.framework; do binary_name=`echo $$(basename $$f) | sed -e "s/\\\\.framework//"`; strip -ST $$f/$$binary_name; done;' > $(location StripFramework.sh)
+    # MARK: Regram
+    echo 'find "$$1" -type f \\( -perm +111 -o -name "*.dylib" \\) | while read -r bin; do \
+        if otool -L "$$bin" | grep -q "/usr/lib/swift/libswift_Concurrency.dylib"; then \
+            echo "Patching concurrency backport in: $$bin"; \
+            chmod +w "$$(dirname $$bin)/"; \
+            install_name_tool -change /usr/lib/swift/libswift_Concurrency.dylib @rpath/libswift_Concurrency.dylib "$$bin"; \
+        fi; \
+    done;' >> $(location StripFramework.sh)
     echo '' >> $(location StripFramework.sh)
 """,
     outs = [
@@ -962,7 +1016,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Share</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1012,6 +1066,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI",
         "//submodules/TelegramUI/Components/ShareExtensionContext"
     ],
@@ -1054,7 +1109,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationContent</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1099,6 +1154,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI:TelegramUI",
         ":NotificationContentExtensionLink",
     ],
@@ -1161,7 +1217,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Widget</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1197,6 +1253,7 @@ swift_library(
         ":WidgetAssets",
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/WidgetItems:WidgetItems_iOS14",
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
@@ -1274,7 +1331,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.SiriIntents</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1334,6 +1391,7 @@ swift_library(
         ":IntentsAssets"
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Postbox:Postbox",
         "//submodules/TelegramApi:TelegramApi",
@@ -1395,6 +1453,147 @@ ios_extension(
     ],
 )
 
+# MARK: Regram
+# TODO(regram): Localize CFBundleDisplayName
+plist_fragment(
+    name = "SGActionRequestHandlerInfoPlist",
+    extension = "plist",
+    template = 
+    """
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleIdentifier</key>
+    <string>{telegram_bundle_id}.SGActionRequestHandler</string>
+    <key>CFBundleName</key>
+    <string>Regram</string>
+    <key>CFBundleDisplayName</key>
+    <string>Open in Regram</string>
+    <key>CFBundlePackageType</key>
+    <string>XPC!</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>NSExtensionActivationRule</key>
+			<dict>
+				<key>NSExtensionActivationSupportsFileWithMaxCount</key>
+				<integer>0</integer>
+				<key>NSExtensionActivationSupportsImageWithMaxCount</key>
+				<integer>0</integer>
+				<key>NSExtensionActivationSupportsMovieWithMaxCount</key>
+				<integer>0</integer>
+				<key>NSExtensionActivationSupportsText</key>
+				<false/>
+				<key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
+				<integer>1</integer>
+			</dict>
+			<key>NSExtensionJavaScriptPreprocessingFile</key>
+			<string>Action</string>
+			<key>NSExtensionServiceAllowsFinderPreviewItem</key>
+			<true/>
+			<key>NSExtensionServiceAllowsTouchBarItem</key>
+			<true/>
+			<key>NSExtensionServiceFinderPreviewIconName</key>
+			<string>NSActionTemplate</string>
+			<key>NSExtensionServiceTouchBarBezelColorName</key>
+			<string>TouchBarBezel</string>
+			<key>NSExtensionServiceTouchBarIconName</key>
+			<string>NSActionTemplate</string>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.services</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>SGActionRequestHandler</string>
+	</dict>
+    """.format(
+        telegram_bundle_id = telegram_bundle_id,
+    )
+)
+
+# TODO(regram): Proper icon
+filegroup(
+    name = "SGActionRequestHandlerAssets",
+    srcs = glob(["SGActionRequestHandler/Media.xcassets/**"]),
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "SGActionRequestHandlerScript",
+    srcs = ["SGActionRequestHandler/Action.js"],
+    visibility = ["//visibility:public"],
+)
+
+swift_library(
+    name = "SGActionRequestHandlerLib",
+    module_name = "SGActionRequestHandlerLib",
+    srcs = glob([
+        "SGActionRequestHandler/**/*.swift",
+    ]),
+    copts = [
+        "-warnings-as-errors",
+    ],
+    data = [
+        ":SGActionRequestHandlerAssets",
+        ":SGActionRequestHandlerScript"
+    ],
+    deps = [
+        "//submodules/UrlEscaping:UrlEscaping"
+    ],
+)
+
+genrule(
+    name = "SetMinOsVersionSGActionRequestHandler",
+    cmd_bash =
+"""
+    name=SGActionRequestHandler.appex
+    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/14\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionSGActionRequestHandler.sh)
+""",
+    srcs = [
+        "PatchMinOSVersion.source.sh",
+    ],
+    outs = [
+        "SetMinOsVersionSGActionRequestHandler.sh",
+    ],
+    executable = True,
+    visibility = [
+        "//visibility:public",
+    ]
+)
+
+ios_extension(
+    name = "SGActionRequestHandler",
+    bundle_id = "{telegram_bundle_id}.SGActionRequestHandler".format(
+        telegram_bundle_id = telegram_bundle_id,
+    ),
+    families = [
+        "iphone",
+        "ipad",
+    ],
+    infoplists = [
+        ":SGActionRequestHandlerInfoPlist",
+        ":VersionInfoPlist",
+        ":RequiredDeviceCapabilitiesPlist",
+        ":BuildNumberInfoPlist",
+        # ":AppNameInfoPlist",
+    ],
+    minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
+    ipa_post_processor = ":SetMinOsVersionSGActionRequestHandler",
+    #provides_main = True,
+    provisioning_profile = select({
+        ":disableProvisioningProfilesSetting": None,
+        "//conditions:default": "@build_configuration//provisioning:SGActionRequestHandler.mobileprovision",
+    }),
+    deps = [
+        ":SGActionRequestHandlerLib",
+    ],
+    frameworks = [
+    ],
+    visibility = [
+        "//visibility:public",
+    ]
+)
+#
+
 plist_fragment(
     name = "BroadcastUploadInfoPlist",
     extension = "plist",
@@ -1405,7 +1604,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.BroadcastUpload</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1432,6 +1631,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI:TelegramUI",
         "//submodules/TelegramVoip:TelegramVoip",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
@@ -1499,7 +1699,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationService</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1568,11 +1768,11 @@ plist_fragment(
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}</string>
     <key>CFBundleName</key>
-    <string>Telegram</string>
+    <string>Regram</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -1630,17 +1830,17 @@ plist_fragment(
     <key>NSCameraUsageDescription</key>
     <string>We need this so that you can take and share photos and videos.</string>
     <key>NSContactsUsageDescription</key>
-    <string>Telegram stores your contacts heavily encrypted in the cloud to let you connect with your friends across all your devices.</string>
+    <string>Regram stores your contacts heavily encrypted in the Telegram cloud to let you connect with your friends across all your devices.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>You can use Face ID to unlock the app.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>When you send your location to your friends, Telegram needs access to show them a map. You also need this to send locations from an Apple Watch.</string>
+    <string>When you send your location to your friends, Regram needs access to show them a map. You also need this to send locations from an Apple Watch.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>When you send your location to your friends, Telegram needs access to show them a map.</string>
+    <string>When you send your location to your friends, Regram needs access to show them a map.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>We need this so that you can record and share voice messages and videos with sound.</string>
     <key>NSMotionUsageDescription</key>
-    <string>When you send your location to your friends, Telegram needs access to show them a map.</string>
+    <string>When you send your location to your friends, Regram needs access to show them a map.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>We need this so that you can share photos and videos from your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
@@ -1746,7 +1946,7 @@ xcode_provisioning_profile(
 )
 
 apple_prebuilt_watchos_application(
-    name = "TelegramWatchApp",
+    name = "RegramWatchApp",
     # Watch bundle id tracks the host config ("<host>.watchkitapp"). The rule passes it
     # to xcodebuild as PRODUCT_BUNDLE_IDENTIFIER (baked + signed); the watch Info.plist
     # derives WKCompanionAppBundleIdentifier from it via $(PRODUCT_BUNDLE_IDENTIFIER:base),
@@ -1759,7 +1959,7 @@ apple_prebuilt_watchos_application(
 )
 
 ios_application(
-    name = "Telegram",
+    name = "Regram",
     bundle_id = "{telegram_bundle_id}".format(
         telegram_bundle_id = telegram_bundle_id,
     ),
@@ -1795,9 +1995,12 @@ ios_application(
     strings = [
         ":AppStringResources",
     ],
+    # MARK: Regram
+    settings_bundle = "//Regram/RGSettingsBundle:RGSettingsBundle",
     extensions = select({
         ":disableExtensionsSetting": [],
         "//conditions:default": [
+            # ":SGActionRequestHandler", # UX sucks https://t.me/swiftgramchat/7335
             ":ShareExtension",
             ":NotificationContentExtension",
             ":NotificationServiceExtension" + notificationServiceExtensionVersion,
@@ -1810,7 +2013,7 @@ ios_application(
     # --//Telegram:embedWatchApp is set (Make.py sets it for device configs when
     # --embedWatchApp is passed). Off by default, so simulator/dev builds are unaffected.
     watch_application = select({
-        ":embedWatchAppSetting": ":TelegramWatchApp",
+        ":embedWatchAppSetting": ":RegramWatchApp",
         "//conditions:default": None,
     }),
     deps = [
@@ -1823,10 +2026,11 @@ ios_application(
 xcodeproj(
     name = "Telegram_xcodeproj",
     bazel_path = telegram_bazel_path,
-    project_name = "Telegram",
+    bazel_env = {"LANG": "en_US.UTF-8","PATH": "/opt/homebrew/bin:/usr/local/bin:/bin:/usr/bin"}, # MARK: Regram, otherwise Bazel through xcode does not see ccache
+    project_name = "Regram",
     tags = ["manual"],
     top_level_targets = [
-        top_level_target(":Telegram", target_environments = ["device", "simulator"]),
+        top_level_target(":Regram", target_environments = ["device", "simulator"]),
         ":iOSAppUITestSuite",
     ],
     xcode_configurations = {
@@ -1868,7 +2072,7 @@ ios_ui_test_suite(
         ":iPhone-17__26.2",
     ],
     tags = ["manual"],
-    test_host = "//Telegram",
+    test_host = "//Telegram:Regram", # MARK: Regram
     visibility = ["@rules_xcodeproj//xcodeproj:generated"],
     deps = [":iOSAppUITestSuite.library"],
 )

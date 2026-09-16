@@ -4,6 +4,21 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 import EncryptionProvider
+import RGSimpleSettings
+
+// MARK: Regram — anti-revoke marker. Adds RGRevokedMessageAttribute to a kept message in place of
+// deleting it, so the chat can render a "deleted" indicator. No-op if it is already marked.
+private func rgMarkMessageRevoked(transaction: Transaction, id: MessageId) {
+    transaction.updateMessage(id, update: { currentMessage in
+        if currentMessage.attributes.contains(where: { $0 is RGRevokedMessageAttribute }) {
+            return .skip
+        }
+        var attributes = currentMessage.attributes
+        attributes.append(RGRevokedMessageAttribute(date: currentMessage.timestamp))
+        let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
+        return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
+    })
+}
 
 private func reactionGeneratedEvent(_ previousReactions: ReactionsMessageAttribute?, _ updatedReactions: ReactionsMessageAttribute?, message: Message, transaction: Transaction) -> (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)? {
     if let updatedReactions = updatedReactions, !message.flags.contains(.Incoming), message.id.peerId.namespace == Namespaces.Peer.CloudUser {
@@ -4440,6 +4455,15 @@ func replayFinalState(
                     }
                 }
             case let .DeleteMessagesWithGlobalIds(ids):
+                // MARK: Regram — Anti-revoke. Keep the message and tag it as revoked so the UI can
+                // show a "deleted" indicator, instead of silently keeping it unchanged. Private chats
+                // revoke via global ids, so resolve them to local message ids first.
+                if RGSimpleSettings.shared.antiRevoke {
+                    for messageId in transaction.messageIdsForGlobalIds(ids) {
+                        rgMarkMessageRevoked(transaction: transaction, id: messageId)
+                    }
+                    break
+                }
                 var resourceIds: [MediaResourceId] = []
                 transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                     addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
@@ -4449,6 +4473,13 @@ func replayFinalState(
                 }
                 deletedMessageIds.append(contentsOf: ids.map { .global($0) })
             case let .DeleteMessages(ids):
+                // MARK: Regram — Anti-revoke. Channels/supergroups revoke via per-peer message ids.
+                if RGSimpleSettings.shared.antiRevoke {
+                    for messageId in ids {
+                        rgMarkMessageRevoked(transaction: transaction, id: messageId)
+                    }
+                    break
+                }
                 _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
                     addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                 })

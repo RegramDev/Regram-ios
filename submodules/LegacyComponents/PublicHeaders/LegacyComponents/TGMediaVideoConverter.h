@@ -2,6 +2,11 @@
 
 #import <LegacyComponents/TGVideoEditAdjustments.h>
 
+// MARK: Regram
+#import <VideoToolbox/VideoToolbox.h>
+#import <MediaPlayer/MediaPlayer.h>
+//
+
 @interface TGMediaVideoFileWatcher : NSObject
 {
     NSURL *_fileURL;

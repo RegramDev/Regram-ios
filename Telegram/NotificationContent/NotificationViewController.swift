@@ -3,6 +3,7 @@ import UserNotifications
 import UserNotificationsUI
 import TelegramUI
 import BuildConfig
+import RGAppGroupIdentifier
 
 @objc(NotificationViewController)
 @available(iOSApplicationExtension 10.0, iOS 10.0, *)
@@ -24,8 +25,10 @@ class NotificationViewController: UIViewController, UNNotificationContentExtensi
             
             let languagesCategory = "ios"
             
-            let appGroupName = "group.\(baseAppBundleId)"
-            let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+            // MARK: Regram — must resolve the container the same way the app does; a re-signing
+            // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
+            // account to read and the app with data it cannot see.
+            let maybeAppGroupUrl = rgDataContainerURL()
             
             guard let appGroupUrl = maybeAppGroupUrl else {
                 return

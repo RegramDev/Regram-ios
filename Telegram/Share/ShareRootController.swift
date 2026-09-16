@@ -4,6 +4,7 @@ import BuildConfig
 import ShareExtensionContext
 import SwiftSignalKit
 import TelegramCore
+import RGAppGroupIdentifier
 
 @objc(ShareRootController)
 class ShareRootController: UIViewController {
@@ -19,12 +20,36 @@ class ShareRootController: UIViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: Regram — upstream just returns from `loadView` when it cannot reach the app's data,
+    // which leaves an empty full-screen view controller that never completes or cancels the
+    // extension request: the share sheet shows a blank page the user can only force-close. Say what
+    // happened and dismiss instead.
+    private func failWithUnavailableData() {
+        self.view.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+
+        let alert = UIAlertController(
+            title: "Sharing Unavailable",
+            message: "This build cannot reach the app's data from the share sheet. Open the app and send from there.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel) { [weak self] _ in
+            self?.extensionContext?.cancelRequest(withError: NSError(domain: "ShareExtension", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Shared data container is unavailable"
+            ]))
+        })
+        // `loadView` runs before the view is in a window, so presenting has to wait a beat.
+        Queue.mainQueue().after(0.1) { [weak self] in
+            self?.present(alert, animated: true)
+        }
+    }
+
     override func loadView() {
         super.loadView()
-        
+
         if self.impl == nil {
             let appBundleIdentifier = Bundle.main.bundleIdentifier!
             guard let lastDotRange = appBundleIdentifier.range(of: ".", options: [.backwards]) else {
+                self.failWithUnavailableData()
                 return
             }
             
@@ -34,10 +59,13 @@ class ShareRootController: UIViewController {
             
             let languagesCategory = "ios"
             
-            let appGroupName = "group.\(baseAppBundleId)"
-            let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)
+            // MARK: Regram — must resolve the container the same way the app does; a re-signing
+            // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
+            // account to read and the app with data it cannot see.
+            let maybeAppGroupUrl = rgDataContainerURL()
             
             guard let appGroupUrl = maybeAppGroupUrl else {
+                self.failWithUnavailableData()
                 return
             }
             

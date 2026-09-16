@@ -1,6 +1,11 @@
+import RGStrings
+import RGSimpleSettings
+import RGProUI
+import PeerInfoUI
 import Foundation
 import UIKit
 import TelegramCore
+import Postbox
 import AsyncDisplayKit
 import Display
 import UIKit
@@ -508,6 +513,16 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
     if case .standard(.embedded) = chatPresentationInterfaceState.mode {
         isEmbeddedMode = true
     }
+    // MARK: Regram
+    var canReveal = false
+    if !chatPresentationInterfaceState.copyProtectionEnabled {
+        outer: for message in messages {
+            if message.canRevealContent(contentSettings: context.currentContentSettings.with { $0 }) {
+                canReveal = true
+                break outer
+            }
+        }
+    }
 
     if case let .customChatContents(customChatContents) = chatPresentationInterfaceState.subject, case .hashTagSearch = customChatContents.kind {
         isEmbeddedMode = true
@@ -663,7 +678,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             messageEntities = attribute.entities
                         }
                         if let attribute = attribute as? RestrictedContentMessageAttribute {
-                            restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) ?? ""
+                            restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }, chatId: message.author?.id.id._internalGetInt64Value()) ?? ""
                         }
                     }
                     
@@ -990,6 +1005,35 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 })
             })))
         }
+        var rgActions: [ContextMenuItem] = []
+
+        // MARK: Regram — items the user can toggle and reorder are collected here instead of being
+        // appended in place, then emitted together further down in `RGSimpleSettings.shared
+        // .contextMenuOrder`. Collecting is what makes ordering possible at all: upstream builds the
+        // menu by appending in source order, so an item's position is otherwise a property of where
+        // its code happens to sit.
+        var rgManaged: [RGContextMenuItemId: ContextMenuItem] = [:]
+        // Where the managed block goes back in: the position the *first* managed item would have
+        // occupied. Anchoring there keeps the group roughly where the menu used to start rather than
+        // dumping it at the end.
+        var rgManagedAnchor: Int? = nil
+        func rgCollect(_ id: RGContextMenuItemId, _ item: ContextMenuItem) {
+            if rgManagedAnchor == nil {
+                rgManagedAnchor = actions.count
+            }
+            rgManaged[id] = item
+        }
+        /// For upstream items: takes back the one just appended to `actions`.
+        func rgCollectLast(_ id: RGContextMenuItemId) {
+            guard !actions.isEmpty else {
+                return
+            }
+            let item = actions.removeLast()
+            if rgManagedAnchor == nil {
+                rgManagedAnchor = actions.count
+            }
+            rgManaged[id] = item
+        }
 
         var isPinnedMessages = false
         if case .pinnedMessages = chatPresentationInterfaceState.subject {
@@ -1224,6 +1268,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     })
                 })
             })))
+            rgCollectLast(.reply)
         }
         
         if data.messageActions.options.contains(.sendScheduledNow) {
@@ -1362,7 +1407,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                             messageEntities = attribute.entities
                                         }
                                         if let attribute = attribute as? RestrictedContentMessageAttribute {
-                                            restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) ?? ""
+                                            restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }, chatId: message.author?.id.id._internalGetInt64Value()) ?? ""
                                         }
                                         if let attribute = attribute as? AudioTranscriptionMessageAttribute {
                                             messageText = attribute.text
@@ -1506,6 +1551,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     })
                     f(.default)
                 })))
+                rgCollectLast(.saveMedia)
             }
         }
         
@@ -1551,6 +1597,140 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             })))
         }
         
+        let showJsonAction: ContextMenuItem = .action(ContextMenuActionItem(text: "JSON", icon: { theme in
+            return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Settings"), color: theme.actionSheet.primaryTextColor)
+        }, action: { _, f in
+            showMessageJson(controllerInteraction: controllerInteraction, chatPresentationInterfaceState: chatPresentationInterfaceState, message: message, context: context)
+            f(.default)
+        }))
+        rgCollect(.json, showJsonAction)
+
+        // MARK: Regram — send the referenced message's text to the message filter. The filter
+        // screen opens with the text prefilled rather than committing it blind: a whole message
+        // body is rarely the keyword you want, so the user trims it and taps add.
+        if !message.text.isEmpty, message.effectivelyIncoming(context.account.peerId) {
+            let prefill = String(message.text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+            rgActions.append(.action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                controllerInteraction.navigationController()?.pushViewController(rgMessageFilterController(context: context, presentationData: presentationData, initialKeyword: prefill))
+                f(.default)
+            })))
+            // "Copy & Add to Filter" is deliberately *not* offered here: it belongs to a text
+            // selection (see TextSelectionNode), because a rule built from an entire message body
+            // would only ever match that one message.
+        }
+
+        // MARK: Regram — 复读 / 无引用复读. Both send into *this* conversation, so both need send
+        // permission here.
+        if message.id.namespace == Namespaces.Message.Cloud {
+            let rgLang = chatPresentationInterfaceState.strings.baseLanguageCode
+            let rgCanSendHere = canSendMessagesToChat(chatPresentationInterfaceState)
+            var rgThreadId: Int64?
+            if case let .replyThread(replyThreadMessage) = chatPresentationInterfaceState.chatLocation {
+                rgThreadId = replyThreadMessage.threadId
+            }
+
+            // Media that can be re-sent as a brand-new message. Cloud photos and files are sent by
+            // their existing id/access_hash, so nothing is re-uploaded, while maps and contacts are
+            // plain values. `nil` means the message holds something that only exists as a forward
+            // (poll, game, invoice, story, service action) — then only the forward action is offered.
+            // A webpage is skipped rather than rejected: it is the preview of a link in the text and
+            // the server regenerates it.
+            func rgRepeatableMedia(of sourceMessage: Message) -> [Media]? {
+                var result: [Media] = []
+                for media in sourceMessage.media {
+                    if media is TelegramMediaWebpage {
+                        continue
+                    }
+                    if media is TelegramMediaImage || media is TelegramMediaFile || media is TelegramMediaMap || media is TelegramMediaContact {
+                        result.append(media)
+                    } else {
+                        return nil
+                    }
+                }
+                return result
+            }
+
+            // The context menu is handed the whole album when one of its items is long-pressed, so
+            // repeating rebuilds the album rather than picking one photo out of it.
+            var rgRepeatItems: [(message: Message, media: Media?)] = []
+            var rgCanRepeat = !messages.isEmpty
+            for sourceMessage in messages {
+                guard sourceMessage.id.namespace == Namespaces.Message.Cloud, let media = rgRepeatableMedia(of: sourceMessage) else {
+                    rgCanRepeat = false
+                    break
+                }
+                if media.isEmpty && sourceMessage.text.isEmpty {
+                    rgCanRepeat = false
+                    break
+                }
+                rgRepeatItems.append((sourceMessage, media.first))
+            }
+
+            /// Re-sends the message's own content into this chat under your name. Unlike a forward
+            /// this produces an ordinary message with no link back to the original, which is the
+            /// point of 无引用复读.
+            let rgSendCopy: () -> Void = {
+                var enqueued: [EnqueueMessage] = []
+                let groupingKey: Int64? = rgRepeatItems.count > 1 ? Int64.random(in: Int64.min ... Int64.max) : nil
+                for item in rgRepeatItems {
+                    var attributes: [MessageAttribute] = []
+                    if let entities = (item.message.attributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities, !entities.isEmpty {
+                        attributes.append(TextEntitiesMessageAttribute(entities: entities))
+                    }
+                    // Custom emoji in the text are entities pointing at files carried alongside the
+                    // message; without them the copy would render as plain fallback characters.
+                    var inlineStickers: [MediaId: Media] = [:]
+                    for (mediaId, media) in item.message.associatedMedia {
+                        if media is TelegramMediaFile {
+                            inlineStickers[mediaId] = media
+                        }
+                    }
+                    // A `.message` reference (rather than `.standalone`) records where the media came
+                    // from, which is what lets an expired file reference be revalidated instead of
+                    // failing the send — and it is what makes sending into *another* chat work at all.
+                    let mediaReference: AnyMediaReference? = item.media.flatMap { AnyMediaReference.message(message: MessageReference(item.message), media: $0) }
+                    enqueued.append(.message(text: item.message.text, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: rgThreadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: []))
+                }
+                if enqueued.isEmpty {
+                    return
+                }
+                let _ = enqueueMessages(account: context.account, peerId: message.id.peerId, messages: enqueued).startStandalone()
+            }
+
+            let rgForwardSources = messages.filter({ $0.id.namespace == Namespaces.Message.Cloud }).map({ $0.id })
+
+            // 复读: a plain forward straight back into this chat — no chat picker, attribution left
+            // intact. A forward rather than a copy so that anything a forward can carry (polls, games,
+            // service content) repeats too, which the copy below cannot do.
+            //
+            // 无引用转发 is deliberately absent here: it is the same "forward, hiding the sender"
+            // upstream already offers, collected as `.forwardNoQuote` further down rather than
+            // duplicated.
+            if rgCanSendHere, !rgForwardSources.isEmpty {
+                rgCollect(.repeatForward, .action(ContextMenuActionItem(text: "Repeat.WithReply".i18n(rgLang), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.actionSheet.primaryTextColor)
+                }, action: { _, f in
+                    let enqueued: [EnqueueMessage] = rgForwardSources.map { id in
+                        return .forward(source: id, threadId: rgThreadId, grouping: .auto, attributes: [], correlationId: nil)
+                    }
+                    let _ = enqueueMessages(account: context.account, peerId: message.id.peerId, messages: enqueued).startStandalone()
+                    f(.dismissWithoutContent)
+                })))
+            }
+            // 无引用复读: the same content re-sent here as your own message.
+            if rgCanSendHere, rgCanRepeat {
+                rgCollect(.repeatCopy, .action(ContextMenuActionItem(text: "Repeat.Plain".i18n(rgLang), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.actionSheet.primaryTextColor)
+                }, action: { _, f in
+                    rgSendCopy()
+                    f(.dismissWithoutContent)
+                })))
+            }
+        }
+
         var threadId: Int64?
         var threadMessageCount: Int = 0
         if case .peer = chatPresentationInterfaceState.chatLocation, let channel = chatPresentationInterfaceState.renderedPeer?.peer as? TelegramChannel, case .group = channel.info {
@@ -1589,6 +1769,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     controllerInteraction.openMessageReplies(messages[0].id, true, true)
                 })
             })))
+            rgCollectLast(.messageReplies)
         }
         
         let isMigrated: Bool
@@ -1739,6 +1920,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.pinMessage(messages[0].id, c)
                 })))
             }
+            rgCollectLast(.pin)
         }
         
         if let activePoll, messages[0].forwardInfo == nil {
@@ -1927,18 +2109,47 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
-                    interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message])
+                    interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], nil)
                     f(.dismissWithoutContent)
                 })))
+                if message.id.peerId != context.account.peerId {
+                    let action: ContextMenuItem = .action(ContextMenuActionItem(text: i18n("ContextMenu.SaveToCloud", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Fave"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { _, f in
+                        interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], "forwardMessagesToCloud")
+                        f(.dismissWithoutContent)
+                    }))
+                    rgCollect(.saveToCloud, action)
+                }
+                // MARK: Regram — 无引用转发. This upstream item already *is* "forward, hiding the
+                // sender", so it is named as such rather than duplicated: it goes through the normal
+                // forward flow (chat picker, multi-select, poll/todo restrictions) with names off.
+                let action: ContextMenuItem = .action(ContextMenuActionItem(text: "Repeat.ForwardNoQuote".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
+                }, action: { _, f in
+                    interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], "forwardMessagesWithNoNames")
+                    f(.dismissWithoutContent)
+                }))
+                rgCollect(.forwardNoQuote, action)
             }
         }
         
-        if data.messageActions.options.contains(.report) {
+        if canReveal {
+            actions.insert(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Username_ActivateAlertShow, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Premium/Stories/Views" /*"Chat/Context Menu/Eye"*/ ), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], "forwardMessagesToCloudWithNoNamesAndOpen")
+                f(.dismissWithoutContent)
+            })), at: 0)
+        }
+        
+        if data.messageActions.options.contains(.report) || context.account.testingEnvironment {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuReport, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Report"), color: theme.actionSheet.primaryTextColor)
             }, action: { controller, f in
                 interfaceInteraction.reportMessages(messages, controller)
             })))
+            rgCollectLast(.report)
         } else if message.id.peerId.isReplies {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBlock, textColor: .destructive, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Restrict"), color: theme.actionSheet.destructiveActionTextColor)
@@ -1946,6 +2157,50 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 interfaceInteraction.blockMessageAuthor(message, controller)
             })))
         }
+        
+        if let peer = chatPresentationInterfaceState.renderedPeer?.peer ?? message.peers[message.id.peerId] {
+            let hasRestrictPermission: Bool
+            if let channel = peer as? TelegramChannel {
+                hasRestrictPermission = channel.hasPermission(.banMembers)
+            } else if let group = peer as? TelegramGroup {
+                switch group.role {
+                case .creator:
+                    hasRestrictPermission = true
+                case let .admin(adminRights, _):
+                    hasRestrictPermission = adminRights.rights.contains(.canBanUsers)
+                case .member:
+                    hasRestrictPermission = false
+                }
+            } else {
+                hasRestrictPermission = false
+            }
+            
+            if let user = message.author as? TelegramUser {
+                if (user.id != context.account.peerId) && hasRestrictPermission {
+                    let banDisposables = DisposableDict<PeerId>()
+                    // TODO(regram): Check is user an admin?
+                    let action: ContextMenuItem = .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBan, icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Restrict"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { _, f in
+                        let participantSignal: Signal<ChannelParticipant?, NoError>
+                        if peer is TelegramChannel {
+                            participantSignal = context.engine.peers.fetchChannelParticipant(peerId: peer.id, participantId: user.id)
+                        } else if peer is TelegramGroup {
+                            participantSignal = .single(.member(id: user.id, invitedAt: 0, adminInfo: nil, banInfo: nil, rank: nil, subscriptionUntilDate: nil))
+                        } else {
+                            participantSignal = .single(nil)
+                        }
+                        banDisposables.set((participantSignal
+                            |> deliverOnMainQueue).start(next: { participant in
+                        controllerInteraction.presentController(channelBannedMemberController(context: context, peerId: peer.id, memberId: message.author!.id, initialParticipant: participant, updated: { _ in }, upgradedToSupergroup: { _, f in f() }), ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                            }), forKey: user.id)
+                        f(.dismissWithoutContent)
+                    }))
+                    rgCollect(.restrict, action)
+                }
+            }
+        }
+        
         
         var clearCacheAsDelete = false
         var hasViewStats = false
@@ -2098,9 +2353,78 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 return nil
             }, action: noAction)))
         }
-
+        var rgActionsIndex: Int? = nil
         if !isPinnedMessages, !isReplyThreadHead, data.canSelect {
+            rgActionsIndex = actions.count
             var didAddSeparator = false
+            // MARK: Regram
+            if let authorId = message.author?.id {
+                let action: ContextMenuItem = .action(ContextMenuActionItem(text: i18n("ContextMenu.SelectFromUser", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/SelectAll"), color: theme.actionSheet.primaryTextColor)
+                }, action: { _, f in
+                    let progressSignal = Signal<Never, NoError> { subscriber in
+                        let overlayController = OverlayStatusController(theme: chatPresentationInterfaceState.theme, type: .loading(cancelled: nil))
+                        controllerInteraction.presentGlobalOverlayController(overlayController, nil)
+                        return ActionDisposable { [weak overlayController] in
+                            Queue.mainQueue().async() {
+                                overlayController?.dismiss()
+                            }
+                        }
+                    }
+                    |> runOn(Queue.mainQueue())
+                    |> delay(0.2, queue: Queue.mainQueue())
+                    let progressDisposable = progressSignal.start()
+                    let _ = (context.account.postbox.transaction { transaction -> [MessageId] in
+                        let limit = 500
+                        var result: [MessageId] = []
+                        
+                        let needThreadIdFilter: Bool
+                        let searchThreadId: Int64?
+                        switch chatPresentationInterfaceState.chatLocation {
+                            case let .replyThread(replyThreadMessage):
+                                needThreadIdFilter = true
+                                searchThreadId = replyThreadMessage.threadId
+                            default:
+                                needThreadIdFilter = false
+                                searchThreadId = nil
+                        }
+                        transaction.withAllMessages(peerId: message.id.peerId, reversed: true, { searchMessage in
+                            if result.count >= limit {
+                                return false
+                            }
+                            if searchMessage.author?.id == authorId {
+                                // Only messages from current opened thread
+                                // print("searchMessage.threadId:\(String(describing: searchMessage.threadId)) threadId:\(String(describing: threadId)) message.threadId:\(String(describing:message.threadId)) needThreadIdFilter:\(needThreadIdFilter) searchThreadId:\(String(describing:searchThreadId))")
+                                if needThreadIdFilter && searchMessage.threadId != searchThreadId {
+                                    return true
+                                }
+                                // No service messages
+                                if searchMessage.media.contains(where: { $0 is TelegramMediaAction }) {
+                                    return true
+                                }
+                                result.append(searchMessage.id)
+                            }
+                            return true
+                        })
+                        return result
+                    }
+                    |> deliverOnMainQueue)
+                    .start(next: { ids in
+                        interfaceInteraction.beginMessageSelection(ids, { transition in
+                            f(.custom(transition))
+                        })
+                        Queue.mainQueue().async {
+                            progressDisposable.dispose()
+                        }
+                    }, completed: {
+                        Queue.mainQueue().async {
+                            progressDisposable.dispose()
+                        }
+                    })
+                }))
+                rgCollect(.selectFromUser, action)
+            }
+            
             if !selectAll || messages.count == 1 {
                 if !actions.isEmpty && !didAddSeparator {
                     didAddSeparator = true
@@ -2145,6 +2469,78 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }
         } else if let messageReadStatsAreHidden = infoSummaryData.messageReadStatsAreHidden, !messageReadStatsAreHidden {
             canViewStats = canViewReadStats(message: message, participantCount: infoSummaryData.participantCount, isMessageRead: isMessageRead, isPremium: isPremium, appConfig: appConfig)
+        }
+
+        // MARK: Regram — emit the managed items in the user's order.
+        //
+        // Enabled ones go back into the main menu as one contiguous block at the position the first
+        // of them originally held; disabled ones go to the "Regram" submenu, in the same order. This
+        // runs before the submenu is assembled below, which is what lets a disabled item still be
+        // reachable rather than lost.
+        //
+        // Consequence worth knowing: a managed item no longer sits wherever upstream put it — the
+        // whole set is grouped. That is inherent to letting the user order them.
+        if !rgManaged.isEmpty {
+            var orderedMain: [ContextMenuItem] = []
+            for id in RGSimpleSettings.shared.contextMenuOrder {
+                guard let item = rgManaged[id] else {
+                    continue
+                }
+                if RGSimpleSettings.shared.contextMenuItemIsEnabled(id) {
+                    orderedMain.append(item)
+                } else {
+                    rgActions.append(item)
+                }
+            }
+            if !orderedMain.isEmpty {
+                let anchor = min(rgManagedAnchor ?? actions.count, actions.count)
+                actions.insert(contentsOf: orderedMain, at: anchor)
+                // Items were pulled out after `rgActionsIndex` was captured, so it can now point past
+                // the end; re-anchor it so the submenu still lands in a valid slot.
+                if let index = rgActionsIndex, index >= anchor {
+                    rgActionsIndex = index + orderedMain.count
+                }
+            }
+        }
+        if let index = rgActionsIndex, index > actions.count {
+            rgActionsIndex = actions.count
+        }
+
+        // MARK: Regram
+        if !rgActions.isEmpty {
+            if !actions.isEmpty {
+                if let rgActionsIndex = rgActionsIndex {
+                    actions.insert(.separator, at: rgActionsIndex)
+                } else {
+                    actions.append(.separator)
+                }
+            }
+            
+            var popRGItems: (() -> Void)? = nil
+            rgActions.insert(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Common_Back, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+            }, iconPosition: .left, action: { _, _ in
+                popRGItems?()
+            })), at: 0)
+            rgActions.insert(.separator, at: 1)
+            
+            let regramSubMenu: ContextMenuItem = .action(ContextMenuActionItem(text: "Regram", icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "RegramContextMenu"), color: theme.actionSheet.primaryTextColor)
+            }, action: { c, f in
+                popRGItems = { [weak c] in
+                    c?.popItems()
+                }
+                c?.pushItems(items: .single(ContextController.Items(content: .list(rgActions))))
+            }))
+            
+            if let rgActionsIndex = rgActionsIndex {
+                // MARK: Regram — clamped: the `+ 1` assumes the separator above was inserted, but that
+                // is skipped when `actions` is empty, which pulling every managed item out of the main
+                // menu can now cause. Unclamped this traps on an out-of-range insert.
+                actions.insert(regramSubMenu, at: min(rgActionsIndex + 1, actions.count))
+            } else {
+                actions.append(regramSubMenu)
+            }
         }
         
         var reactionCount = 0
@@ -2329,7 +2725,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                 messageEntities = attribute.entities
                             }
                             if let attribute = attribute as? RestrictedContentMessageAttribute {
-                                restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) ?? ""
+                                restrictedText = attribute.platformText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }, chatId: message.author?.id.id._internalGetInt64Value()) ?? ""
                             }
                         }
                         

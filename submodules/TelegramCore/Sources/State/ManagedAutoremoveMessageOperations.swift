@@ -3,6 +3,7 @@ import Postbox
 import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
+import RGSimpleSettings
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
@@ -82,7 +83,14 @@ func managedAutoremoveMessageOperations(network: Network, postbox: Postbox, isRe
                     Logger.shared.log("Autoremove", "Performing autoremove for \(entry.messageId), isRemove: \(isRemove)")
 
                     if let message = transaction.getMessage(entry.messageId) {
-                        if message.id.peerId.namespace == Namespaces.Peer.SecretChat || isRemove {
+                        // MARK: Regram — Anti auto-delete / anti self-destruct. Leave the message
+                        // (and its media) in the local database when the timer fires. Secret-chat
+                        // messages are the self-destruct case; the rest are TTL auto-delete.
+                        let rgIsSecretChat = message.id.peerId.namespace == Namespaces.Peer.SecretChat
+                        if rgIsSecretChat ? RGSimpleSettings.shared.antiSelfDestruct : RGSimpleSettings.shared.antiAutoDelete {
+                            return
+                        }
+                        if rgIsSecretChat || isRemove {
                             _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [entry.messageId])
                         } else {
                             transaction.updateMessage(message.id, update: { currentMessage in

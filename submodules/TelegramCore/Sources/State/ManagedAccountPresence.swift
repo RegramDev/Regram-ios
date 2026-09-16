@@ -43,6 +43,19 @@ private final class AccountPresenceManagerImpl {
     }
     
     private func updatePresence(_ isOnline: Bool) {
+        // MARK: Regram — ghost mode: report offline unconditionally.
+        //
+        // Routing through the offline branch instead of skipping the request is what makes the switch
+        // retroactive. Turning it on while already online does not itself call this method (the
+        // shouldKeepOnlinePresence signal has not changed), but the 30s keepalive timer armed by the
+        // previous online update fires into updatePresence(true) — which now maps to false, pushes an
+        // explicit offline, and invalidates the timer. So we go offline within 30s rather than waiting
+        // out the server's online expiry, and nothing re-arms the online state afterwards.
+        var isOnline = isOnline
+        if RGGhostMode.suppressOnlinePresence {
+            isOnline = false
+        }
+
         let request: Signal<Api.Bool, MTRpcError>
         if isOnline {
             let timer = SignalKitTimer(timeout: 30.0, repeat: false, completion: { [weak self] in

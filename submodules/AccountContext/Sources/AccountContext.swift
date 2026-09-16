@@ -1,3 +1,5 @@
+import RGSimpleSettings
+import RGIAP
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -1064,6 +1066,8 @@ public enum StickerEditorMode {
 }
 
 public protocol TelegramRootControllerInterface: NavigationController {
+    var accountSettingsController: PeerInfoScreen? { get set }
+
     @discardableResult
     func openStoryCamera(mode: StoryCameraMode, customTarget: Stories.PendingTarget?, resumeLiveStream: Bool, transitionIn: StoryCameraTransitionIn?, transitionedIn: @escaping () -> Void, transitionOut: @escaping (Stories.PendingTarget?, Bool) -> StoryCameraTransitionOut?) -> StoryCameraTransitionInCoordinator?
     func proceedWithStoryUpload(target: Stories.PendingTarget, results: [MediaEditorScreenResult], existingMedia: EngineMedia?, forwardInfo: Stories.PendingForwardInfo?, externalState: MediaEditorTransitionOutExternalState, commit: @escaping (@escaping () -> Void) -> Void)
@@ -1376,6 +1380,13 @@ public protocol SharedAccountContext: AnyObject {
     var automaticMediaDownloadSettings: Signal<MediaAutoDownloadSettings, NoError> { get }
     var currentAutodownloadSettings: Atomic<AutodownloadSettings> { get }
     var immediateExperimentalUISettings: ExperimentalUISettings { get }
+    // MARK: Regram
+    var immediateRGStatus: RGStatus { get }
+    var RGIAP: RGIAPManager? { get }
+    func makeRGProController(context: AccountContext) -> ViewController
+    func makeRGPayWallController(context: AccountContext) -> ViewController?
+    func makeRGUpdateIOSController() -> ViewController
+
     var currentInAppNotificationSettings: Atomic<InAppNotificationSettings> { get }
     var currentMediaInputSettings: Atomic<MediaInputSettings> { get }
     var currentStickerSettings: Atomic<StickerSettings> { get }

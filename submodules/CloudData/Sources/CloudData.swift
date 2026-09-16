@@ -1,6 +1,7 @@
 import Foundation
 import CloudKit
 import MtProtoKit
+import RGCloudKitGuard
 import SwiftSignalKit
 import EncryptionProvider
 
@@ -9,10 +10,26 @@ private enum FetchError {
     case networkUnavailable
 }
 
+// MARK: Regram
+/// `CKContainer.default()` raises an Objective-C exception — which Swift cannot catch, so the process
+/// aborts — when the container the entitlement declares was never provisioned for the signing team.
+/// That is exactly the state of a re-signed build: the re-signer copies `iCloud.<bundleid>` through
+/// from the entitlements, the signer's profile accepts the iCloud key (`icloud-services = *`) but its
+/// `icloud-container-identifiers` is empty, iOS installs the app, and the first CloudKit call aborts.
+/// The entitlement alone cannot reveal this, so the only safe approach is to keep the throwing call
+/// inside an Objective-C `@try` (see RGCloudKitGuard) and treat a throw as "CloudKit unavailable".
 @available(iOS 10.0, *)
 private func fetchRawData(prefix: String) -> Signal<Data, FetchError> {
     return Signal { subscriber in
-        let container = CKContainer.default()
+        guard let container = RGCloudKitGuard.defaultContainer() else {
+            // Deliberately neither a value nor an error: the caller wraps this in `restart`, which
+            // re-subscribes as soon as the signal terminates. Terminating synchronously would make
+            // that re-subscription recurse on the same stack until it overflows, so an unusable
+            // CloudKit is expressed as "never answers" instead. In practice this is unreachable —
+            // makeCloudDataContext returns nil in that case — and exists so the operator contract
+            // cannot be violated if a future caller constructs the context directly.
+            return EmptyDisposable
+        }
         let publicDatabase = container.database(with: .public)
         let recordId = CKRecord.ID(recordName: "emergency-datacenter-\(prefix)")
         publicDatabase.fetch(withRecordID: recordId, completionHandler: { record, error in
