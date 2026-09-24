@@ -1764,6 +1764,12 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         
         let hasForward = interfaceState.interfaceState.forwardMessageIds != nil
         
+        // MARK: Regram — a hidden record button gives up its whole slot right of the text field, the
+        // way upstream drops it while text is typed. Hiding only the button left the slot half
+        // off-screen, where the emoji/sticker expand button sharing it kept popping up. The
+        // streaming-reply stop button is not a recording control and keeps the slot.
+        let rgHideMediaActionButtons = RGSimpleSettings.shared.hideRecordingButton && !interfaceState.canStopIncomingStreamingMessage
+
         var isRecording = false
         if let _ = interfaceState.inputTextPanelState.mediaRecordingState {
             isRecording = true
@@ -2665,7 +2671,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         if additionalSideInsets.right > 0.0 {
             textFieldInsets.right += additionalSideInsets.right / 3.0
         }
-        if RGSimpleSettings.shared.hideRecordingButton || inputHasText || self.extendedSearchLayout || hasMediaDraft || hasForward || hasSlowmodeButton || isEditingMedia {
+        if inputHasText || self.extendedSearchLayout || hasMediaDraft || hasForward || hasSlowmodeButton || isEditingMedia {
         } else {
             if let customRightAction = self.customRightAction, case .empty = customRightAction {
                 textFieldInsets.right = 8.0
@@ -2675,7 +2681,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
                 textFieldInsets.right = 14.0 + starReactionButtonSize.width
             } else if let liveMicrophoneButtonSize {
                 textFieldInsets.right = 14.0 + liveMicrophoneButtonSize.width + 6.0 + liveMicrophoneButtonSize.width
-            } else {
+            } else if !rgHideMediaActionButtons {
                 textFieldInsets.right = 54.0
             }
         }
@@ -3458,7 +3464,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         
         var mediaActionButtonsFrame = CGRect(origin: CGPoint(x: textInputContainerBackgroundFrame.maxX + 6.0, y: textInputContainerBackgroundFrame.maxY - mediaActionButtonsSize.height), size: mediaActionButtonsSize)
-        if inputHasText || self.extendedSearchLayout || hasMediaDraft || interfaceState.interfaceState.forwardMessageIds != nil || hasSlowmodeButton || isEditingMedia {
+        if inputHasText || self.extendedSearchLayout || hasMediaDraft || interfaceState.interfaceState.forwardMessageIds != nil || hasSlowmodeButton || isEditingMedia || rgHideMediaActionButtons {
             mediaActionButtonsFrame.origin.x = width + 8.0
         }
         transition.updateFrame(node: self.mediaActionButtons, frame: mediaActionButtonsFrame)
@@ -4731,7 +4737,8 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
             }
         }
         
-        let hideExpandMediaInput = false
+        // MARK: Regram — the expand button shares the hidden record button's slot.
+        let hideExpandMediaInput = RGSimpleSettings.shared.hideRecordingButton
         
         if mediaInputIsActive {
             hideMicButton = true

@@ -113,4 +113,29 @@ public final class RGMessageFilter {
         }
         return rules
     }
+
+    /// Name the rule export is written under. The JSON itself carries no marker, so the name is also
+    /// how a shared export is recognised in a chat.
+    public static let exportFileName = "regram-message-filter.json"
+
+    /// Whether `fileName` is a rule export. A copy may pick up a suffix such as " 2" on the way.
+    public static func isExportFileName(_ fileName: String) -> Bool {
+        let lowercased = fileName.lowercased()
+        return lowercased.hasPrefix("regram-message-filter") && lowercased.hasSuffix(".json")
+    }
+
+    /// Adds `imported` to `existing` and returns the result with the number of rules added.
+    ///
+    /// Merged, not replaced: an import should never silently wipe rules the user still wants.
+    /// Matching pattern + kind is treated as the same rule and skipped, and every imported rule gets
+    /// a fresh id so it cannot collide with an existing row.
+    public static func merging(_ imported: [RGMessageFilterRule], into existing: [RGMessageFilterRule]) -> (rules: [RGMessageFilterRule], addedCount: Int) {
+        var merged = existing
+        var addedCount = 0
+        for rule in imported where !merged.contains(where: { $0.pattern == rule.pattern && $0.isRegex == rule.isRegex }) {
+            merged.append(RGMessageFilterRule(pattern: rule.pattern, isRegex: rule.isRegex, peerIds: rule.peerIds))
+            addedCount += 1
+        }
+        return (merged, addedCount)
+    }
 }

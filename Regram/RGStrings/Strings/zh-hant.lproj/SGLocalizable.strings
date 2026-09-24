@@ -294,7 +294,10 @@
 "MessageFilter.AddToFilter" = "加入過濾器";
 "MessageFilter.Added" = "已加入訊息過濾器。";
 "MessageFilter.AlreadyExists" = "該內容已在訊息過濾器中。";
+"MessageFilter.Imported" = "已將 %@ 條規則匯入訊息過濾器。";
+"MessageFilter.ImportFailed" = "無法從此檔案讀取訊息過濾器規則。";
 "BlockUser.Block" = "隱藏此使用者的訊息";
+"BlockUser.Notice" = "此使用者或機器人的訊息會在所有對話中從本機隱藏，對方不會收到通知。";
 "HiddenUsers.Title" = "已封鎖使用者";
 "HiddenUsers.Notice" = "這些使用者與機器人的訊息會在所有對話中隱藏。左滑可取消封鎖,點擊可查看資料。";
 "HiddenUsers.Empty" = "尚未封鎖任何使用者。打開使用者或機器人的資料頁,開啟「隱藏此使用者的訊息」即可。";
@@ -304,8 +307,7 @@
 "Repeat.ForwardNoQuote" = "無引用轉發";
 
 "Ghost.Header" = "幽靈模式";
-"Ghost.Notice" = "讓本機不再回報你看了什麼。你這邊不受影響：對話照常標為已讀,限時動態照常消除圓環。傳送訊息仍會讓你顯示在線 —— 這是伺服器決定的,App 無法繞過。";
-"Ghost.DontReadMessages" = "不傳送已讀回條";
+"Ghost.Notice" = "讓本機不再回報你瀏覽了哪些限時動態、你的在線狀態和輸入狀態。你這邊不受影響：限時動態照常消除圓環。傳送訊息仍會讓你顯示在線 —— 這是伺服器決定的,App 無法繞過。";
 "Ghost.DontReadStories" = "不回報限時動態瀏覽";
 "Ghost.DontSendOnline" = "始終不顯示在線";
 "Ghost.DontSendTyping" = "不傳送輸入狀態";

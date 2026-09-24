@@ -2,7 +2,7 @@ import Foundation
 import RGAppGroupIdentifier
 import RGLogging
 
-let APP_GROUP_IDENTIFIER = rgAppGroupIdentifier()
+let APP_GROUP_USER_DEFAULTS = rgSharedUserDefaults()
 
 public class RGSimpleSettings {
     
@@ -18,21 +18,21 @@ public class RGSimpleSettings {
         UserDefaults.standard.register(defaults: RGSimpleSettings.defaultValues)
         // Just in case group defaults will be nil
         UserDefaults.standard.register(defaults: RGSimpleSettings.groupDefaultValues)
-        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+        if let groupUserDefaults = APP_GROUP_USER_DEFAULTS {
             groupUserDefaults.register(defaults: RGSimpleSettings.groupDefaultValues)
         }
     }
     
     private func migrate() {
         let showRepostToStoryMigrationKey = "migrated_\(Keys.showRepostToStory.rawValue)"
-        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+        if let groupUserDefaults = APP_GROUP_USER_DEFAULTS {
             if !groupUserDefaults.bool(forKey: showRepostToStoryMigrationKey) {
                 self.showRepostToStoryV2 = self.showRepostToStory
                 groupUserDefaults.set(true, forKey: showRepostToStoryMigrationKey)
                 RGLogger.shared.log("SGSimpleSettings", "Migrated showRepostToStory. \(self.showRepostToStory) -> \(self.showRepostToStoryV2)")
             }
         } else {
-            RGLogger.shared.log("SGSimpleSettings", "Unable to migrate showRepostToStory. Shared UserDefaults suite is not available for '\(APP_GROUP_IDENTIFIER)'.")
+            RGLogger.shared.log("SGSimpleSettings", "Unable to migrate showRepostToStory. Shared UserDefaults are not available.")
         }
 
         // MARK: Regram — message filter v2. Plain keywords become all-chat substring rules.
@@ -98,7 +98,7 @@ public class RGSimpleSettings {
     }
     
     public func synchronizeShared() {
-        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+        if let groupUserDefaults = APP_GROUP_USER_DEFAULTS {
             groupUserDefaults.synchronize()
         }
     }
@@ -206,7 +206,6 @@ public class RGSimpleSettings {
         case allowSavingProtectedContent
         case allowDownloadingStories
         // MARK: Ghost Mode — suppress outgoing presence/activity signals
-        case ghostDontReadMessages
         case ghostDontReadStories
         case ghostDontSendOnline
         case ghostDontSendTyping
@@ -400,7 +399,6 @@ public class RGSimpleSettings {
         Keys.messageFilterDisabledPeerIds.rawValue: [],
         // MARK: Ghost Mode — the app group suite, because the share/notification extensions run
         // TelegramCore too and must not leak a presence signal the main app is suppressing.
-        Keys.ghostDontReadMessages.rawValue: false,
         Keys.ghostDontReadStories.rawValue: false,
         Keys.ghostDontSendOnline.rawValue: false,
         Keys.ghostDontSendTyping.rawValue: false,
@@ -452,50 +450,45 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.hideStories.rawValue)
     public var hideStories: Bool
 
-    @UserDefault(key: Keys.disableAllAds.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.disableAllAds.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var disableAllAds: Bool
 
-    @UserDefault(key: Keys.antiRevoke.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.antiRevoke.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiRevoke: Bool
 
 
-    @UserDefault(key: Keys.antiAutoDelete.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.antiAutoDelete.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiAutoDelete: Bool
 
-    @UserDefault(key: Keys.antiSelfDestruct.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.antiSelfDestruct.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiSelfDestruct: Bool
 
-    @UserDefault(key: Keys.antiScreenshotNotification.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.antiScreenshotNotification.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiScreenshotNotification: Bool
 
-    @UserDefault(key: Keys.allowSavingProtectedContent.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.allowSavingProtectedContent.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var allowSavingProtectedContent: Bool
 
-    @UserDefault(key: Keys.allowDownloadingStories.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.allowDownloadingStories.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var allowDownloadingStories: Bool
 
     // MARK: Ghost Mode — each switch suppresses one outgoing signal. They are read on the network
     // path in TelegramCore (see RGGhostMode), never cached, so a change takes effect immediately.
 
-    /// Stop pushing read receipts: history reads, thread reads, and voice/video "played" marks.
-    /// Explicit user actions ("mark all as read", "read all mentions") are deliberately unaffected.
-    @UserDefault(key: Keys.ghostDontReadMessages.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
-    public var ghostDontReadMessages: Bool
-
     /// Stop reporting story views. Sending a reaction or reply still marks the story seen server-side.
-    @UserDefault(key: Keys.ghostDontReadStories.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.ghostDontReadStories.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var ghostDontReadStories: Bool
 
     /// Never report an online presence. Sending a message still puts you online — that is server-side.
-    @UserDefault(key: Keys.ghostDontSendOnline.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.ghostDontSendOnline.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var ghostDontSendOnline: Bool
 
     /// Stop sending input activities: typing, recording, choosing a sticker, upload progress.
-    @UserDefault(key: Keys.ghostDontSendTyping.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.ghostDontSendTyping.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var ghostDontSendTyping: Bool
 
     // MARK: Regram — pangu spacing for outgoing text.
-    @UserDefault(key: Keys.panguSpacing.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.panguSpacing.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var panguSpacing: Bool
 
 
@@ -537,7 +530,7 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.showRepostToStory.rawValue)
     public var showRepostToStory: Bool
 
-    @UserDefault(key: Keys.showRepostToStoryV2.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.showRepostToStoryV2.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var showRepostToStoryV2: Bool
 
     @UserDefault(key: Keys.contextShowRestrict.rawValue)
@@ -785,10 +778,10 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.videoPIPSwipeDirection.rawValue)
     public var videoPIPSwipeDirection: String
 
-    @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var legacyNotificationsFix: Bool
     
-    @UserDefault(key: Keys.status.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.status.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var status: Int64
 
     // Mirrors RGStatus.status. Defaults to Pro so gates read as unlocked before the shared-data
@@ -799,7 +792,7 @@ public class RGSimpleSettings {
     public var messageFilterKeywords: [String]
 
     // MARK: Regram — message filter v2. JSON-encoded `[RGMessageFilterRule]`; see MessageFilter.swift.
-    @UserDefault(key: Keys.messageFilterRules.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.messageFilterRules.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var messageFilterRulesJSON: String
 
     /// Posted whenever the message-filter rules or the hidden-sender list change. The chat history
@@ -857,7 +850,7 @@ public class RGSimpleSettings {
 
     // MARK: Regram — client-side blocked peers. Stored as decimal strings because `@UserDefault`
     // reads integer arrays back through `stringArray(forKey:)`-style accessors only.
-    @UserDefault(key: Keys.blockedPeerIds.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.blockedPeerIds.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var blockedPeerIdsRaw: [String]
 
     public var blockedPeerIds: Set<Int64> {
@@ -879,7 +872,7 @@ public class RGSimpleSettings {
 
     // MARK: Regram — chats the keyword filter is switched off in, toggled from the chat's own
     // profile. Exceptions rather than opt-ins, so "on everywhere" costs no stored state.
-    @UserDefault(key: Keys.messageFilterDisabledPeerIds.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.messageFilterDisabledPeerIds.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var messageFilterDisabledPeerIdsRaw: [String]
 
     public var messageFilterDisabledPeerIds: Set<Int64> {
@@ -952,10 +945,10 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.sendWithReturnKey.rawValue)
     public var sendWithReturnKey: Bool
     
-    @UserDefault(key: Keys.pinnedMessageNotifications.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.pinnedMessageNotifications.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var pinnedMessageNotifications: String
     
-    @UserDefault(key: Keys.mentionsAndRepliesNotifications.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    @UserDefault(key: Keys.mentionsAndRepliesNotifications.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var mentionsAndRepliesNotifications: String
     
     @UserDefault(key: Keys.primaryUserId.rawValue)

@@ -943,12 +943,6 @@ public final class AccountViewTracker {
     }
     
     public func updateSeenLiveLocationForMessageIds(messageIds: Set<MessageId>) {
-        // MARK: Regram — ghost mode: reporting a live location as seen tells the sender you looked at
-        // where they are, which is the same class of signal as a read receipt.
-        if RGGhostMode.suppressReadReceipts {
-            return
-        }
-
         self.queue.async {
             var addedMessageIds: [MessageId] = []
             let timestamp = Int32(CFAbsoluteTimeGetCurrent())

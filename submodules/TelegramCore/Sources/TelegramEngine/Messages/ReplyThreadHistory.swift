@@ -476,14 +476,6 @@ private class ReplyThreadHistoryContextImpl {
                 }
             }
 
-            // MARK: Regram — ghost mode: this is the passive, scroll-driven thread read, so the receipt
-            // is dropped. The local unread bookkeeping above has already run, so the thread still reads
-            // as caught up on this device. The explicit "mark as read" entry points in
-            // ApplyMaxReadIndexInteractively are deliberately left alone.
-            if RGGhostMode.suppressReadReceipts {
-                return
-            }
-
             if let subPeerId {
                 let signal = strongSelf.account.network.request(Api.functions.messages.readSavedHistory(parentPeer: inputPeer, peer: subPeerId, maxId: messageIndex.id.id))
                 |> `catch` { _ -> Signal<Api.Bool, NoError> in

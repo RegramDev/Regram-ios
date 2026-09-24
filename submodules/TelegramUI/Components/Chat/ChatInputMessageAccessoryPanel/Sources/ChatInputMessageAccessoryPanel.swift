@@ -937,10 +937,14 @@ public final class ChatInputMessageAccessoryPanel: Component {
             )
             let tintTextString = NSMutableAttributedString(attributedString: textString)
             tintTextString.addAttribute(.foregroundColor, value: UIColor.black, range: NSRange(location: 0, length: tintTextString.length))
+            // MARK: Regram — the mask copy shares textView's frame, so it needs the same render insets or
+            // every glyph hole lands 2pt up-left of its glyph. Only the pre-iOS 26 glass draws the mask,
+            // where the offset shows as a doubled, glowing copy of the reply text.
             let _ = self.tintText.update(
                 transition: .immediate,
                 component: AnyComponent(MultilineTextComponent(
                     text: .plain(tintTextString),
+                    insets: textRenderInsets
                 )),
                 environment: {},
                 containerSize: CGSize(width: availableSize.width - lineFrame.maxX - textInsets.left - textInsets.right, height: 100.0)

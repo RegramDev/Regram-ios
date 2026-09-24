@@ -149,6 +149,10 @@ private func canonicalExternalUrl(from url: String) -> URL? {
     }
     if let parsed = URL(string: urlWithScheme) {
         return parsed
+    } else if let parsed = rgUrlEscapingIllegalCharacters(urlWithScheme) {
+        // MARK: Regram — pre-iOS 17 only. The fallback below escapes `:` too, which leaves a link
+        // with no scheme: it skips the in-app browser and reaches Safari double-encoded, if at all.
+        return parsed
     } else if let encoded = (urlWithScheme as NSString).addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) {
         return URL(string: encoded)
     }

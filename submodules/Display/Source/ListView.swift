@@ -889,6 +889,14 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
         self.scroller.forceDecelerating = false
         self.isDragging = true
         
+        // MARK: Regram — hold the display at full refresh rate for the drag itself, not only for the
+        // deceleration after a fling. ProMotion lowers the rate for slowly moving content, and since
+        // iOS 16 nothing pins UIScrollView's own heartbeat any more (fixScrollDisplayLink returns
+        // early there), so a slow finger drag was the one phase of scrolling left unpinned: slow
+        // scrolling stuttered while a fling ran smoothly. scrollViewDidEndDragging turns this back
+        // off, or hands it over to the deceleration that follows.
+        self.isAuxiliaryDisplayLinkEnabled = true
+
         self.beganInteractiveDragging(self.touchesPosition)
         
         for itemNode in self.itemNodes {

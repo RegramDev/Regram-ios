@@ -24,6 +24,21 @@ public extension CharacterSet {
         
         return allowed
     }()
+
+    // MARK: Regram — every character RFC 3986 allows somewhere in a URL, `%` included so that
+    // existing escapes survive.
+    static let rgUrlAllowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=%")
+}
+
+// MARK: Regram — before iOS 17 `URL(string:)` returns nil for any string holding a character RFC 3986
+// forbids (CJK text, spaces, `|`...), where iOS 17+ percent-encodes such characters itself. This
+// escapes only those, keeping every delimiter and existing escape, so an older system parses a link
+// the way a newer one does instead of falling back to encoders that also escape `:`, `#` or `%`.
+public func rgUrlEscapingIllegalCharacters(_ string: String) -> URL? {
+    guard let escaped = string.addingPercentEncoding(withAllowedCharacters: .rgUrlAllowed) else {
+        return nil
+    }
+    return URL(string: escaped)
 }
 
 public func isValidUrl(_ url: String, validSchemes: [String: Bool] = ["http": true, "https": true, "tonsite": true]) -> Bool {

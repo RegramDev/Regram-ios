@@ -794,8 +794,13 @@ private struct NotificationContent: CustomStringConvertible {
             }
         }
         
-        // MARK: Regram
-        if (self.isEmpty || self.forceIsEmpty) && RG_SILENCE_EMPTY_NOTIFICATIONS {
+        // MARK: Regram — content with nothing to show is silenced as well, whatever produced it: a call
+        // already handed to CallKit, a payload that did not decrypt, an account that could not be
+        // opened. Unentitled, blank content is not shown blank — the system falls back to the push's
+        // own alert, the server's placeholder "You have a new message". `self.body` is checked too
+        // because a body with inline emoji goes out as `attributedBody`, leaving `content.body` empty.
+        let rgHasVisibleText = !content.title.isEmpty || !content.subtitle.isEmpty || !content.body.isEmpty || !(self.body ?? "").isEmpty
+        if (self.isEmpty || self.forceIsEmpty || !rgHasVisibleText) && RG_SILENCE_EMPTY_NOTIFICATIONS {
             content.title = " "
             content.threadIdentifier = "empty-notification"
             if #available(iOSApplicationExtension 15.0, iOS 15.0, *) {
@@ -1449,7 +1454,8 @@ private final class NotificationServiceHandler {
                             } else if let alert = aps["alert"] as? String {
                                 content.body = alert
                             } else {
-                                content.body = "You have a new message"
+                                // MARK: Regram — nothing to say: silence it rather than invent the placeholder.
+                                content.isEmpty = true
                             }
                             updateCurrentContent(content)
                             completed()
@@ -2751,7 +2757,7 @@ final class NotificationService: UNNotificationServiceExtension {
         let content = self.content
 
         self.impl = QueueLocalObject(queue: queue, generate: { [weak self] in
-            return BoxedNotificationServiceHandler(value: NotificationServiceHandler(
+            let handler = NotificationServiceHandler(
                 queue: queue,
                 episode: episode,
                 updateCurrentContent: { value in
@@ -2775,20 +2781,49 @@ final class NotificationService: UNNotificationServiceExtension {
                             // of Notification Center afterwards. Both carry the "empty-notification"
                             // thread identifier these helpers match on.
                             strongSelf.removeEmptyNotificationsOnce()
-                            contentHandler(content.generate())
-                            if content.isEmpty || content.isSilencedRatherThanDropped {
-                                strongSelf.removeEmptyNotifications()
-                            }
-                        } else if let initialContent = strongSelf.initialContent {
-                            contentHandler(initialContent)
+                            strongSelf.rgDeliver(content.generate(), contentHandler)
+                        } else {
+                            strongSelf.rgCompleteWithoutContent(contentHandler)
                         }
                     } else {
                         Logger.shared.log("NotificationService \(episode)", "Attempted to repeatedly complete handling notification")
                     }
                 },
                 payload: request.content.userInfo
-            ))
+            )
+            // MARK: Regram — a handler that fails to start never calls `completed`, so the push used
+            // to wait out the whole time limit and then show its placeholder alert.
+            if handler == nil, let strongSelf = self, let contentHandler = strongSelf.contentHandler {
+                strongSelf.contentHandler = nil
+                Logger.shared.log("NotificationService \(episode)", "Handler failed to start")
+                strongSelf.rgCompleteWithoutContent(contentHandler)
+            }
+            return BoxedNotificationServiceHandler(value: handler)
         })
+    }
+
+    // MARK: Regram — delivers `generated`, then sweeps it out of Notification Center if `generate()`
+    // silenced it (see RG_SILENCE_EMPTY_NOTIFICATIONS): a silenced notification is still delivered.
+    private func rgDeliver(_ generated: UNNotificationContent, _ contentHandler: (UNNotificationContent) -> Void) {
+        contentHandler(generated)
+        if generated.threadIdentifier == "empty-notification" {
+            self.removeEmptyNotifications()
+        }
+    }
+
+    // MARK: Regram — no content was produced at all: the handler could not start, or finished or ran
+    // out of time before producing any. The request is then all there is, and for an encrypted push
+    // its alert is only the server's placeholder, "You have a new message" — so it is silenced like any
+    // other empty notification, keeping its badge. An unencrypted push carries its real alert and is
+    // delivered as it came.
+    private func rgCompleteWithoutContent(_ contentHandler: (UNNotificationContent) -> Void) {
+        guard let initialContent = self.initialContent, initialContent.userInfo["p"] is String else {
+            contentHandler(self.initialContent ?? UNNotificationContent())
+            return
+        }
+        var content = NotificationContent(rgStatus: RGStatus.default, isLockedMessage: nil, isEmpty: true)
+        content.badge = initialContent.badge?.intValue
+        self.rgDeliver(content.generate(), contentHandler)
     }
     
     override func serviceExtensionTimeWillExpire() {
@@ -2798,9 +2833,9 @@ final class NotificationService: UNNotificationServiceExtension {
             Logger.shared.log("NotificationService \(self.episode ?? "???")", "Completing due to serviceExtensionTimeWillExpire")
             
             if let content = self.content.with({ $0 }) {
-                contentHandler(content.generate())
-            } else if let initialContent = self.initialContent {
-                contentHandler(initialContent)
+                self.rgDeliver(content.generate(), contentHandler)
+            } else {
+                self.rgCompleteWithoutContent(contentHandler)
             }
         }
     }

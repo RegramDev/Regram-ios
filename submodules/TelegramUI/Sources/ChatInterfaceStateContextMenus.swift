@@ -1035,6 +1035,14 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             rgManaged[id] = item
         }
 
+        // MARK: Regram — whether the server refuses to forward these messages. "Allow saving
+        // protected content" clears isCopyProtected on the client, which is what surfaces the forward
+        // actions in restricted chats at all, but every forward out of such a chat still fails with
+        // CHAT_FORWARDS_RESTRICTED. messageActions reads the raw peer flags, which that switch leaves
+        // alone; the message flag is checked directly because Message.isCopyProtected() is overridden.
+        // Only 无引用复读 survives: it re-sends the content rather than forwarding it.
+        let rgForwardRestricted = data.messageActions.isCopyProtected || messages.contains(where: { $0.flags.contains(.CopyProtected) })
+
         var isPinnedMessages = false
         if case .pinnedMessages = chatPresentationInterfaceState.subject {
             isPinnedMessages = true
@@ -1605,10 +1613,20 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }))
         rgCollect(.json, showJsonAction)
 
+        // MARK: Regram — a rule export shared into a chat (the filter screen's Export writes it) is
+        // imported in one step, merged exactly like the filter screen's own Import. It stands in
+        // for the keyword action below, which would otherwise offer the file's caption.
+        if let rgFilterExport = rgMessageFilterExportFile(in: messages) {
+            rgActions.append(.action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.default)
+                rgImportMessageFilterRules(context: context, message: rgFilterExport.message, file: rgFilterExport.file, displayUndo: controllerInteraction.displayUndo)
+            })))
         // MARK: Regram — send the referenced message's text to the message filter. The filter
         // screen opens with the text prefilled rather than committing it blind: a whole message
         // body is rarely the keyword you want, so the user trims it and taps add.
-        if !message.text.isEmpty, message.effectivelyIncoming(context.account.peerId) {
+        } else if !message.text.isEmpty, message.effectivelyIncoming(context.account.peerId) {
             let prefill = String(message.text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
             rgActions.append(.action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.actionSheet.primaryTextColor)
@@ -1709,7 +1727,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             // 无引用转发 is deliberately absent here: it is the same "forward, hiding the sender"
             // upstream already offers, collected as `.forwardNoQuote` further down rather than
             // duplicated.
-            if rgCanSendHere, !rgForwardSources.isEmpty {
+            if rgCanSendHere, !rgForwardSources.isEmpty, !rgForwardRestricted {
                 rgCollect(.repeatForward, .action(ContextMenuActionItem(text: "Repeat.WithReply".i18n(rgLang), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
@@ -2105,7 +2123,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
 
         if data.messageActions.options.contains(.forward) {
-            if !isCopyProtected {
+            // MARK: Regram — rgForwardRestricted: all three items below are server-side forwards.
+            if !isCopyProtected && !rgForwardRestricted {
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuForward, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Forward"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
@@ -2837,6 +2856,52 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         
         return ContextController.Items(content: .list(actions), tip: nil)
     }
+}
+
+// MARK: Regram — quick import of a message filter export shared into a chat.
+
+private func rgMessageFilterExportFile(in messages: [EngineRawMessage]) -> (message: EngineRawMessage, file: TelegramMediaFile)? {
+    for message in messages {
+        for media in message.media {
+            if let file = media as? TelegramMediaFile, let fileName = file.fileName, RGMessageFilter.isExportFileName(fileName) {
+                return (message, file)
+            }
+        }
+    }
+    return nil
+}
+
+/// Downloads the export if it is not on disk yet and merges its rules into the filter. The result is
+/// reported in a toast, since nothing else on screen changes.
+private func rgImportMessageFilterRules(context: AccountContext, message: EngineRawMessage, file: TelegramMediaFile, displayUndo: @escaping (UndoOverlayContent) -> Void) {
+    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+    let fetchDisposable = context.engine.resources.fetch(reference: FileMediaReference.message(message: MessageReference(message), media: file).resourceReference(file.resource), userLocation: .peer(message.id.peerId), userContentType: MediaResourceUserContentType(file: file)).startStandalone()
+    let _ = (context.engine.resources.data(resource: EngineMediaResource(file.resource))
+    |> filter { $0.isComplete }
+    |> take(1)
+    |> map(Optional.init)
+    |> timeout(30.0, queue: .mainQueue(), alternate: .single(nil))
+    |> deliverOnMainQueue).startStandalone(next: { data in
+        fetchDisposable.dispose()
+
+        var imported: [RGMessageFilterRule] = []
+        if let data, let contents = try? String(contentsOfFile: data.path, encoding: .utf8) {
+            imported = RGMessageFilter.decode(contents)
+        }
+        let text: String
+        if imported.isEmpty {
+            text = "MessageFilter.ImportFailed".i18n(lang)
+        } else {
+            let (rules, addedCount) = RGMessageFilter.merging(imported, into: RGSimpleSettings.shared.messageFilterRules)
+            if addedCount == 0 {
+                text = "MessageFilter.AlreadyExists".i18n(lang)
+            } else {
+                RGSimpleSettings.shared.messageFilterRules = rules
+                text = "MessageFilter.Imported".i18n(lang, args: "\(addedCount)")
+            }
+        }
+        displayUndo(.info(title: nil, text: text, timeout: nil, customUndoText: nil))
+    })
 }
 
 func canPerformEditingActions(limits: LimitsConfiguration, accountPeerId: EnginePeer.Id, message: EngineRawMessage, unlimitedInterval: Bool) -> Bool {

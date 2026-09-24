@@ -31,6 +31,17 @@ public enum RGEntitlement {
     public static let userNotificationsFiltering = "com.apple.developer.usernotifications.filtering"
 }
 
+/// Whether this binary was built for a host such as LiveContainer/LCSign, where the guest app must
+/// keep all persistent data in its own private sandbox and must never adopt an App Group supplied
+/// by a later re-signing step.
+public let rgIsSandboxOnlyBuild: Bool = {
+    #if REGRAM_SANDBOX_ONLY
+    return true
+    #else
+    return false
+    #endif
+}()
+
 /// What the signature this process is *actually* running under grants, as opposed to what the build
 /// declared.
 ///
@@ -168,6 +179,12 @@ private final class RGAppGroupResolution {
     private var resolved: (identifier: String, url: URL)?
 
     func resolve() -> (identifier: String, url: URL)? {
+        // Compile-time policy, not a fallback: a sandbox-only binary must remain private even if a
+        // host later re-signs it with one of the host's own App Group entitlements.
+        guard !rgIsSandboxOnlyBuild else {
+            return nil
+        }
+
         self.lock.lock()
         if let resolved = self.resolved {
             self.lock.unlock()
@@ -188,13 +205,20 @@ private final class RGAppGroupResolution {
     }
 }
 
+/// The App Group that was actually granted and resolved, or nil when this build intentionally uses
+/// its private sandbox. Callers that configure optional sharing APIs should use this instead of
+/// synthesizing `group.<bundle id>`.
+public func rgResolvedAppGroupIdentifier() -> String? {
+    return RGAppGroupResolution.shared.resolve()?.identifier
+}
+
 /// The App Group this process shares with the rest of the app.
 ///
 /// Returns the identifier that actually **resolved**, not `group.<bundle id>`: it is also used as a
 /// `UserDefaults` suite name, so returning an unreachable identifier would silently send every
 /// shared setting to the process's own preferences instead of the container the extensions read.
 public func rgAppGroupIdentifier() -> String {
-    let result: String = RGAppGroupResolution.shared.resolve()?.identifier ?? rgOwnAppGroupIdentifier()
+    let result: String = rgResolvedAppGroupIdentifier() ?? rgOwnAppGroupIdentifier()
 
     #if DEBUG
     print("APP_GROUP_IDENTIFIER: \(result)")
@@ -203,17 +227,47 @@ public func rgAppGroupIdentifier() -> String {
     return result
 }
 
+/// Defaults shared with extensions in a regular build, and ordinary app-sandbox defaults in the
+/// LCSign sandbox-only variant.
+public func rgSharedUserDefaults() -> UserDefaults? {
+    if rgIsSandboxOnlyBuild {
+        return .standard
+    }
+    return UserDefaults(suiteName: rgAppGroupIdentifier())
+}
+
+private func rgPrivateDataContainerURL() -> URL? {
+    guard let applicationSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        return nil
+    }
+    let result = applicationSupportURL.appendingPathComponent("Regram", isDirectory: true)
+    do {
+        try FileManager.default.createDirectory(at: result, withIntermediateDirectories: true)
+        return result
+    } catch {
+        return nil
+    }
+}
+
 /// Directory holding all of the app's data: the shared App Group container, so that the extensions
 /// (notification service, share sheet, widgets) read and write the same database as the app.
 ///
-/// Returns nil when the group is unreachable, exactly as upstream does — there is deliberately no
-/// fallback to the app's own private container. A fallback would keep the app running, but the
-/// extensions cannot follow it into a private container (each runs in its own), so it silently
-/// trades away notification bodies and sharing; and it hides which of the two happened, which is
-/// the one thing worth knowing on a re-signed build.
+/// In the explicit sandbox-only build variant this instead returns
+/// `Library/Application Support/Regram` inside the main app sandbox. This is intentionally not an
+/// automatic fallback: regular builds still fail when their shared container is unavailable, and
+/// sandbox-only builds exclude extensions because an extension cannot enter the main app sandbox.
 ///
 /// Records the outcome either way, see `rgRecordResolvedContainer`.
 public func rgDataContainerURL() -> URL? {
+    if rgIsSandboxOnlyBuild {
+        guard let result = rgPrivateDataContainerURL() else {
+            rgRecordResolvedContainer("unavailable:sandbox")
+            return nil
+        }
+        rgRecordResolvedContainer("sandbox:\(result.path)")
+        return result
+    }
+
     guard let resolved = RGAppGroupResolution.shared.resolve() else {
         rgRecordResolvedContainer("unavailable:\(rgOwnAppGroupIdentifier())")
         return nil

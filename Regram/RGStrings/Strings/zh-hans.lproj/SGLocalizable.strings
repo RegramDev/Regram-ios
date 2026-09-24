@@ -296,7 +296,10 @@
 "MessageFilter.AddToFilter" = "添加到过滤器";
 "MessageFilter.Added" = "已添加到消息过滤器。";
 "MessageFilter.AlreadyExists" = "该内容已在消息过滤器中。";
+"MessageFilter.Imported" = "已将 %@ 条规则导入消息过滤器。";
+"MessageFilter.ImportFailed" = "无法从此文件读取消息过滤器规则。";
 "BlockUser.Block" = "隐藏此用户的消息";
+"BlockUser.Notice" = "此用户或机器人的消息会在所有对话中从本机隐藏，对方不会收到通知。";
 "HiddenUsers.Title" = "已屏蔽用户";
 "HiddenUsers.Notice" = "这些用户和机器人的消息会在所有对话中隐藏。左滑可取消屏蔽,点击可查看资料。";
 "HiddenUsers.Empty" = "还没有屏蔽任何用户。打开用户或机器人的资料页,开启「隐藏此用户的消息」即可。";
@@ -326,8 +329,7 @@
 "Common.Cancel" = "取消";
 
 "Ghost.Header" = "幽灵模式";
-"Ghost.Notice" = "让本机不再上报你看了什么。你这边不受影响：会话照常标为已读，快拍照常消除圆环。发送消息仍会让你显示在线 —— 这是服务端决定的，App 无法绕过。";
-"Ghost.DontReadMessages" = "不发送已读回执";
+"Ghost.Notice" = "让本机不再上报你浏览了哪些快拍、你的在线状态和输入状态。你这边不受影响：快拍照常消除圆环。发送消息仍会让你显示在线 —— 这是服务端决定的，App 无法绕过。";
 "Ghost.DontReadStories" = "不上报快拍浏览";
 "Ghost.DontSendOnline" = "始终不显示在线";
 "Ghost.DontSendTyping" = "不发送输入状态";

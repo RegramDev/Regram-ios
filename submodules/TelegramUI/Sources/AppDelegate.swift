@@ -36,6 +36,7 @@ import PassportUI
 import SettingsUI
 import AppBundle
 import UrlHandling
+import UrlEscaping
 import OpenSSLEncryptionProvider
 import AppLock
 import PresentationDataUtils
@@ -300,12 +301,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             return existingSession
         }
         
-        // Resolves the container the bundle is actually entitled to, which is not always
-        // "group.<bundleid>" once the build has been re-signed by a third-party service.
-        let appGroupName = rgAppGroupIdentifier()
-
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
-        configuration.sharedContainerIdentifier = appGroupName
+        // A sandbox-only LCSign build has no shared container. Regular builds still use the App
+        // Group that the running signature actually grants.
+        if !rgIsSandboxOnlyBuild {
+            configuration.sharedContainerIdentifier = rgAppGroupIdentifier()
+        }
         configuration.isDiscretionary = false
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
         self.urlSessions.append(session)
@@ -840,6 +841,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             
             if let parsedUrl = parsedUrl {
                 UIApplication.shared.open(parsedUrl, options: [:], completionHandler: nil)
+            } else if let parsedUrl = rgUrlEscapingIllegalCharacters(url) {
+                // MARK: Regram — pre-iOS 17 only: `.urlQueryAllowed` below also escapes `#` and `%`.
+                UIApplication.shared.open(parsedUrl, options: [:], completionHandler: nil)
             } else if let escapedUrl = url.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed), let parsedUrl = URL(string: escapedUrl) {
                 UIApplication.shared.open(parsedUrl, options: [:], completionHandler: nil)
             }
@@ -853,6 +857,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 }
                 
                 if let parsedUrl = parsedUrl {
+                    return UIApplication.shared.open(parsedUrl, options: [UIApplication.OpenExternalURLOptionsKey.universalLinksOnly: true as NSNumber], completionHandler: { value in
+                        completion.completion(value)
+                    })
+                } else if let parsedUrl = rgUrlEscapingIllegalCharacters(url) {
+                    // MARK: Regram — pre-iOS 17 only, see openUrl above.
                     return UIApplication.shared.open(parsedUrl, options: [UIApplication.OpenExternalURLOptionsKey.universalLinksOnly: true as NSNumber], completionHandler: { value in
                         completion.completion(value)
                     })

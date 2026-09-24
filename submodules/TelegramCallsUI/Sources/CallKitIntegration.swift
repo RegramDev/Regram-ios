@@ -21,7 +21,7 @@ public final class CallKitIntegration {
         return false
         #else
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            return Locale.current.regionCode?.lowercased() != "cn" && !(UserDefaults(suiteName: rgAppGroupIdentifier())?.bool(forKey: "legacyNotificationsFix") ?? false)
+            return Locale.current.regionCode?.lowercased() != "cn" && !(rgSharedUserDefaults()?.bool(forKey: "legacyNotificationsFix") ?? false)
         } else {
             return false
         }

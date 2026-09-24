@@ -40,6 +40,39 @@ private final class RGMessageFilterImportDelegate: NSObject, UIDocumentPickerDel
     }
 }
 
+// MARK: Regram — Edit/Done for the rule list. The screen sits under the wrapper's native navigation
+// bar, so that its back button is the one every other Regram screen shows, and the Edit button has to
+// live in that bar as well. The SwiftUI list follows `isEditing` through its edit-mode environment.
+// A bar button only keeps a weak reference to its target; the view holding this object keeps it alive.
+@available(iOS 13.0, *)
+final class MessageFilterEditingState: NSObject, ObservableObject {
+    @Published var isEditing = false {
+        didSet {
+            if self.isEditing != oldValue {
+                self.updateButton()
+            }
+        }
+    }
+
+    private weak var controller: ViewController?
+    private let strings: PresentationStrings
+
+    init(controller: ViewController, strings: PresentationStrings) {
+        self.controller = controller
+        self.strings = strings
+        super.init()
+        self.updateButton()
+    }
+
+    private func updateButton() {
+        self.controller?.navigationItem.rightBarButtonItem = UIBarButtonItem(title: self.isEditing ? self.strings.Common_Done : self.strings.Common_Edit, style: self.isEditing ? .done : .plain, target: self, action: #selector(self.toggle))
+    }
+
+    @objc private func toggle() {
+        self.isEditing.toggle()
+    }
+}
+
 @available(iOS 13.0, *)
 struct MessageFilterKeywordInputFieldModifier: ViewModifier {
     @Binding var newKeyword: String
@@ -110,6 +143,7 @@ struct MessageFilterView: View {
     // LegacyController here; that never reaches the surface and instead tears this screen down back
     // to Regram Pro. `selectChats` above already pushes a native controller for the same reason.
     let editPatternExternally: (RGMessageFilterRule, @escaping (String) -> Void) -> Void
+    @ObservedObject var editing: MessageFilterEditingState
     @Environment(\.lang) var lang: String
 
     @State private var newKeyword: String
@@ -120,8 +154,9 @@ struct MessageFilterView: View {
         }
     }
 
-    init(wrapperController: LegacyController?, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void) {
+    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void) {
         self.wrapperController = wrapperController
+        self.editing = editing
         self.selectChats = selectChats
         self.editPatternExternally = editPatternExternally
         _newKeyword = State(initialValue: initialKeyword)
@@ -244,20 +279,16 @@ struct MessageFilterView: View {
                     }
                 }
         }
-        .tgNavigationBackButton(wrapperController: wrapperController)
     }
 
+    // No NavigationView: back and Edit are in the wrapper's native navigation bar.
     var body: some View {
-        NavigationView {
-            if #available(iOS 14.0, *) {
-                bodyContent
-                    .toolbar {
-                        EditButton()
-                    }
-            } else {
-                bodyContent
-            }
-        }
+        bodyContent
+            .environment(\.editMode, Binding<EditMode>(get: {
+                return self.editing.isEditing ? EditMode.active : EditMode.inactive
+            }, set: { value in
+                self.editing.isEditing = value.isEditing
+            }))
     }
 
     private func addRule() {
@@ -302,7 +333,8 @@ struct MessageFilterView: View {
             return
         }
         let json = RGMessageFilter.encode(rules)
-        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("regram-message-filter.json")
+        // A fixed name: it is how a copy shared into a chat is recognised for quick import there.
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(RGMessageFilter.exportFileName)
         guard let data = json.data(using: .utf8), (try? data.write(to: url, options: .atomic)) != nil else {
             return
         }
@@ -326,14 +358,7 @@ struct MessageFilterView: View {
             guard !imported.isEmpty else {
                 return
             }
-            // Merged, not replaced: an import should never silently wipe rules the user still wants.
-            // Matching pattern + kind is treated as the same rule and skipped, and every imported rule
-            // gets a fresh id so it cannot collide with an existing row.
-            var merged = rules
-            for rule in imported where !merged.contains(where: { $0.pattern == rule.pattern && $0.isRegex == rule.isRegex }) {
-                merged.append(RGMessageFilterRule(pattern: rule.pattern, isRegex: rule.isRegex, peerIds: rule.peerIds))
-            }
-            rules = merged
+            rules = RGMessageFilter.merging(imported, into: rules).rules
         }
         picker.delegate = delegate
         rgMessageFilterImportDelegate = delegate
@@ -532,7 +557,7 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
     // Status bar color will break if theme changed
     legacyController.statusBar.statusBarStyle = theme.rootController
         .statusBarStyle.style
-    legacyController.displayNavigationBar = false
+    let editingState = MessageFilterEditingState(controller: legacyController, strings: strings)
 
     // The chat scope picker is a native controller, so it is pushed on the wrapper rather than
     // presented from SwiftUI.
@@ -579,11 +604,14 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
 
     let swiftUIView = RGSwiftUIView<MessageFilterView>(
         legacyController: legacyController,
+        manageSafeArea: true,
         content: {
-            MessageFilterView(wrapperController: legacyController, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern)
+            MessageFilterView(wrapperController: legacyController, editing: editingState, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern)
         }
     )
     let controller = UIHostingController(rootView: swiftUIView, ignoreSafeArea: true)
+    // The list starts below the navigation bar; the strip behind the bar should match it.
+    controller.view.backgroundColor = .systemGroupedBackground
     legacyController.bind(controller: controller)
 
     return legacyController

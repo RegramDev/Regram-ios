@@ -98,7 +98,10 @@ public func rgEraseAllLocalData() -> [String] {
     if let bundleId = Bundle.main.bundleIdentifier {
         UserDefaults.standard.removePersistentDomain(forName: bundleId)
     }
-    UserDefaults(suiteName: rgAppGroupIdentifier())?.removePersistentDomain(forName: rgAppGroupIdentifier())
+    if !rgIsSandboxOnlyBuild {
+        let appGroupIdentifier = rgAppGroupIdentifier()
+        UserDefaults(suiteName: appGroupIdentifier)?.removePersistentDomain(forName: appGroupIdentifier)
+    }
     UserDefaults.standard.synchronize()
 
     // 4. Keychain items (auth keys, encryption salt) live outside the container and would let the

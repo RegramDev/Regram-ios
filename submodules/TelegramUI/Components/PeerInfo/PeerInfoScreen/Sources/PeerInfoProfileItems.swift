@@ -63,7 +63,6 @@ func infoItems(
     // MARK: Regram
     var rgItemId = 0
     var idText = ""
-    var isMutualContact = false
     //    var isUser = false
     //    let lang = presentationData.strings.baseLanguageCode
         
@@ -111,6 +110,7 @@ func infoItems(
         let ItemBlock = 6003
         let ItemEncryptionKey = 6004
         let ItemRGHideSenderMessages = 6005 // MARK: Regram
+        let ItemRGHideSenderMessagesInfo = 6006
         let ItemBalanceHeader = 7000
         let ItemBalanceTon = 7001
         let ItemBalanceStars = 7002
@@ -129,7 +129,6 @@ func infoItems(
             items[.unofficial]!.append(PeerInfoScreenInfoItem(id: 0, title: "", text: .markdown(presentationData.strings.PeerInfo_UnofficialSecurityRisk(EnginePeer(user).compactDisplayTitle).string), style: .compact, linkAction: nil))
         }
         // MARK: Regram
-        isMutualContact = user.flags.contains(.mutualContact)
         idText = String(user.id.id._internalGetInt64Value())
 //        isUser = true
         
@@ -445,6 +444,8 @@ func infoItems(
                 items[currentPeerInfoSection]!.append(PeerInfoScreenSwitchItem(id: ItemRGHideSenderMessages, text: "BlockUser.Block".i18n(presentationData.strings.baseLanguageCode), value: RGSimpleSettings.shared.isPeerBlocked(rgPeerId), icon: PresentationResourcesSettings.block, isLocked: false, toggled: { value in
                     RGSimpleSettings.shared.setPeerBlocked(rgPeerId, blocked: value)
                 }))
+                items[currentPeerInfoSection]!.append(PeerInfoScreenCommentItem(id: ItemRGHideSenderMessagesInfo, text: "BlockUser.Notice".i18n(presentationData.strings.baseLanguageCode)))
+                currentPeerInfoSection = .peerSettings
 
                 if let encryptionKeyFingerprint = data.encryptionKeyFingerprint {
                     items[currentPeerInfoSection]!.append(PeerInfoScreenDisclosureEncryptionKeyItem(id: ItemEncryptionKey, text: presentationData.strings.Profile_EncryptionKey, fingerprint: encryptionKeyFingerprint, action: {
@@ -1079,12 +1080,6 @@ func infoItems(
             }))
             rgItemId += 1
         }
-    }
-    if isMutualContact {
-        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("MutualContact.Label", presentationData.strings.baseLanguageCode), text: "", action: nil, longTapAction: { _ in }, requestLayout: { _ in
-            interaction.requestLayout(false)
-        }))
-        rgItemId += 1
     }
     
     

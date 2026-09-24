@@ -34,7 +34,6 @@ private enum RGPrivacyToolsToggle: String {
     case allowDownloadingStories
     case disableAllAds
     // MARK: Regram — ghost mode
-    case ghostDontReadMessages
     case ghostDontReadStories
     case ghostDontSendOnline
     case ghostDontSendTyping
@@ -94,12 +93,11 @@ public func rgAntiFeaturesController(context: AccountContext) -> ViewController 
 // MARK: Regram — ghost mode.
 //
 // Each switch suppresses one outgoing signal on the TelegramCore network path (see RGGhostMode).
-// Nothing here changes what this device shows: chats still read as read, stories still clear their
-// ring. Only the request that would tell the other side is dropped.
+// Nothing here changes what this device shows: stories still clear their ring. Only the request
+// that would tell the other side is dropped.
 private func ghostModeToggles() -> [RGPrivacyToggle] {
     let settings = RGSimpleSettings.shared
     return [
-        RGPrivacyToggle(setting: .ghostDontReadMessages, localizationKey: "Ghost.DontReadMessages", get: { settings.ghostDontReadMessages }, set: { settings.ghostDontReadMessages = $0 }),
         RGPrivacyToggle(setting: .ghostDontReadStories, localizationKey: "Ghost.DontReadStories", get: { settings.ghostDontReadStories }, set: { settings.ghostDontReadStories = $0 }),
         RGPrivacyToggle(setting: .ghostDontSendOnline, localizationKey: "Ghost.DontSendOnline", get: { settings.ghostDontSendOnline }, set: { settings.ghostDontSendOnline = $0 }),
         RGPrivacyToggle(setting: .ghostDontSendTyping, localizationKey: "Ghost.DontSendTyping", get: { settings.ghostDontSendTyping }, set: { settings.ghostDontSendTyping = $0 }),

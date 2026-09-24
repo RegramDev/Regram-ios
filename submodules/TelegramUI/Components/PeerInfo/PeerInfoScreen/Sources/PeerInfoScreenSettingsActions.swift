@@ -30,7 +30,11 @@ extension PeerInfoScreenNode {
             } else {
                 var updatedControllers = navigationController.viewControllers
                 for controller in navigationController.viewControllers.reversed() {
-                    if controller !== strongSelf && !(controller is TabBarController) {
+                    // MARK: Regram — compare against the controller, not this node, which is never in the
+                    // stack. As a tab the screen sits inside the TabBarController and the difference is
+                    // moot; with the tab bar hidden it is pushed, and the node comparison popped the
+                    // Settings screen itself, so Back from any section skipped straight to the chat list.
+                    if controller !== strongSelf.controller && !(controller is TabBarController) {
                         updatedControllers.removeLast()
                     } else {
                         break
