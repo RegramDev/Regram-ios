@@ -87,7 +87,6 @@ private enum RGBoolSetting: String {
     case stickerTimestamp
     case hideRecordingButton
     case hideTabBar
-    case hideTabBarOnScroll
     case showDC
     case showCreationDate
     case showRegDate
@@ -174,7 +173,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     entries.append(.header(id: id.count, section: .tabs, text: i18n("Settings.Tabs.Header", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .hideTabBar, value: RGSimpleSettings.shared.hideTabBar, text: i18n("Settings.Tabs.HideTabBar", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .hideTabBarOnScroll, value: RGSimpleSettings.shared.hideTabBarOnScroll, text: i18n("Settings.Tabs.HideOnScroll", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showContactsTab, value: callListSettings.showContactsTab, text: i18n("Settings.Tabs.ShowContacts", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showCallsTab, value: callListSettings.showTab, text: strings.CallSettings_TabIcon, enabled: !RGSimpleSettings.shared.hideTabBar))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showTabNames, value: RGSimpleSettings.shared.showTabNames, text: i18n("Settings.Tabs.ShowNames", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
@@ -475,8 +473,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.hideTabBar = value
             simplePromise.set(true) // Trigger update for 'enabled' field of other toggles
             askForRestart?()
-        case .hideTabBarOnScroll:
-            RGSimpleSettings.shared.hideTabBarOnScroll = value
         case .showDC:
             RGSimpleSettings.shared.showDC = value
         case .showCreationDate:

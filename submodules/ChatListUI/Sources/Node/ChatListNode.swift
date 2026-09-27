@@ -1967,25 +1967,24 @@ public final class ChatListNode: ListViewImpl {
         // filtered out there is nothing left to preview. Substitute the newest message that is still
         // visible. Results are cached per (peer, top message) inside the helper, and every update is
         // passed through before any lookup runs, so the list is never waiting on Postbox to render.
-        let rgPreviewSubstitution = RGChatListPreviewSubstitution(context: context)
-        let rgPreviewQueue = Queue(name: "regram-chat-list-filter")
+        let rgPreviewSubstitution = RGChatListPreviewSubstitution(context: context, queue: viewProcessingQueue)
         let chatListViewUpdate = self.chatListLocation.get()
         |> distinctUntilChanged
         |> mapToSignal { listLocation -> Signal<(ChatListNodeViewUpdate, ChatListFilter?), NoError> in
             return chatListViewForLocation(chatListLocation: location, location: listLocation, account: context.account, shouldLoadCanMessagePeer: shouldLoadCanMessagePeer)
-            |> deliverOn(rgPreviewQueue)
+            // MARK: Regram — Postbox delivers chat list views on its own queue, the one every history
+            // load of an open chat also waits on. Matching previews against the filter there held
+            // those loads up, so it runs where the list is processed anyway.
+            |> deliverOn(viewProcessingQueue)
             |> mapToSignal { update -> Signal<ChatListNodeViewUpdate, NoError> in
-                return Signal<ChatListNodeViewUpdate, NoError>.single(update)
+                return rgPreviewSubstitution.apply(to: update)
                 |> then(
                     rgContentFiltersDidChange()
-                    |> deliverOn(rgPreviewQueue)
-                    |> map { _ -> ChatListNodeViewUpdate in
-                        return update
+                    |> deliverOn(viewProcessingQueue)
+                    |> mapToSignal { _ -> Signal<ChatListNodeViewUpdate, NoError> in
+                        return rgPreviewSubstitution.apply(to: update)
                     }
                 )
-                |> mapToSignal { current -> Signal<ChatListNodeViewUpdate, NoError> in
-                    return rgPreviewSubstitution.apply(to: current)
-                }
             }
             |> map { update in
                 return (update, listLocation.filter)
@@ -2538,7 +2537,7 @@ public final class ChatListNode: ListViewImpl {
                 entries = [.HeaderEntry]
             }
             
-            let processedView = ChatListNodeView(originalList: update.paginationList, filteredEntries: entries, isLoading: isLoading, filter: filter)
+            let processedView = ChatListNodeView(originalList: update.list, filteredEntries: entries, isLoading: isLoading, filter: filter)
             let previousView = previousView.swap(processedView)
             let previousState = previousState.swap(state)
             

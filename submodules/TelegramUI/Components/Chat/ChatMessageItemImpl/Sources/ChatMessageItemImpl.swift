@@ -237,6 +237,43 @@ public func chatItemsHaveCommonDateHeader(_ lhs: ListViewItem, _ rhs: ListViewIt
     }
 }
 
+// MARK: Regram — whether an incoming message gets the quick-translate button. Answering means
+// running language recognition over the text, and item nodes are created on the main thread each time
+// a message scrolls into range, including every time it comes back after scrolling out. Remember the
+// answer per message version (and ignored-language setting) instead of recognising the same text again
+// in the middle of a scroll.
+private final class RGQuickTranslateAvailabilityCache {
+    static let shared = RGQuickTranslateAvailabilityCache()
+
+    private struct Key: Hashable {
+        let messageId: EngineMessage.Id
+        let stableVersion: UInt32
+        let ignoredLanguages: [String]?
+    }
+
+    private let limit = 2048
+    private let lock = NSLock()
+    private var entries: [Key: Bool] = [:]
+
+    func canTranslate(context: AccountContext, message: EngineRawMessage, ignoredLanguages: [String]?) -> Bool {
+        let key = Key(messageId: message.id, stableVersion: message.stableVersion, ignoredLanguages: ignoredLanguages)
+        self.lock.lock()
+        let cached = self.entries[key]
+        self.lock.unlock()
+        if let cached {
+            return cached
+        }
+        let (result, _) = canTranslateText(context: context, text: message.text, showTranslate: true, showTranslateIfTopical: false, ignoredLanguages: ignoredLanguages)
+        self.lock.lock()
+        if self.entries.count >= self.limit {
+            self.entries.removeAll(keepingCapacity: true)
+        }
+        self.entries[key] = result
+        self.lock.unlock()
+        return result
+    }
+}
+
 public final class ChatMessageItemImpl: ChatMessageItem, CustomStringConvertible {
     public let presentationData: ChatPresentationData
     public let context: AccountContext
@@ -571,9 +608,10 @@ public final class ChatMessageItemImpl: ChatMessageItem, CustomStringConvertible
         if viewClassName == ChatMessageBubbleItemNode.self {
             if self.message.attributes.first(where: { $0 is QuickTranslationMessageAttribute }) as? QuickTranslationMessageAttribute != nil {
                 needsQuickTranslateButton = true
+            } else if RGSimpleSettings.shared.quickTranslateButton {
+                needsQuickTranslateButton = RGQuickTranslateAvailabilityCache.shared.canTranslate(context: self.context, message: self.message, ignoredLanguages: self.associatedData.translationSettings?.ignoredLanguages)
             } else {
-                let (canTranslate, _) = canTranslateText(context: self.context, text: self.message.text, showTranslate: RGSimpleSettings.shared.quickTranslateButton, showTranslateIfTopical: false, ignoredLanguages: self.associatedData.translationSettings?.ignoredLanguages)
-                needsQuickTranslateButton = canTranslate
+                needsQuickTranslateButton = false
             }
         } else {
             needsQuickTranslateButton = false

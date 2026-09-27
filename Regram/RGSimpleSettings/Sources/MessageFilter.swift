@@ -16,7 +16,7 @@ public struct RGMessageFilterRule: Codable, Equatable {
     /// Conversations this rule is limited to. Empty means every conversation.
     public var peerIds: [Int64]
 
-    public init(id: String = UUID().uuidString, pattern: String, isRegex: Bool = true, peerIds: [Int64] = []) {
+    public init(id: String = UUID().uuidString, pattern: String, isRegex: Bool = false, peerIds: [Int64] = []) {
         self.id = id
         self.pattern = pattern
         self.isRegex = isRegex
@@ -42,7 +42,7 @@ public struct RGMessageFilterRule: Codable, Equatable {
     /// A regex rule that does not compile is inert rather than matching everything, so a typo
     /// cannot silently hide a whole conversation.
     public var isValid: Bool {
-        if self.pattern.isEmpty || self.pattern.utf16.count > RGMessageFilter.maximumPatternLength {
+        if self.pattern.isEmpty {
             return false
         }
         if self.isRegex {
@@ -57,85 +57,17 @@ public final class RGMessageFilter {
     /// filter runs for every entry of every history view, so compiled patterns are memoised.
     /// Failed patterns are memoised too (as `nil`) to avoid re-parsing a broken rule each time.
     private static let regexCacheLock = NSLock()
-    private struct CachedRegex {
-        let value: NSRegularExpression?
-    }
-    private static var regexCache: [String: CachedRegex] = [:]
-    private static var regexOrder: [String] = []
-    private static var nextRegexEviction = 0
-    private static let regexCacheLimit = 128
-    private static var slowPatterns = Set<String>()
-    public static func isPaused(_ pattern: String) -> Bool {
-        self.regexCacheLock.lock(); defer { self.regexCacheLock.unlock() }
-        return self.slowPatterns.contains(pattern)
-    }
-    public static func resetPausedPatterns() {
-        self.regexCacheLock.lock(); self.slowPatterns.removeAll(); self.regexCacheLock.unlock()
-    }
-    public static let maximumImportBytes = 2 * 1024 * 1024
-    public static let maximumRuleCount = 4096
-    public static let maximumPatternLength = 4096
-    /// A single message gets one small regex budget. Without a per-message budget, a large rule
-    /// set could spend the timeout once per rule and turn a background rebuild into minutes of CPU.
-    static let maximumMatchDuration: TimeInterval = 0.003
-
-    public enum ImportError: Error {
-        case fileTooLarge
-        case tooManyRules
-        case invalidRules
-        case cancelled
-    }
+    private static var regexCache: [String: NSRegularExpression?] = [:]
 
     public static func compiledRegex(for pattern: String) -> NSRegularExpression? {
-        guard pattern.utf16.count <= self.maximumPatternLength else { return nil }
-        self.regexCacheLock.lock()
-        if let cached = self.regexCache[pattern] {
-            self.regexCacheLock.unlock()
-            return cached.value
-        }
-        self.regexCacheLock.unlock()
-        let compiled = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
         self.regexCacheLock.lock()
         defer { self.regexCacheLock.unlock() }
-        if self.regexCache[pattern] == nil {
-            if self.regexOrder.count == self.regexCacheLimit {
-                self.regexCache.removeValue(forKey: self.regexOrder[self.nextRegexEviction])
-                self.regexOrder[self.nextRegexEviction] = pattern
-                self.nextRegexEviction = (self.nextRegexEviction + 1) % self.regexCacheLimit
-            } else {
-                self.regexOrder.append(pattern)
-            }
-            self.regexCache[pattern] = CachedRegex(value: compiled)
+        if let cached = self.regexCache[pattern] {
+            return cached
         }
+        let compiled = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+        self.regexCache[pattern] = compiled
         return compiled
-    }
-
-    /// ICU periodically reports progress even during backtracking. Stop at the first match, the
-    /// deadline, or cancellation; a timed-out rule leaves the message visible.
-    public static func boundedMatch(_ regex: NSRegularExpression, text: String, range: NSRange, deadline: TimeInterval, isCancelled: () -> Bool = { false }) -> Bool {
-        guard !self.isPaused(regex.pattern), !isCancelled(), ProcessInfo.processInfo.systemUptime < deadline else {
-            return false
-        }
-        var matched = false
-        var exceeded = false
-        regex.enumerateMatches(in: text, options: [.reportProgress], range: range) { result, _, stop in
-            if isCancelled() {
-                stop.pointee = true
-            } else if ProcessInfo.processInfo.systemUptime >= deadline {
-                exceeded = true
-                stop.pointee = true
-            } else if result != nil {
-                matched = true
-                stop.pointee = true
-            }
-        }
-        if exceeded {
-            self.regexCacheLock.lock()
-            let inserted = self.slowPatterns.insert(regex.pattern).inserted
-            self.regexCacheLock.unlock()
-            if inserted { DispatchQueue.main.async { RGSimpleSettings.shared.invalidateSlowRuleResults() } }
-        }
-        return matched
     }
 
     public static func matches(rule: RGMessageFilterRule, text: String) -> Bool {
@@ -147,14 +79,20 @@ public final class RGMessageFilter {
                 return false
             }
             let range = NSRange(location: 0, length: (text as NSString).length)
-            return self.boundedMatch(regex, text: text, range: range, deadline: ProcessInfo.processInfo.systemUptime + self.maximumMatchDuration)
+            return regex.firstMatch(in: text, options: [], range: range) != nil
         }
         return text.range(of: rule.pattern, options: [.caseInsensitive]) != nil
     }
 
     /// Whether any rule enabled for `peerId` matches `text`.
     public static func shouldHide(text: String, peerId: Int64?, rules: [RGMessageFilterRule]) -> Bool {
-        for rule in rules where rule.appliesTo(peerId: peerId) {
+        if rules.isEmpty {
+            return false
+        }
+        for rule in rules {
+            if !rule.appliesTo(peerId: peerId) {
+                continue
+            }
             if self.matches(rule: rule, text: text) {
                 return true
             }
@@ -176,40 +114,6 @@ public final class RGMessageFilter {
         return rules
     }
 
-    public static func readImport(at url: URL) throws -> [RGMessageFilterRule] {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { handle.closeFile() }
-        // `read(upToCount:)` is unavailable on the older iOS versions this target still supports.
-        // Reading one byte past the limit keeps the same bounded-size check without loading an
-        // untrusted export into memory.
-        let data = handle.readData(ofLength: self.maximumImportBytes + 1)
-        guard data.count <= self.maximumImportBytes else { throw ImportError.fileTooLarge }
-        guard let rules = try? JSONDecoder().decode([RGMessageFilterRule].self, from: data), !rules.isEmpty else {
-            throw ImportError.invalidRules
-        }
-        guard rules.count <= self.maximumRuleCount else { throw ImportError.tooManyRules }
-        guard rules.allSatisfy({ $0.pattern.count <= self.maximumPatternLength && $0.isValid }) else {
-            throw ImportError.invalidRules
-        }
-        return rules
-    }
-
-    private struct RuleKey: Hashable {
-        let pattern: String
-        let isRegex: Bool
-        let peerIds: [Int64]
-
-        init(_ rule: RGMessageFilterRule) {
-            self.pattern = rule.pattern
-            self.isRegex = rule.isRegex
-            self.peerIds = Array(Set(rule.peerIds)).sorted()
-        }
-    }
-
-    public static func equivalent(_ lhs: RGMessageFilterRule, _ rhs: RGMessageFilterRule) -> Bool {
-        return RuleKey(lhs) == RuleKey(rhs)
-    }
-
     /// Name the rule export is written under. The JSON itself carries no marker, so the name is also
     /// how a shared export is recognised in a chat.
     public static let exportFileName = "regram-message-filter.json"
@@ -223,94 +127,15 @@ public final class RGMessageFilter {
     /// Adds `imported` to `existing` and returns the result with the number of rules added.
     ///
     /// Merged, not replaced: an import should never silently wipe rules the user still wants.
-    /// Scope is part of identity. Every imported rule gets a fresh id to avoid row collisions.
+    /// Matching pattern + kind is treated as the same rule and skipped, and every imported rule gets
+    /// a fresh id so it cannot collide with an existing row.
     public static func merging(_ imported: [RGMessageFilterRule], into existing: [RGMessageFilterRule]) -> (rules: [RGMessageFilterRule], addedCount: Int) {
         var merged = existing
-        var keys = Set(existing.map(RuleKey.init))
         var addedCount = 0
-        for rule in imported where keys.insert(RuleKey(rule)).inserted {
-            merged.append(RGMessageFilterRule(pattern: rule.pattern, isRegex: rule.isRegex, peerIds: Array(Set(rule.peerIds)).sorted()))
+        for rule in imported where !merged.contains(where: { $0.pattern == rule.pattern && $0.isRegex == rule.isRegex }) {
+            merged.append(RGMessageFilterRule(pattern: rule.pattern, isRegex: rule.isRegex, peerIds: rule.peerIds))
             addedCount += 1
         }
         return (merged, addedCount)
-    }
-}
-
-/// Immutable ruleset shared by one filtering pass. Regular expressions and chat scopes are
-/// prepared once when settings change; matching a message does not decode JSON or take a lock.
-public final class RGMessageFilterMatcher {
-    private struct Entry {
-        let pattern: String
-        let regex: NSRegularExpression?
-        let scopedPeerIds: Set<Int64>?
-    }
-
-    public let rules: [RGMessageFilterRule]
-    private let preparationLock = NSLock()
-    private var preparedEntries: [Entry]?
-    public let isEmpty: Bool
-
-    public init(rules: [RGMessageFilterRule]) {
-        self.rules = rules
-        self.isEmpty = rules.allSatisfy { $0.pattern.isEmpty }
-    }
-
-    private func entries(isCancelled: () -> Bool) -> [Entry]? {
-        self.preparationLock.lock()
-        let cached = self.preparedEntries
-        self.preparationLock.unlock()
-        if let cached { return cached }
-        var result: [Entry] = []
-        for rule in self.rules {
-            if isCancelled() { return nil }
-            if rule.pattern.isEmpty { continue }
-            let regex = rule.isRegex ? RGMessageFilter.compiledRegex(for: rule.pattern) : nil
-            if rule.isRegex && regex == nil { continue }
-            result.append(Entry(pattern: rule.pattern, regex: regex, scopedPeerIds: rule.peerIds.isEmpty ? nil : Set(rule.peerIds)))
-        }
-        self.preparationLock.lock()
-        self.preparedEntries = result
-        self.preparationLock.unlock()
-        return result
-    }
-
-    public func shouldHide(text: String, peerId: Int64?, isCancelled: () -> Bool = { false }) -> Bool {
-        guard !text.isEmpty, let entries = self.entries(isCancelled: isCancelled) else {
-            return false
-        }
-        var utf16Range: NSRange?
-        // Literal rules are bounded by the system's string search and should not lose their turn
-        // because an earlier regex consumed the regex budget.
-        for entry in entries {
-            if isCancelled() { return false }
-            if let scopedPeerIds = entry.scopedPeerIds {
-                guard let peerId, scopedPeerIds.contains(peerId) else {
-                    continue
-                }
-            }
-            if entry.regex == nil, text.range(of: entry.pattern, options: [.caseInsensitive]) != nil {
-                return true
-            }
-        }
-        let deadline = ProcessInfo.processInfo.systemUptime + RGMessageFilter.maximumMatchDuration
-        for entry in entries {
-            if isCancelled() { return false }
-            guard let scopedPeerIds = entry.scopedPeerIds else {
-                // Continue below for an all-chat regex.
-                if let regex = entry.regex {
-                    let range = utf16Range ?? NSRange(location: 0, length: (text as NSString).length)
-                    utf16Range = range
-                    if RGMessageFilter.boundedMatch(regex, text: text, range: range, deadline: deadline, isCancelled: isCancelled) { return true }
-                }
-                continue
-            }
-            guard let peerId, scopedPeerIds.contains(peerId), let regex = entry.regex else {
-                continue
-            }
-            let range = utf16Range ?? NSRange(location: 0, length: (text as NSString).length)
-            utf16Range = range
-            if RGMessageFilter.boundedMatch(regex, text: text, range: range, deadline: deadline, isCancelled: isCancelled) { return true }
-        }
-        return false
     }
 }

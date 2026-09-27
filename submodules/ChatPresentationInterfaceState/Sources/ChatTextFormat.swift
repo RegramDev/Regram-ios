@@ -226,26 +226,31 @@ public func chatTextInputAddMentionAttribute(_ state: ChatTextInputState, peer: 
     
     let range = NSMakeRange(state.selectionRange.startIndex, state.selectionRange.endIndex - state.selectionRange.startIndex)
     
-    // MARK: Regram — opt-in: the display name carrying a public `t.me/<username>` link instead of a
-    // bare `@username`. Off by default, so the gesture behaves as upstream unless the user asks
-    // otherwise (Regram Pro ▸ mention as link).
+    // MARK: Regram — opt-in: mention a user by their full name instead of a bare `@username`. Off
+    // by default, so the gesture behaves as upstream unless the user asks otherwise (Regram Pro ▸
+    // mention by name).
     //
-    // A plain URL entity rather than the native `textMention`: a mention entity is validated by the
-    // server against the sender's access to that user and is dropped when it fails, while the link
-    // survives sending, forwarding and copying anywhere. The link is built from the username (not the
-    // numeric user id), so it resolves the same everywhere `t.me/<username>` does. Users without a
-    // username fall through to upstream behaviour, since there is no username to link to.
-    if RGSimpleSettings.shared.mentionAsUserIdLink, let addressName = peer.addressName, !addressName.isEmpty, !peer.compactDisplayTitle.isEmpty {
-        let url = "https://t.me/\(addressName)"
-        let replacementText = NSMutableAttributedString()
-        replacementText.append(NSAttributedString(string: peer.compactDisplayTitle, attributes: [ChatTextInputAttributes.textUrl: ChatTextInputTextUrlAttribute(url: url)]))
-        replacementText.append(NSAttributedString(string: " "))
+    // The native name mention (`textMention`), the same entity bots send: it renders as the name,
+    // opens the profile on tap, notifies the user, and long-pressing it shows the mention menu (send
+    // message, copy, profile card). A `t.me/<username>` URL entity, used here before, rendered the
+    // same but long-pressed as a plain link. Upstream already inserts this entity for users without a
+    // username, and the server accepts it wherever the sender can see the user — which is the case
+    // for anyone mentioned from their avatar in a chat. Only users can be mentioned by name, so other
+    // peers keep the upstream form.
+    if RGSimpleSettings.shared.mentionAsUserIdLink, case let .user(user) = peer {
+        let fullName = [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+        let title = fullName.isEmpty ? peer.compactDisplayTitle : fullName
+        if !title.isEmpty {
+            let replacementText = NSMutableAttributedString()
+            replacementText.append(NSAttributedString(string: title, attributes: [ChatTextInputAttributes.textMention: ChatTextInputTextMentionAttribute(peerId: peer.id)]))
+            replacementText.append(NSAttributedString(string: " "))
 
-        inputText.replaceCharacters(in: range, with: replacementText)
+            inputText.replaceCharacters(in: range, with: replacementText)
 
-        let selectionPosition = range.lowerBound + replacementText.length
+            let selectionPosition = range.lowerBound + replacementText.length
 
-        return ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition)
+            return ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition)
+        }
     }
 
     if let addressName = peer.addressName, !addressName.isEmpty {

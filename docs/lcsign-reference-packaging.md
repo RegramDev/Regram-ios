@@ -170,8 +170,10 @@ shasum -a 256 "$final_ipa"
 ## 当前交付产物
 
 ```text
-build/artifacts-lcsign-reference-34559/Regram-12.9.2-b34559-LCSign-reference-compatible.ipa
-SHA-256: 5bd8640c22aaf38744a415ec7bef4fb281f37c415e830bf0642c23ec8275263a
+build/artifacts-lcsign-five-34567/Regram-12.9.2-b34567-LCSign.ipa
+SHA-256: dceb17e806dbe0e6de6f8cb0a8085d4f3887109d9863b0990669d3935388783d
 ```
 
-b34559 使用 Xcode 26.6 和 iOS 26.5 SDK 构建。最终 IPA 已全新解包验证：6 个扩展、0 个描述文件、13 个 ad-hoc 签名的 Mach-O；主程序及扩展的 Bundle ID 和 entitlements 与 b34558 一致。
+b34567 使用 Xcode 26.6 和 iOS 26.5 SDK 构建。最终 IPA 已全新解包验证：6 个扩展、0 个描述文件、13 个 ad-hoc 签名的 Mach-O；主程序及扩展的 Bundle ID 和 entitlements 与 b34559 逐项一致。
+
+同目录另有 4 个客户端身份变体（b34568–b34571），按本文同样流程打包。构建时只临时替换配置仓库中的 Bundle ID、api_id、api_hash（三者配套）、`versions.json` 版本号和应用名，并生成匹配 Bundle ID 的占位描述文件；构建结束后全部还原。变体的 App Group 为 `group.<Bundle ID>`，与本文针对 Regram 的 `group.app.swiftgram.ios` 验收值不同，属预期。清单见 `BUILD-MANIFEST.txt`。

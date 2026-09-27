@@ -155,22 +155,6 @@ public final class Transaction {
     public func withAllMessages(peerId: PeerId, namespace: MessageId.Namespace? = nil, reversed: Bool = false, _ f: (Message) -> Bool) {
         self.postbox?.withAllMessages(peerId: peerId, namespace: namespace, reversed: reversed, f)
     }
-
-    /// A bounded index-range read; unlike withAllMessages this never materializes the full history.
-    public func localMessagePage(peerId: PeerId, namespace: MessageId.Namespace, threadId: Int64? = nil, before: MessageIndex?, limit: Int) -> [Message] {
-        guard let postbox = self.postbox else { return [] }
-        let upper = before ?? MessageIndex(id: MessageId(peerId: peerId, namespace: namespace, id: Int32.max), timestamp: Int32.max)
-        let lower = MessageIndex(id: MessageId(peerId: peerId, namespace: namespace, id: Int32.min), timestamp: Int32.min)
-        return postbox.messageHistoryTable.fetch(peerId: peerId, namespace: namespace, tag: nil, customTag: nil, threadId: threadId, from: upper, includeFrom: before == nil, to: lower, ignoreMessagesInTimestampRange: nil, ignoreMessageIds: Set(), limit: limit).map(postbox.renderIntermediateMessage(_:))
-    }
-
-    public func contentFilterPeerMetadata(_ peerId: PeerId) -> (groupId: PeerGroupId, tags: PeerSummaryCounterTags, isMuted: Bool, threadBased: Bool, effectiveThreadCount: Int32)? {
-        guard let postbox = self.postbox, let peer = postbox.peerTable.get(peerId), let (groupId, _) = postbox.chatListTable.getPeerChatListIndex(peerId: peerId) else { return nil }
-        let muted = resolvedIsRemovedFromTotalUnreadCount(globalSettings: self.getGlobalNotificationSettings(), peer: peer, peerSettings: self.getPeerNotificationSettings(id: peer.notificationSettingsPeerId ?? peerId))
-        let regular = postbox.cachedPeerDataTable.get(peerId).map(postbox.seedConfiguration.decodeDisplayPeerAsRegularChat) ?? false
-        let threaded = !regular && postbox.seedConfiguration.peerSummaryIsThreadBased(peer, peer.associatedPeerId.flatMap(postbox.peerTable.get)).value
-        return (groupId, postbox.seedConfiguration.peerSummaryCounterTags(peer, self.isPeerContact(peerId: peerId)), muted, threaded, postbox.peerThreadsSummaryTable.get(peerId: peerId)?.effectiveUnreadCount ?? 0)
-    }
     
     public func clearHistory(_ peerId: PeerId, threadId: Int64?, minTimestamp: Int32?, maxTimestamp: Int32?, namespaces: MessageIdNamespaces, forEachMedia: ((Media) -> Void)?) {
         assert(!self.disposed)
@@ -1613,7 +1597,6 @@ final class PostboxImpl {
     private let ipcNotificationsDisposable = MetaDisposable()
     
     private var transactionStateVersion: Int64 = 0
-    let contentFilterChangesPipe = ValuePipe<Set<PeerId>?>()
     
     private var viewTracker: ViewTracker!
     private var nextViewId = 0
@@ -2617,7 +2600,6 @@ final class PostboxImpl {
                 })
             })
             self.transactionStateVersion = currentTransactionStateVersion
-            self.queue.async { [weak self] in self?.contentFilterChangesPipe.putNext(nil) }
             
             self.masterClientId.set(.single(self.metadataTable.masterClientId()))
         }
@@ -2744,18 +2726,6 @@ final class PostboxImpl {
             if let currentUpdatedMasterClientId = self.currentUpdatedMasterClientId {
                 self.metadataTable.setMasterClientId(currentUpdatedMasterClientId)
                 updatedMasterClientId = currentUpdatedMasterClientId
-            }
-            let affected = Set(self.currentOperationsByPeerId.keys)
-                .union(alteredInitialPeerCombinedReadStates.keys)
-                .union(self.currentUpdatedChatListInclusions.keys)
-                .union(self.currentUpdatedPeerNotificationSettings.keys)
-                .union(updatedMessageThreadPeerIds)
-                .union(self.currentUpdatedPeerThreadCombinedStates)
-                .union(self.currentUpdatedCachedPeerData.keys)
-                .union(self.currentUpdatedPeers.keys)
-            let refreshAll = self.currentNeedsReindexUnreadCounters || !updatedContacts.isEmpty
-            if refreshAll || !affected.isEmpty {
-                self.queue.async { [weak self] in self?.contentFilterChangesPipe.putNext(refreshAll ? nil : affected) }
             }
         }
         
@@ -4656,16 +4626,6 @@ public class Postbox {
 
     public let seedConfiguration: SeedConfiguration
     public let mediaBox: MediaBox
-
-    public var contentFilterChanges: Signal<Set<PeerId>?, NoError> {
-        return Signal { subscriber in
-            let disposable = MetaDisposable()
-            self.impl.with { impl in
-                disposable.set(impl.contentFilterChangesPipe.signal().start(next: { subscriber.putNext($0) }))
-            }
-            return disposable
-        }
-    }
     
     private let isInTransaction = Atomic<Bool>(value: false)
 

@@ -21,10 +21,9 @@ public func renderedTotalUnreadCount(accountManager: AccountManager<TelegramAcco
         accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings]),
         engine.data.subscribe(
             TelegramEngine.EngineData.Item.Messages.TotalReadCounters()
-        ),
-        engine.account.filteredUnreadContext.state
+        )
     )
-    |> map { sharedData, totalReadCounters, visibility -> (Int32, RenderedTotalUnreadCountType) in
+    |> map { sharedData, totalReadCounters -> (Int32, RenderedTotalUnreadCountType) in
         let inAppSettings: InAppNotificationSettings
         if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.inAppNotificationSettings]?.get(InAppNotificationSettings.self) {
             inAppSettings = value
@@ -36,8 +35,7 @@ public func renderedTotalUnreadCount(accountManager: AccountManager<TelegramAcco
             case .filtered:
                 type = .filtered
         }
-        let adjusted = visibility.adjustedTotal(totalReadCounters._asCounters(), groupId: .root)
-        return (adjusted.count(for: inAppSettings.totalUnreadCountDisplayStyle.category, in: inAppSettings.totalUnreadCountDisplayCategory.statsType, with: inAppSettings.totalUnreadCountIncludeTags), type)
+        return (totalReadCounters.count(for: inAppSettings.totalUnreadCountDisplayStyle.category, in: inAppSettings.totalUnreadCountDisplayCategory.statsType, with: inAppSettings.totalUnreadCountIncludeTags), type)
     }
     |> distinctUntilChanged(isEqual: { lhs, rhs in
         return lhs == rhs

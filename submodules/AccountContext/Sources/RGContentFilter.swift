@@ -12,8 +12,11 @@ import RGSimpleSettings
 /// Verdicts already computed, so that re-examining the same window costs a dictionary lookup
 /// instead of a fresh scan of every message.
 ///
-/// Chat history transitions run on the main thread. Their history windows are evaluated first on a
-/// dedicated queue, so layout only reads cached verdicts instead of running a regex while scrolling.
+/// The chat history is rebuilt on the **main thread** (`ChatHistoryListNode`'s `messageViewQueue` is
+/// `Queue.mainQueue()`) on every scroll-driven window change, and each rebuild re-examines every
+/// entry it kept. Evaluating a rule means either a case-insensitive `range(of:)` — Unicode folding,
+/// not a byte compare — or a regex match, so repeating that per rebuild for a window of hundreds of
+/// messages is what made scrolling a filtered chat drop frames.
 ///
 /// A verdict stays valid until either the rules or the message itself change. Rule changes are
 /// caught by `RGSimpleSettings.contentFilterGeneration`, which discards the whole table; message
@@ -21,84 +24,120 @@ import RGSimpleSettings
 /// (`MessageHistoryTable`: `stableVersion = previousMessage.stableVersion + 1`). That makes an edit
 /// exact rather than heuristic — comparing text length instead would serve a stale verdict for an
 /// edit that happened to preserve it, and a stale *hide* means a message the user never sees.
+///
+/// `stableVersion` also moves for updates that leave the text alone — view counts, reactions, read
+/// markers — which in a channel arrive continuously for exactly the posts on screen. The filter only
+/// reads the text, so each entry also remembers a hash of it, and a new version with the same text
+/// keeps its verdict instead of being matched against every rule again.
 private final class RGContentFilterVerdictCache {
     static let shared = RGContentFilterVerdictCache()
 
-    private struct Key: Hashable {
-        let accountPeerId: EnginePeer.Id
-        let messageId: EngineMessage.Id
-        let generation: Int
-    }
-
     private struct Entry {
-        let stableVersion: UInt32
+        var stableVersion: UInt32
+        let textHash: Int
         let shouldHide: Bool
     }
 
-    /// Bounded so that a long session cannot grow it without limit. Far above what one rebuild
-    /// touches, so the clear below is rare rather than a thrash.
+    /// Bounded so that a long session cannot grow it without limit. Evicted oldest-first, one entry
+    /// at a time: dropping the whole table at the limit (as this used to) made the next rebuild
+    /// re-match the entire window in one go, mid-scroll.
     private let limit = 8192
 
     private let lock = NSLock()
-    private var entries: [Key: Entry] = [:]
-    private var evictionOrder: [Key] = []
+    private var generation: Int = -1
+    private var entries: [EngineMessage.Id: Entry] = [:]
+    private var insertionOrder: [EngineMessage.Id] = []
     private var nextEviction = 0
-    private var pending = Set<Key>()
-    private var refreshScheduled = false
 
-    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32) -> Bool? {
+    func verdict(for id: EngineMessage.Id, generation: Int, stableVersion: UInt32) -> Bool? {
         self.lock.lock()
         defer { self.lock.unlock() }
-        guard let entry = self.entries[Key(accountPeerId: accountPeerId, messageId: id, generation: generation)], entry.stableVersion == stableVersion else {
+        guard self.generation == generation, let entry = self.entries[id], entry.stableVersion == stableVersion else {
             return nil
         }
         return entry.shouldHide
     }
 
-    func store(_ shouldHide: Bool, for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32) {
+    /// Same as above, but also accepts an entry for an older version of the message whose text is
+    /// unchanged, and records the new version so the plain lookup hits from now on.
+    func verdict(for id: EngineMessage.Id, generation: Int, stableVersion: UInt32, textHash: Int) -> Bool? {
         self.lock.lock()
         defer { self.lock.unlock() }
-        let key = Key(accountPeerId: accountPeerId, messageId: id, generation: generation)
-        if self.entries[key] == nil {
-            if self.evictionOrder.count == self.limit {
-                self.entries.removeValue(forKey: self.evictionOrder[self.nextEviction])
-                self.evictionOrder[self.nextEviction] = key
-                self.nextEviction = (self.nextEviction + 1) % self.limit
-            } else {
-                self.evictionOrder.append(key)
-            }
+        guard self.generation == generation, var entry = self.entries[id] else {
+            return nil
         }
-        self.entries[key] = Entry(stableVersion: stableVersion, shouldHide: shouldHide)
+        if entry.stableVersion != stableVersion {
+            guard entry.textHash == textHash else {
+                return nil
+            }
+            entry.stableVersion = stableVersion
+            self.entries[id] = entry
+        }
+        return entry.shouldHide
     }
 
-    func schedule(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, compute: @escaping () -> Void) {
-        let key = Key(accountPeerId: accountPeerId, messageId: id, generation: generation)
+    func store(_ shouldHide: Bool, for id: EngineMessage.Id, generation: Int, stableVersion: UInt32, textHash: Int) {
         self.lock.lock()
-        let inserted = self.pending.insert(key).inserted
-        self.lock.unlock()
-        guard inserted else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            compute()
-            self.lock.lock()
-            self.pending.remove(key)
-            let shouldNotify = !self.refreshScheduled
-            self.refreshScheduled = true
-            self.lock.unlock()
-            if shouldNotify {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
-                    self.lock.lock()
-                    self.refreshScheduled = false
-                    self.lock.unlock()
-                    NotificationCenter.default.post(name: RGSimpleSettings.contentFilterResultsDidChangeNotification, object: nil)
-                }
+        defer { self.lock.unlock() }
+        if generation < self.generation {
+            // Computed under rules that have since changed (a background pass finishing late).
+            // Storing it would reset the table to the old generation and throw the new one away.
+            return
+        }
+        if self.generation != generation {
+            self.generation = generation
+            self.entries.removeAll(keepingCapacity: true)
+            self.insertionOrder.removeAll(keepingCapacity: true)
+            self.nextEviction = 0
+        }
+        if self.entries[id] == nil {
+            if self.insertionOrder.count == self.limit {
+                self.entries.removeValue(forKey: self.insertionOrder[self.nextEviction])
+                self.insertionOrder[self.nextEviction] = id
+                self.nextEviction = (self.nextEviction + 1) % self.limit
+            } else {
+                self.insertionOrder.append(id)
             }
         }
+        self.entries[id] = Entry(stableVersion: stableVersion, textHash: textHash, shouldHide: shouldHide)
+    }
+
+    /// The candidates without a verdict for their current version, found under one lock.
+    func missing(_ candidates: [RGContentFilterCandidate], generation: Int) -> [RGContentFilterCandidate] {
+        self.lock.lock()
+        defer { self.lock.unlock() }
+        guard self.generation == generation else {
+            return candidates
+        }
+        return candidates.filter { candidate in
+            guard let entry = self.entries[candidate.id] else {
+                return true
+            }
+            return entry.stableVersion != candidate.stableVersion
+        }
+    }
+}
+
+/// What the filter needs to know about one message, detached from Postbox so a whole history window
+/// can be handed to a background queue.
+public struct RGContentFilterCandidate {
+    public let id: EngineMessage.Id
+    public let stableVersion: UInt32
+    public let text: String
+    public let authorId: EnginePeer.Id?
+    public let isIncoming: Bool
+
+    public init(id: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool) {
+        self.id = id
+        self.stableVersion = stableVersion
+        self.text = text
+        self.authorId = authorId
+        self.isIncoming = isIncoming
     }
 }
 
 public struct RGContentFilterState {
     public let rules: [RGMessageFilterRule]
-    private let matcher: RGMessageFilterMatcher
     public let hiddenSenderIds: Set<Int64>
     /// Chats the keyword rules are switched off in, from the per-chat toggle on a peer's profile.
     /// Hidden senders are deliberately *not* subject to it: hiding someone is about the person, so
@@ -108,23 +147,26 @@ public struct RGContentFilterState {
 
     /// Generation the verdict cache is keyed on, captured with the rules so that a rule change
     /// landing mid-pass cannot mix verdicts from two rule sets into one table.
-    public let generation: Int
+    fileprivate let generation: Int
 
-    /// A single snapshot keeps the compiled rules, scopes, blocked senders and generation aligned.
+    /// Reads the current settings. Decoding the rules and the hidden-sender list is not free, so
+    /// build this once per pass rather than per message.
+    ///
+    /// Reads through the memoised `Set`/`[Rule]` accessors rather than testing the raw `…Raw`
+    /// arrays first: those are `@UserDefault` wrappers, so each test was a `UserDefaults` read on
+    /// every rebuild, where the decoded values are already cached behind one lock.
     public init(accountPeerId: EnginePeer.Id) {
         let settings = RGSimpleSettings.shared
-        let snapshot = settings.contentFilterSnapshot()
-        let matcher = snapshot.isProUnlocked ? snapshot.matcher : RGMessageFilterMatcher(rules: [])
-        self.matcher = matcher
-        self.rules = matcher.rules
-        self.hiddenSenderIds = snapshot.isProUnlocked ? snapshot.blockedPeerIds : []
-        self.filterDisabledPeerIds = snapshot.disabledPeerIds
+        let isProUnlocked = settings.ephemeralStatus > 1
+        self.rules = isProUnlocked ? settings.messageFilterRules : []
+        self.hiddenSenderIds = isProUnlocked ? settings.blockedPeerIds : []
+        self.filterDisabledPeerIds = settings.messageFilterDisabledPeerIds
         self.accountPeerId = accountPeerId
-        self.generation = snapshot.generation
+        self.generation = settings.contentFilterGeneration
     }
 
     public var isEmpty: Bool {
-        return self.matcher.isEmpty && self.hiddenSenderIds.isEmpty
+        return self.rules.isEmpty && self.hiddenSenderIds.isEmpty
     }
 
     /// - Parameters:
@@ -132,11 +174,11 @@ public struct RGContentFilterState {
     ///     profile disappears from every group and comment thread, not just a one-to-one chat.
     ///   - peerId: the conversation, used to apply rules scoped to specific chats.
     ///   - isIncoming: keyword rules only apply to messages you received.
-    public func shouldHide(text: String, authorId: EnginePeer.Id?, peerId: EnginePeer.Id, isIncoming: Bool, isCancelled: () -> Bool = { false }) -> Bool {
+    public func shouldHide(text: String, authorId: EnginePeer.Id?, peerId: EnginePeer.Id, isIncoming: Bool) -> Bool {
         if !self.hiddenSenderIds.isEmpty, let authorId = authorId, authorId != self.accountPeerId, self.hiddenSenderIds.contains(authorId.toInt64()) {
             return true
         }
-        if !self.matcher.isEmpty, isIncoming, !self.filterDisabledPeerIds.contains(peerId.toInt64()), self.matcher.shouldHide(text: text, peerId: peerId.toInt64(), isCancelled: isCancelled) {
+        if !self.rules.isEmpty, isIncoming, !self.filterDisabledPeerIds.contains(peerId.toInt64()), RGMessageFilter.shouldHide(text: text, peerId: peerId.toInt64(), rules: self.rules) {
             return true
         }
         return false
@@ -147,35 +189,22 @@ public struct RGContentFilterState {
     /// Prefer this over the plain `shouldHide` wherever a message id is at hand: it is the same
     /// predicate, but a window that was already examined costs one dictionary lookup per entry
     /// rather than a Unicode-folding search per entry per rule.
-    public func shouldHide(messageId: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool, isCancelled: () -> Bool = { false }) -> Bool {
-        if let cached = RGContentFilterVerdictCache.shared.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion) {
+    public func shouldHide(messageId: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool) -> Bool {
+        let cache = RGContentFilterVerdictCache.shared
+        if let cached = cache.verdict(for: messageId, generation: self.generation, stableVersion: stableVersion) {
             return cached
         }
-        if Thread.isMainThread && !self.isEmpty {
-            let hiddenSender = !self.hiddenSenderIds.isEmpty && authorId.map { $0 != self.accountPeerId && self.hiddenSenderIds.contains($0.toInt64()) } == true
-            if hiddenSender { return true }
-            guard isIncoming else { return false }
-            RGContentFilterVerdictCache.shared.schedule(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation) {
-                guard RGSimpleSettings.shared.contentFilterGeneration == self.generation else { return }
-                let result = self.shouldHide(text: text, authorId: authorId, peerId: messageId.peerId, isIncoming: isIncoming, isCancelled: { RGSimpleSettings.shared.contentFilterGeneration != self.generation })
-                guard RGSimpleSettings.shared.contentFilterGeneration == self.generation else { return }
-                RGContentFilterVerdictCache.shared.store(result, for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion)
-            }
-            // No main-thread regex fallback. The prepared result triggers a fresh presentation pass.
-            return false
+        let textHash = text.hashValue
+        if let cached = cache.verdict(for: messageId, generation: self.generation, stableVersion: stableVersion, textHash: textHash) {
+            return cached
         }
-        let result = self.shouldHide(text: text, authorId: authorId, peerId: messageId.peerId, isIncoming: isIncoming, isCancelled: isCancelled)
-        if isCancelled() { return false }
-        RGContentFilterVerdictCache.shared.store(result, for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion)
+        let result = self.shouldHide(text: text, authorId: authorId, peerId: messageId.peerId, isIncoming: isIncoming)
+        cache.store(result, for: messageId, generation: self.generation, stableVersion: stableVersion, textHash: textHash)
         return result
     }
 
     public func shouldHide(message: EngineMessage) -> Bool {
         return self.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(self.accountPeerId))
-    }
-
-    public func preparedVerdict(messageId: EngineMessage.Id, stableVersion: UInt32) -> Bool? {
-        return RGContentFilterVerdictCache.shared.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion)
     }
 }
 
@@ -191,32 +220,42 @@ public struct RGContentFilterState {
 /// should ever have.
 public func rgContentFiltersDidChange() -> Signal<Void, NoError> {
     return Signal { subscriber in
-        let observers = [RGSimpleSettings.contentFiltersDidChangeNotification, RGSimpleSettings.contentFilterResultsDidChangeNotification].map { name in
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil, using: { _ in subscriber.putNext(Void()) })
-        }
+        let observer = NotificationCenter.default.addObserver(forName: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil, queue: nil, using: { _ in
+            subscriber.putNext(Void())
+        })
         return ActionDisposable {
-            observers.forEach(NotificationCenter.default.removeObserver)
+            NotificationCenter.default.removeObserver(observer)
         }
     }
 }
 
-public func rgPrepareContentFilter(messages: [EngineMessage], accountPeerId: EnginePeer.Id) -> Signal<Void, NoError> {
+/// Computes the verdicts for `candidates` on `queue`, so that a following main-thread pass over the
+/// same messages (`chatHistoryEntriesForView`) only reads the cache.
+///
+/// Matching is a case-insensitive search or a regex per rule per message. Done inline on the main
+/// thread, as it used to be, every history window that moved while scrolling matched its newly
+/// loaded messages right inside the frame — the stutter of slow scrolling. Completes synchronously,
+/// with no queue hop, when the filter is off or every candidate already has a verdict, so the
+/// common case costs nothing. Meant for `mapToQueue`, which keeps updates in order and never drops
+/// one: the first update of a history view carries its scroll position.
+public func rgPrepareContentFilter(candidates: [RGContentFilterCandidate], accountPeerId: EnginePeer.Id, queue: Queue) -> Signal<Void, NoError> {
+    let filter = RGContentFilterState(accountPeerId: accountPeerId)
+    if filter.isEmpty {
+        return .single(Void())
+    }
+    let cache = RGContentFilterVerdictCache.shared
+    let missing = cache.missing(candidates, generation: filter.generation)
+    if missing.isEmpty {
+        return .single(Void())
+    }
     return Signal { subscriber in
-        let cancelled = Atomic<Bool>(value: false)
-        DispatchQueue.global(qos: .userInitiated).async {
-            let filter = RGContentFilterState(accountPeerId: accountPeerId)
-            let isCancelled = { cancelled.with { $0 } || RGSimpleSettings.shared.contentFilterGeneration != filter.generation }
-            if !filter.isEmpty {
-                for message in messages {
-                    if isCancelled() { return }
-                    let _ = filter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId), isCancelled: isCancelled)
-                }
+        queue.async {
+            for candidate in missing {
+                let _ = filter.shouldHide(messageId: candidate.id, stableVersion: candidate.stableVersion, text: candidate.text, authorId: candidate.authorId, isIncoming: candidate.isIncoming)
             }
-            if !isCancelled() {
-                subscriber.putNext(Void())
-                subscriber.putCompletion()
-            }
+            subscriber.putNext(Void())
+            subscriber.putCompletion()
         }
-        return ActionDisposable { let _ = cancelled.swap(true) }
+        return EmptyDisposable
     }
 }

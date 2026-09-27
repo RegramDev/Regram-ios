@@ -801,16 +801,25 @@ private struct NotificationContent: CustomStringConvertible {
         // because a body with inline emoji goes out as `attributedBody`, leaving `content.body` empty.
         let rgHasVisibleText = !content.title.isEmpty || !content.subtitle.isEmpty || !content.body.isEmpty || !(self.body ?? "").isEmpty
         if (self.isEmpty || self.forceIsEmpty || !rgHasVisibleText) && RG_SILENCE_EMPTY_NOTIFICATIONS {
-            content.title = " "
-            content.threadIdentifier = "empty-notification"
+            // MARK: Regram — built from scratch rather than by blanking the title. A mention or
+            // pinned-message notification the user disabled arrives here with its real text,
+            // attachments and sender avatar already filled in, and the passive row stays in
+            // Notification Center until the sweep removes it; if the extension is suspended first,
+            // it stays there showing the message. Only the badge (read-state sync is the whole point
+            // of these) and userInfo carry over.
+            let silenced = UNMutableNotificationContent()
+            silenced.title = " "
+            silenced.threadIdentifier = "empty-notification"
             if #available(iOSApplicationExtension 15.0, iOS 15.0, *) {
-                content.interruptionLevel = .passive
-                content.relevanceScore = 0.0
+                silenced.interruptionLevel = .passive
+                silenced.relevanceScore = 0.0
             }
-            // MARK: Regram — `.passive` already suppresses sound, but it does not exist below iOS 15
-            // and the push may well carry one. A notification meant to be invisible must not chime.
-            // The badge set above is deliberately kept: read-state sync is the whole point of these.
-            content.sound = nil
+            // `.passive` already suppresses sound, but it does not exist below iOS 15 and the push
+            // may well carry one. A notification meant to be invisible must not chime.
+            silenced.sound = nil
+            silenced.badge = content.badge
+            silenced.userInfo = content.userInfo
+            content = silenced
         }
         
         if self.forceIsSilent {
@@ -2717,19 +2726,22 @@ final class NotificationService: UNNotificationServiceExtension {
 
     private func removeEmptyNotifications(requestId: String) {
         guard RG_SILENCE_EMPTY_NOTIFICATIONS else { return }
-        self.removeEmptyNotification(requestId: requestId, attempt: 0)
+        NotificationService.removeEmptyNotification(requestId: requestId, attempt: 0)
     }
 
-    private func removeEmptyNotification(requestId: String, attempt: Int) {
+    // Static, capturing nothing: the retries run after the content handler was called, when the
+    // extension object may already have been released. A weak reference then ended the chain after
+    // the first miss and left the silenced row in place until the app's own sweep on next launch.
+    private static func removeEmptyNotification(requestId: String, attempt: Int) {
         guard attempt < 8 else { return }
         let delay = min(1.0, 0.05 * pow(2.0, Double(attempt)))
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) {
             UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
                 let matches = notifications.filter { $0.request.identifier == requestId && $0.request.content.threadIdentifier == "empty-notification" }
                 if !matches.isEmpty {
                     UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [requestId])
                 } else {
-                    self?.removeEmptyNotification(requestId: requestId, attempt: attempt + 1)
+                    NotificationService.removeEmptyNotification(requestId: requestId, attempt: attempt + 1)
                 }
             }
         }
@@ -2806,8 +2818,19 @@ final class NotificationService: UNNotificationServiceExtension {
     // silenced it (see RG_SILENCE_EMPTY_NOTIFICATIONS): a silenced notification is still delivered.
     private func rgDeliver(_ generated: UNNotificationContent, _ contentHandler: (UNNotificationContent) -> Void) {
         let requestId = self.currentRequestIdentifier
-        contentHandler(generated)
-        if generated.threadIdentifier == "empty-notification", let requestId {
+        let isSilenced = generated.threadIdentifier == "empty-notification"
+        var delivered = generated
+        // A notification with nothing to show still has to update the badge. The failure paths
+        // (no account could be opened, a payload that did not decrypt) give up before counting
+        // anything, so fall back to the badge the push itself carried — except for a push meant for
+        // another session, whose badge counts another account.
+        let isForeignSession = self.content.with({ $0 })?.isForeignSession ?? false
+        if generated.badge == nil, !isForeignSession, isSilenced || (generated.title.isEmpty && generated.body.isEmpty), let badge = self.initialContent?.badge, let mutable = generated.mutableCopy() as? UNMutableNotificationContent {
+            mutable.badge = badge
+            delivered = mutable
+        }
+        contentHandler(delivered)
+        if isSilenced, let requestId {
             self.removeEmptyNotifications(requestId: requestId)
         }
     }

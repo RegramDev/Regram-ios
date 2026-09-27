@@ -4356,7 +4356,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     if canCopy {
                         storeAttributedTextInPasteboard(text)
                     }
-                    let added = RGSimpleSettings.shared.addMessageFilterRule(RGMessageFilterRule(pattern: pattern, isRegex: false))
+                    let added = RGSimpleSettings.shared.addMessageFilterRule(RGMessageFilterRule(pattern: pattern))
                     let lang = self.presentationData.strings.baseLanguageCode
                     self.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: (added ? "MessageFilter.Added" : "MessageFilter.AlreadyExists").i18n(lang), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false }), in: .current)
                 }
@@ -7565,13 +7565,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     }
                 )
             }
-            |> mapToSignal { value -> Signal<(PinnedHistory, TopMessage?, PinnedReferenceMessage?), NoError> in
-                var messages = value.0.messages.map { EngineMessage($0.message) }
-                if let topMessage = value.1 { messages.append(EngineMessage(topMessage.message)) }
-                return rgPrepareContentFilter(messages: messages, accountPeerId: context.account.peerId)
-                |> map { value }
-            }
-            |> deliverOnMainQueue
             |> map { pinnedMessages, topMessage, referenceMessage -> ChatPinnedMessage? in
                 var message: ChatPinnedMessage?
 

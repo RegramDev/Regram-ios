@@ -25,13 +25,11 @@ public enum ChatListNodeLocation: Equatable {
 
 public struct ChatListNodeViewUpdate {
     public let list: EngineChatList
-    public let paginationList: EngineChatList
     public let type: ViewUpdateType
     public let scrollPosition: ChatListNodeViewScrollPosition?
     
-    public init(list: EngineChatList, type: ViewUpdateType, scrollPosition: ChatListNodeViewScrollPosition?, paginationList: EngineChatList? = nil) {
+    public init(list: EngineChatList, type: ViewUpdateType, scrollPosition: ChatListNodeViewScrollPosition?) {
         self.list = list
-        self.paginationList = paginationList ?? list
         self.type = type
         self.scrollPosition = scrollPosition
     }
@@ -68,7 +66,7 @@ private func chatListNodeViewUpdateWithCommunitySummaries(account: Account, upda
         hasLater: update.list.hasLater,
         isLoading: update.list.isLoading
     )
-    let baseUpdate = ChatListNodeViewUpdate(list: baseList, type: update.type, scrollPosition: update.scrollPosition, paginationList: update.paginationList)
+    let baseUpdate = ChatListNodeViewUpdate(list: baseList, type: update.type, scrollPosition: update.scrollPosition)
 
     let communityIds = baseItems.compactMap { item in
         return communityPeerId(item: item)
@@ -107,7 +105,7 @@ private func chatListNodeViewUpdateWithCommunitySummaries(account: Account, upda
             hasLater: baseList.hasLater,
             isLoading: baseList.isLoading
         )
-        return ChatListNodeViewUpdate(list: list, type: updatedType, scrollPosition: updatedScrollPosition, paginationList: update.paginationList)
+        return ChatListNodeViewUpdate(list: list, type: updatedType, scrollPosition: updatedScrollPosition)
     }
 }
 

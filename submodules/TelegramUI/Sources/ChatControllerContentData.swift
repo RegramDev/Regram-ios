@@ -2030,14 +2030,12 @@ extension ChatControllerImpl {
                     if case let .peer(peerId) = chatLocation, let peerReadStateData = readStateData[peerId], let notificationSettings = peerReadStateData.notificationSettings {
                         
                         let inAppSettings = context.sharedContext.currentInAppNotificationSettings.with { $0 }
-                        let visibility = context.account.filteredUnreadContext.current
-                        let visibleUnread = visibility.displayCount(peerId: peerId, serverCount: peerReadStateData.unreadCount)
-                        let (count, _) = renderedTotalUnreadCount(inAppSettings: inAppSettings, totalUnreadState: visibility.adjustedTotal(peerReadStateData.totalState ?? ChatListTotalUnreadState(absoluteCounters: [:], filteredCounters: [:]), groupId: .root))
+                        let (count, _) = renderedTotalUnreadCount(inAppSettings: inAppSettings, totalUnreadState: peerReadStateData.totalState ?? ChatListTotalUnreadState(absoluteCounters: [:], filteredCounters: [:]))
                         
                         var globalRemainingUnreadChatCount = count
-                        if !notificationSettings.isRemovedFromTotalUnreadCount(default: false) && visibleUnread > 0 {
+                        if !notificationSettings.isRemovedFromTotalUnreadCount(default: false) && peerReadStateData.unreadCount > 0 {
                             if case .messages = inAppSettings.totalUnreadCountDisplayCategory {
-                                globalRemainingUnreadChatCount -= visibleUnread
+                                globalRemainingUnreadChatCount -= peerReadStateData.unreadCount
                             } else {
                                 globalRemainingUnreadChatCount -= 1
                             }

@@ -5,362 +5,617 @@ import RGSwiftUI
 import RGStrings
 import RGSimpleSettings
 import AccountContext
+import LegacyUI
 import Display
+import ItemListUI
+import Postbox
+import PresentationDataUtils
 import SwiftSignalKit
 import TelegramCore
 import TelegramPresentationData
-import UniformTypeIdentifiers
 
-@available(iOS 13.0, *)
-private final class MessageFilterModel: NSObject, ObservableObject {
-    @Published var rules = RGSimpleSettings.shared.messageFilterRules
-    @Published var isEditing = false { didSet { self.updateEditButton() } }
-    @Published var busy = false
-    @Published var notice: String?
-    private weak var host: UIViewController?
-    private let strings: PresentationStrings
-    private var observer: NSObjectProtocol?
-    private let queue = DispatchQueue(label: "regram.filter-files", qos: .userInitiated)
-    private var operation: UUID?
-    private var cancelled = Atomic(value: false)
+// MARK: Regram — UIDocumentPickerViewController keeps only a weak reference to its delegate, so a
+// coordinator created inline would be released before the user picks anything and the callback would
+// never fire. Held here for the lifetime of the picker.
+private var rgMessageFilterImportDelegate: RGMessageFilterImportDelegate?
 
-    init(strings: PresentationStrings) {
-        self.strings = strings
+private final class RGMessageFilterImportDelegate: NSObject, UIDocumentPickerDelegate {
+    private let onPick: (URL) -> Void
+
+    init(onPick: @escaping (URL) -> Void) {
+        self.onPick = onPick
         super.init()
-        self.observer = NotificationCenter.default.addObserver(forName: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.rules = RGSimpleSettings.shared.messageFilterRules
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        if let url = urls.first {
+            // `.import` hands back a copy in the app's own container, so no security scope to open.
+            self.onPick(url)
+        }
+        rgMessageFilterImportDelegate = nil
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        rgMessageFilterImportDelegate = nil
+    }
+}
+
+// MARK: Regram — Edit/Done for the rule list. The screen sits under the wrapper's native navigation
+// bar, so that its back button is the one every other Regram screen shows, and the Edit button has to
+// live in that bar as well. The SwiftUI list follows `isEditing` through its edit-mode environment.
+// A bar button only keeps a weak reference to its target; the view holding this object keeps it alive.
+@available(iOS 13.0, *)
+final class MessageFilterEditingState: NSObject, ObservableObject {
+    @Published var isEditing = false {
+        didSet {
+            if self.isEditing != oldValue {
+                self.updateButton()
+            }
         }
     }
-    deinit { let _ = self.cancelled.swap(true); if let observer = self.observer { NotificationCenter.default.removeObserver(observer) } }
-    func bind(_ host: UIViewController) { self.host = host; self.updateEditButton() }
-    private func updateEditButton() {
-        let item = UIBarButtonItem(image: UIImage(systemName: self.isEditing ? "checkmark" : "pencil"), style: .plain, target: self, action: #selector(self.toggleEditing))
-        item.accessibilityLabel = self.isEditing ? self.strings.Common_Done : self.strings.Common_Edit
-        self.host?.navigationItem.rightBarButtonItem = item
+
+    private weak var controller: ViewController?
+    private let strings: PresentationStrings
+
+    init(controller: ViewController, strings: PresentationStrings) {
+        self.controller = controller
+        self.strings = strings
+        super.init()
+        self.updateButton()
     }
-    @objc private func toggleEditing() { self.isEditing.toggle() }
-    private func edit(_ action: @escaping () throws -> Void, completion: @escaping (Bool) -> Void = { _ in }) {
-        guard !self.busy else { return }
-        self.busy = true
-        self.cancelled = Atomic(value: false)
-        let cancelled = self.cancelled
-        let token = UUID()
-        self.operation = token
-        self.queue.async { [weak self] in
-            guard !cancelled.with({ $0 }) else { return }
-            let result = Result { try action() }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.operation == token else { return }
-                self.busy = false
-                self.operation = nil
-                self.rules = RGSimpleSettings.shared.messageFilterRules
-                switch result {
-                case .success: completion(true)
-                case .failure: self.notice = "MessageFilter.SaveFailed".i18n(self.strings.baseLanguageCode); completion(false)
+
+    private func updateButton() {
+        // System symbols rather than the "Edit"/"Done" text, like the other Regram Pro screens.
+        let item = UIBarButtonItem(image: UIImage(systemName: self.isEditing ? "checkmark" : "pencil"), style: .plain, target: self, action: #selector(self.toggle))
+        item.accessibilityLabel = self.isEditing ? self.strings.Common_Done : self.strings.Common_Edit
+        self.controller?.navigationItem.rightBarButtonItem = item
+    }
+
+    @objc private func toggle() {
+        self.isEditing.toggle()
+    }
+}
+
+@available(iOS 13.0, *)
+struct MessageFilterKeywordInputFieldModifier: ViewModifier {
+    @Binding var newKeyword: String
+    let onAdd: () -> Void
+
+    func body(content: Content) -> some View {
+        if #available(iOS 15.0, *) {
+            content
+                .submitLabel(.return)
+                .submitScope(false) // TODO(regram): Keyboard still closing
+                .interactiveDismissDisabled()
+                .onSubmit {
+                    onAdd()
+                }
+        } else {
+            content
+        }
+    }
+}
+
+
+@available(iOS 13.0, *)
+struct MessageFilterKeywordInputView: View {
+    @Environment(\.lang) var lang: String
+    @Binding var newKeyword: String
+    let isRegex: Bool
+    let onAdd: () -> Void
+
+    /// A regex that does not compile must not be added: it would be inert and look like the filter
+    /// silently stopped working, so the add button stays disabled until the pattern parses.
+    private var canAdd: Bool {
+        let trimmed = newKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return false
+        }
+        if isRegex {
+            return RGMessageFilter.compiledRegex(for: trimmed) != nil
+        }
+        return true
+    }
+
+    var body: some View {
+        HStack {
+            TextField(isRegex ? "MessageFilter.InputPlaceholderRegex".i18n(lang) : "MessageFilter.InputPlaceholder".i18n(lang), text: $newKeyword)
+                .autocorrectionDisabled(true)
+                .autocapitalization(.none)
+                .keyboardType(.default)
+                .modifier(MessageFilterKeywordInputFieldModifier(newKeyword: $newKeyword, onAdd: onAdd))
+
+
+            Button(action: onAdd) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(canAdd ? .accentColor : .secondary)
+                    .imageScale(.large)
+            }
+            .disabled(!canAdd)
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
+}
+
+@available(iOS 13.0, *)
+struct MessageFilterView: View {
+    weak var wrapperController: LegacyController?
+    let selectChats: (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void
+    // MARK: Regram — editing a pattern is a native pushed screen, not a SwiftUI sheet or alert. A
+    // modal would have to be presented by the UIHostingController, which is a *child* of the
+    // LegacyController here; that never reaches the surface and instead tears this screen down back
+    // to Regram Pro. `selectChats` above already pushes a native controller for the same reason.
+    let editPatternExternally: (RGMessageFilterRule, @escaping (String) -> Void) -> Void
+    @ObservedObject var editing: MessageFilterEditingState
+    @Environment(\.lang) var lang: String
+
+    @State private var newKeyword: String
+    @State private var newIsRegex: Bool = false
+    @State private var rules: [RGMessageFilterRule] {
+        didSet {
+            RGSimpleSettings.shared.messageFilterRules = rules
+        }
+    }
+
+    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void) {
+        self.wrapperController = wrapperController
+        self.editing = editing
+        self.selectChats = selectChats
+        self.editPatternExternally = editPatternExternally
+        _newKeyword = State(initialValue: initialKeyword)
+        _rules = State(initialValue: RGSimpleSettings.shared.messageFilterRules)
+    }
+
+    private func subtitle(for rule: RGMessageFilterRule) -> String {
+        var parts: [String] = []
+        if rule.isRegex {
+            parts.append("MessageFilter.Rule.Regex".i18n(lang))
+        }
+        if rule.appliesToAllChats {
+            parts.append("MessageFilter.Rule.AllChats".i18n(lang))
+        } else {
+            parts.append("MessageFilter.Rule.SelectedChats".i18n(lang) + " (\(rule.peerIds.count))")
+        }
+        if rule.isRegex && !rule.isValid {
+            parts.append("MessageFilter.Rule.InvalidRegex".i18n(lang))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: Regram — export/import sits on the keyword list header rather than in the navigation
+    // bar, whose two slots are already taken by the back button and Edit.
+    @ViewBuilder
+    private var keywordsHeader: some View {
+        HStack {
+            Text("MessageFilter.Keywords.Title".i18n(lang))
+            Spacer()
+            if #available(iOS 14.0, *) {
+                Menu {
+                    Button("MessageFilter.Export".i18n(lang)) { exportRules() }
+                    Button("MessageFilter.Import".i18n(lang)) { importRules() }
+                } label: {
+                    // The header's own font is a small caps caption, which would make the control
+                    // both hard to see and hard to hit.
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.body)
+                        .foregroundColor(.accentColor)
                 }
             }
         }
     }
-    func remove(_ ids: Set<String>) {
-        self.edit { RGSimpleSettings.shared.updateMessageFilterRules { $0.filter { !ids.contains($0.id) } }; return }
-    }
-    func save(_ rule: RGMessageFilterRule, completion: @escaping (Bool) -> Void) {
-        self.edit({
-            guard rule.isValid else { throw RGMessageFilter.ImportError.invalidRules }
-            try RGSimpleSettings.shared.updateMessageFilterRules { current in
-                guard !current.contains(where: { $0.id != rule.id && RGMessageFilter.equivalent($0, rule) }), let index = current.firstIndex(where: { $0.id == rule.id }) else { throw RGMessageFilter.ImportError.invalidRules }
-                var result = current
-                result[index] = rule
-                return result
-            }
-        }, completion: completion)
-    }
-    func add(_ rule: RGMessageFilterRule, completion: @escaping (Bool) -> Void) {
-        self.edit({
-            guard rule.isValid, RGSimpleSettings.shared.addMessageFilterRule(rule) else { throw RGMessageFilter.ImportError.invalidRules }
-        }, completion: completion)
-    }
 
-    func validate(_ rule: RGMessageFilterRule, completion: @escaping (Bool) -> Void) {
-        self.queue.async {
-            let valid = rule.isValid
-            DispatchQueue.main.async { completion(valid) }
-        }
-    }
-    func cancel() { let _ = self.cancelled.swap(true); self.operation = nil; self.busy = false }
-    func importFile(_ url: URL) {
-        guard !self.busy else { return }
-        let token = UUID()
-        self.operation = token
-        self.busy = true
-        self.cancelled = Atomic(value: false)
-        let cancelled = self.cancelled
-        let lang = self.strings.baseLanguageCode
-        self.queue.async { [weak self] in
-            let result = Result { try RGMessageFilter.readImport(at: url) }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.operation == token else { return }
-                switch result {
-                case let .success(imported):
-                    self.queue.async { [weak self] in
-                        let merged = Result { try RGSimpleSettings.shared.importMessageFilterRules(imported, isCancelled: { cancelled.with { $0 } }) }
-                        DispatchQueue.main.async { [weak self] in
-                            guard let self, self.operation == token else { return }
-                            self.busy = false
-                            self.operation = nil
-                            switch merged {
-                            case let .success(count): self.notice = "MessageFilter.Imported".i18n(lang, args: "\(count)")
-                            case .failure: self.notice = "MessageFilter.ImportFailed".i18n(lang)
+    var bodyContent: some View {
+            List {
+                Section {
+                    // Icon and title
+                    VStack(spacing: 8) {
+                        Image(systemName: "nosign.app.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.secondary)
+
+                        Text("MessageFilter.Title".i18n(lang))
+                            .font(.title)
+                            .bold()
+
+                        Text("MessageFilter.SubTitle".i18n(lang))
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .listRowInsets(EdgeInsets())
+
+                }
+
+                Section(footer: Text("MessageFilter.Regex.Notice".i18n(lang))) {
+                    MessageFilterKeywordInputView(newKeyword: $newKeyword, isRegex: newIsRegex, onAdd: addRule)
+                    Toggle("MessageFilter.Regex".i18n(lang), isOn: $newIsRegex)
+                }
+
+                Section(header: keywordsHeader, footer: Text("MessageFilter.Rules.Notice".i18n(lang))) {
+                    ForEach(rules.reversed(), id: \.id) { rule in
+                        // Tap edits the keyword, long press reaches everything else. The scope
+                        // picker is a full-screen chat selector, which is too heavy to be what a
+                        // stray tap lands on.
+                        Button(action: {
+                            editPattern(of: rule)
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(rule.pattern)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(2)
+                                    Text(subtitle(for: rule))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "pencil")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .contextMenu {
+                            Button(action: {
+                                editScope(of: rule)
+                            }) {
+                                Text("MessageFilter.Rule.LimitToChats".i18n(lang))
+                            }
+                            Button(action: {
+                                toggleRegex(of: rule)
+                            }) {
+                                Text(rule.isRegex ? "MessageFilter.Rule.MakePlain".i18n(lang) : "MessageFilter.Rule.MakeRegex".i18n(lang))
+                            }
+                            Button(action: {
+                                delete(rule)
+                            }) {
+                                Text("MessageFilter.Rule.Delete".i18n(lang))
                             }
                         }
                     }
-                case .failure:
-                    self.busy = false
-                    self.operation = nil
-                    self.notice = "MessageFilter.ImportFailed".i18n(lang)
+                    .onDelete { indexSet in
+                        // The list is rendered newest-first, so offsets have to be mapped back.
+                        let originalIndices = IndexSet(indexSet.map { rules.count - 1 - $0 })
+                        deleteRules(at: originalIndices)
+                    }
                 }
-            }
         }
     }
-    func exportFile(completion: @escaping (URL) -> Void) {
-        guard !self.busy else { return }
-        self.busy = true
-        let token = UUID()
-        self.operation = token
-        let rules = self.rules
-        self.queue.async { [weak self] in
-            let result = Result { () -> URL in
-                let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let url = folder.appendingPathComponent(RGMessageFilter.exportFileName)
-                try Data(RGMessageFilter.encode(rules).utf8).write(to: url, options: .atomic)
-                return url
+
+    // No NavigationView: back and Edit are in the wrapper's native navigation bar.
+    var body: some View {
+        bodyContent
+            .environment(\.editMode, Binding<EditMode>(get: {
+                return self.editing.isEditing ? EditMode.active : EditMode.inactive
+            }, set: { value in
+                self.editing.isEditing = value.isEditing
+            }))
+    }
+
+    private func addRule() {
+        let trimmedKeyword = newKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKeyword.isEmpty else { return }
+        if newIsRegex, RGMessageFilter.compiledRegex(for: trimmedKeyword) == nil {
+            return
+        }
+
+        let exists = rules.contains {
+            $0.pattern == trimmedKeyword && $0.isRegex == newIsRegex
+        }
+
+        guard !exists else {
+            return
+        }
+
+        withAnimation {
+            rules.append(RGMessageFilterRule(pattern: trimmedKeyword, isRegex: newIsRegex))
+        }
+        newKeyword = ""
+    }
+
+    private func editPattern(of rule: RGMessageFilterRule) {
+        editPatternExternally(rule) { entered in
+            updatePattern(of: rule, to: entered)
+        }
+    }
+
+    /// Walks to the topmost presented controller. UIKit controllers cannot go through
+    /// `present(_:in:)`, and presenting on this screen's own host would put them underneath its modal.
+    private func topPresenter() -> UIViewController? {
+        var presenter: UIViewController? = wrapperController?.view.window?.rootViewController
+        while let presented = presenter?.presentedViewController {
+            presenter = presented
+        }
+        return presenter
+    }
+
+    private func exportRules() {
+        guard !rules.isEmpty, let presenter = topPresenter() else {
+            return
+        }
+        let json = RGMessageFilter.encode(rules)
+        // A fixed name: it is how a copy shared into a chat is recognised for quick import there.
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(RGMessageFilter.exportFileName)
+        guard let data = json.data(using: .utf8), (try? data.write(to: url, options: .atomic)) != nil else {
+            return
+        }
+        let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        // Required on iPad, where a share sheet without an anchor is a runtime trap.
+        controller.popoverPresentationController?.sourceView = presenter.view
+        controller.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 0.0, height: 0.0)
+        presenter.present(controller, animated: true, completion: nil)
+    }
+
+    private func importRules() {
+        guard let presenter = topPresenter() else {
+            return
+        }
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.json", "public.text"], in: .import)
+        let delegate = RGMessageFilterImportDelegate { url in
+            guard let data = try? Data(contentsOf: url), let json = String(data: data, encoding: .utf8) else {
+                return
             }
-            DispatchQueue.main.async { [weak self] in
-                guard let self, self.operation == token else {
-                    if case let .success(url) = result { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-                    return
-                }
-                self.busy = false
-                self.operation = nil
-                switch result {
-                case let .success(url): completion(url)
-                case .failure: self.notice = "MessageFilter.ImportFailed".i18n(self.strings.baseLanguageCode)
-                }
+            let imported = RGMessageFilter.decode(json)
+            guard !imported.isEmpty else {
+                return
             }
+            rules = RGMessageFilter.merging(imported, into: rules).rules
+        }
+        picker.delegate = delegate
+        rgMessageFilterImportDelegate = delegate
+        presenter.present(picker, animated: true, completion: nil)
+    }
+
+    /// Rewrites an existing rule's keyword in place, keeping its id so the row it is rendered in
+    /// stays the same one, and its scope.
+    private func updatePattern(of rule: RGMessageFilterRule, to pattern: String) {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        // Editing one rule into an exact duplicate of another would leave two rows that cannot be
+        // told apart; drop the edit instead.
+        if rules.contains(where: { $0.id != rule.id && $0.pattern == pattern && $0.isRegex == rule.isRegex }) {
+            return
+        }
+        var updated = rules
+        updated[index].pattern = pattern
+        rules = updated
+    }
+
+    private func toggleRegex(of rule: RGMessageFilterRule) {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        var updated = rules
+        updated[index].isRegex.toggle()
+        withAnimation {
+            rules = updated
+        }
+    }
+
+    private func delete(_ rule: RGMessageFilterRule) {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        deleteRules(at: IndexSet(integer: index))
+    }
+
+    private func editScope(of rule: RGMessageFilterRule) {
+        selectChats(Set(rule.peerIds)) { selected in
+            guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+            var updated = rules
+            updated[index].peerIds = Array(selected)
+            rules = updated
+        }
+    }
+
+    private func deleteRules(at offsets: IndexSet) {
+        withAnimation {
+            rules.remove(atOffsets: offsets)
         }
     }
 }
 
-@available(iOS 13.0, *)
-private struct FilterDocumentPicker: UIViewControllerRepresentable {
-    let picked: (URL) -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(picked: self.picked) }
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker: UIDocumentPickerViewController
-        if #available(iOS 14.0, *) {
-            picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json, .plainText], asCopy: true)
+// MARK: Regram — the keyword editor.
+//
+// A native ItemList screen rather than a SwiftUI sheet or a UIAlertController: the SwiftUI content
+// above is hosted by a UIHostingController installed as a *child* of the LegacyController, so
+// anything it tries to present modally tears the whole screen down back to Regram Pro instead. The
+// chat scope picker below already works around this the same way, by pushing on the wrapper.
+//
+// A full screen is also what the keyword itself wants — an alert text field shows one short line,
+// which is unusable for the regular expressions this list mostly holds.
+
+private final class RGMessageFilterPatternArguments {
+    let updateText: (String) -> Void
+
+    init(updateText: @escaping (String) -> Void) {
+        self.updateText = updateText
+    }
+}
+
+private enum RGMessageFilterPatternSection: Int32 {
+    case pattern
+}
+
+private enum RGMessageFilterPatternEntryTag: ItemListItemTag {
+    case pattern
+
+    func isEqual(to other: ItemListItemTag) -> Bool {
+        if let other = other as? RGMessageFilterPatternEntryTag {
+            return self == other
         } else {
-            picker = UIDocumentPickerViewController(documentTypes: ["public.json", "public.text"], in: .import)
-        }
-        picker.delegate = context.coordinator
-        return picker
-    }
-    func updateUIViewController(_ controller: UIDocumentPickerViewController, context: Context) {}
-    final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let picked: (URL) -> Void
-        init(picked: @escaping (URL) -> Void) { self.picked = picked }
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            if let url = urls.first { self.picked(url) }
+            return false
         }
     }
 }
 
-@available(iOS 13.0, *)
-private struct FilterShareSheet: UIViewControllerRepresentable {
-    let url: URL
-    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}
+private enum RGMessageFilterPatternEntry: ItemListNodeEntry {
+    case pattern(String, String)
+    case info(String)
 
-@available(iOS 13.0, *)
-private struct FilterPatternInput: UIViewRepresentable {
-    @Binding var text: String
-    func makeCoordinator() -> Coordinator { Coordinator(text: self.$text) }
-    func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
-        view.font = .preferredFont(forTextStyle: .body)
-        view.adjustsFontForContentSizeCategory = true
-        view.autocorrectionType = .no
-        view.autocapitalizationType = .none
-        view.delegate = context.coordinator
-        return view
+    var section: ItemListSectionId {
+        return RGMessageFilterPatternSection.pattern.rawValue
     }
-    func updateUIView(_ view: UITextView, context: Context) { if view.text != self.text { view.text = self.text } }
-    final class Coordinator: NSObject, UITextViewDelegate {
-        var text: Binding<String>
-        init(text: Binding<String>) { self.text = text }
-        func textViewDidChange(_ textView: UITextView) { self.text.wrappedValue = textView.text }
-    }
-}
 
-@available(iOS 13.0, *)
-private struct FilterRuleEditor: View {
-    @Environment(\.presentationMode) private var presentation
-    @ObservedObject var model: MessageFilterModel
-    @State var rule: RGMessageFilterRule
-    let context: AccountContext
-    let strings: PresentationStrings
-    init(model: MessageFilterModel, rule: RGMessageFilterRule, context: AccountContext, strings: PresentationStrings) {
-        self.model = model; self._rule = State(initialValue: rule); self.context = context; self.strings = strings
-    }
-    var body: some View {
-        NavigationView {
-            Form {
-                Section(footer: Text("MessageFilter.Regex.Notice".i18n(self.strings.baseLanguageCode))) {
-                    FilterPatternInput(text: self.$rule.pattern).frame(minHeight: 150)
-                    Toggle("MessageFilter.ContentMatching".i18n(self.strings.baseLanguageCode), isOn: Binding(get: { !self.rule.isRegex }, set: { self.rule.isRegex = !$0 }))
-                }
-                NavigationLink(destination: FilterScopePicker(context: self.context, selected: self.$rule.peerIds, strings: self.strings)) {
-                    Text("MessageFilter.Rule.LimitToChats".i18n(self.strings.baseLanguageCode))
-                }
-            }
-            .navigationBarTitle(Text("MessageFilter.Rule.EditTitle".i18n(self.strings.baseLanguageCode)), displayMode: .inline)
-            .navigationBarItems(leading: Button(action: { self.presentation.wrappedValue.dismiss() }) {
-                Image(systemName: "xmark").accessibility(label: Text(self.strings.Common_Cancel))
-            }, trailing: Button(action: { self.model.save(self.rule) { saved in if saved { self.presentation.wrappedValue.dismiss() } } }) {
-                Image(systemName: "checkmark").accessibility(label: Text(self.strings.Common_Done))
-            }.disabled(self.rule.pattern.isEmpty || self.model.busy))
-        }.navigationViewStyle(StackNavigationViewStyle())
-    }
-}
-
-@available(iOS 13.0, *)
-private final class FilterScopeModel: ObservableObject {
-    @Published var peers: [EnginePeer] = []
-    @Published var hasMore = false
-    private let disposable = MetaDisposable()
-    private var count = 100
-    func load(context: AccountContext, more: Bool = false) {
-        if more { self.count += 100 }
-        self.disposable.set((combineLatest(context.engine.messages.chatList(group: .root, count: self.count), context.engine.messages.chatList(group: .archive, count: self.count)) |> deliverOnMainQueue).start(next: { [weak self] root, archive in
-            var seen = Set<EnginePeer.Id>()
-            self?.peers = (root.items + archive.items).compactMap { item in
-                guard let peer = item.renderedPeer.peer, seen.insert(peer.id).inserted else { return nil }
-                return peer
-            }
-            self?.hasMore = root.hasEarlier || archive.hasEarlier
-        }))
-    }
-    deinit { self.disposable.dispose() }
-}
-
-@available(iOS 13.0, *)
-private struct FilterScopePicker: View {
-    let context: AccountContext
-    @Binding var selected: [Int64]
-    let strings: PresentationStrings
-    @ObservedObject private var model = FilterScopeModel()
-    @State private var query = ""
-    init(context: AccountContext, selected: Binding<[Int64]>, strings: PresentationStrings) {
-        self.context = context; self._selected = selected; self.strings = strings
-    }
-    var body: some View {
-        List {
-            TextField(self.strings.Common_Search, text: self.$query)
-            Button("MessageFilter.Rule.AllChats".i18n(self.strings.baseLanguageCode)) { self.selected = [] }
-            ForEach(self.model.peers.filter { self.query.isEmpty || $0.debugDisplayTitle.localizedCaseInsensitiveContains(self.query) }, id: \.id) { peer in
-                Button(action: {
-                    let id = peer.id.toInt64()
-                    if self.selected.contains(id) { self.selected.removeAll { $0 == id } } else { self.selected.append(id) }
-                }) {
-                    HStack { Text(peer.debugDisplayTitle); Spacer(); if self.selected.contains(peer.id.toInt64()) { Image(systemName: "checkmark") } }
-                }
-            }
-            if self.model.hasMore { Button("MessageFilter.LoadMore".i18n(self.strings.baseLanguageCode)) { self.model.load(context: self.context, more: true) } }
-        }
-        .navigationBarTitle(Text("MessageFilter.SelectChats.Title".i18n(self.strings.baseLanguageCode)), displayMode: .inline)
-        .onAppear { self.model.load(context: self.context) }
-    }
-}
-
-@available(iOS 13.0, *)
-private struct MessageFilterView: View {
-    private enum Sheet: Identifiable {
-        case importFile, share(URL), edit(RGMessageFilterRule)
-        var id: String { switch self { case .importFile: return "import"; case .share: return "share"; case let .edit(rule): return rule.id } }
-    }
-    @ObservedObject var model: MessageFilterModel
-    let context: AccountContext
-    let strings: PresentationStrings
-    @State var pattern: String
-    @State var contentMatching: Bool
-    @State private var sheet: Sheet?
-    @State private var exportedURL: URL?
-    private var lang: String { self.strings.baseLanguageCode }
-    init(model: MessageFilterModel, context: AccountContext, strings: PresentationStrings, pattern: String, contentMatching: Bool) {
-        self.model = model; self.context = context; self.strings = strings
-        self._pattern = State(initialValue: pattern); self._contentMatching = State(initialValue: contentMatching)
-    }
-    var body: some View {
-        List {
-            Section(footer: Text("MessageFilter.Regex.Notice".i18n(self.lang))) {
-                TextField(self.contentMatching ? "MessageFilter.InputPlaceholder".i18n(self.lang) : "MessageFilter.InputPlaceholderRegex".i18n(self.lang), text: self.$pattern).autocapitalization(.none).disableAutocorrection(true)
-                Toggle("MessageFilter.ContentMatching".i18n(self.lang), isOn: self.$contentMatching)
-                Button("MessageFilter.Add".i18n(self.lang)) {
-                    let submitted = self.pattern
-                    self.model.add(RGMessageFilterRule(pattern: submitted.trimmingCharacters(in: .whitespacesAndNewlines), isRegex: !self.contentMatching)) { saved in
-                        if saved && self.pattern == submitted { self.pattern = "" }
-                    }
-                }.disabled(self.pattern.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || self.model.busy)
-            }
-            Section {
-                Button("MessageFilter.Import".i18n(self.lang)) { self.sheet = .importFile }.disabled(self.model.busy)
-                Button("MessageFilter.Export".i18n(self.lang)) { self.model.exportFile { self.exportedURL = $0; self.sheet = .share($0) } }.disabled(self.model.busy || self.model.rules.isEmpty)
-                if self.model.busy { Text("MessageFilter.Working".i18n(self.lang)); Button(self.strings.Common_Cancel) { self.model.cancel() } }
-            }
-            Section(header: Text("MessageFilter.Keywords.Title".i18n(self.lang))) {
-                ForEach(self.model.rules.reversed(), id: \.id) { rule in
-                    Button(action: { self.sheet = .edit(rule) }) {
-                        VStack(alignment: .leading) {
-                            Text(rule.pattern).lineLimit(2)
-                            Text((rule.isRegex ? "MessageFilter.Rule.Regex" : "MessageFilter.ContentMatching").i18n(self.lang)).font(.caption).foregroundColor(.secondary)
-                            if rule.isRegex && RGMessageFilter.isPaused(rule.pattern) { Text("MessageFilter.Rule.Paused".i18n(self.lang)).font(.caption).foregroundColor(.secondary) }
-                        }
-                    }
-                }.onDelete { offsets in
-                    let rows = Array(self.model.rules.reversed())
-                    self.model.remove(Set(offsets.compactMap { $0 < rows.count ? rows[$0].id : nil }))
-                }
-            }
-        }
-        .listStyle(GroupedListStyle())
-        .environment(\.editMode, Binding(get: { self.model.isEditing ? .active : .inactive }, set: { self.model.isEditing = $0.isEditing }))
-        .sheet(item: self.$sheet, onDismiss: {
-            if let url = self.exportedURL { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
-            self.exportedURL = nil
-        }) { sheet in
-            Group {
-                switch sheet {
-                case .importFile: FilterDocumentPicker { url in self.sheet = nil; self.model.importFile(url) }
-                case let .share(url): FilterShareSheet(url: url)
-                case let .edit(rule): FilterRuleEditor(model: self.model, rule: rule, context: self.context, strings: self.strings)
-                }
-            }
-        }
-        .alert(isPresented: Binding(get: { self.model.notice != nil }, set: { if !$0 { self.model.notice = nil } })) {
-            Alert(title: Text("MessageFilter.Title".i18n(self.lang)), message: Text(self.model.notice ?? ""), dismissButton: .default(Text(self.strings.Common_OK)))
+    var stableId: Int32 {
+        switch self {
+        case .pattern:
+            return 0
+        case .info:
+            return 1
         }
     }
+
+    static func ==(lhs: RGMessageFilterPatternEntry, rhs: RGMessageFilterPatternEntry) -> Bool {
+        switch lhs {
+        case let .pattern(lhsText, lhsPlaceholder):
+            if case let .pattern(rhsText, rhsPlaceholder) = rhs, lhsText == rhsText, lhsPlaceholder == rhsPlaceholder {
+                return true
+            } else {
+                return false
+            }
+        case let .info(lhsText):
+            if case let .info(rhsText) = rhs, lhsText == rhsText {
+                return true
+            } else {
+                return false
+            }
+        }
+    }
+
+    static func <(lhs: RGMessageFilterPatternEntry, rhs: RGMessageFilterPatternEntry) -> Bool {
+        return lhs.stableId < rhs.stableId
+    }
+
+    func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        let arguments = arguments as! RGMessageFilterPatternArguments
+        switch self {
+        case let .pattern(text, placeholder):
+            return ItemListMultilineInputItem(presentationData: presentationData, systemStyle: .glass, text: text, placeholder: placeholder, maxLength: nil, sectionId: self.section, style: .blocks, capitalization: false, autocorrection: false, returnKeyType: .default, minimalHeight: 120.0, textUpdated: { updatedText in
+                arguments.updateText(updatedText)
+            }, tag: RGMessageFilterPatternEntryTag.pattern)
+        case let .info(text):
+            return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
+        }
+    }
+}
+
+private func rgMessageFilterPatternEditorController(context: AccountContext, rule: RGMessageFilterRule, apply: @escaping (String) -> Void) -> ViewController {
+    let statePromise = ValuePromise(rule.pattern, ignoreRepeated: true)
+    let stateValue = Atomic(value: rule.pattern)
+
+    var dismissImpl: (() -> Void)?
+
+    let arguments = RGMessageFilterPatternArguments(updateText: { value in
+        statePromise.set(stateValue.modify { _ in value })
+    })
+
+    let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
+    |> deliverOnMainQueue
+    |> map { presentationData, text -> (ItemListControllerState, (ItemListNodeState, RGMessageFilterPatternArguments)) in
+        let lang = presentationData.strings.baseLanguageCode
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // An empty keyword matches nothing and an uncompilable expression is inert; either would
+        // look like the filter had silently broken. Removing a rule is a separate, explicit action.
+        var canSave = !trimmed.isEmpty
+        if canSave && rule.isRegex {
+            canSave = RGMessageFilter.compiledRegex(for: trimmed) != nil
+        }
+
+        let leftNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Cancel), style: .regular, enabled: true, action: {
+            dismissImpl?()
+        })
+        let rightNavigationButton = ItemListNavigationButton(content: .text(presentationData.strings.Common_Done), style: .bold, enabled: canSave, action: {
+            apply(trimmed)
+            dismissImpl?()
+        })
+
+        let entries: [RGMessageFilterPatternEntry] = [
+            .pattern(text, rule.isRegex ? "MessageFilter.InputPlaceholderRegex".i18n(lang) : "MessageFilter.InputPlaceholder".i18n(lang)),
+            .info(rule.isRegex ? "MessageFilter.Rule.EditMessageRegex".i18n(lang) : "MessageFilter.Rule.EditMessage".i18n(lang))
+        ]
+
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("MessageFilter.Rule.EditTitle".i18n(lang)), leftNavigationButton: leftNavigationButton, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, focusItemTag: RGMessageFilterPatternEntryTag.pattern, animateChanges: false)
+
+        return (controllerState, (listState, arguments))
+    }
+
+    let controller = ItemListController(context: context, state: signal)
+    controller.navigationPresentation = .modal
+    dismissImpl = { [weak controller] in
+        controller?.view.endEditing(true)
+        controller?.dismiss()
+    }
+    return controller
 }
 
 @available(iOS 13.0, *)
 public func rgMessageFilterController(context: AccountContext, presentationData: PresentationData? = nil, initialKeyword: String = "") -> ViewController {
-    let data = presentationData ?? context.sharedContext.currentPresentationData.with { $0 }
-    let wrapper = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
-    let model = MessageFilterModel(strings: data.strings)
-    let host = UIHostingController(rootView: MessageFilterView(model: model, context: context, strings: data.strings, pattern: initialKeyword, contentMatching: !initialKeyword.isEmpty))
-    model.bind(host)
-    wrapper.bindNativeNavigation(controller: host, title: "MessageFilter.Title".i18n(data.strings.baseLanguageCode), backLabel: data.strings.Common_Back)
-    return wrapper
+    let theme = presentationData?.theme ?? (UITraitCollection.current.userInterfaceStyle == .dark ? defaultDarkColorPresentationTheme : defaultPresentationTheme)
+    let strings = presentationData?.strings ?? defaultPresentationStrings
+
+    let legacyController = LegacySwiftUIController(
+        presentation: .navigation,
+        theme: theme,
+        strings: strings
+    )
+    // Status bar color will break if theme changed
+    legacyController.statusBar.statusBarStyle = theme.rootController
+        .statusBarStyle.style
+    let editingState = MessageFilterEditingState(controller: legacyController, strings: strings)
+
+    // The chat scope picker is a native controller, so it is pushed on the wrapper rather than
+    // presented from SwiftUI.
+    let selectChats: (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void = { [weak legacyController] selected, completion in
+        let pickerPresentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let lang = pickerPresentationData.strings.baseLanguageCode
+        let picker = context.sharedContext.makeContactMultiselectionController(ContactMultiselectionControllerParams(
+            context: context,
+            mode: .chatSelection(ContactMultiselectionControllerMode.ChatSelection(
+                title: "MessageFilter.SelectChats.Title".i18n(lang),
+                searchPlaceholder: pickerPresentationData.strings.ChatListFilter_AddChatsSearchPlaceholder,
+                selectedChats: Set(selected.map { PeerId($0) }),
+                additionalCategories: nil,
+                chatListFilters: nil
+            )),
+            filters: [],
+            alwaysEnabled: true
+        ))
+        picker.navigationPresentation = .modal
+        let _ = (picker.result
+        |> take(1)
+        |> deliverOnMainQueue).startStandalone(next: { [weak picker] result in
+            guard case let .result(rawPeerIds, _) = result else {
+                picker?.dismiss()
+                return
+            }
+            let peerIds = rawPeerIds.compactMap { id -> Int64? in
+                switch id {
+                case let .peer(peerId):
+                    return peerId.toInt64()
+                case .deviceContact:
+                    return nil
+                }
+            }
+            completion(Set(peerIds))
+            picker?.dismiss()
+        })
+        legacyController?.push(picker)
+    }
+
+    let editPattern: (RGMessageFilterRule, @escaping (String) -> Void) -> Void = { [weak legacyController] rule, completion in
+        legacyController?.push(rgMessageFilterPatternEditorController(context: context, rule: rule, apply: completion))
+    }
+
+    let swiftUIView = RGSwiftUIView<MessageFilterView>(
+        legacyController: legacyController,
+        manageSafeArea: true,
+        content: {
+            MessageFilterView(wrapperController: legacyController, editing: editingState, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern)
+        }
+    )
+    let controller = UIHostingController(rootView: swiftUIView, ignoreSafeArea: true)
+    // The list starts below the navigation bar; the strip behind the bar should match it.
+    controller.view.backgroundColor = .systemGroupedBackground
+    legacyController.bind(controller: controller)
+
+    return legacyController
 }

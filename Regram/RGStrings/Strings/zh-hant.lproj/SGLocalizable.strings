@@ -2,7 +2,6 @@
 
 "Settings.Tabs.Header" = "頁籤";
 "Settings.Tabs.HideTabBar" = "隱藏導航列";
-"Settings.Tabs.HideOnScroll" = "滑動時隱藏底欄";
 "Settings.Tabs.ShowContacts" = "顯示聯絡人頁籤";
 "Settings.Tabs.ShowNames" = "顯示頁籤名稱";
 
@@ -33,7 +32,7 @@
 "Settings.ChatList.Lines.2" = "2 行";
 "Settings.ChatList.Lines.3" = "3 行（預設）";
 
-"Mention.UserIdLink" = "提及使用超連結";
+"Mention.UserIdLink" = "按暱稱提及";
 "NSFW.Title" = "NSFW";
 "NSFW.Notice" = "在設定中（我的資料與代理之間）顯示一個 NSFW 跳轉欄，進入內建網頁。僅限 18 歲以上。";
 "NSFW.Tab.Recommend" = "推薦";
@@ -44,7 +43,7 @@
 "NSFW.AgeGate.Text" = "本板塊包含面向 18 歲及以上人群的成人內容。繼續即表示你確認已達到所在地區的法定年齡。";
 "NSFW.AgeGate.Confirm" = "我已年滿 18 歲";
 "NSFW.AgeGate.Leave" = "離開";
-"Mention.UserIdLink.Notice" = "長按頭像提及時，插入「暱稱」超連結指向該使用者，而不是 @使用者名稱。";
+"Mention.UserIdLink.Notice" = "長按頭像提及時，插入對方的完整暱稱作為提及，而不是 @使用者名稱。點按可開啟對方資料。";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "預設顯示共同群組";
 "Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "開啟有共同群組的使用者或機器人時，優先顯示「群組」標籤。";
 "Settings.Profiles.Header" = "配置文件";
@@ -278,18 +277,13 @@
 "AntiFeatures.DisableAds" = "隱藏贊助訊息";
 "MessageFilter.InputPlaceholderRegex" = "輸入正規表達式";
 "MessageFilter.Regex" = "正規表達式";
-"MessageFilter.ContentMatching" = "內容比對";
-"MessageFilter.Working" = "正在處理規則…";
-"MessageFilter.SaveFailed" = "規則未儲存，請檢查表達式、重複規則及 4096 條規則上限。";
-"MessageFilter.LoadMore" = "載入更多對話";
-"MessageFilter.Rule.Paused" = "比對耗時過長，已暫停此規則；修改規則後重試。";
 "SessionBackup.Working" = "正在處理工作階段…";
 "SessionBackup.Retry" = "重新讀取備份";
 "SessionBackup.Failed" = "操作失敗，已保留原列表，請重試。";
 "SessionBackup.InvalidEntries" = "%@ 條備份無法讀取，原始資料已保留。";
 "SessionBackup.Result" = "完成 %@ 條，失敗 %@ 條。已存在的帳號已略過。";
 "SessionBackup.Cancelled" = "已取消，之前已完成的操作會保留。";
-"MessageFilter.Regex.Notice" = "新規則預設使用不區分大小寫的正規表達式；開啟內容比對後按一般文字尋找。無法新增無效的正規表達式。";
+"MessageFilter.Regex.Notice" = "比對不區分大小寫。正規表達式使用 ICU 語法，無法新增無效的表達式。";
 "MessageFilter.Export" = "匯出規則";
 "MessageFilter.Import" = "匯入規則";
 "MessageFilter.Transfer" = "匯出 / 匯入";

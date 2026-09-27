@@ -48,6 +48,9 @@ struct ChatTopVisibleMessageRange: Equatable {
 }
 
 private let historyMessageCount: Int = 44
+// MARK: Regram — consecutive window loads the message filter may trigger on its own before
+// waiting for the user to drag; see processDisplayedItemRangeChanged.
+private let rgMaximumFilterNavigationSteps = 16
 
 enum ChatHistoryViewScrollPosition {
     case unread(index: MessageIndex)
@@ -676,6 +679,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     
     private(set) var isScrollAtBottomPosition = false
     public var isScrollAtBottomPositionUpdated: (() -> Void)?
+
+    // MARK: Regram — history window state for chats with hidden messages; see
+    // processDisplayedItemRangeChanged.
+    private var rgHistoryWindowBoost: Int = 0
+    private var rgFilterNavigationTowardsEarlier = true
+    private var rgFilterNavigationSteps = 0
     
     private var interactiveReadActionDisposable: Disposable?
     private var interactiveReadReactionsDisposable: Disposable?
@@ -1215,7 +1224,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                             if let maxMessage, message.index <= maxMessage {
                                 break
                             }
-                            if rgContentFilter.preparedVerdict(messageId: message.id, stableVersion: message.stableVersion) == true {
+                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
                                 if !message.flags.intersection(.IsIncomingMask).isEmpty {
                                     if maxMessage == nil || maxMessage! < message.index {
                                         maxMessage = message.index
@@ -1258,6 +1267,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             self.isInteractivelyScrollingValue = true
             self.isInteractivelyScrollingPromise.set(true)
             //self.pinToTopStableId = nil
+            self.rgFilterNavigationSteps = 0
             self.beganDragging?()
         }
 
@@ -1974,15 +1984,24 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             )
         }
 
-        // Keep regex evaluation off the main-thread transition path. The entries are immutable;
-        // `chatHistoryEntriesForView` below sees the prepared verdicts in the shared bounded cache.
+        // MARK: Regram — match the window's messages against the filter before the main-thread
+        // transition below, which then only reads cached verdicts (see rgPrepareContentFilter). In
+        // order and never dropped: the first update of a view carries its scroll position.
+        let rgFilterAccountPeerId = context.account.peerId
+        let rgFilterQueue = Queue(name: "regram.chat-history-filter", qos: .userInitiated)
         historyViewUpdate = historyViewUpdate
-        |> mapToSignal { update -> Signal<(ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>), NoError> in
-            if case let .HistoryView(view, _, _, _, _, _, _) = update.0 {
-                return rgPrepareContentFilter(messages: view.entries.map { EngineMessage($0.message) }, accountPeerId: context.account.peerId)
-                |> map { update }
+        |> mapToQueue { update -> Signal<(ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>), NoError> in
+            guard case let .HistoryView(view, _, _, _, _, _, _) = update.0, !RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty else {
+                return .single(update)
             }
-            return .single(update)
+            let candidates = view.entries.map { entry -> RGContentFilterCandidate in
+                let message = entry.message
+                return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
+            }
+            return rgPrepareContentFilter(candidates: candidates, accountPeerId: rgFilterAccountPeerId, queue: rgFilterQueue)
+            |> map { _ in
+                return update
+            }
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -3527,12 +3546,18 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         // roughly constant, so the loading logic behaves as it does with no filter at all.
         //
         // Capped, because the compensation is otherwise self-amplifying: a wider window takes in
-        // more filtered messages, which raises the count, which widens the next request again. In a
-        // heavily filtered chat that walks the window up towards the whole history, and every
-        // rebuild then reads and re-examines all of it on the main thread. The cap trades "always
-        // exactly a full screen" for a bounded cost — at the limit a very heavily filtered stretch
-        // shows a shorter list, which is the milder failure.
-        let rgAdjustedHistoryMessageCount = min(historyMessageCount + historyView.rgFilteredOutCount, historyMessageCount * 3)
+        // more filtered messages, which raises the count, which widens the next request again.
+        //
+        // Only ever grows, in half-window steps. Derived from each view's own filtered count, the
+        // requested count changed with every view, so the next request at the same anchor no longer
+        // matched the current location and reloaded the window again. A handful of possible values
+        // keeps consecutive requests equal.
+        let rgNeededWindowBoost = min(historyView.rgFilteredOutCount, historyMessageCount * 2)
+        if rgNeededWindowBoost > self.rgHistoryWindowBoost {
+            let step = historyMessageCount / 2
+            self.rgHistoryWindowBoost = min(historyMessageCount * 2, (rgNeededWindowBoost + step - 1) / step * step)
+        }
+        let rgAdjustedHistoryMessageCount = historyMessageCount + self.rgHistoryWindowBoost
 
         if let loaded = displayedRange.visibleRange, let firstEntry = historyView.filteredEntries.first, let lastEntry = historyView.filteredEntries.last {
             var mathesFirst = false
@@ -3591,10 +3616,37 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 latestAnchorIndex = originalLatest
             }
 
+            // MARK: Regram — a list the filter left too short to reach either edge satisfies both
+            // checks. Upstream then always tries newer first, which after scrolling up past a long
+            // run of hidden messages loads that run again, finds it empty, steps back (below), and
+            // alternates between the two forever — each step a Postbox read and a main-thread
+            // rebuild. Keep going the way the last such step went until the list fills or that end
+            // of the history is reached, and stop after a bounded number of steps until the user
+            // drags again. Lists that were not shortened by the filter keep the upstream order.
+            let rgIsFilterDrivenStep = mathesFirst && mathesLast && historyView.rgFilteredOutCount > 0
+            if rgIsFilterDrivenStep {
+                if self.rgFilterNavigationSteps >= rgMaximumFilterNavigationSteps {
+                    mathesFirst = false
+                    mathesLast = false
+                } else if self.rgFilterNavigationTowardsEarlier {
+                    if historyView.originalView.earlierId != nil {
+                        mathesFirst = false
+                    }
+                } else if historyView.originalView.laterId != nil {
+                    mathesLast = false
+                }
+            } else {
+                self.rgFilterNavigationSteps = 0
+            }
+
             if mathesFirst && historyView.originalView.laterId != nil {
                 let locationInput: ChatHistoryLocation = .Navigation(index: .message(latestAnchorIndex), anchorIndex: .message(latestAnchorIndex), count: rgAdjustedHistoryMessageCount, highlight: false)
                 if self.chatHistoryLocationValue?.content != locationInput {
                     self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
+                    self.rgFilterNavigationTowardsEarlier = false
+                    if rgIsFilterDrivenStep {
+                        self.rgFilterNavigationSteps += 1
+                    }
                 }
             } else if mathesFirst, historyView.originalView.laterId == nil, !historyView.originalView.holeLater, let chatHistoryLocationValue = self.chatHistoryLocationValue, !chatHistoryLocationValue.isAtUpperBound, historyView.originalView.anchorIndex != .upperBound {
                 if self.chatHistoryLocationValue == historyView.locationInput {
@@ -3605,6 +3657,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 if historyView.originalView.earlierId != nil {
                     if self.chatHistoryLocationValue?.content != locationInput {
                         self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
+                        self.rgFilterNavigationTowardsEarlier = true
+                        if rgIsFilterDrivenStep {
+                            self.rgFilterNavigationSteps += 1
+                        }
                     }
                 } else if historyView.originalView.holeEarlier, case let .custom(_, _, _, _, _, loadMore) = self.source, let loadMore {
                     if self.chatHistoryLocationValue?.content != locationInput {
@@ -3618,15 +3674,31 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     }
                 }
             }
-        } else if historyView.filteredEntries.isEmpty, historyView.originalView.earlierId != nil, let originalEarliest = historyView.originalView.entries.first?.index {
+        } else if historyView.filteredEntries.isEmpty, let originalEarliest = historyView.originalView.entries.first?.index, let originalLatest = historyView.originalView.entries.last?.index {
             // MARK: Regram — the whole loaded window was hidden by the message filter, so the list
             // is empty and the branch above (which needs a visible range) can never run. Without this
-            // the chat would sit blank forever instead of reaching into older messages. Each step
-            // anchors strictly earlier than the current window, so this walks back and terminates at
-            // the start of the history.
-            let locationInput: ChatHistoryLocation = .Navigation(index: .message(originalEarliest), anchorIndex: .message(originalEarliest), count: rgAdjustedHistoryMessageCount, highlight: false)
-            if self.chatHistoryLocationValue?.content != locationInput {
+            // the chat would sit blank forever.
+            //
+            // Keep going the way the list was already moving: always stepping back, even right after
+            // moving forward into a hidden run, is what bounced between that run and the messages
+            // before it. Moving forward turns back once it reaches the newest message; moving back
+            // stops at the start of the history. Every step anchors strictly beyond the current
+            // window, so either walk terminates.
+            var locationInput: ChatHistoryLocation?
+            var towardsEarlier = self.rgFilterNavigationTowardsEarlier
+            if !towardsEarlier && historyView.originalView.laterId == nil {
+                towardsEarlier = true
+            }
+            if towardsEarlier {
+                if historyView.originalView.earlierId != nil {
+                    locationInput = .Navigation(index: .message(originalEarliest), anchorIndex: .message(originalEarliest), count: rgAdjustedHistoryMessageCount, highlight: false)
+                }
+            } else {
+                locationInput = .Navigation(index: .message(originalLatest), anchorIndex: .message(originalLatest), count: rgAdjustedHistoryMessageCount, highlight: false)
+            }
+            if let locationInput, self.chatHistoryLocationValue?.content != locationInput {
                 self.chatHistoryLocationValue = ChatHistoryLocationInput(content: locationInput, id: self.takeNextHistoryLocationId())
+                self.rgFilterNavigationTowardsEarlier = towardsEarlier
             }
         }
 

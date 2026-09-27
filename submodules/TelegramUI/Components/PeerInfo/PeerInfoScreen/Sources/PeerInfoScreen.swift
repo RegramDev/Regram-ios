@@ -6923,11 +6923,6 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             case .file:
                 initialPaneKey = .files
             }
-        } else if RGSimpleSettings.shared.profileDefaultTabGroupsInCommon && !self.isMyProfile {
-            // Keep the local preference as an explicit pending pane. A user's stories arrive
-            // asynchronously; without this key the pane container treats the late story pane as
-            // the new default and replaces Groups in Common after the profile is already visible.
-            initialPaneKey = .groupsInCommon
         }
         self.displayNode = PeerInfoScreenNode(hidePhoneInSettings: self.hidePhoneInSettings, controller: self, context: self.context, peerId: self.peerId, avatarInitiallyExpanded: self.avatarInitiallyExpanded, isOpenedFromChat: self.isOpenedFromChat, reactionSourceMessageId: self.reactionSourceMessageId, sourceMessageId: self.sourceMessageId, callMessages: self.callMessages, isSettings: self.isSettings, isMyProfile: self.isMyProfile, hintGroupInCommon: self.hintGroupInCommon, requestsContext: self.requestsContext, profileGiftsContext: self.profileGiftsContext, starsContext: self.starsContext, tonContext: self.tonContext, chatLocation: self.chatLocation, chatLocationContextHolder: self.chatLocationContextHolder, switchToGiftsTarget: self.switchToGiftsTarget, switchToStoryFolder: self.switchToStoryFolder, switchToMediaTarget: self.switchToMediaTarget, initialPaneKey: initialPaneKey, sharedMediaFromForumTopic: self.sharedMediaFromForumTopic)
         self.controllerNode.accountsAndPeers.set(self.accountsAndPeers.get() |> map { $0.1 })

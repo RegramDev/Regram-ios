@@ -4,14 +4,6 @@ import RGLogging
 
 let APP_GROUP_USER_DEFAULTS = rgSharedUserDefaults()
 
-public struct RGContentFilterSettingsSnapshot {
-    public let matcher: RGMessageFilterMatcher
-    public let blockedPeerIds: Set<Int64>
-    public let disabledPeerIds: Set<Int64>
-    public let isProUnlocked: Bool
-    public let generation: Int
-}
-
 public class RGSimpleSettings {
     
     public static let shared = RGSimpleSettings()
@@ -48,7 +40,7 @@ public class RGSimpleSettings {
         if !UserDefaults.standard.bool(forKey: messageFilterRulesMigrationKey) {
             let legacyKeywords = self.messageFilterKeywords
             if !legacyKeywords.isEmpty, self.messageFilterRules.isEmpty {
-                self.messageFilterRules = legacyKeywords.map { RGMessageFilterRule(pattern: $0, isRegex: false) }
+                self.messageFilterRules = legacyKeywords.map { RGMessageFilterRule(pattern: $0) }
                 RGLogger.shared.log("SGSimpleSettings", "Migrated \(legacyKeywords.count) messageFilterKeywords -> messageFilterRules")
             }
             UserDefaults.standard.set(true, forKey: messageFilterRulesMigrationKey)
@@ -76,7 +68,6 @@ public class RGSimpleSettings {
             { let _ = self.tabBarSearchEnabled },
             { let _ = self.allChatsHidden },
             { let _ = self.hideTabBar },
-            { let _ = self.hideTabBarOnScroll },
             { let _ = self.bottomTabStyle },
             { let _ = self.compactChatList },
             { let _ = self.chatListLines },
@@ -167,7 +158,6 @@ public class RGSimpleSettings {
         case stickerTimestamp
         case hideRecordingButton
         case hideTabBar
-        case hideTabBarOnScroll
         case showDC
         case showCreationDate
         case showRegDate
@@ -354,7 +344,6 @@ public class RGSimpleSettings {
         Keys.stickerTimestamp.rawValue: true,
         Keys.hideRecordingButton.rawValue: false,
         Keys.hideTabBar.rawValue: false,
-        Keys.hideTabBarOnScroll.rawValue: false,
         Keys.showDC.rawValue: false,
         Keys.showCreationDate.rawValue: true,
         Keys.showRegDate.rawValue: true,
@@ -728,9 +717,6 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.hideTabBar.rawValue)
     public var hideTabBar: Bool
 
-    @UserDefault(key: Keys.hideTabBarOnScroll.rawValue)
-    public var hideTabBarOnScroll: Bool
-
     @UserDefault(key: Keys.showProfileId.rawValue)
     public var showProfileId: Bool
     
@@ -798,27 +784,9 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.status.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var status: Int64
 
-    // Mirrors RGStatus.status. The filter is evaluated on worker queues as well as the main queue.
-    private var ephemeralStatusValue: Int64 = 2
-    public var ephemeralStatus: Int64 {
-        get {
-            self.contentFilterCacheLock.lock()
-            defer { self.contentFilterCacheLock.unlock() }
-            return self.ephemeralStatusValue
-        }
-        set {
-            self.contentFilterCacheLock.lock()
-            let changed = self.ephemeralStatusValue != newValue
-            self.ephemeralStatusValue = newValue
-            if changed {
-                self.invalidateContentFiltersLocked()
-            }
-            self.contentFilterCacheLock.unlock()
-            if changed {
-                NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
-            }
-        }
-    }
+    // Mirrors RGStatus.status. Defaults to Pro so gates read as unlocked before the shared-data
+    // subscription in SharedAccountContext delivers its first value.
+    public var ephemeralStatus: Int64 = 2
     
     @UserDefault(key: Keys.messageFilterKeywords.rawValue)
     public var messageFilterKeywords: [String]
@@ -832,29 +800,15 @@ public class RGSimpleSettings {
     /// notification a newly added rule would not take effect until some unrelated update happened
     /// to arrive.
     public static let contentFiltersDidChangeNotification = Notification.Name("SGSimpleSettings.contentFiltersDidChange")
-    public static let contentFilterResultsDidChangeNotification = Notification.Name("RGSimpleSettings.contentFilterResultsDidChange")
 
     private func notifyContentFiltersChanged() {
         self.contentFilterCacheLock.lock()
-        self.invalidateContentFiltersLocked()
-        self.contentFilterCacheLock.unlock()
-        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
-    }
-
-    public func invalidateSlowRuleResults() {
-        self.contentFilterCacheLock.lock()
-        self.invalidateContentFiltersLocked(resetPaused: false)
-        self.contentFilterCacheLock.unlock()
-        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
-    }
-
-    private func invalidateContentFiltersLocked(resetPaused: Bool = true) {
-        if resetPaused { RGMessageFilter.resetPausedPatterns() }
         self.cachedMessageFilterRules = nil
-        self.cachedMessageFilterMatcher = nil
         self.cachedBlockedPeerIds = nil
         self.cachedMessageFilterDisabledPeerIds = nil
         self.contentFilterGenerationValue += 1
+        self.contentFilterCacheLock.unlock()
+        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
     }
 
     private var contentFilterGenerationValue: Int = 0
@@ -873,7 +827,6 @@ public class RGSimpleSettings {
     /// write the backing keys, and each of them invalidates through `notifyContentFiltersChanged`.
     private let contentFilterCacheLock = NSLock()
     private var cachedMessageFilterRules: [RGMessageFilterRule]?
-    private var cachedMessageFilterMatcher: RGMessageFilterMatcher?
     private var cachedBlockedPeerIds: Set<Int64>?
     private var cachedMessageFilterDisabledPeerIds: Set<Int64>?
 
@@ -890,67 +843,9 @@ public class RGSimpleSettings {
             return decoded
         }
         set {
-            self.updateMessageFilterRules { _ in newValue }
+            self.messageFilterRulesJSON = RGMessageFilter.encode(newValue)
+            self.notifyContentFiltersChanged()
         }
-    }
-
-    @discardableResult
-    public func updateMessageFilterRules(_ update: ([RGMessageFilterRule]) throws -> [RGMessageFilterRule]) rethrows -> [RGMessageFilterRule] {
-        self.contentFilterCacheLock.lock()
-        let current = self.cachedMessageFilterRules ?? RGMessageFilter.decode(self.messageFilterRulesJSON)
-        let updated: [RGMessageFilterRule]
-        do {
-            updated = try update(current)
-        } catch {
-            self.contentFilterCacheLock.unlock()
-            throw error
-        }
-        let changed = updated != current
-        if changed {
-            self.messageFilterRulesJSON = RGMessageFilter.encode(updated)
-            self.invalidateContentFiltersLocked()
-            self.cachedMessageFilterRules = updated
-        }
-        self.contentFilterCacheLock.unlock()
-        if changed {
-            NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
-        }
-        return updated
-    }
-
-    @discardableResult
-    public func importMessageFilterRules(_ imported: [RGMessageFilterRule], isCancelled: () -> Bool = { false }) throws -> Int {
-        var count = 0
-        try self.updateMessageFilterRules { current in
-            guard !isCancelled() else { throw RGMessageFilter.ImportError.cancelled }
-            let merged = RGMessageFilter.merging(imported, into: current)
-            guard !isCancelled() else { throw RGMessageFilter.ImportError.cancelled }
-            guard merged.rules.count <= RGMessageFilter.maximumRuleCount else { throw RGMessageFilter.ImportError.tooManyRules }
-            count = merged.addedCount
-            return merged.rules
-        }
-        return count
-    }
-
-    public func contentFilterSnapshot() -> RGContentFilterSettingsSnapshot {
-        self.contentFilterCacheLock.lock()
-        let generation = self.contentFilterGenerationValue
-        let isProUnlocked = self.ephemeralStatusValue > 1
-        let rules = self.cachedMessageFilterRules ?? RGMessageFilter.decode(self.messageFilterRulesJSON)
-        self.cachedMessageFilterRules = rules
-        let cachedMatcher = self.cachedMessageFilterMatcher
-        let blocked = self.cachedBlockedPeerIds ?? Set(self.blockedPeerIdsRaw.compactMap { Int64($0) })
-        let disabled = self.cachedMessageFilterDisabledPeerIds ?? Set(self.messageFilterDisabledPeerIdsRaw.compactMap { Int64($0) })
-        self.cachedBlockedPeerIds = blocked
-        self.cachedMessageFilterDisabledPeerIds = disabled
-        self.contentFilterCacheLock.unlock()
-        let matcher = cachedMatcher ?? RGMessageFilterMatcher(rules: rules)
-        if cachedMatcher == nil {
-            self.contentFilterCacheLock.lock()
-            if self.contentFilterGenerationValue == generation { self.cachedMessageFilterMatcher = matcher }
-            self.contentFilterCacheLock.unlock()
-        }
-        return RGContentFilterSettingsSnapshot(matcher: matcher, blockedPeerIds: blocked, disabledPeerIds: disabled, isProUnlocked: isProUnlocked, generation: generation)
     }
 
     // MARK: Regram — client-side blocked peers. Stored as decimal strings because `@UserDefault`
@@ -970,11 +865,8 @@ public class RGSimpleSettings {
             return decoded
         }
         set {
-            self.contentFilterCacheLock.lock()
             self.blockedPeerIdsRaw = newValue.map { String($0) }
-            self.invalidateContentFiltersLocked()
-            self.contentFilterCacheLock.unlock()
-            NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
+            self.notifyContentFiltersChanged()
         }
     }
 
@@ -995,11 +887,8 @@ public class RGSimpleSettings {
             return decoded
         }
         set {
-            self.contentFilterCacheLock.lock()
             self.messageFilterDisabledPeerIdsRaw = newValue.map { String($0) }
-            self.invalidateContentFiltersLocked()
-            self.contentFilterCacheLock.unlock()
-            NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
+            self.notifyContentFiltersChanged()
         }
     }
 
@@ -1011,17 +900,13 @@ public class RGSimpleSettings {
     }
 
     public func setMessageFilterEnabled(_ enabled: Bool, forPeer peerId: Int64) {
-        self.contentFilterCacheLock.lock()
-        var ids = self.cachedMessageFilterDisabledPeerIds ?? Set(self.messageFilterDisabledPeerIdsRaw.compactMap(Int64.init))
+        var ids = self.messageFilterDisabledPeerIds
         if enabled {
             ids.remove(peerId)
         } else {
             ids.insert(peerId)
         }
-        self.messageFilterDisabledPeerIdsRaw = ids.map(String.init)
-        self.invalidateContentFiltersLocked()
-        self.contentFilterCacheLock.unlock()
-        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
+        self.messageFilterDisabledPeerIds = ids
     }
 
     public func isPeerBlocked(_ peerId: Int64) -> Bool {
@@ -1032,29 +917,25 @@ public class RGSimpleSettings {
     }
 
     public func setPeerBlocked(_ peerId: Int64, blocked: Bool) {
-        self.contentFilterCacheLock.lock()
-        var ids = self.cachedBlockedPeerIds ?? Set(self.blockedPeerIdsRaw.compactMap(Int64.init))
+        var ids = self.blockedPeerIds
         if blocked {
             ids.insert(peerId)
         } else {
             ids.remove(peerId)
         }
-        self.blockedPeerIdsRaw = ids.map(String.init)
-        self.invalidateContentFiltersLocked()
-        self.contentFilterCacheLock.unlock()
-        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
+        self.blockedPeerIds = ids
     }
 
     /// Appends a rule, ignoring exact duplicates (same pattern, mode and scope).
     @discardableResult
     public func addMessageFilterRule(_ rule: RGMessageFilterRule) -> Bool {
-        var added = false
-        self.updateMessageFilterRules { rules in
-            guard rules.count < RGMessageFilter.maximumRuleCount, !rules.contains(where: { RGMessageFilter.equivalent($0, rule) }) else { return rules }
-            added = true
-            return rules + [rule]
+        var rules = self.messageFilterRules
+        if rules.contains(where: { $0.pattern == rule.pattern && $0.isRegex == rule.isRegex && Set($0.peerIds) == Set(rule.peerIds) }) {
+            return false
         }
-        return added
+        rules.append(rule)
+        self.messageFilterRules = rules
+        return true
     }
 
 

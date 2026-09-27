@@ -23,6 +23,7 @@ import UndoUI
 import HorizontalTabsComponent
 import GlassBackgroundComponent
 import EdgeEffect
+import RGSimpleSettings
 
 final class PeerInfoPaneWrapper {
     let key: PeerInfoPaneKey
@@ -606,6 +607,9 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     private(set) var currentPaneKey: PeerInfoPaneKey?
     var pendingSwitchToPaneKey: PeerInfoPaneKey?
     var expandOnSwitch = false
+    // MARK: Regram — set once the user taps or swipes to a tab, so late-arriving panes stop
+    // re-applying the default-tab preference.
+    private var rgUserSelectedPane = false
     
     var currentPane: PeerInfoPaneWrapper? {
         if let currentPaneKey = self.currentPaneKey {
@@ -801,6 +805,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                     let switchToKey = availablePanes[updatedIndex]
                     if switchToKey != self.currentPaneKey && self.currentPanes[switchToKey] != nil{
                         self.currentPaneKey = switchToKey
+                        self.rgUserSelectedPane = true
                     }
                 }
                 self.transitionFraction = 0.0
@@ -923,8 +928,18 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         let previousCurrentPaneKey = self.currentPaneKey
         var updateCurrentPaneStatus = false
         
-        if let previousAvailablePanes, !previousAvailablePanes.contains(.stories), availablePanes.contains(.stories), self.currentPaneKey == nil, self.pendingSwitchToPaneKey == nil {
+        // MARK: Regram — "open profiles on groups in common" (PeerInfoData moves that pane first).
+        // The pane list fills in stages, so the preference has to survive both late orders:
+        // upstream jumps to stories when they arrive after a pane was already chosen, and the
+        // common-group count can itself arrive after another pane was selected. An explicit
+        // target (initialPaneKey) or a tab the user picked always wins.
+        let rgKeepGroupsInCommon = availablePanes.first == .groupsInCommon && self.initialPaneKey == nil && !self.rgUserSelectedPane && RGSimpleSettings.shared.profileDefaultTabGroupsInCommon
+
+        if let previousAvailablePanes, !previousAvailablePanes.contains(.stories), availablePanes.contains(.stories), !rgKeepGroupsInCommon {
             self.pendingSwitchToPaneKey = .stories
+        }
+        if rgKeepGroupsInCommon, let previousAvailablePanes, !previousAvailablePanes.contains(.groupsInCommon), self.currentPaneKey != nil {
+            self.pendingSwitchToPaneKey = .groupsInCommon
         }
         
         if let currentPaneKey = self.currentPaneKey, !availablePanes.contains(currentPaneKey) {
@@ -1332,6 +1347,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                                 }
                                 return
                             }
+                            self.rgUserSelectedPane = true
                             if self.currentPanes[paneKey] != nil {
                                 self.currentPaneKey = paneKey
                                 
