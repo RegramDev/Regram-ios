@@ -606,6 +606,7 @@ public final class NavigationBarImpl: ASDisplayNode, NavigationBar {
         self.titleNode.accessibilityTraits = .header
         
         self.backButtonNodeImpl = NavigationButtonNodeImpl(isGlass: presentationData.theme.style == .glass)
+        self.backButtonNodeImpl.manualAccessibilityLabel = presentationData.strings.back
         if case .glass = presentationData.theme.style {
         } else {
             self.backButtonNodeImpl.hitTestSlop = UIEdgeInsets(top: 0.0, left: -20.0, bottom: 0.0, right: 0.0)
@@ -759,6 +760,7 @@ public final class NavigationBarImpl: ASDisplayNode, NavigationBar {
     }
     
     public func updatePresentationData(_ presentationData: NavigationBarPresentationData, transition: ContainedViewLayoutTransition = .immediate) {
+        self.backButtonNodeImpl.manualAccessibilityLabel = presentationData.strings.back
         if presentationData.theme !== self.presentationData.theme || presentationData.strings !== self.presentationData.strings {
             self.presentationData = presentationData
             

@@ -2,6 +2,7 @@
 
 "Settings.Tabs.Header" = "标签";
 "Settings.Tabs.HideTabBar" = "隐藏底部导航栏";
+"Settings.Tabs.HideOnScroll" = "滑动时隐藏底栏";
 "Settings.Tabs.ShowContacts" = "显示联系人标签";
 "Settings.Tabs.ShowNames" = "显示标签名称";
 
@@ -279,7 +280,18 @@
 "AntiFeatures.DisableAds" = "隐藏赞助消息";
 "MessageFilter.InputPlaceholderRegex" = "输入正则表达式";
 "MessageFilter.Regex" = "正则表达式";
-"MessageFilter.Regex.Notice" = "匹配不区分大小写。正则表达式使用 ICU 语法，无法添加无效的表达式。";
+"MessageFilter.ContentMatching" = "内容匹配";
+"MessageFilter.Working" = "正在处理规则…";
+"MessageFilter.SaveFailed" = "规则未保存，请检查表达式、重复规则及 4096 条规则上限。";
+"MessageFilter.LoadMore" = "加载更多聊天";
+"MessageFilter.Rule.Paused" = "匹配耗时过长，已暂停此规则；修改规则后重试。";
+"SessionBackup.Working" = "正在处理会话…";
+"SessionBackup.Retry" = "重新读取备份";
+"SessionBackup.Failed" = "操作失败，已保留原列表，请重试。";
+"SessionBackup.InvalidEntries" = "%@ 条备份无法读取，原始数据已保留。";
+"SessionBackup.Result" = "完成 %@ 条，失败 %@ 条。已存在的账号已跳过。";
+"SessionBackup.Cancelled" = "已取消，之前已完成的操作会保留。";
+"MessageFilter.Regex.Notice" = "新规则默认使用不区分大小写的正则表达式；开启内容匹配后按普通文本查找。无法添加无效的正则表达式。";
 "MessageFilter.Export" = "导出规则";
 "MessageFilter.Import" = "导入规则";
 "MessageFilter.Transfer" = "导出 / 导入";

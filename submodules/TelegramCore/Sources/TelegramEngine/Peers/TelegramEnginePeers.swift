@@ -1013,6 +1013,8 @@ public extension TelegramEngine {
 
         public func getNextUnreadChannel(peerId: PeerId, chatListFilterId: Int32?, getFilterPredicate: @escaping (ChatListFilterData) -> ChatListFilterPredicate) -> Signal<(peer: EnginePeer, unreadCount: Int, location: NextUnreadChannelLocation)?, NoError> {
             let startTime = CFAbsoluteTimeGetCurrent()
+            let visibility = self.account.filteredUnreadContext.current
+            let needsFilteredSearch = visibility.filteringEnabled
             return self.account.postbox.transaction { transaction -> (peer: EnginePeer, unreadCount: Int, location: NextUnreadChannelLocation)? in
                 func getForFilter(predicate: ChatListFilterPredicate?, isArchived: Bool) -> (peer: EnginePeer, unreadCount: Int)? {
                     let additionalFilter: (Peer) -> Bool = { peer in
@@ -1025,13 +1027,13 @@ public extension TelegramEngine {
                     
                     var peerIds: [PeerId] = []
                     if predicate != nil {
-                        peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: predicate, additionalFilter: additionalFilter, stopOnFirstMatch: true))
-                        peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: predicate, additionalFilter: additionalFilter, stopOnFirstMatch: true))
+                        peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: predicate, additionalFilter: additionalFilter, stopOnFirstMatch: !needsFilteredSearch))
+                        peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: predicate, additionalFilter: additionalFilter, stopOnFirstMatch: !needsFilteredSearch))
                     } else {
                         if isArchived {
-                            peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: nil, additionalFilter: additionalFilter, stopOnFirstMatch: true))
+                            peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: Namespaces.PeerGroup.archive, filterPredicate: nil, additionalFilter: additionalFilter, stopOnFirstMatch: !needsFilteredSearch))
                         } else {
-                            peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: nil, additionalFilter: additionalFilter, stopOnFirstMatch: true))
+                            peerIds.append(contentsOf: transaction.getUnreadChatListPeerIds(groupId: .root, filterPredicate: nil, additionalFilter: additionalFilter, stopOnFirstMatch: !needsFilteredSearch))
                         }
                     }
 
@@ -1050,6 +1052,7 @@ public extension TelegramEngine {
                         guard let readState = transaction.getCombinedPeerReadState(channel.id), readState.count != 0 else {
                             continue
                         }
+                        if visibility.counters(peerId: channel.id, original: EnginePeerReadCounters(state: readState, isMuted: false)).count == 0 { continue }
                         guard let (groupId, index) = transaction.getPeerChatListIndex(channel.id) else {
                             continue
                         }
@@ -1060,7 +1063,7 @@ public extension TelegramEngine {
                     results.sort(by: { $0.2 > $1.2 })
 
                     if let peer = results.first?.0 {
-                        let unreadCount: Int32 = transaction.getCombinedPeerReadState(peer.id)?.count ?? 0
+                        let unreadCount = visibility.counters(peerId: peer.id, original: EnginePeerReadCounters(state: transaction.getCombinedPeerReadState(peer.id), isMuted: false)).count
                         return (peer: peer, unreadCount: Int(unreadCount))
                     } else {
                         return nil
@@ -1121,6 +1124,7 @@ public extension TelegramEngine {
         }
         
         public func getNextUnreadForumTopic(peerId: PeerId, topicId: Int32) -> Signal<(id: Int64, data: MessageHistoryThreadData)?, NoError> {
+            let visibility = self.account.filteredUnreadContext.current
             return self.account.postbox.transaction { transaction -> (id: Int64, data: MessageHistoryThreadData)? in
                 var unreadThreads: [(id: Int64, data: MessageHistoryThreadData, index: MessageIndex)] = []
                 for item in transaction.getMessageHistoryThreadIndex(peerId: peerId, limit: 100) {
@@ -1130,7 +1134,8 @@ public extension TelegramEngine {
                     guard let data = item.info.data.get(MessageHistoryThreadData.self) else {
                         continue
                     }
-                    if data.incomingUnreadCount <= 0 {
+                    let originalCounters = EnginePeerReadCounters(incomingReadId: data.maxIncomingReadId, outgoingReadId: data.maxOutgoingReadId, count: data.incomingUnreadCount, markedUnread: data.isMarkedUnread)
+                    if !visibility.counters(peerId: peerId, threadId: item.threadId, original: originalCounters).isUnread {
                         continue
                     }
                     guard let messageIndex = transaction.getMessageHistoryThreadTopMessage(peerId: peerId, threadId: item.threadId, namespaces: Set([Namespaces.Message.Cloud])) else {

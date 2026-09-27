@@ -641,8 +641,10 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                     presentControllerImpl?(context.sharedContext.makeRGUpdateIOSController(), nil)
                 }
             } else {
-                currentAppIconName.set(icon.name)
-                context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { _ in
+                context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { success in
+                    if success {
+                        currentAppIconName.set(icon.name)
+                    }
                 })
             }
         })

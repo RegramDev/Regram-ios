@@ -202,9 +202,22 @@ public final class LegacySwiftUIController: LegacyController {
 
     override public func bind(controller: UIViewController) {
         super.bind(controller: controller)
-        addChild(legacyController)
-        legacyController.didMove(toParent: legacyController)
+        addChild(controller)
+        controller.didMove(toParent: self)
     }
+
+    public func bindNativeNavigation(controller: UIViewController, title: String, backLabel: String) {
+        self.setDisplayNavigationBar(false, transition: .immediate)
+        controller.title = title
+        let back = UIBarButtonItem(image: UIImage(systemName: "chevron.left"), style: .plain, target: self, action: #selector(self.nativeBack))
+        back.accessibilityLabel = backLabel
+        controller.navigationItem.leftBarButtonItem = back
+        let navigation = UINavigationController(rootViewController: controller)
+        navigation.navigationBar.prefersLargeTitles = false
+        self.bind(controller: navigation)
+    }
+
+    @objc private func nativeBack() { self.dismiss() }
 
     @available(*, unavailable)
     public required init(coder _: NSCoder) {

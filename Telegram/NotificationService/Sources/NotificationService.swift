@@ -2680,11 +2680,10 @@ final class NotificationService: UNNotificationServiceExtension {
     private var initialContent: UNNotificationContent?
     private let content = Atomic<NotificationContent?>(value: nil)
     private var contentHandler: ((UNNotificationContent) -> Void)?
+    private let completionLock = NSLock()
+    private var currentRequestIdentifier: String?
     private var episode: String?
     // MARK: Regram
-    private var emptyNotificationsRemoved: Bool = false
-    private var notificationRemovalTries: Int32 = 0
-    private let maxNotificationRemovalTries: Int32 = 30
     
     override init() {
         super.init()
@@ -2710,39 +2709,38 @@ final class NotificationService: UNNotificationServiceExtension {
             }
         })
     }
-    
+
     func removeEmptyNotifications() {
-        if !RG_SILENCE_EMPTY_NOTIFICATIONS {
-            return
-        }
-        self.notificationRemovalTries += 1
-        if self.emptyNotificationsRemoved || self.notificationRemovalTries > self.maxNotificationRemovalTries  {
-            #if DEBUG
-            NSLog("Notification removal try rejected \(self.notificationRemovalTries)")
-            #endif
-            return
-        }
-        var emptyNotifications: [String] = []
-        #if DEBUG
-        NSLog("Notification removal try \(notificationRemovalTries)")
-        #endif
-        UNUserNotificationCenter.current().getDeliveredNotifications(completionHandler: { notifications in
-            for notification in notifications {
-                if notification.request.content.threadIdentifier == "empty-notification" {
-                    emptyNotifications.append(notification.request.identifier)
+        guard let requestId = self.currentRequestIdentifier else { return }
+        self.removeEmptyNotifications(requestId: requestId)
+    }
+
+    private func removeEmptyNotifications(requestId: String) {
+        guard RG_SILENCE_EMPTY_NOTIFICATIONS else { return }
+        self.removeEmptyNotification(requestId: requestId, attempt: 0)
+    }
+
+    private func removeEmptyNotification(requestId: String, attempt: Int) {
+        guard attempt < 8 else { return }
+        let delay = min(1.0, 0.05 * pow(2.0, Double(attempt)))
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
+            UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+                let matches = notifications.filter { $0.request.identifier == requestId && $0.request.content.threadIdentifier == "empty-notification" }
+                if !matches.isEmpty {
+                    UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [requestId])
+                } else {
+                    self?.removeEmptyNotification(requestId: requestId, attempt: attempt + 1)
                 }
             }
-            if !emptyNotifications.isEmpty {
-                UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: emptyNotifications)
-                self.emptyNotificationsRemoved = true
-                #if DEBUG
-                NSLog("Empty notifications removed on try \(self.notificationRemovalTries). Count \(emptyNotifications.count)")
-                #endif
-            } else {
-                self.removeEmptyNotifications()
-            }
-        })
-        
+        }
+    }
+
+    private func takeContentHandler() -> ((UNNotificationContent) -> Void)? {
+        self.completionLock.lock()
+        defer { self.completionLock.unlock() }
+        let result = self.contentHandler
+        self.contentHandler = nil
+        return result
     }
     
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
@@ -2750,7 +2748,11 @@ final class NotificationService: UNNotificationServiceExtension {
         self.episode = episode
         
         self.initialContent = request.content
+        self.currentRequestIdentifier = request.identifier
+        let _ = self.content.swap(nil)
+        self.completionLock.lock()
         self.contentHandler = contentHandler
+        self.completionLock.unlock()
 
         self.impl = nil
 
@@ -2769,10 +2771,9 @@ final class NotificationService: UNNotificationServiceExtension {
                     }
                     strongSelf.impl = nil
 
-                    if let contentHandler = strongSelf.contentHandler {
+                    if let contentHandler = strongSelf.takeContentHandler() {
                         Logger.shared.log("NotificationService \(episode)", "Complete handling notification")
                         
-                        strongSelf.contentHandler = nil
                         
                         if let content = content.with({ $0 }) {
                             // MARK: Regram
@@ -2793,8 +2794,7 @@ final class NotificationService: UNNotificationServiceExtension {
             )
             // MARK: Regram — a handler that fails to start never calls `completed`, so the push used
             // to wait out the whole time limit and then show its placeholder alert.
-            if handler == nil, let strongSelf = self, let contentHandler = strongSelf.contentHandler {
-                strongSelf.contentHandler = nil
+            if handler == nil, let strongSelf = self, let contentHandler = strongSelf.takeContentHandler() {
                 Logger.shared.log("NotificationService \(episode)", "Handler failed to start")
                 strongSelf.rgCompleteWithoutContent(contentHandler)
             }
@@ -2805,9 +2805,10 @@ final class NotificationService: UNNotificationServiceExtension {
     // MARK: Regram — delivers `generated`, then sweeps it out of Notification Center if `generate()`
     // silenced it (see RG_SILENCE_EMPTY_NOTIFICATIONS): a silenced notification is still delivered.
     private func rgDeliver(_ generated: UNNotificationContent, _ contentHandler: (UNNotificationContent) -> Void) {
+        let requestId = self.currentRequestIdentifier
         contentHandler(generated)
-        if generated.threadIdentifier == "empty-notification" {
-            self.removeEmptyNotifications()
+        if generated.threadIdentifier == "empty-notification", let requestId {
+            self.removeEmptyNotifications(requestId: requestId)
         }
     }
 
@@ -2827,8 +2828,7 @@ final class NotificationService: UNNotificationServiceExtension {
     }
     
     override func serviceExtensionTimeWillExpire() {
-        if let contentHandler = self.contentHandler {
-            self.contentHandler = nil
+        if let contentHandler = self.takeContentHandler() {
             
             Logger.shared.log("NotificationService \(self.episode ?? "???")", "Completing due to serviceExtensionTimeWillExpire")
             

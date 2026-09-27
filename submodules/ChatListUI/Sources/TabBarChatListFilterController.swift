@@ -1,4 +1,5 @@
 import Foundation
+import Postbox
 import UIKit
 import Display
 import SwiftSignalKit
@@ -41,8 +42,8 @@ public func chatListFilterItems(context: AccountContext) -> Signal<(Int, [(ChatL
             keys.append(.basicPeer(peerId))
         }
         
-        return context.account.postbox.combinedView(keys: keys)
-        |> map { view -> (Int, [(ChatListFilter, Int, Bool)]) in
+        return combineLatest(context.account.postbox.combinedView(keys: keys), context.account.filteredUnreadContext.state)
+        |> map { view, visibility -> (Int, [(ChatListFilter, Int, Bool)]) in
             guard let unreadCounts = view.views[unreadKey] as? EngineRawUnreadMessageCountsView else {
                 return (0, [])
             }
@@ -62,11 +63,12 @@ public func chatListFilterItems(context: AccountContext) -> Signal<(Int, [(ChatL
             for entry in unreadCounts.entries {
                 switch entry {
                 case let .total(_, state):
-                    totalStates[.root] = state
+                    totalStates[.root] = visibility.adjustedTotal(state, groupId: .root)
                 case let .totalInGroup(groupId, state):
-                    totalStates[groupId] = state
+                    totalStates[groupId] = visibility.adjustedTotal(state, groupId: groupId)
                 case let .peer(peerId, state):
-                    if let state = state, state.isUnread {
+                    let adjusted = visibility.counters(peerId: peerId, original: EnginePeerReadCounters(state: state, isMuted: false))
+                    if let state = adjusted._asReadCounters(), state.isUnread {
                         if let peerView = view.views[.basicPeer(peerId)] as? EngineRawBasicPeerView, let peer = peerView.peer {
                             let tag = context.account.postbox.seedConfiguration.peerSummaryCounterTags(peer, peerView.isContact)
                             

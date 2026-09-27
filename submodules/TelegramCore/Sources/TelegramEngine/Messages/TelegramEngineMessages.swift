@@ -276,11 +276,7 @@ public extension TelegramEngine {
             return self.account.postbox.transaction { transaction -> [EnginePeer.Id: [EngineMessage]] in
                 var result: [EnginePeer.Id: [EngineMessage]] = [:]
                 for peerId in peerIds {
-                    var messages: [EngineMessage] = []
-                    transaction.withAllMessages(peerId: peerId, reversed: true, { message in
-                        messages.append(EngineMessage(message))
-                        return messages.count < limit
-                    })
+                    let messages = transaction.localMessagePage(peerId: peerId, namespace: Namespaces.Message.Cloud, before: nil, limit: limit).map(EngineMessage.init)
                     result[peerId] = messages
                 }
                 return result

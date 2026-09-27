@@ -2,6 +2,7 @@
 
 "Settings.Tabs.Header" = "TABS";
 "Settings.Tabs.HideTabBar" = "Hide Tab bar";
+"Settings.Tabs.HideOnScroll" = "Hide Tab Bar While Scrolling";
 "Settings.Tabs.ShowContacts" = "Show Contacts Tab";
 "Settings.Tabs.ShowNames" = "Show Tab Names";
 "Settings.Tabs.SearchButton" = "Search Button";
@@ -313,7 +314,18 @@ Matching is case-insensitive.";
 "AntiFeatures.DisableAds" = "Hide sponsored messages";
 "MessageFilter.InputPlaceholderRegex" = "Enter regular expression";
 "MessageFilter.Regex" = "Regular expression";
-"MessageFilter.Regex.Notice" = "Matching is case-insensitive. Regular expressions use ICU syntax; an invalid pattern cannot be added.";
+"MessageFilter.ContentMatching" = "Match Literal Content";
+"MessageFilter.Working" = "Processing rules…";
+"MessageFilter.SaveFailed" = "The rule could not be saved. Check the expression, duplicates, and the 4,096-rule limit.";
+"MessageFilter.LoadMore" = "Load More Chats";
+"MessageFilter.Rule.Paused" = "Matching took too long. This rule is paused until rules are changed.";
+"SessionBackup.Working" = "Processing sessions…";
+"SessionBackup.Retry" = "Reload Backups";
+"SessionBackup.Failed" = "The operation failed. Your list has been preserved. Please try again.";
+"SessionBackup.InvalidEntries" = "%@ backup entries could not be read. They have been kept unchanged.";
+"SessionBackup.Result" = "Completed: %@. Failed: %@. Existing accounts were skipped.";
+"SessionBackup.Cancelled" = "Cancelled. Operations already completed have been kept.";
+"MessageFilter.Regex.Notice" = "New rules use case-insensitive regular expressions by default. Turn on Match Literal Content for a plain substring. Invalid expressions cannot be added.";
 "MessageFilter.Export" = "Export Rules";
 "MessageFilter.Import" = "Import Rules";
 "MessageFilter.Transfer" = "Export / Import";

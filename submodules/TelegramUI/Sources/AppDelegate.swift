@@ -1042,6 +1042,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     // already offered above as the default. The alticon asset stays in the bundle so
                     // that anyone who applied it as an alternate before this change keeps a valid icon.
                     PresentationAppIcon(name: "RGSilver", imageName: "RGSilver"),
+                    PresentationAppIcon(name: "iKun", imageName: "iKun"),
                     // Stock Telegram icons. Swiftgram replaces the whole list above rather than
                     // appending, which is why these have to be re-added explicitly. Not marked
                     // isPremium: this build has no Premium gate to check them against.
@@ -1074,9 +1075,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 return nil
             }
         }, requestSetAlternateIconName: { name, completion in
+            guard #available(iOS 10.3, *) else {
+                completion(false)
+                return
+            }
             application.setAlternateIconName(name, completionHandler: { error in
                 if let error = error {
-                   Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
+                    Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
                 }
                 completion(error == nil)
             })
@@ -2132,6 +2137,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        // The extension can be suspended immediately after completing a push. Finish its cleanup
+        // when the app resumes, without touching real message notifications.
+        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+            let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
+            if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+        }
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
         self.isActiveValue = true

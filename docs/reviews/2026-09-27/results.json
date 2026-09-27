@@ -1,0 +1,199 @@
+{
+  "regex": [
+    {
+      "name": "case-insensitive",
+      "input_utf16_units": 10,
+      "exit": 0,
+      "matched": true,
+      "compile_ms": 0,
+      "match_ms": 0,
+      "expected_match": true,
+      "pass": true,
+      "wall_ms": 42.69
+    },
+    {
+      "name": "CJK",
+      "input_utf16_units": 5,
+      "exit": 0,
+      "matched": true,
+      "compile_ms": 0,
+      "match_ms": 1,
+      "expected_match": true,
+      "pass": true,
+      "wall_ms": 38.11
+    },
+    {
+      "name": "emoji",
+      "input_utf16_units": 8,
+      "exit": 0,
+      "matched": true,
+      "compile_ms": 0,
+      "match_ms": 0,
+      "expected_match": true,
+      "pass": true,
+      "wall_ms": 43.34
+    },
+    {
+      "name": "newline",
+      "input_utf16_units": 11,
+      "exit": 0,
+      "matched": false,
+      "compile_ms": 1,
+      "match_ms": 0,
+      "expected_match": false,
+      "pass": true,
+      "wall_ms": 44.76
+    },
+    {
+      "name": "literal-metacharacters",
+      "input_utf16_units": 14,
+      "exit": 0,
+      "matched": true,
+      "compile_ms": 0,
+      "match_ms": 1,
+      "expected_match": true,
+      "pass": true,
+      "wall_ms": 42.69
+    },
+    {
+      "name": "anchored-linear-4096",
+      "input_utf16_units": 4097,
+      "exit": 0,
+      "matched": false,
+      "compile_ms": 1,
+      "match_ms": 0,
+      "expected_match": false,
+      "pass": true,
+      "wall_ms": 41.58
+    },
+    {
+      "name": "nested-quantifier-20",
+      "input_utf16_units": 21,
+      "exit": 0,
+      "matched": false,
+      "compile_ms": 0,
+      "match_ms": 37,
+      "expected_match": false,
+      "pass": true,
+      "wall_ms": 77.7
+    },
+    {
+      "name": "nested-quantifier-26",
+      "input_utf16_units": 27,
+      "exit": 0,
+      "matched": false,
+      "compile_ms": 0,
+      "match_ms": 2259,
+      "expected_match": false,
+      "pass": true,
+      "wall_ms": 2300.55
+    },
+    {
+      "name": "nested-quantifier-32",
+      "timeout_seconds": 3,
+      "pass": false,
+      "wall_ms": 3004.93
+    }
+  ],
+  "icons": {
+    "iKun": {
+      "registered": true,
+      "images": [
+        {
+          "scale": 2,
+          "width": 120,
+          "height": 120,
+          "bit_depth": 8,
+          "color_type": 2
+        },
+        {
+          "scale": 3,
+          "width": 180,
+          "height": 180,
+          "bit_depth": 8,
+          "color_type": 2
+        }
+      ]
+    },
+    "RGSilver": {
+      "registered": true,
+      "images": [
+        {
+          "scale": 2,
+          "width": 120,
+          "height": 120,
+          "bit_depth": 8,
+          "color_type": 2
+        },
+        {
+          "scale": 3,
+          "width": 180,
+          "height": 180,
+          "bit_depth": 8,
+          "color_type": 2
+        }
+      ]
+    },
+    "missing_folders": []
+  },
+  "counterexamples": [
+    {
+      "case": "paging_cursor_separation",
+      "display_index_may_change": true,
+      "pagination_cursor_uses_original_list": true
+    },
+    {
+      "case": "all_unread_messages_filtered",
+      "server_count": 127,
+      "background_page_size": 64,
+      "expected_visible_count": 0,
+      "projection_scans_until_read_boundary": true
+    },
+    {
+      "case": "all_unread_messages_filtered",
+      "server_count": 128,
+      "background_page_size": 64,
+      "expected_visible_count": 0,
+      "projection_scans_until_read_boundary": true
+    },
+    {
+      "case": "all_unread_messages_filtered",
+      "server_count": 129,
+      "background_page_size": 64,
+      "expected_visible_count": 0,
+      "projection_scans_until_read_boundary": true
+    },
+    {
+      "case": "all_unread_messages_filtered",
+      "server_count": 1000,
+      "background_page_size": 64,
+      "expected_visible_count": 0,
+      "projection_scans_until_read_boundary": true
+    }
+  ],
+  "urls": [
+    {
+      "encoded": "https://example.com/%E4%B8%AD%E6%96%87?q=a%20b#%E7%89%87%E6%AE%B5",
+      "parsed": true,
+      "input": "https://example.com/中文?q=a b#片段",
+      "pass": true
+    },
+    {
+      "encoded": "https://example.com/a%20b?x=1&y=2",
+      "parsed": true,
+      "input": "https://example.com/a%20b?x=1&y=2",
+      "pass": true
+    },
+    {
+      "encoded": "mailto:a@example.com?subject=%E4%BD%A0%E5%A5%BD",
+      "parsed": true,
+      "input": "mailto:a@example.com?subject=你好",
+      "pass": true
+    }
+  ],
+  "localizations": {
+    "files": 37,
+    "passed": true,
+    "errors": []
+  }
+}

@@ -363,12 +363,13 @@ private final class NavigationButtonItemNode: ImmediateTextNode {
         }
     }
     
+    var manualAccessibilityLabel: String?
     override public var accessibilityLabel: String? {
         get {
             if let item = self.item, let accessibilityLabel = item.accessibilityLabel {
                 return accessibilityLabel
             } else {
-                return self.attributedText?.string
+                return self.manualAccessibilityLabel ?? self.attributedText?.string
             }
         } set(value) {
             
@@ -544,6 +545,9 @@ public final class NavigationButtonNodeImpl: ContextControllerSourceNode, Naviga
     
     private var items: [UIBarButtonItem] = []
     private var nodes: [NavigationButtonItemNode] = []
+    public var manualAccessibilityLabel: String? {
+        didSet { self.nodes.forEach { $0.manualAccessibilityLabel = self.manualAccessibilityLabel } }
+    }
     
     var requestUpdate: (() -> Void)?
     
@@ -651,6 +655,7 @@ public final class NavigationButtonNodeImpl: ContextControllerSourceNode, Naviga
         }
         node.alpha = self.manualAlpha
         node.item = nil
+        node.manualAccessibilityLabel = self.manualAccessibilityLabel
         node.image = nil
         node.text = text
         node.bold = false

@@ -1149,6 +1149,16 @@ public enum NetworkSpeedLimitedEvent {
 
 public class Account {
     static let sharedQueue = Queue(name: "Account-Shared")
+    private let rgFilterLock = NSLock()
+    private var rgFilterContext: RGFilteredUnreadContext?
+    public var filteredUnreadContext: RGFilteredUnreadContext {
+        self.rgFilterLock.lock()
+        defer { self.rgFilterLock.unlock() }
+        if let current = self.rgFilterContext { return current }
+        let current = RGFilteredUnreadContext(postbox: self.postbox, accountPeerId: self.peerId)
+        self.rgFilterContext = current
+        return current
+    }
     
     public let id: AccountRecordId
     public let basePath: String

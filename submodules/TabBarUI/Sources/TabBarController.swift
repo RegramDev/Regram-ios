@@ -4,6 +4,7 @@ import AsyncDisplayKit
 import SwiftSignalKit
 import Display
 import TelegramPresentationData
+import RGSimpleSettings
 
 public final class TabBarItemInfo: NSObject {
     public let previewing: Bool
@@ -44,8 +45,61 @@ public protocol TabBarContainedController {
     func updateTabBarPreviewingControllerPresentation(_ update: TabBarContainedControllerPresentationUpdate)
 }
 
-open class TabBarControllerImpl: ViewController, TabBarController {
+open class TabBarControllerImpl: ViewController, TabBarController, UIGestureRecognizerDelegate {
     private var validLayout: ContainerViewLayout?
+    private var rgScrollAnchor: CGFloat = 0.0
+    private var rgScrollHidden = false
+    private var rgRequestedHidden = RGSimpleSettings.shared.hideTabBar
+
+    private var rgCanHideOnScroll: Bool {
+        return RGSimpleSettings.shared.hideTabBarOnScroll && !RGSimpleSettings.shared.hideTabBar && !self.rgRequestedHidden && self.currentController?.toolbar == nil && self.currentController?.tabBarSearchState?.isActive != true && (self.validLayout?.inputHeight ?? 0.0) == 0.0 && self.presentedViewController == nil
+    }
+
+    public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard self.rgCanHideOnScroll, let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+        let velocity = pan.velocity(in: self.view)
+        return abs(velocity.y) > abs(velocity.x)
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard let content = self.currentController?.view, let touched = touch.view, touched.isDescendant(of: content) else { return false }
+        var candidate: UIView? = touched
+        while let view = candidate, view !== content {
+            if view is UIControl || view is UITextView { return false }
+            candidate = view.superview
+        }
+        return true
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+
+    @objc private func rgObserveScroll(_ pan: UIPanGestureRecognizer) {
+        guard self.rgCanHideOnScroll else { return }
+        let offset = -pan.translation(in: self.view).y
+        if pan.state == .began { self.rgScrollAnchor = 0.0 }
+        guard pan.state == .began || pan.state == .changed else { return }
+        let delta = offset - self.rgScrollAnchor
+        let nextHidden: Bool?
+        if delta > 24.0 && !self.rgScrollHidden { nextHidden = true }
+        else if delta < -18.0 && self.rgScrollHidden { nextHidden = false }
+        else { nextHidden = nil }
+        if let nextHidden {
+            self.rgScrollHidden = nextHidden
+            self.rgScrollAnchor = offset
+            self.rgApplyTabBarVisibility(transition: UIAccessibility.isReduceMotionEnabled ? .immediate : .animated(duration: 0.2, curve: .easeInOut))
+        } else if (delta < 0.0 && !self.rgScrollHidden) || (delta > 0.0 && self.rgScrollHidden) {
+            self.rgScrollAnchor = offset
+        }
+    }
+
+    private func rgApplyTabBarVisibility(transition: ContainedViewLayoutTransition) {
+        let hidden = self.rgRequestedHidden || self.rgScrollHidden
+        guard self.tabBarControllerNode.tabBarHidden != hidden else { return }
+        self.tabBarControllerNode.tabBarHidden = hidden
+        if let layout = self.validLayout { self.containerLayoutUpdated(layout, transition: transition) }
+    }
     
     private var tabBarControllerNode: TabBarControllerNode {
         get {
@@ -147,10 +201,9 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     }
     
     public func updateIsTabBarHidden(_ value: Bool, transition: ContainedViewLayoutTransition) {
-        self.tabBarControllerNode.tabBarHidden = value
-        if let layout = self.validLayout {
-            self.containerLayoutUpdated(layout, transition: .animated(duration: 0.4, curve: .slide))
-        }
+        self.rgRequestedHidden = value
+        self.rgScrollHidden = false
+        self.rgApplyTabBarVisibility(transition: transition)
     }
     
     override open func loadDisplayNode() {
@@ -264,6 +317,11 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             self.currentController?.tabBarDeactivateSearch()
         })
         
+        let scrollObserver = UIPanGestureRecognizer(target: self, action: #selector(self.rgObserveScroll(_:)))
+        scrollObserver.cancelsTouchesInView = false
+        scrollObserver.maximumNumberOfTouches = 1
+        scrollObserver.delegate = self
+        self.displayNode.view.addGestureRecognizer(scrollObserver)
         self.updateSelectedIndex()
         self.displayNodeDidLoad()
     }
@@ -275,6 +333,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         if !self.isNodeLoaded {
             return
         }
+
+        self.tabBarControllerNode.tabBarHidden = RGSimpleSettings.shared.hideTabBar
+        self.rgRequestedHidden = RGSimpleSettings.shared.hideTabBar
+        self.rgScrollHidden = false
         
         var animated = animated
         if let layout = self.validLayout, case .regular = layout.metrics.widthClass {
@@ -364,6 +426,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         super.containerLayoutUpdated(layout, transition: transition)
         
         self.validLayout = layout
+        if !self.rgCanHideOnScroll && self.rgScrollHidden {
+            self.rgScrollHidden = false
+            self.tabBarControllerNode.tabBarHidden = self.rgRequestedHidden
+        }
         
         let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: transition)
         
@@ -422,6 +488,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     }
     
     override open func viewWillAppear(_ animated: Bool) {
+        self.rgScrollHidden = false
+        self.rgApplyTabBarVisibility(transition: .immediate)
         if let currentController = self.currentController {
             currentController.viewWillAppear(animated)
         }

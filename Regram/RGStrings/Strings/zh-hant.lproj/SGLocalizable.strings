@@ -2,6 +2,7 @@
 
 "Settings.Tabs.Header" = "頁籤";
 "Settings.Tabs.HideTabBar" = "隱藏導航列";
+"Settings.Tabs.HideOnScroll" = "滑動時隱藏底欄";
 "Settings.Tabs.ShowContacts" = "顯示聯絡人頁籤";
 "Settings.Tabs.ShowNames" = "顯示頁籤名稱";
 
@@ -277,7 +278,18 @@
 "AntiFeatures.DisableAds" = "隱藏贊助訊息";
 "MessageFilter.InputPlaceholderRegex" = "輸入正規表達式";
 "MessageFilter.Regex" = "正規表達式";
-"MessageFilter.Regex.Notice" = "比對不區分大小寫。正規表達式使用 ICU 語法，無法新增無效的表達式。";
+"MessageFilter.ContentMatching" = "內容比對";
+"MessageFilter.Working" = "正在處理規則…";
+"MessageFilter.SaveFailed" = "規則未儲存，請檢查表達式、重複規則及 4096 條規則上限。";
+"MessageFilter.LoadMore" = "載入更多對話";
+"MessageFilter.Rule.Paused" = "比對耗時過長，已暫停此規則；修改規則後重試。";
+"SessionBackup.Working" = "正在處理工作階段…";
+"SessionBackup.Retry" = "重新讀取備份";
+"SessionBackup.Failed" = "操作失敗，已保留原列表，請重試。";
+"SessionBackup.InvalidEntries" = "%@ 條備份無法讀取，原始資料已保留。";
+"SessionBackup.Result" = "完成 %@ 條，失敗 %@ 條。已存在的帳號已略過。";
+"SessionBackup.Cancelled" = "已取消，之前已完成的操作會保留。";
+"MessageFilter.Regex.Notice" = "新規則預設使用不區分大小寫的正規表達式；開啟內容比對後按一般文字尋找。無法新增無效的正規表達式。";
 "MessageFilter.Export" = "匯出規則";
 "MessageFilter.Import" = "匯入規則";
 "MessageFilter.Transfer" = "匯出 / 匯入";

@@ -338,6 +338,7 @@ alternate_icon_folders = [
     # MARK: Regram — custom icons
     "RGAnime",
     "RGSilver",
+    "iKun",
     # Stock Telegram icons, restored from upstream (Swiftgram replaces the list wholesale).
     "BlueIcon",
     "BlackIcon",

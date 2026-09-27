@@ -2874,34 +2874,44 @@ private func rgMessageFilterExportFile(in messages: [EngineRawMessage]) -> (mess
 /// Downloads the export if it is not on disk yet and merges its rules into the filter. The result is
 /// reported in a toast, since nothing else on screen changes.
 private func rgImportMessageFilterRules(context: AccountContext, message: EngineRawMessage, file: TelegramMediaFile, displayUndo: @escaping (UndoOverlayContent) -> Void) {
-    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+    let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
+    let lang = strings.baseLanguageCode
+    if let size = file.size, size > Int64(RGMessageFilter.maximumImportBytes) {
+        displayUndo(.info(title: nil, text: "MessageFilter.ImportFailed".i18n(lang), timeout: nil, customUndoText: nil))
+        return
+    }
+    let cancelled = Atomic(value: false)
+    let operation = MetaDisposable()
+    let progress = UIAlertController(title: "MessageFilter.Import".i18n(lang), message: "MessageFilter.Working".i18n(lang), preferredStyle: .alert)
+    progress.addAction(UIAlertAction(title: strings.Common_Cancel, style: .cancel, handler: { _ in let _ = cancelled.swap(true); operation.dispose() }))
+    var presenter: UIViewController? = context.sharedContext.mainWindow?.viewController
+    while let presented = presenter?.presentedViewController { presenter = presented }
+    presenter?.present(progress, animated: true)
     let fetchDisposable = context.engine.resources.fetch(reference: FileMediaReference.message(message: MessageReference(message), media: file).resourceReference(file.resource), userLocation: .peer(message.id.peerId), userContentType: MediaResourceUserContentType(file: file)).startStandalone()
-    let _ = (context.engine.resources.data(resource: EngineMediaResource(file.resource))
+    let dataDisposable = (context.engine.resources.data(resource: EngineMediaResource(file.resource))
     |> filter { $0.isComplete }
     |> take(1)
     |> map(Optional.init)
     |> timeout(30.0, queue: .mainQueue(), alternate: .single(nil))
-    |> deliverOnMainQueue).startStandalone(next: { data in
+    |> deliverOn(Queue.concurrentDefaultQueue())
+    |> map { data -> String in
         fetchDisposable.dispose()
-
-        var imported: [RGMessageFilterRule] = []
-        if let data, let contents = try? String(contentsOfFile: data.path, encoding: .utf8) {
-            imported = RGMessageFilter.decode(contents)
+        guard !cancelled.with({ $0 }), let data else { return "MessageFilter.ImportFailed".i18n(lang) }
+        do {
+            let imported = try RGMessageFilter.readImport(at: URL(fileURLWithPath: data.path))
+            let added = try RGSimpleSettings.shared.importMessageFilterRules(imported, isCancelled: { cancelled.with { $0 } })
+            return added == 0 ? "MessageFilter.AlreadyExists".i18n(lang) : "MessageFilter.Imported".i18n(lang, args: "\(added)")
+        } catch {
+            return "MessageFilter.ImportFailed".i18n(lang)
         }
-        let text: String
-        if imported.isEmpty {
-            text = "MessageFilter.ImportFailed".i18n(lang)
-        } else {
-            let (rules, addedCount) = RGMessageFilter.merging(imported, into: RGSimpleSettings.shared.messageFilterRules)
-            if addedCount == 0 {
-                text = "MessageFilter.AlreadyExists".i18n(lang)
-            } else {
-                RGSimpleSettings.shared.messageFilterRules = rules
-                text = "MessageFilter.Imported".i18n(lang, args: "\(addedCount)")
-            }
-        }
+    }
+    |> deliverOnMainQueue).start(next: { [weak progress] text in
+        guard !cancelled.with({ $0 }) else { return }
+        progress?.dismiss(animated: true)
         displayUndo(.info(title: nil, text: text, timeout: nil, customUndoText: nil))
+        operation.set(nil)
     })
+    operation.set(ActionDisposable { let _ = cancelled.swap(true); dataDisposable.dispose(); fetchDisposable.dispose() })
 }
 
 func canPerformEditingActions(limits: LimitsConfiguration, accountPeerId: EnginePeer.Id, message: EngineRawMessage, unlimitedInterval: Bool) -> Bool {

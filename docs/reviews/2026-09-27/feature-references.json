@@ -1,0 +1,376 @@
+{
+  "ui_properties": 88,
+  "properties": {
+    "accountColorsSaturation": [
+      "submodules/AccountContext/Sources/PeerNameColors.swift:38",
+      "submodules/AccountContext/Sources/PeerNameColors.swift:47",
+      "submodules/AccountContext/Sources/PeerNameColors.swift:56",
+      "submodules/TelegramCore/Sources/Utils/PeerUtils.swift:341"
+    ],
+    "allChatsHidden": [
+      "submodules/ChatListUI/Sources/ChatListController.swift:461",
+      "submodules/ChatListUI/Sources/ChatListControllerNode.swift:601",
+      "submodules/TelegramCore/Sources/TelegramEngine/Peers/ChatListFiltering.swift:1162"
+    ],
+    "allChatsTitleLengthOverride": [],
+    "allowDownloadingStories": [
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/Stories.swift:343",
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/Stories.swift:392"
+    ],
+    "allowSavingProtectedContent": [
+      "submodules/TelegramCore/Sources/Utils/MessageUtils.swift:397",
+      "submodules/TelegramCore/Sources/Utils/PeerUtils.swift:270"
+    ],
+    "antiAutoDelete": [
+      "submodules/TelegramCore/Sources/State/ManagedAutoremoveMessageOperations.swift:90"
+    ],
+    "antiRevoke": [
+      "submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift:4461",
+      "submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift:4477",
+      "submodules/TelegramCore/Sources/State/HistoryViewStateValidation.swift:1177",
+      "submodules/TelegramCore/Sources/State/HistoryViewStateValidation.swift:990",
+      "submodules/TelegramCore/Sources/State/ProcessSecretChatIncomingDecryptedOperations.swift:300"
+    ],
+    "antiScreenshotNotification": [
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/TelegramEngineMessages.swift:225"
+    ],
+    "antiSelfDestruct": [
+      "submodules/TelegramCore/Sources/State/ManagedAutoremoveMessageOperations.swift:90"
+    ],
+    "bottomTabStyle": [],
+    "canUseNY": [
+      "Regram/RGAPIWebSettings/Sources/File.swift:18"
+    ],
+    "canUseStealthMode": [
+      "Regram/RGAPIWebSettings/Sources/File.swift:16"
+    ],
+    "chatListLines": [
+      "Regram/RGChatListSimpleSettingsSignal/Sources/RGCompactMessagePreviewLayout.swift:7"
+    ],
+    "compactChatList": [
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:1850",
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:2299"
+    ],
+    "compactFolderNames": [
+      "submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode/Sources/ChatListFilterTabContainerNode.swift:901",
+      "submodules/TelegramUI/Components/HorizontalTabsComponent/Sources/HorizontalTabsComponent.swift:1079"
+    ],
+    "confirmCalls": [
+      "submodules/TelegramUI/Sources/AccountContext.swift:908"
+    ],
+    "contextShowHideForwardName": [],
+    "contextShowJson": [],
+    "contextShowMessageReplies": [],
+    "contextShowPin": [],
+    "contextShowReply": [],
+    "contextShowReport": [],
+    "contextShowRestrict": [],
+    "contextShowSaveMedia": [],
+    "contextShowSaveToCloud": [],
+    "contextShowSelectFromUser": [],
+    "defaultEmojisFirst": [
+      "submodules/TelegramUI/Components/EntityKeyboard/Sources/EntityKeyboard.swift:574"
+    ],
+    "disableAllAds": [
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/AdMessages.swift:641"
+    ],
+    "disableChatSwipeOptions": [
+      "submodules/ChatListUI/Sources/ChatListControllerNode.swift:570",
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:5504"
+    ],
+    "disableDeleteChatSwipeOption": [
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:3980",
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:3990",
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:766",
+      "submodules/ChatListUI/Sources/Node/ChatListItem.swift:854"
+    ],
+    "disableGalleryCamera": [
+      "submodules/MediaPickerUI/Sources/MediaPickerScreen.swift:715",
+      "submodules/MediaPickerUI/Sources/MediaPickerScreen.swift:739"
+    ],
+    "disableGalleryCameraPreview": [
+      "submodules/MediaPickerUI/Sources/MediaPickerScreen.swift:716",
+      "submodules/MediaPickerUI/Sources/MediaPickerScreen.swift:904",
+      "submodules/MediaPickerUI/Sources/MediaPickerScreen.swift:912"
+    ],
+    "disableLinkPreview": [
+      "submodules/TelegramUI/Sources/Chat/ChatControllerLoadDisplayNode.swift:2218",
+      "submodules/TelegramUI/Sources/ChatControllerNode.swift:5098",
+      "submodules/TelegramUI/Sources/ChatControllerNode.swift:5121",
+      "submodules/TelegramUI/Sources/ChatControllerNode.swift:5159"
+    ],
+    "disableScrollToNextChannel": [
+      "submodules/TelegramUI/Sources/ChatControllerContentData.swift:1114",
+      "submodules/TelegramUI/Sources/ChatControllerContentData.swift:1158"
+    ],
+    "disableScrollToNextTopic": [
+      "submodules/TelegramUI/Sources/ChatControllerContentData.swift:1802"
+    ],
+    "disableSendAsButton": [
+      "submodules/ChatPresentationInterfaceState/Sources/ChatPresentationInterfaceState.swift:848"
+    ],
+    "disableSnapDeletionEffect": [
+      "submodules/TelegramUI/Sources/ChatHistoryListNode.swift:821"
+    ],
+    "disableSwipeToRecordStory": [
+      "submodules/ChatListUI/Sources/ChatListControllerNode.swift:548",
+      "submodules/ChatListUI/Sources/ChatListControllerNode.swift:658"
+    ],
+    "downloadSpeedBoost": [],
+    "forceBuiltInMic": [
+      "submodules/TelegramAudio/Sources/ManagedAudioSession.swift:1081"
+    ],
+    "forceEmojiTab": [
+      "submodules/TelegramUI/Components/ChatEntityKeyboardInputNode/Sources/ChatEntityKeyboardInputNode.swift:493",
+      "submodules/TelegramUI/Sources/ChatInterfaceInputContexts.swift:269"
+    ],
+    "ghostDontReadStories": [
+      "submodules/TelegramCore/Sources/Utils/RGGhostMode.swift:19"
+    ],
+    "ghostDontSendOnline": [
+      "submodules/TelegramCore/Sources/Utils/RGGhostMode.swift:24"
+    ],
+    "ghostDontSendTyping": [
+      "submodules/TelegramCore/Sources/Utils/RGGhostMode.swift:29"
+    ],
+    "hideChannelBottomButton": [
+      "submodules/TelegramUI/Sources/ChatControllerNode.swift:1821"
+    ],
+    "hidePhoneInSettings": [
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoHeaderNode.swift:1229",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoHeaderNode.swift:1245",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoHeaderNode.swift:213",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift:175",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:6517",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:6540",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:6927",
+      "submodules/TelegramUI/Sources/ApplicationContext.swift:257"
+    ],
+    "hideReactions": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageDateAndStatusNode/Sources/ChatMessageDateAndStatusNode.swift:1480"
+    ],
+    "hideRecordingButton": [
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:1771",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:4629",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:4630",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:4713",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:4741"
+    ],
+    "hideStories": [
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:35",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:36",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:37",
+      "submodules/ChatListUI/Sources/ChatListController.swift:2245",
+      "submodules/ChatListUI/Sources/ChatListController.swift:6957",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:16",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:25",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:34"
+    ],
+    "hideTabBar": [
+      "submodules/ChatListUI/Sources/ChatListController.swift:143",
+      "submodules/ChatListUI/Sources/ChatListController.swift:2445",
+      "submodules/ChatListUI/Sources/ChatListController.swift:3690",
+      "submodules/ChatListUI/Sources/ChatListController.swift:3719",
+      "submodules/ChatListUI/Sources/ChatListController.swift:4900",
+      "submodules/ChatListUI/Sources/ChatListController.swift:7251",
+      "submodules/ChatListUI/Sources/ChatListController.swift:7411",
+      "submodules/TabBarUI/Sources/TabBarContollerNode.swift:172",
+      "submodules/TabBarUI/Sources/TabBarController.swift:283",
+      "submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode/Sources/ChatListFilterTabContainerNode.swift:340",
+      "submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode/Sources/ChatListFilterTabContainerNode.swift:391",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:2063",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:5219",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:5951"
+    ],
+    "hideTabBarOnScroll": [
+      "submodules/ChatListUI/Sources/ChatListController.swift:143"
+    ],
+    "inputToolbar": [
+      "Regram/RGDebugUI/Sources/RGDebugUI.swift:100",
+      "Regram/RGDebugUI/Sources/RGDebugUI.swift:101",
+      "submodules/AttachmentTextInputPanelNode/Sources/AttachmentTextInputPanelNode.swift:2428",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:6004",
+      "submodules/TelegramUI/Components/MessageInputPanelComponent/Sources/MessageInputPanelComponent.swift:3146"
+    ],
+    "localPremium": [
+      "submodules/TelegramCore/Sources/Utils/RGLocalPremium.swift:34",
+      "submodules/TelegramUI/Sources/AccountContext.swift:275"
+    ],
+    "mentionAsUserIdLink": [
+      "submodules/ChatPresentationInterfaceState/Sources/ChatTextFormat.swift:238"
+    ],
+    "mentionsAndRepliesNotifications": [],
+    "messageDoubleTapActionOutgoing": [
+      "Regram/RGDoubleTapMessageAction/Sources/RGDoubleTapMessageAction.swift:11"
+    ],
+    "nsfwEnabled": [
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoSettingsItems.swift:188"
+    ],
+    "nyStyle": [
+      "Regram/RGNY/Sources/RGNY.swift:25",
+      "Regram/RGNY/Sources/RGNY.swift:60"
+    ],
+    "outgoingPhotoQuality": [
+      "submodules/LegacyMediaPickerUI/Sources/LegacyMediaPickers.swift:418",
+      "submodules/LocalMediaResources/Sources/FetchPhotoLibraryImageResource.swift:186",
+      "submodules/LocalMediaResources/Sources/FetchPhotoLibraryImageResource.swift:196",
+      "submodules/TelegramUI/Components/MediaEditorScreen/Sources/EditStories.swift:190",
+      "submodules/TelegramUI/Components/MediaEditorScreen/Sources/EditStories.swift:229",
+      "submodules/TelegramUI/Sources/TelegramRootController.swift:707",
+      "submodules/TelegramUI/Sources/TelegramRootController.swift:730",
+      "submodules/TelegramUI/Sources/TransformOutgoingMessageMedia.swift:174"
+    ],
+    "panguSpacing": [
+      "submodules/TelegramUI/Sources/ChatControllerNode.swift:5080"
+    ],
+    "pinnedMessageNotifications": [],
+    "primaryUserId": [
+      "Regram/RGDebugUI/Sources/RGDebugUI.swift:181",
+      "submodules/TelegramUI/Sources/AppDelegate.swift:3519",
+      "submodules/TelegramUI/Sources/AppDelegate.swift:3614",
+      "submodules/TelegramUI/Sources/AppDelegate.swift:3616"
+    ],
+    "profileDefaultTabGroupsInCommon": [
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoData.swift:1633"
+    ],
+    "quickTranslateButton": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:1915",
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:792",
+      "submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift:575"
+    ],
+    "rememberLastFolder": [
+      "submodules/ChatListUI/Sources/ChatListController.swift:4152"
+    ],
+    "secondsInMessages": [
+      "submodules/TextFormat/Sources/DateFormat.swift:145"
+    ],
+    "sendLargePhotos": [],
+    "sendWithReturnKey": [
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:47",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:48",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:49",
+      "submodules/AttachmentTextInputPanelNode/Sources/AttachmentTextInputPanelNode.swift:2487",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:1305",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:5418",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:6063",
+      "submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift:726",
+      "submodules/TelegramUI/Components/MessageInputPanelComponent/Sources/MessageInputPanelComponent.swift:3192",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:19",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:28",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:37"
+    ],
+    "showCreationDate": [
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift:1022"
+    ],
+    "showDC": [
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift:959"
+    ],
+    "showProfileId": [
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:43",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:44",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:45",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:2559",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:278",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoScreen.swift:5514",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:17",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:26",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:35"
+    ],
+    "showRegDate": [
+      "Regram/RGRegDate/Sources/RGRegDate.swift:26",
+      "submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift:1044"
+    ],
+    "showRepostToStoryV2": [
+      "submodules/ShareController/Sources/SharePeersContainerNode.swift:167"
+    ],
+    "showTabNames": [
+      "Regram/RGTabBarHeightModifier/Sources/RGTabBarHeightModifier.swift:7",
+      "submodules/ChatListUI/Sources/ChatListSearchContainerNode.swift:863",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:1310",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:686",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:720",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:749",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:896"
+    ],
+    "startTelescopeWithRearCam": [
+      "submodules/Camera/Sources/CameraOutput.swift:387",
+      "submodules/TelegramUI/Components/LegacyInstantVideoController/Sources/LegacyInstantVideoController.swift:169",
+      "submodules/TelegramUI/Components/VideoMessageCameraScreen/Sources/VideoMessageCameraScreen.swift:955"
+    ],
+    "stickerSize": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift:589",
+      "submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift:594",
+      "submodules/TelegramUI/Components/Gifts/GiftCraftScreen/Sources/CubeAnimationView.swift:103",
+      "submodules/TelegramUI/Components/Gifts/GiftCraftScreen/Sources/CubeAnimationView.swift:443",
+      "submodules/TelegramUI/Components/Gifts/GiftCraftScreen/Sources/CubeAnimationView.swift:444",
+      "submodules/TelegramUI/Components/Gifts/GiftCraftScreen/Sources/CubeAnimationView.swift:459"
+    ],
+    "stickerTimestamp": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift:590",
+      "submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift:595"
+    ],
+    "storyStealthMode": [],
+    "tabBarSearchEnabled": [
+      "submodules/TabBarUI/Sources/TabBarContollerNode.swift:269",
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:674"
+    ],
+    "transcriptionBackend": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageInteractiveFileNode/Sources/ChatMessageInteractiveFileNode.swift:424"
+    ],
+    "transcriptionBackendEnum": [],
+    "translationBackend": [],
+    "translationBackendIsExternal": [
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/TelegramEngineMessages.swift:2092",
+      "submodules/TelegramCore/Sources/TelegramEngine/Messages/TelegramEngineMessages.swift:2111",
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:7171",
+      "submodules/TelegramUI/Sources/ChatHistoryListNode.swift:1008",
+      "submodules/TelegramUI/Sources/ChatPinnedMessageTitlePanelNode.swift:512"
+    ],
+    "uploadSpeedBoost": [
+      "submodules/TelegramCore/Sources/Network/MultipartUpload.swift:484"
+    ],
+    "videoPIPSwipeDirection": [
+      "submodules/GalleryUI/Sources/Items/UniversalVideoGalleryItem.swift:2951"
+    ],
+    "warnOnStoriesOpen": [
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:39",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:40",
+      "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift:41",
+      "submodules/TelegramUI/Components/Stories/StoryContainerScreen/Sources/StoryContainerScreen.swift:1339",
+      "submodules/TelegramUI/Components/Stories/StoryContainerScreen/Sources/StoryContainerScreen.swift:433",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:18",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:27",
+      "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift:36"
+    ],
+    "wideChannelPosts": [
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:2062",
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:2645",
+      "submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift:2655",
+      "submodules/TelegramUI/Components/Chat/ChatMessageInteractiveMediaNode/Sources/ChatMessageInteractiveMediaNode.swift:978"
+    ],
+    "wideTabBar": [
+      "submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift:658"
+    ]
+  },
+  "without_external_reference": [
+    "allChatsTitleLengthOverride",
+    "bottomTabStyle",
+    "contextShowHideForwardName",
+    "contextShowJson",
+    "contextShowMessageReplies",
+    "contextShowPin",
+    "contextShowReply",
+    "contextShowReport",
+    "contextShowRestrict",
+    "contextShowSaveMedia",
+    "contextShowSaveToCloud",
+    "contextShowSelectFromUser",
+    "downloadSpeedBoost",
+    "mentionsAndRepliesNotifications",
+    "pinnedMessageNotifications",
+    "sendLargePhotos",
+    "storyStealthMode",
+    "transcriptionBackendEnum",
+    "translationBackend"
+  ]
+}

@@ -21,6 +21,7 @@ public class UserDefault<T> /*where T: AllowedUserDefaultTypes*/ {
     public let key: String
     public let userDefaults: UserDefaults
     private var cachedValue: T?
+    private let cacheLock = NSRecursiveLock()
     
     public init(key: String, userDefaults: UserDefaults = .standard) {
         self.key = key
@@ -29,6 +30,8 @@ public class UserDefault<T> /*where T: AllowedUserDefaultTypes*/ {
     
     public var wrappedValue: T {
         get {
+            self.cacheLock.lock()
+            defer { self.cacheLock.unlock() }
             #if DEBUG && false
             RGtrace("UD.\(key)", what: "GET")
             #endif
@@ -48,6 +51,8 @@ public class UserDefault<T> /*where T: AllowedUserDefaultTypes*/ {
             return cachedValue!
         }
         set {
+            self.cacheLock.lock()
+            defer { self.cacheLock.unlock() }
             cachedValue = newValue
             #if DEBUG
             RGtrace("UD.\(key)", what: "CACHE UPDATED \(cachedValue!)")
@@ -129,7 +134,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
         #endif
         let result: [Key]
         if threadSafe {
-            rwlock.readLock()
+            rwlock.writeLock()
         }
         if container == nil {
             container = userDefaultsContainer
@@ -154,7 +159,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
         #endif
         let result: [Value]
         if threadSafe {
-            rwlock.readLock()
+            rwlock.writeLock()
         }
         if container == nil {
             container = userDefaultsContainer
@@ -176,7 +181,8 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
     public init(userDefaultsKey: String, userDefaults: UserDefaults = .standard, threadSafe: Bool) {
         self.userDefaultsKey = userDefaultsKey
         self.userDefaults = userDefaults
-        self.threadSafe = threadSafe
+        // Settings are also consumed by background filtering and media workers.
+        self.threadSafe = true
     }
 
     /// Sets the value for key
@@ -218,7 +224,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
         #endif
         let result: Bool
         if threadSafe {
-            rwlock.readLock()
+            rwlock.writeLock()
         }
         if container == nil {
             container = userDefaultsContainer
@@ -243,7 +249,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
         #endif
         let result: Value?
         if threadSafe {
-            rwlock.readLock()
+            rwlock.writeLock()
         }
         if container == nil {
             container = userDefaultsContainer
@@ -357,7 +363,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
     
     private var userDefaultsContainer: [Key: Value] {
         get {
-            return userDefaults.dictionary(forKey: userDefaultsKey) as! [Key: Value]
+            return (userDefaults.dictionary(forKey: userDefaultsKey) as? [Key: Value]) ?? Dictionary<Key, Value>()
         }
         set {
             userDefaults.set(newValue, forKey: userDefaultsKey)

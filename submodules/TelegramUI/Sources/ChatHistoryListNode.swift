@@ -1215,7 +1215,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                             if let maxMessage, message.index <= maxMessage {
                                 break
                             }
-                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+                            if rgContentFilter.preparedVerdict(messageId: message.id, stableVersion: message.stableVersion) == true {
                                 if !message.flags.intersection(.IsIncomingMask).isEmpty {
                                     if maxMessage == nil || maxMessage! < message.index {
                                         maxMessage = message.index
@@ -1974,6 +1974,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             )
         }
 
+        // Keep regex evaluation off the main-thread transition path. The entries are immutable;
+        // `chatHistoryEntriesForView` below sees the prepared verdicts in the shared bounded cache.
+        historyViewUpdate = historyViewUpdate
+        |> mapToSignal { update -> Signal<(ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>), NoError> in
+            if case let .HistoryView(view, _, _, _, _, _, _) = update.0 {
+                return rgPrepareContentFilter(messages: view.entries.map { EngineMessage($0.message) }, accountPeerId: context.account.peerId)
+                |> map { update }
+            }
+            return .single(update)
+        }
 
         let startTime = CFAbsoluteTimeGetCurrent()
         var measure_isFirstTime = true

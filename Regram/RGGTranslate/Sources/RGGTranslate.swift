@@ -116,7 +116,7 @@ private func rgTranslateInChunks(_ text: String, _ toLang: String, _ translateCh
         return translateChunk(chunk, toLang)
     }
 
-    return combineLatest(signals)
+    return rgTranslateSequentially(signals)
     |> map { results in
         return results.joined(separator: "\n")
     }
@@ -241,7 +241,7 @@ public func gtranslateSentence(_ text: String, _ toLang: String) -> Signal<Strin
 /// One request per line against the mobile web page. Kept as a last-resort fallback: Google answers
 /// it with a 429 interstitial for most client IPs nowadays.
 private func gtranslateViaMobilePage(_ text: String, _ toLang: String) -> Signal<String, TranslateFetchError> {
-    let lines: [String] = text.components(separatedBy: "\n")
+    let lines: [String] = rgTranslateSplitIntoChunks(text, maxLength: rgTranslateMaxChunkLength)
 
     let translationSignals: [Signal<String, TranslateFetchError>] = lines.map { rawLine in
         let leadingWhitespace: Substring = rawLine.prefix { $0.isWhitespace }
@@ -257,7 +257,7 @@ private func gtranslateViaMobilePage(_ text: String, _ toLang: String) -> Signal
         }
     }
 
-    return combineLatest(translationSignals)
+    return rgTranslateSequentially(translationSignals)
     |> map { results in
         let joined: String = results.joined(separator: "\n")
         return joined.isEmpty ? text : joined
@@ -310,30 +310,39 @@ public func googleTranslate(_ text: String, _ toLang: String) -> Signal<String, 
 }
 
 public func gtranslateSplitTextBySentences(_ text: String, maxChunkLength: Int = 1500) -> [String] {
-    if text.count <= maxChunkLength {
-        return [text]
-    }
+    let limit = max(1, maxChunkLength)
     var chunks: [String] = []
-    var currentChunk: String = ""
-
-    text.enumerateSubstrings(in: text.startIndex ..< text.endIndex, options: .bySentences) { substring, _, _, _ in
-        guard let sentence: String = substring else {
-            return
-        }
-
-        if currentChunk.count + sentence.count + 1 < maxChunkLength {
-            currentChunk += sentence + " "
-        } else {
-            if !currentChunk.isEmpty {
-                chunks.append(currentChunk.trimmingCharacters(in: .whitespacesAndNewlines))
+    var start = text.startIndex
+    while start < text.endIndex {
+        let end = text.index(start, offsetBy: limit, limitedBy: text.endIndex) ?? text.endIndex
+        var boundary = end
+        if end != text.endIndex {
+            let window = text[start ..< end]
+            if let split = window.lastIndex(where: { $0.isWhitespace || ".!?。！？".contains($0) }) {
+                boundary = text.index(after: split)
             }
-            currentChunk = sentence + " "
         }
+        chunks.append(String(text[start ..< boundary]))
+        start = boundary
     }
+    return chunks.isEmpty ? [text] : chunks
+}
 
-    if !currentChunk.isEmpty {
-        chunks.append(currentChunk.trimmingCharacters(in: .whitespacesAndNewlines))
+private func rgTranslateSequentially(_ signals: [Signal<String, TranslateFetchError>]) -> Signal<[String], TranslateFetchError> {
+    return Signal { subscriber in
+        let disposable = MetaDisposable()
+        let cancelled = Atomic(value: false)
+        let queue = Queue(name: "regram.translate-chunks")
+        var values: [String] = []
+        func next(_ index: Int) {
+            guard !cancelled.with({ $0 }) else { return }
+            guard index < signals.count else { subscriber.putNext(values); subscriber.putCompletion(); return }
+            disposable.set((signals[index] |> take(1) |> timeout(20.0, queue: queue, alternate: .fail(.network)) |> deliverOn(queue)).start(next: { value in
+                values.append(value)
+                next(index + 1)
+            }, error: { subscriber.putError($0) }))
+        }
+        queue.async { next(0) }
+        return ActionDisposable { let _ = cancelled.swap(true); disposable.dispose() }
     }
-
-    return chunks
 }

@@ -5081,7 +5081,13 @@ extension ChatControllerImpl {
             let peerId = self.chatLocation.peerId
             if let subject = self.subject, case .scheduledMessages = subject {
             } else {
-                let throttledUnreadCountSignal = self.context.chatLocationUnreadCount(for: self.chatLocation, contextHolder: self.chatLocationContextHolder)
+                let unreadPeerId = self.chatLocation.peerId
+                let unreadThreadId = self.chatLocation.threadId
+                let throttledUnreadCountSignal = combineLatest(self.context.chatLocationUnreadCount(for: self.chatLocation, contextHolder: self.chatLocationContextHolder), self.context.account.filteredUnreadContext.state)
+                |> map { count, visibility -> Int in
+                    guard let unreadPeerId else { return count }
+                    return Int(visibility.displayCount(peerId: unreadPeerId, threadId: unreadThreadId, serverCount: Int32(clamping: count)))
+                }
                 |> mapToThrottled { value -> Signal<Int, NoError> in
                     return .single(value) |> then(.complete() |> delay(0.2, queue: Queue.mainQueue()))
                 }
@@ -5096,19 +5102,20 @@ extension ChatControllerImpl {
 
                 if case let .peer(peerId) = self.chatLocation {
                     self.chatUnreadCountDisposable?.dispose()
-                    self.chatUnreadCountDisposable = (self.context.engine.data.subscribe(
+                    self.chatUnreadCountDisposable = (combineLatest(self.context.engine.data.subscribe(
                         TelegramEngine.EngineData.Item.Messages.PeerUnreadCount(id: peerId),
                         TelegramEngine.EngineData.Item.Messages.TotalReadCounters(),
                         TelegramEngine.EngineData.Item.Peer.NotificationSettings(id: peerId)
-                    )
-                    |> deliverOnMainQueue).startStrict(next: { [weak self] peerUnreadCount, totalReadCounters, notificationSettings in
+                    ), self.context.account.filteredUnreadContext.state)
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] value, visibility in
+                        let (peerUnreadCount, totalReadCounters, notificationSettings) = value
                         guard let strongSelf = self else {
                             return
                         }
-                        let unreadCount: Int32 = Int32(peerUnreadCount)
+                        let unreadCount = visibility.displayCount(peerId: peerId, serverCount: Int32(peerUnreadCount))
                         
                         let inAppSettings = strongSelf.context.sharedContext.currentInAppNotificationSettings.with { $0 }
-                        let totalChatCount: Int32 = renderedTotalUnreadCount(inAppSettings: inAppSettings, totalUnreadState: totalReadCounters._asCounters()).0
+                        let totalChatCount: Int32 = renderedTotalUnreadCount(inAppSettings: inAppSettings, totalUnreadState: visibility.adjustedTotal(totalReadCounters._asCounters(), groupId: .root)).0
                         
                         var globalRemainingUnreadChatCount = totalChatCount
                         if !notificationSettings._asNotificationSettings().isRemovedFromTotalUnreadCount(default: false) && unreadCount > 0 {
