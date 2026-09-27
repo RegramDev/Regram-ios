@@ -923,7 +923,7 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
         let previousCurrentPaneKey = self.currentPaneKey
         var updateCurrentPaneStatus = false
         
-        if let previousAvailablePanes, !previousAvailablePanes.contains(.stories), availablePanes.contains(.stories) {
+        if let previousAvailablePanes, !previousAvailablePanes.contains(.stories), availablePanes.contains(.stories), self.currentPaneKey == nil, self.pendingSwitchToPaneKey == nil {
             self.pendingSwitchToPaneKey = .stories
         }
         
