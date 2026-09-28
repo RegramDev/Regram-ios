@@ -1,179 +1,83 @@
-# Regram LCSign 参考包兼容打包规范
+# LCSign 兼容参考包
 
-本项目以后需要制作可覆盖安装、由 LCSign 识别为“未签名”的真机 IPA 时，统一按本文操作。
+本文面向已经完成 Regram 真机 IPA 构建、需要交给第三方签名工具重新签名的维护者。它描述如何从 Bazel 原始产物生成**不包含 Apple 描述文件、保留 ad-hoc 代码签名**的 IPA，并检查升级所需的包声明。普通开发者请先阅读[构建说明](../README.md)。
 
-## 固定标准
+这里的 ad-hoc 是 codesign 的无证书签名（Signature=adhoc），不是 Apple 的 Ad Hoc 分发证书。生成的参考包并不等于已经用开发者证书签好的可分发应用；真机安装仍取决于后续签名工具、相匹配的描述文件及设备信任状态。
 
-签名与容器配置参考包：
+## 构建前确认
 
-```text
-/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/Regram-12.9.2-b34551.ipa
-```
+1. 使用你自己的 Bundle ID、Telegram API 凭据和签名材料，按 README 构建 **//Telegram:Regram**。原始 IPA 位于 **bazel-bin/Telegram/Regram.ipa**。
+2. 构建时保留主 App 和 6 个扩展。当前构建规则在真机目标上需要描述文件；不要为绕过配置而启用 **//Telegram:disableProvisioningProfiles** 或关闭扩展。
+3. 如需覆盖安装并保留原账号，必须保持与旧包相同的 Bundle ID、App Group 和数据目录。当前默认构建设置 **//Regram/RGAppGroupIdentifier:sandboxOnly=false** 使用 App Group 中的 **telegram-data**；切换到私有沙盒会让旧数据不可见。
+4. 准备一份已能正常使用的旧 IPA 作对照。它应来自相同应用身份和数据容器配置，不能拿其他 Bundle ID 的变体作升级基准。
 
-b34557 打包时，原始 b34551 已不在上述路径。本轮直接对照的是用户移动后的 b34556：
+本仓库不存放个人证书、描述文件、真实 API 凭据或已签名的发布包。
 
-```text
-/Users/yuki/Library/Mobile Documents/com~apple~CloudDocs/Regram-12.9.2-b34556.ipa
-SHA-256: 6ec9f881f45d7f0234e53bfd90a86a2d73f5084ffe09d44b9df3f9e06797c119
-```
+## 生成参考包
 
-该 SHA 与上一轮已经直接同 b34551 完整比对通过的 b34556 交付包一致，因此 b34557 使用的是链式已验证基准，不能表述为本轮直接读取并比对了 b34551。
+在仓库根目录运行以下命令。输出路径位于 Git 忽略的 **build/** 目录；如果该文件已存在，命令会中止，不会覆盖旧包。
 
-必须保持以下配置：
+~~~sh
+set -e
+raw_ipa="$PWD/bazel-bin/Telegram/Regram.ipa"
+output_dir="$PWD/build/artifacts"
+output_ipa="$output_dir/Regram-LCSign-reference.ipa"
 
-- 主程序 Bundle ID：`app.swiftgram.ios`
-- 数据容器权限：`group.app.swiftgram.ios`
-- Telegram 数据目录：App Group 容器中的 `telegram-data`
-- 扩展数量：6 个，不能为了生成“未签名”包而禁用扩展
-- 最终 IPA：不包含任何 `embedded.mobileprovision`
-- 所有 Mach-O：保留 `LC_CODE_SIGNATURE`，使用 ad-hoc 签名，不包含证书 Authority 和 TeamIdentifier
-- 架构：iPhoneOS arm64
+test -f "$raw_ipa"
+mkdir -p "$output_dir"
+test ! -e "$output_ipa"
 
-这里的数据仍然位于 iOS 沙盒中，但属于由 entitlement 授权的 App Group 沙盒。系统会决定 App Group 容器的实际绝对路径，代码只应通过 `containerURL(forSecurityApplicationGroupIdentifier:)` 获取容器，再追加 `telegram-data`，不能写死文件系统路径。
-
-“LCSign 显示未签名”在这里表示没有开发者/发布证书身份和描述文件，但 Mach-O 仍有 ad-hoc 代码签名。不要使用 `codesign --remove-signature`；彻底删除代码签名会破坏真机安装所需的包结构。
-
-## 正式构建
-
-在仓库根目录运行。每次只递增 `regram_build`，其余开关保持不变：
-
-```sh
-regram_build=34555
-
-build-input/bazel-8.4.2-darwin-arm64 build //Telegram:Regram \
-  --ios_signing_cert_name=- \
-  --define=buildNumber="$regram_build" \
-  -c opt \
-  --ios_multi_cpus=arm64 \
-  --watchos_cpus=armv7k,arm64_32 \
-  --features=swift.use_global_module_cache \
-  --features=swift.opt_uses_wmo \
-  --features=swift.opt_uses_osize \
-  --features=dead_strip \
-  --objc_enable_binary_stripping \
-  --verbose_failures \
-  --remote_cache_async \
-  --//Telegram:disableExtensions=false \
-  --//Regram/RGAppGroupIdentifier:sandboxOnly=false
-```
-
-构建输出：
-
-```text
-bazel-bin/Telegram/Regram.ipa
-```
-
-两个布尔开关必须显式写出，防止沿用终端或旧命令中的错误配置：
-
-- `disableExtensions=false`：保留全部 6 个扩展。
-- `sandboxOnly=false`：使用 `group.app.swiftgram.ios/telegram-data`，保证与参考包的数据容器一致。
-
-不要使用 `--//Telegram:disableProvisioningProfiles` 生成真机目标；当前构建规则在设备构建阶段需要描述文件。正确做法是在 Bazel 完成 IPA 后，只从临时副本中移除描述文件，再逐个 ad-hoc 重签。
-
-## 去描述文件并 ad-hoc 重签
-
-下面的脚本只修改临时解包目录，不修改 Bazel 原始产物。设置新的构建号和输出路径后运行：
-
-```sh
-regram_build=34555
-artifact_dir="$PWD/build/artifacts-lcsign-reference-$regram_build"
-final_ipa="$artifact_dir/Regram-12.9.2-b${regram_build}-LCSign-reference-compatible.ipa"
-
-test ! -e "$final_ipa"
-mkdir -p "$artifact_dir"
-
-package_root=$(mktemp -d "/tmp/regram-lcsign-${regram_build}.XXXXXX")
-unzip -q bazel-bin/Telegram/Regram.ipa -d "$package_root"
-app_path=$(find "$package_root/Payload" -mindepth 1 -maxdepth 1 \
-  -type d -name '*.app' -print -quit)
+work_dir=$(mktemp -d)
+trap 'rm -rf "$work_dir"' EXIT
+unzip -q "$raw_ipa" -d "$work_dir"
+app_path=$(find "$work_dir/Payload" -mindepth 1 -maxdepth 1 -type d -name '*.app' -print -quit)
 test -n "$app_path"
+test "$(find "$app_path/PlugIns" -mindepth 1 -maxdepth 1 -type d -name '*.appex' | wc -l | tr -d '[:space:]')" -eq 6
 
 find "$app_path" -type f -name embedded.mobileprovision -delete
 
-while IFS= read -r appex_path; do
+# 先签扩展，再签主 App。不要用 codesign --deep --force 重签整棵目录。
+find "$app_path/PlugIns" -depth -type d -name '*.appex' -print | while IFS= read -r appex_path; do
   codesign --force --sign - \
     --preserve-metadata=identifier,entitlements,flags \
     "$appex_path"
-done < <(find "$app_path/PlugIns" -depth -type d -name '*.appex' -print)
-
+done
 codesign --force --sign - \
   --preserve-metadata=identifier,entitlements,flags \
   "$app_path"
 
-codesign --verify --deep --strict --verbose=2 "$app_path"
+codesign --verify --deep --strict "$app_path"
+(cd "$work_dir" && zip -qry "$output_ipa" Payload)
+shasum -a 256 "$output_ipa"
+~~~
 
-(
-  cd "$package_root"
-  zip -qry "$final_ipa" Payload
-)
-```
+**不要使用 codesign --remove-signature。** 后续签名工具需要正常的 Mach-O 签名结构。打包只处理临时解包目录，不改动 Bazel 原始产物。
 
-重签顺序不能改变：先逐个扩展，最后主 App。`--deep` 只用于最终验证，不用于重签。
+## 验收最终 IPA
 
-## 必须完成的校验
+必须对**最终 IPA 再次解包**检查，而不是只看打包前的工作目录。下面的命令检查归档、主 App、扩展、描述文件及代码签名；例子中的临时目录由命令单独创建。
 
-所有校验都要针对最终 IPA 的一次全新解包，不能只检查打包前的临时目录。
+~~~sh
+output_ipa="$PWD/build/artifacts/Regram-LCSign-reference.ipa"
+verify_dir=$(mktemp -d)
+unzip -tq "$output_ipa"
+unzip -q "$output_ipa" -d "$verify_dir"
+verified_app=$(find "$verify_dir/Payload" -mindepth 1 -maxdepth 1 -type d -name '*.app' -print -quit)
+test -n "$verified_app"
 
-```sh
-verify_root=$(mktemp -d "/tmp/regram-verify-${regram_build}.XXXXXX")
-unzip -tq "$final_ipa"
-unzip -q "$final_ipa" -d "$verify_root"
-app_path=$(find "$verify_root/Payload" -mindepth 1 -maxdepth 1 \
-  -type d -name '*.app' -print -quit)
+codesign --verify --deep --strict --verbose=2 "$verified_app"
+find "$verified_app/PlugIns" -mindepth 1 -maxdepth 1 -type d -name '*.appex' | wc -l
+find "$verified_app" -type f -name embedded.mobileprovision | wc -l
+/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$verified_app/Info.plist"
+/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$verified_app/Info.plist"
+codesign -d --entitlements :- "$verified_app"
+codesign -dvvv "$verified_app" 2>&1
+~~~
 
-codesign --verify --deep --strict --verbose=2 "$app_path"
-find "$app_path/PlugIns" -mindepth 1 -maxdepth 1 -type d -name '*.appex' | wc -l
-find "$app_path" -type f -name embedded.mobileprovision | wc -l
-main_executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Info.plist")
-test -x "$app_path/$main_executable"
-find "$app_path" -type l -exec sh -c \
-  'for path do printf "%s -> %s\n" "$path" "$(readlink "$path")"; done' sh {} +
-codesign -d --entitlements :- "$app_path" 2>/dev/null
-codesign -dvvv "$app_path" 2>&1
-shasum -a 256 "$final_ipa"
-```
+期望有 6 个扩展、0 个描述文件。主 App 和扩展的 Bundle ID、App Group、application-identifier、推送 entitlement 应与所选旧包逐项比对；主程序及扩展都应能通过 codesign 验证。代码签名详情应显示 **Signature=adhoc**、**TeamIdentifier=not set**，且不包含证书 Authority。主程序的架构和最低 iOS 版本也应与计划交付的设备一致。
 
-验收值：
+验证完成后可删除自己创建的临时验收目录。记录最终 IPA 的 SHA-256、源码提交、Xcode/SDK 版本和所用旧包的标识，便于问题回溯；不要把这些机器上的 IPA 路径或个人签名信息写回本文。
 
-- `CFBundleIdentifier` 为 `app.swiftgram.ios`
-- `CFBundleVersion` 等于本次 `regram_build`
-- 扩展数量为 6
-- `embedded.mobileprovision` 数量为 0
-- 主 App entitlement 包含：
-  - `application-identifier = RGRM000000.app.swiftgram.ios`
-  - `com.apple.security.application-groups = [group.app.swiftgram.ios]`
-  - `aps-environment = production`
-- 主 App 和 6 个扩展的 Bundle ID、entitlements 应逐项与 b34551 参考包一致
-- 每个 Mach-O 的 `codesign -dvvv` 输出都应包含 `Signature=adhoc` 和 `TeamIdentifier=not set`，且不得出现 `Authority=`
-- 全部 Mach-O 都应保留可执行权限；符号链接的路径和目标应与参考包一致
-- 主程序应为 `Mach-O 64-bit executable arm64`，最低系统版本为 iOS 13.0
+## 覆盖安装检查
 
-## 覆盖安装验收
-
-1. 不要卸载旧版本，直接覆盖安装。
-2. LCSign/安装工具不能改写 Bundle ID、App Group 或 application-identifier。
-3. 安装后启动 Regram，确认原账号仍登录、聊天数据库可读。
-4. 完全退出并再次启动，确认登录态仍保留。
-5. 再测试分享扩展、通知扩展和 Widget 是否可启动。
-
-静态校验只能证明新旧包声明了相同的数据容器权限。设备上的最终容器访问仍由 iOS 和实际安装方式决定，所以每次发布前必须做一次真实覆盖安装测试。
-
-## 禁止事项
-
-- 不得把 `sandboxOnly` 设为 `true`。这会改用主 App 私有 `Library/Application Support/Regram/telegram-data`，无法读取参考包的原登录数据。
-- 不得把 `disableExtensions` 设为 `true`。
-- 不得改变 `app.swiftgram.ios` 或 `group.app.swiftgram.ios`。
-- 不得先卸载再安装，否则 iOS 可能删除旧容器。
-- b34554 私有沙盒包不适用于复用 b34551 数据的本打包流程，不能作为该流程的覆盖升级包发布。
-- 不得用 `codesign --remove-signature` 或 `codesign --deep --force` 重签整棵 bundle。
-
-## 当前交付产物
-
-```text
-build/artifacts-lcsign-five-34567/Regram-12.9.2-b34567-LCSign.ipa
-SHA-256: dceb17e806dbe0e6de6f8cb0a8085d4f3887109d9863b0990669d3935388783d
-```
-
-b34567 使用 Xcode 26.6 和 iOS 26.5 SDK 构建。最终 IPA 已全新解包验证：6 个扩展、0 个描述文件、13 个 ad-hoc 签名的 Mach-O；主程序及扩展的 Bundle ID 和 entitlements 与 b34559 逐项一致。
-
-同目录另有 4 个客户端身份变体（b34568–b34571），按本文同样流程打包。构建时只临时替换配置仓库中的 Bundle ID、api_id、api_hash（三者配套）、`versions.json` 版本号和应用名，并生成匹配 Bundle ID 的占位描述文件；构建结束后全部还原。变体的 App Group 为 `group.<Bundle ID>`，与本文针对 Regram 的 `group.app.swiftgram.ios` 验收值不同，属预期。清单见 `BUILD-MANIFEST.txt`。
+静态检查只能证明两个包声明了相同的数据容器权限。正式交付前，请在测试设备上**直接覆盖安装**旧版，检查登录状态、聊天数据库、通知、分享扩展、Widget，以及退出后再次启动。不要先卸载旧版：卸载可能删除旧数据容器。若升级需要改变 Bundle ID、Team ID 或 App Group，应把它当作独立的数据迁移，而不是普通覆盖安装。

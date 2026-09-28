@@ -2,14 +2,18 @@
 
 ## Running Tests
 
-```bash
+先按[构建说明](../README.md)生成 Xcode 项目，再选择本机可用的模拟器。项目名称、scheme 和设备列表以实际生成结果为准：
+
+```sh
+xcrun simctl list devices available
+xcodebuild -list -project Telegram/Regram.xcodeproj
 xcodebuild test \
-  -project Telegram/Telegram.xcodeproj \
+  -project Telegram/Regram.xcodeproj \
   -scheme iOSAppUITestSuite \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.1'
+  -destination 'platform=iOS Simulator,id=<SIMULATOR_UDID>'
 ```
 
-Pick any available simulator. List them with `xcrun simctl list devices available iPhone`.
+将 `<SIMULATOR_UDID>` 替换为第一条命令列出的设备 ID；测试所需的 iOS 运行时必须已安装。
 
 ## Test Environment
 

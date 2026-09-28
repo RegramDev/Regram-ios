@@ -8,7 +8,7 @@ Create simple `codesigning/Playground.mobileprovision`. It is only required for 
 
 ## Generate Xcode project
 
-Same as main project described in [../../Readme.md](../../Readme.md), but with `--target="Regram/Playground"` parameter.
+Use the [main project setup](../../README.md), adding the `--target=Regram/Playground` parameter when generating the Xcode project.
 
 ## Run generated project on simulator
 

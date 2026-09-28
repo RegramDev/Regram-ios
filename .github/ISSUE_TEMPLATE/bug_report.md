@@ -1,40 +1,32 @@
 ---
-name: "\U0001F41E Bug Report"
-about: "Report a bug if something isn't working as expected in Telegram Messenger for iOS."
+name: "Bug Report"
+about: "报告 Regram 中可复现的问题"
 title: ""
-labels: bug
-assignees: ""
+labels: ["bug"]
+assignees: []
 ---
 
-<!-- Thanks for reporting issues of Telegram Messenger for iOS! 
-This is a bug report template. Please, be as descriptive as possible. Issues lacking detail, or for any other reason than to report a bug, may be closed without action.
+请先搜索本仓库已有 issue。提交前请遮盖手机号、账号、会话内容和密钥。
 
-First, complete the checklist by replacing the empty checkboxes [] with checked ones [x]. -->
+### 环境
 
-### Checklist
-- [ ] I am reporting an issue in existing functionality that does not work as intended
-- [ ] I've searched for existing [GitHub issues](https://github.com/telegrammessenger/Telegram-iOS/issues)
+- Regram 版本与构建号：
+- iOS 版本：
+- 设备型号：
+- 安装方式或签名方式（如相关）：
 
-### Description
-Describe the issue that you are experiencing
+### 复现步骤
 
-### Expected Behavior
-Tell us what should happen
+1.
+2.
+3.
 
-### Actual Behavior
-Tell us what happens instead
+### 预期结果
 
-### Steps to Reproduce
-1. 
-2. 
-3. 
 
-### Screenshots and Videos 
-Remove, if not applicable
+### 实际结果
 
-### Environment
-**Device:** `iPhone/iPad X`
 
-**iOS version**: `13.X`
+### 相关设置与补充材料
 
-**App version:** `7.X`
+涉及通知、翻译、过滤器或隐私功能时，请写出相关开关的状态，并提供不含个人信息的示例。可附截图或已脱敏日志；不要上传账号会话备份、描述文件或 API 凭据。

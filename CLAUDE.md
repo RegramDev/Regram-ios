@@ -4,54 +4,11 @@ This file provides guidance to AI assistants when working with code in this repo
 
 ## Build
 
-The app is built using Bazel via the `Make.py` wrapper. There is no selective per-module build — the only supported invocation builds the full `Telegram/Telegram` target.
+The public build steps are in [README.md](README.md). Use the Regram app target **//Telegram:Regram** and keep all local configuration, API credentials and signing files in ignored **build-input/**. The tracked rules_apple compatibility patch is documented in [build-system/patches/README.md](build-system/patches/README.md).
 
-**Command:**
+The Make.py wrapper can generate an Xcode project or build a device IPA. Specify a local configuration path and the signing mode for your environment; do not assume another developer's certificate repository, shell startup file or simulator exists. When testing a change, run the smallest relevant Bazel target if its platform is configured correctly, then run a full Regram build for integration-sensitive work. See [docs/ui-testing.md](docs/ui-testing.md) for UI test setup.
 
-```sh
-python3 build-system/Make/Make.py --overrideXcodeVersion \
- --cacheDir ~/telegram-bazel-cache \
- build \
- --configurationPath build-system/appstore-configuration.json \
- --gitCodesigningRepository git@gitlab.com:peter-iakovlev/fastlanematch.git \
- --gitCodesigningType development --gitCodesigningUseCurrent --buildNumber=1 --configuration=debug_sim_arm64
-```
-
-Add `--continueOnError` after `build` (forwards to bazel's `--keep_going`) when verifying changes that may surface errors in many files at once — it lets the full set of errors land in one pass instead of stopping at the first failing target.
-
-The build needs `TELEGRAM_CODESIGNING_GIT_PASSWORD` in the environment. It is set in `~/.zshrc` but Claude Code's bash tool does NOT source shell config by default. Prefix build commands with `source ~/.zshrc 2>/dev/null;` to pick it up.
-
-**Running tests.** `Make.py test` runs Bazel test targets (same config + codesigning as `build`, forced `debug_sim_arm64`). It accepts `--target <label>` (added 2026-06-19; default `Tests/AllTests`) so a single `ios_unit_test` can run in isolation, e.g.:
-
-```sh
-source ~/.zshrc 2>/dev/null; python3 build-system/Make/Make.py --overrideXcodeVersion --cacheDir ~/telegram-bazel-cache \
- test --configurationPath build-system/appstore-configuration.json \
- --gitCodesigningRepository git@gitlab.com:peter-iakovlev/fastlanematch.git \
- --gitCodesigningType development --gitCodesigningUseCurrent --target //submodules/TextFormat:TextFormatTests
-```
-
-The first app-side `ios_unit_test` is `//submodules/TextFormat:TextFormatTests` (the mention/date link codecs). An `ios_unit_test` here needs an `ios_test_runner` pinned to a real device/OS (e.g. `iPhone 17` / `26.5`) — the default runner picks an invalid device and the test process exits 15. **Run new targets via `--target`, not the default suite:** `Tests/AllTests` currently references a dangling `//submodules/TgVoipWebrtc:TgCallsTests`, so the default would fail to build until that suite is repaired.
-
-### Updating the running simulator after a rebuild (whole-`.app` copy)
-
-`simctl install` will NOT replace an already-installed app when the build number is unchanged (installd keeps a hard-link cache), so a rebuilt binary silently doesn't take effect. **Preferred fix: copy the whole freshly-built `.app` over the installed bundle in place.** This is more robust than swapping only the `Frameworks/TelegramUIFramework` binary (no risk of app↔framework version skew), and it preserves the account/login because the **data container is a separate path** (`.../data/Containers/Data/Application/<uuid>/`, keyed by bundle id) — only the **bundle** container is replaced, and the install-DB entry stays valid since the path + bundle id are unchanged.
-
-```sh
-K3=FA6F7462-AA97-42FE-9E57-8DA0593CE756   # iPhone 17 Pro K3 (use the dedicated K-sims, not the shared default)
-BUNDLE=ph.telegra.Telegraph
-# Fresh build output (unzipped bundle, not the .ipa). `-L` is REQUIRED — `bazel-out` is a symlink,
-# so a plain `find bazel-out …` silently returns nothing:
-SRC="$(find -L bazel-out -maxdepth 14 -path '*/Telegram_archive-root/Payload/Telegram.app' -type d | head -1)"
-DEST="$(xcrun simctl get_app_container "$K3" "$BUNDLE" app)"   # installed bundle path
-# GUARD before the destructive rm: never rm the installed app unless SRC actually resolved,
-# or a failed cp leaves the sim with NO app installed (relaunch then fails).
-[ -x "$SRC/Telegram" ] || { echo "no fresh bundle at SRC=$SRC — aborting"; exit 1; }
-xcrun simctl terminate "$K3" "$BUNDLE" 2>/dev/null            # terminate before replacing the running binary
-rm -rf "$DEST" && cp -Rp "$SRC" "$DEST"                        # replace bundle in place; data container untouched
-xcrun simctl launch "$K3" "$BUNDLE"
-```
-
-The sim ignores code signing, so the unsigned `Telegram_archive-root` bundle runs fine. Bazel stamps a reproducible `Jan 1 1980` mtime on the copied binary — that's expected, not a stale copy. The `Telegram_archive-root` is regenerated by the Make.py wrapper's post-build packaging; if it's stale/missing after an incremental build, unzip `Payload/Telegram.app` out of `bazel-bin/Telegram/Telegram.ipa` instead. (The older framework-only `cp` of `TelegramUIFramework` still works and is faster, but prefer the whole-`.app` copy to avoid version skew.)
+For a simulator run, select an available device with xcrun simctl list devices available. Use the generated project or install a fresh simulator build; never replace another developer's installed app bundle by path. A successful compile does not prove notification extensions, data migration or device-only behavior.
 
 ## Code Style Guidelines
 - **Naming**: PascalCase for types, camelCase for variables/methods
@@ -73,7 +30,7 @@ A from-scratch WYSIWYG rich-text editor (`submodules/TelegramUI/Components/RichT
 
 ## Embedded watch app (`Telegram/WatchApp`)
 
-A standalone watchOS Telegram client (developed in the separate `~/build/tgwatch` repo) is vendored into this repo at `Telegram/WatchApp/` and can be embedded into the **device** IPA under `Telegram.app/Watch/`. It is built by `xcodebuild` (not Bazel) and codesigned by the Bazel build.
+A standalone watchOS client is vendored into this repo at `Telegram/WatchApp/` and can be embedded into the **device** IPA under `Telegram.app/Watch/`. It is built by `xcodebuild` (not Bazel) and codesigned by the Bazel build.
 
 **Build it:** add `--embedWatchApp` to a Make.py **device** build (`--configuration=debug_arm64` or `release_arm64`) together with `--watchApiId`, `--watchApiHash`, `--watchSigningIdentity`, `--watchProvisioningProfile`. Off by default (it adds a ~4-min xcodebuild step); simulator builds never embed, and the default `debug_sim_arm64` build is unaffected.
 

@@ -36,8 +36,8 @@
 **Build/test commands (memorize):**
 - Core tests: `cd submodules/TelegramUI/Components/RichTextEditor && swift test --filter <ClassName>`
 - UIKit tests: `cd submodules/TelegramUI/Components/RichTextEditor && Scripts/iostest.sh <Class/test>`
-- TextFormat tests (Bazel): `source ~/.zshrc 2>/dev/null; python3 build-system/Make/Make.py --overrideXcodeVersion --cacheDir ~/telegram-bazel-cache test --configurationPath build-system/appstore-configuration.json --gitCodesigningRepository git@gitlab.com:peter-iakovlev/fastlanematch.git --gitCodesigningType development --gitCodesigningUseCurrent --target //submodules/TextFormat:TextFormatTests`
-- Full app build: the `Make.py build … --configuration=debug_sim_arm64` command from the repo `CLAUDE.md`.
+- TextFormat tests (Bazel): run Make.py test --target //submodules/TextFormat:TextFormatTests with your own ignored build-input configuration and signing setup (see the repository README).
+- Full app build: use the Regram target and your local configuration as described in the repository README.
 
 ---
 
@@ -681,7 +681,7 @@ and the `.rows` return (line 331) to:
 
 - [ ] **Step 5: Fix the other `TableStructuralMenuRequest(...)` construction sites**
 
-Run: `cd /Users/isaac/build/telegram/telegram-ios && grep -rn "TableStructuralMenuRequest(" submodules/TelegramUI/Components/RichTextEditor/ submodules/TelegramUI --include=*.swift`
+Run from the repository root: `rg -n 'TableStructuralMenuRequest\(' submodules/TelegramUI/Components/RichTextEditor submodules/TelegramUI`.
 For every construction call other than the two above (production or test), add `header: nil` (or an appropriate descriptor) so it compiles. Expected non-test sites: none beyond the two above; add `header: nil` to any test-side constructions found.
 
 - [ ] **Step 6: Run to verify it passes**
@@ -976,15 +976,12 @@ git commit -m "feat(chatinput): round-trip per-cell table header through bridge 
 
 - [ ] **Step 1: Full app build**
 
-Run the repo `CLAUDE.md` build command (append `--continueOnError` to surface all errors in one pass):
-```sh
-source ~/.zshrc 2>/dev/null; python3 build-system/Make/Make.py --overrideXcodeVersion --cacheDir ~/telegram-bazel-cache build --configurationPath build-system/appstore-configuration.json --gitCodesigningRepository git@gitlab.com:peter-iakovlev/fastlanematch.git --gitCodesigningType development --gitCodesigningUseCurrent --buildNumber=1 --configuration=debug_sim_arm64 --continueOnError
-```
+Use the public README build command with your own configuration and signing materials, adding `--continueOnError` if useful.
 Expected: BUILD SUCCEEDED. Fix any consumer that constructed `ChatInputTableRow`/`Cell` positionally (add `isHeader:`/seed cells) or read a removed stored `isHeader` (it is now computed — reads are unaffected).
 
-- [ ] **Step 2: Install onto the K3 sim + launch**
+- [ ] **Step 2: Install on a simulator and launch**
 
-Use the whole-`.app` copy procedure from the repo `CLAUDE.md` ("Updating the running simulator after a rebuild"), targeting `K3=FA6F7462-AA97-42FE-9E57-8DA0593CE756`.
+Install and launch the newly built app on an available simulator selected with `xcrun simctl list devices available`.
 
 - [ ] **Step 3: Runtime verification — composer (setting)**
 
