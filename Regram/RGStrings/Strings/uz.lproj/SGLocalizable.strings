@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Video qo'ng'iroq qilish?";
 
 "MutualContact.Label" = "o'zaro aloqa";
-
-"Settings.swipeForVideoPIP" = "Video PIP bilan Surish";
-"Settings.swipeForVideoPIP.Notice" = "Agar yoqilgan bo'lsa, videoni surish uni Tasvir ichida Tasvir rejimida ochadi.";

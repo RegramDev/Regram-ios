@@ -152,8 +152,6 @@
 
 "MutualContact.Label" = "взаємний контакт";
 
-"Settings.swipeForVideoPIP" = "Відео PIP зі змахуванням";
-"Settings.swipeForVideoPIP.Notice" = "Якщо увімкнено, змахування відео відкриє його в режимі «Картинка в картинці».";
 
 "SessionBackup.Title" = "Резервне копіювання сесії";
 "SessionBackup.Sessions.Title" = "Сесії";

@@ -102,7 +102,6 @@ private enum RGBoolSetting: String {
     case secondsInMessages
     case hideChannelBottomButton
     case confirmCalls
-    case swipeForVideoPIP
     case enableVoipTcp
     case nyStyleSnow
     case nyStyleLightning
@@ -117,6 +116,7 @@ private enum RGOneFromManySetting: String {
 //    case allChatsFolderPositionOverride
     case translationBackend
     case transcriptionBackend
+    case recentStickerLimit
 }
 
 private enum RGSliderSetting: String {
@@ -259,6 +259,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.header(id: id.count, section: .stickers, text: i18n("Settings.Stickers.Size", lang), badge: nil))
     entries.append(.percentageSlider(id: id.count, section: .stickers, settingName: .stickerSize, value: RGSimpleSettings.shared.stickerSize))
     entries.append(.toggle(id: id.count, section: .stickers, settingName: .stickerTimestamp, value: RGSimpleSettings.shared.stickerTimestamp, text: i18n("Settings.Stickers.Timestamp", lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .stickers, settingName: .recentStickerLimit, text: i18n("Settings.Stickers.RecentLimit", lang), value: String(RGSimpleSettings.shared.recentStickerLimitValue), enabled: true))
     
     
     entries.append(.header(id: id.count, section: .videoNotes, text: i18n("Settings.VideoNotes.Header", lang), badge: nil))
@@ -303,8 +304,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     id.increment(10000)
     entries.append(.header(id: id.count, section: .other, text: strings.Appearance_Other.uppercased(), badge: nil))
-    entries.append(.toggle(id: id.count, section: .other, settingName: .swipeForVideoPIP, value: RGSimpleSettings.shared.videoPIPSwipeDirection == RGSimpleSettings.VideoPIPSwipeDirection.up.rawValue, text: i18n("Settings.swipeForVideoPIP", lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.swipeForVideoPIP.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hideChannelBottomButton, value: !RGSimpleSettings.shared.hideChannelBottomButton, text: i18n("Settings.showChannelBottomButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .wideChannelPosts, value: RGSimpleSettings.shared.wideChannelPosts, text: i18n("Settings.wideChannelPosts", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .secondsInMessages, value: RGSimpleSettings.shared.secondsInMessages, text: i18n("Settings.secondsInMessages", lang), enabled: true))
@@ -507,8 +506,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.secondsInMessages = value
         case .confirmCalls:
             RGSimpleSettings.shared.confirmCalls = value
-        case .swipeForVideoPIP:
-            RGSimpleSettings.shared.videoPIPSwipeDirection = value ? RGSimpleSettings.VideoPIPSwipeDirection.up.rawValue : RGSimpleSettings.VideoPIPSwipeDirection.none.rawValue
         case .enableVoipTcp:
             let _ = (
                 updateExperimentalUISettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
@@ -550,6 +547,20 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         var items: [ActionSheetItem] = []
         
         switch (setting) {
+            case .recentStickerLimit:
+                for limit in RGSimpleSettings.recentStickerLimitOptions {
+                    items.append(ActionSheetButtonItem(title: String(limit), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.recentStickerLimit = limit
+                        simplePromise.set(true)
+                        let _ = context.account.postbox.transaction { transaction -> Void in
+                            let recent = transaction.getOrderedListItems(collectionId: Namespaces.OrderedItemList.CloudRecentStickers)
+                            if recent.count > Int(limit) {
+                                transaction.replaceOrderedItemListItems(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, items: Array(recent.prefix(Int(limit))))
+                            }
+                        }.startStandalone()
+                    }))
+                }
             case .downloadSpeedBoost:
                 let setAction: (String) -> Void = { value in
                     RGSimpleSettings.shared.downloadSpeedBoost = value

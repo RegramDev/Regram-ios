@@ -4454,15 +4454,32 @@ func replayFinalState(
                         let _ = transaction.addMessages(messages, location: .Random)
                     }
                 }
-            case let .DeleteMessagesWithGlobalIds(ids):
+            case let .DeleteMessagesWithGlobalIds(rgAllIds):
                 // MARK: Regram — Anti-revoke. Keep the message and tag it as revoked so the UI can
                 // show a "deleted" indicator, instead of silently keeping it unchanged. Private chats
-                // revoke via global ids, so resolve them to local message ids first.
+                // revoke via global ids, so resolve them to local message ids first. With anti-revoke
+                // on for some chats only, each id is resolved to find its chat and only the rest are
+                // deleted.
+                var ids = rgAllIds
                 if RGSimpleSettings.shared.antiRevoke {
                     for messageId in transaction.messageIdsForGlobalIds(ids) {
                         rgMarkMessageRevoked(transaction: transaction, id: messageId)
                     }
                     break
+                } else if RGSimpleSettings.shared.isAntiRevokeActive {
+                    ids = ids.filter { globalId in
+                        let messageIds = transaction.messageIdsForGlobalIds([globalId])
+                        guard let messageId = messageIds.first, RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: messageId.peerId.toInt64()) else {
+                            return true
+                        }
+                        for messageId in messageIds {
+                            rgMarkMessageRevoked(transaction: transaction, id: messageId)
+                        }
+                        return false
+                    }
+                    if ids.isEmpty {
+                        break
+                    }
                 }
                 var resourceIds: [MediaResourceId] = []
                 transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
@@ -4472,13 +4489,20 @@ func replayFinalState(
                     let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
                 }
                 deletedMessageIds.append(contentsOf: ids.map { .global($0) })
-            case let .DeleteMessages(ids):
+            case let .DeleteMessages(rgAllIds):
                 // MARK: Regram — Anti-revoke. Channels/supergroups revoke via per-peer message ids.
-                if RGSimpleSettings.shared.antiRevoke {
-                    for messageId in ids {
+                var ids = rgAllIds
+                if RGSimpleSettings.shared.isAntiRevokeActive {
+                    ids = ids.filter { messageId in
+                        guard RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: messageId.peerId.toInt64()) else {
+                            return true
+                        }
                         rgMarkMessageRevoked(transaction: transaction, id: messageId)
+                        return false
                     }
-                    break
+                    if ids.isEmpty {
+                        break
+                    }
                 }
                 _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
                     addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
@@ -5899,7 +5923,7 @@ func replayFinalState(
         }).map({ $0.1 })
         for file in stickerFiles {
             if let entry = CodableEntry(RecentMediaItem(file)) {
-                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: 20)
+                transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(file.fileId).rawValue, contents: entry), removeTailIfCountExceeds: RGSimpleSettings.shared.recentStickerLimitValue)
             }
         }
     }

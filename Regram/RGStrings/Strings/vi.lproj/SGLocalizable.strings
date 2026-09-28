@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Thực hiện cuộc gọi video?";
 
 "MutualContact.Label" = "liên hệ chung";
-
-"Settings.swipeForVideoPIP" = "Video PIP với Vuốt";
-"Settings.swipeForVideoPIP.Notice" = "Nếu được kích hoạt, việc vuốt video sẽ mở nó ở chế độ Hình trong hình.";

@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Einen Videoanruf tätigen?";
 
 "MutualContact.Label" = "gemeinsamer Kontakt";
-
-"Settings.swipeForVideoPIP" = "Video PIP mit Wischen";
-"Settings.swipeForVideoPIP.Notice" = "Wenn aktiviert, öffnet das Wischen des Videos es im Bild-in-Bild-Modus.";

@@ -134,6 +134,7 @@
 
 "Settings.Stickers.Size" = "尺寸";
 "Settings.Stickers.Timestamp" = "顯示時間戳";
+"Settings.Stickers.RecentLimit" = "最近貼圖數量上限";
 
 "Settings.RecordingButton" = "錄音按鈕";
 
@@ -171,8 +172,6 @@
 
 "MutualContact.Label" = "雙向聯絡人";
 
-"Settings.swipeForVideoPIP" = "影片 PIP 及滑動";
-"Settings.swipeForVideoPIP.Notice" = "如果啟用，滑動視頻將以畫中畫模式打開。";
 
 "SessionBackup.Title" = "帳號備份";
 "SessionBackup.Sessions.Title" = "會話";
@@ -319,3 +318,19 @@
 "Ghost.DontSendTyping" = "不傳送輸入狀態";
 "Pangu.Title" = "盤古之白";
 "Pangu.Notice" = "傳送訊息時,在中日韓文字與相鄰的拉丁字母或數字之間插入空格。程式碼區塊與引用區塊不會被改動。";
+"OutgoingFormatting.Title" = "傳送訊息預設格式";
+"OutgoingFormatting.none" = "關閉";
+"OutgoingFormatting.bold" = "粗體";
+"OutgoingFormatting.italic" = "斜體";
+"OutgoingFormatting.underline" = "底線";
+"OutgoingFormatting.strikethrough" = "刪除線";
+"OutgoingFormatting.spoiler" = "暴雷";
+"OutgoingFormatting.Notice" = "傳送新文字訊息時自動套用所選格式，保留手動設定的格式；程式碼、引用和自訂表情不受影響。";
+
+/* Per-chat anti-revoke */
+"AntiRevoke.PerChat.Title" = "防收回";
+"AntiRevoke.PerChat.Notice" = "開啟後，此對話中被收回的訊息會保留下來，並標記為已刪除。";
+"AntiRevoke.PerChat.AllChats" = "已對所有對話開啟防收回，可在 Regram Pro →「防刪除與限制解除」中變更。";
+"AntiRevoke.Chats.Title" = "防收回的對話";
+"AntiRevoke.Chats.Notice" = "這些對話中被收回的訊息會保留下來，並標記為已刪除。左滑可移除，點擊可查看資料。";
+"AntiRevoke.Chats.Empty" = "尚未加入任何對話。打開對話的資料頁，開啟「防收回」即可。";

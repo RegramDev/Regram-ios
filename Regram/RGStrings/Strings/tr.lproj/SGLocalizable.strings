@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Video Araması Yapmak mı?";
 
 "MutualContact.Label" = "karşılıklı iletişim";
-
-"Settings.swipeForVideoPIP" = "Videoyu kaydırarak PIP";
-"Settings.swipeForVideoPIP.Notice" = "Eğer etkinleştirildi ise videoyu kaydırmak, Piksel içinde Piksel modunda açılacaktır.";

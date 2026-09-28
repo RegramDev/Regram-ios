@@ -9,9 +9,6 @@ import ComponentDisplayAdapters
 public final class GalleryFooterNode: ASDisplayNode {
     private let edgeEffectView: EdgeEffectView
     private var contentsFrame = CGRect()
-    // MARK: Regram — hitTest below only lets touches through inside `contentsFrame`, i.e. the
-    // bottom panel. The top strip lives outside it and would be untappable without this.
-    private var rgTopPanelFrame = CGRect()
     
     private var currentThumbnailPanelHeight: CGFloat?
     private var currentFooterContentNode: GalleryFooterContentNode?
@@ -40,50 +37,14 @@ public final class GalleryFooterNode: ASDisplayNode {
         transition.setAlpha(view: self.edgeEffectView, alpha: alpha * self.defaultEdgeEffectAlpha)
         self.currentFooterContentNode?.setVisibilityAlpha(alpha, animated: animated)
         self.currentOverlayContentNode?.setVisibilityAlpha(alpha)
-        // MARK: Regram — the top strip is not inside the content node, so fading that does not fade it.
-        if let rgTopPanelView = self.rgHostedTopPanelView {
-            transition.setAlpha(view: rgTopPanelView, alpha: alpha)
-        }
     }
     
-    // MARK: Regram — the current content node's top strip, when this view is hosting it.
-    private var rgHostedTopPanelView: UIView? {
-        if let view = self.currentFooterContentNode?.galleryTopPanelView, view.superview === self.view {
-            return view
-        }
-        return nil
-    }
-
-    // MARK: Regram — a strip belongs to one content node but lives in this view, so taking the node
-    // away does not take its strip with it. Each photo swiped past used to leave its share/delete
-    // strip behind at full opacity, out of reach of hiding the controls, which moves only the
-    // current strip.
-    private func rgRemoveTopPanel(of contentNode: GalleryFooterContentNode, transition: ContainedViewLayoutTransition) {
-        guard let view = contentNode.galleryTopPanelView, view.superview === self.view else {
-            return
-        }
-        ComponentTransition(transition).setAlpha(view: view, alpha: 0.0, completion: { [weak self, weak contentNode, weak view] _ in
-            guard let self, let view, view.superview === self.view else {
-                return
-            }
-            // Swiped straight back: the strip is the current one again.
-            if let contentNode, contentNode === self.currentFooterContentNode {
-                return
-            }
-            view.removeFromSuperview()
-        })
-    }
-
     func animateIn(transition: ContainedViewLayoutTransition) {
         self.edgeEffectView.alpha = 0.0
         ComponentTransition(transition).setAlpha(view: self.edgeEffectView, alpha: self.defaultEdgeEffectAlpha * self.visibilityAlpha)
         
         if let currentFooterContentNode = self.currentFooterContentNode {
             currentFooterContentNode.animateIn(transition: transition)
-        }
-        if let rgTopPanelView = self.rgHostedTopPanelView {
-            rgTopPanelView.alpha = 0.0
-            ComponentTransition(transition).setAlpha(view: rgTopPanelView, alpha: self.visibilityAlpha)
         }
         
         if let currentOverlayContentNode = self.currentOverlayContentNode {
@@ -97,9 +58,6 @@ public final class GalleryFooterNode: ASDisplayNode {
         
         if let currentFooterContentNode = self.currentFooterContentNode {
             currentFooterContentNode.animateOut(transition: transition)
-        }
-        if let rgTopPanelView = self.rgHostedTopPanelView {
-            ComponentTransition(transition).setAlpha(view: rgTopPanelView, alpha: 0.0)
         }
         
         if let currentOverlayContentNode = self.currentOverlayContentNode {
@@ -164,37 +122,8 @@ public final class GalleryFooterNode: ASDisplayNode {
             backgroundLayoutInfo = backgroundLayoutInfoValue
             
             footerTransition.updateFrame(node: footerContentNode, frame: CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - backgroundLayoutInfoValue.height + verticalOffset), size: CGSize(width: layout.size.width, height: backgroundLayoutInfoValue.height)))
-
-            // MARK: Regram — the content node's strip of action buttons, hosted here rather than
-            // inside it: the content node is bottom-anchored and sized to the bottom panel, so it has
-            // no way to reach the area under the navigation bar. Slides up out of view with the same
-            // gesture that hides the rest of the chrome, mirroring the navigation bar itself.
-            let rgTopPanelRect = footerContentNode.updateGalleryTopPanel(width: layout.size.width, leftInset: layout.safeInsets.left, rightInset: layout.safeInsets.right, transition: footerTransition)
-            if let rgTopPanelView = footerContentNode.galleryTopPanelView, !rgTopPanelRect.isEmpty {
-                if rgTopPanelView.superview !== self.view {
-                    self.view.addSubview(rgTopPanelView)
-                } else if self.view.subviews.last !== rgTopPanelView {
-                    // Swiped straight back while this strip was still fading out under the other.
-                    self.view.bringSubviewToFront(rgTopPanelView)
-                }
-                let rgTopPanelSpacing: CGFloat = 8.0
-                var rgTopPanelFrame = rgTopPanelRect.offsetBy(dx: 0.0, dy: navigationBarHeight + rgTopPanelSpacing)
-                if isHidden {
-                    rgTopPanelFrame.origin.y = -rgTopPanelFrame.height - rgTopPanelSpacing
-                }
-                ComponentTransition(footerTransition).setFrame(view: rgTopPanelView, frame: rgTopPanelFrame)
-                ComponentTransition(footerTransition).setAlpha(view: rgTopPanelView, alpha: self.visibilityAlpha)
-                self.rgTopPanelFrame = isHidden ? CGRect() : rgTopPanelFrame
-            } else {
-                // Nothing to show any more: a strip left in place would keep its stale buttons.
-                if let rgTopPanelView = footerContentNode.galleryTopPanelView, rgTopPanelView.superview === self.view {
-                    rgTopPanelView.removeFromSuperview()
-                }
-                self.rgTopPanelFrame = CGRect()
-            }
             if let dismissedCurrentFooterContentNode = dismissedCurrentFooterContentNode {
                 let contentTransition = ContainedViewLayoutTransition.animated(duration: 0.4, curve: .spring)
-                self.rgRemoveTopPanel(of: dismissedCurrentFooterContentNode, transition: contentTransition)
                 footerContentNode.animateIn(fromHeight: dismissedCurrentFooterContentNode.bounds.height, previousContentNode: dismissedCurrentFooterContentNode, transition: contentTransition)
                 dismissedCurrentFooterContentNode.animateOut(toHeight: backgroundLayoutInfoValue.height, nextContentNode: footerContentNode, transition: contentTransition, completion: { [weak self, weak dismissedCurrentFooterContentNode] in
                     if let strongSelf = self, let dismissedCurrentFooterContentNode = dismissedCurrentFooterContentNode, dismissedCurrentFooterContentNode !== strongSelf.currentFooterContentNode {
@@ -208,7 +137,6 @@ public final class GalleryFooterNode: ASDisplayNode {
             }
         } else {
             if let dismissedCurrentFooterContentNode = dismissedCurrentFooterContentNode {
-                self.rgRemoveTopPanel(of: dismissedCurrentFooterContentNode, transition: .immediate)
                 dismissedCurrentFooterContentNode.removeFromSupernode()
             }
             
@@ -270,10 +198,7 @@ public final class GalleryFooterNode: ASDisplayNode {
         if let overlayResult = self.currentOverlayContentNode?.hitTest(point, with: event) {
             return overlayResult
         }
-        if !self.contentsFrame.contains(point) && !self.rgTopPanelFrame.contains(point) {
-            return nil
-        }
-        if self.visibilityAlpha < 1.0 {
+        if !self.contentsFrame.contains(point) || self.visibilityAlpha < 1.0 {
             return nil
         }
         let result = super.hitTest(point, with: event)

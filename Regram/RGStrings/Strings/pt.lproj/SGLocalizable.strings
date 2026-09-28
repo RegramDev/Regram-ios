@@ -171,8 +171,6 @@
 
 "MutualContact.Label" = "contato mútuo";
 
-"Settings.swipeForVideoPIP" = "Vídeo PIP com Deslizar";
-"Settings.swipeForVideoPIP.Notice" = "Se habilitado, deslizar o vídeo o abrirá em modo Picture-in-Picture.";
 
 "SessionBackup.Title" = "Backup de Sessão";
 "SessionBackup.Sessions.Title" = "Sessões";

@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Effettuare una videochiamata?";
 
 "MutualContact.Label" = "contatto reciproco";
-
-"Settings.swipeForVideoPIP" = "Video PIP con scorrimento";
-"Settings.swipeForVideoPIP.Notice" = "Se abilitato, scorrendo il video si aprirà in modalità Picture-in-Picture.";

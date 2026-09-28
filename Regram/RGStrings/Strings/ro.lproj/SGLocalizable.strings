@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Ești sigur că vrei să faci un apel video?";
 
 "MutualContact.Label" = "contact mutual";
-
-"Settings.swipeForVideoPIP" = "Video PIP cu gestul de glisare";
-"Settings.swipeForVideoPIP.Notice" = "Dacă este activat, glisarea video va deschide în modul imagine în imagine.";

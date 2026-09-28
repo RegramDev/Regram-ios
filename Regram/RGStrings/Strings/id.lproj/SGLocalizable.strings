@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Buat Panggilan Video?";
 
 "MutualContact.Label" = "kontak mutual";
-
-"Settings.swipeForVideoPIP" = "Video PIP dengan Geser";
-"Settings.swipeForVideoPIP.Notice" = "Jika diaktifkan, menggeser video akan membukanya dalam mode Gambar-dalam-Gambar.";

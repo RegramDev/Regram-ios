@@ -29,6 +29,7 @@ enum InfoSection: Int, CaseIterable {
     case unofficial
     case community
     case regram
+    case antiRevoke
     case groupLocation
     case calls
     case personalChannel
@@ -1094,6 +1095,17 @@ func infoItems(
             RGSimpleSettings.shared.setMessageFilterEnabled(value, forPeer: rgFilterPeerId)
         }))
         items[.regram]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
+
+        // MARK: Regram — per-chat anti-revoke, the same shape as hiding a sender: a switch here and
+        // a list on the Pro screen. With anti-revoke on for every chat there is nothing to toggle.
+        if RGSimpleSettings.shared.antiRevoke {
+            items[.regram]!.append(PeerInfoScreenCommentItem(id: 9503, text: "AntiRevoke.PerChat.AllChats".i18n(rgLang)))
+        } else {
+            items[.antiRevoke]!.append(PeerInfoScreenSwitchItem(id: 9502, text: "AntiRevoke.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
+                RGSimpleSettings.shared.setAntiRevokeEnabled(value, forPeer: rgFilterPeerId)
+            }))
+            items[.antiRevoke]!.append(PeerInfoScreenCommentItem(id: 9503, text: "AntiRevoke.PerChat.Notice".i18n(rgLang)))
+        }
     }
 
     var result: [(AnyHashable, [PeerInfoScreenItem])] = []

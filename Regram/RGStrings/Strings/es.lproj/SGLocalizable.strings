@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "¿Hacer una videollamada?";
 
 "MutualContact.Label" = "contacto mutuo";
-
-"Settings.swipeForVideoPIP" = "Video PIP con deslizamiento";
-"Settings.swipeForVideoPIP.Notice" = "Si está habilitado, deslizar el video lo abrirá en modo imagen en imagen.";

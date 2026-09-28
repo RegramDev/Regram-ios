@@ -155,6 +155,11 @@ public final class Transaction {
     public func withAllMessages(peerId: PeerId, namespace: MessageId.Namespace? = nil, reversed: Bool = false, _ f: (Message) -> Bool) {
         self.postbox?.withAllMessages(peerId: peerId, namespace: namespace, reversed: reversed, f)
     }
+
+    // MARK: Regram — see PostboxImpl.rgSearchMessagesByText.
+    public func rgSearchMessagesByText(peerId: PeerId, query: String, tags: MessageTags?, limit: Int) -> [Message] {
+        return self.postbox?.rgSearchMessagesByText(peerId: peerId, query: query, tags: tags, limit: limit) ?? []
+    }
     
     public func clearHistory(_ peerId: PeerId, threadId: Int64?, minTimestamp: Int32?, maxTimestamp: Int32?, namespaces: MessageIdNamespaces, forEachMedia: ((Media) -> Void)?) {
         assert(!self.disposed)
@@ -2305,6 +2310,33 @@ final class PostboxImpl {
         }
     }
     
+    /// Newest-first text search over every locally stored message of a chat, for messages the server
+    /// search cannot return (e.g. ones kept by anti-revoke). Matches on the stored text before
+    /// rendering: rendering resolves media, attributes and peers, and doing that for every message in
+    /// a large chat is what made each keystroke of a local search hold the Postbox queue.
+    fileprivate func rgSearchMessagesByText(peerId: PeerId, query: String, tags: MessageTags?, limit: Int) -> [Message] {
+        var result: [Message] = []
+        if query.isEmpty || limit <= 0 {
+            return result
+        }
+        for index in self.messageHistoryTable.allMessageIndices(peerId: peerId, namespace: nil).reversed() {
+            guard let message = self.messageHistoryTable.getMessage(index) else {
+                continue
+            }
+            if let tags, !message.tags.contains(tags) {
+                continue
+            }
+            if message.text.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) == nil {
+                continue
+            }
+            result.append(self.renderIntermediateMessage(message))
+            if result.count >= limit {
+                break
+            }
+        }
+        return result
+    }
+
     fileprivate func clearHistory(_ peerId: PeerId, threadId: Int64?, minTimestamp: Int32?, maxTimestamp: Int32?, namespaces: MessageIdNamespaces, forEachMedia: ((Media) -> Void)?) {
         if let minTimestamp = minTimestamp, let maxTimestamp = maxTimestamp {
             self.messageHistoryTable.clearHistoryInRange(peerId: peerId, threadId: threadId, minTimestamp: minTimestamp, maxTimestamp: maxTimestamp, namespaces: namespaces, operationsByPeerId: &self.currentOperationsByPeerId, updatedMedia: &self.currentUpdatedMedia, unsentMessageOperations: &currentUnsentOperations, updatedPeerReadStateOperations: &self.currentUpdatedSynchronizeReadStateOperations, globalTagsOperations: &self.currentGlobalTagsOperations, pendingActionsOperations: &self.currentPendingMessageActionsOperations, updatedMessageActionsSummaries: &self.currentUpdatedMessageActionsSummaries, updatedMessageTagSummaries: &self.currentUpdatedMessageTagSummaries, invalidateMessageTagSummaries: &self.currentInvalidateMessageTagSummaries, localTagsOperations: &self.currentLocalTagsOperations, timestampBasedMessageAttributesOperations: &self.currentTimestampBasedMessageAttributesOperations, forEachMedia: forEachMedia)
@@ -5298,6 +5330,12 @@ extension PostboxImpl {
             return possiblePeerId
         }
         
+        // MARK: Regram — the scan below reads every chat list key, and search runs it on each keystroke
+        // while a number is typed. Real peer ids have at least five digits, so shorter input (a phone
+        // number or an id being typed) skips it.
+        if query.count < 5 {
+            return nil
+        }
         self.valueBox.scanInt64(self.chatListIndexTable.table, keys: { key in
             let peerId = PeerId(key)
             let peerIdInt64 = peerId.id._internalGetInt64Value()

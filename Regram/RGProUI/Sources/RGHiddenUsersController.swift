@@ -13,9 +13,9 @@ import RGSimpleSettings
 import RGStrings
 
 // MARK: Regram
-// The list of senders whose messages are hidden (toggled from their profile). Reached from the
-// Regram Pro screen. Peers are resolved through the engine so the rows show real names and avatars;
-// a peer that cannot be resolved (never loaded on this device) is still listed by id so it can be
+// A list of peers kept in one of the per-peer settings that are toggled from a profile: senders whose
+// messages are hidden, and chats anti-revoke is on for. Reached from the Regram Pro screen. Peers are
+// resolved through the engine so the rows show real names and avatars; a peer that cannot be resolved (never loaded on this device) is still listed by id so it can be
 // removed. Rows can be swiped to unhide, tapped to open the profile, and reordering is not offered
 // because order carries no meaning here.
 
@@ -128,7 +128,24 @@ private func rgPlaceholderPeer(id: EnginePeer.Id, title: String) -> EnginePeer {
 }
 
 public func rgHiddenUsersController(context: AccountContext) -> ViewController {
-    let statePromise = ValuePromise<Set<Int64>>(RGSimpleSettings.shared.blockedPeerIds, ignoreRepeated: true)
+    return rgPeerSettingListController(context: context, titleKey: "HiddenUsers.Title", emptyKey: "HiddenUsers.Empty", noticeKey: "HiddenUsers.Notice", peerIds: {
+        return RGSimpleSettings.shared.blockedPeerIds
+    }, removePeerId: { peerId in
+        RGSimpleSettings.shared.setPeerBlocked(peerId, blocked: false)
+    })
+}
+
+/// Chats anti-revoke is switched on for from their profile.
+public func rgAntiRevokeChatsController(context: AccountContext) -> ViewController {
+    return rgPeerSettingListController(context: context, titleKey: "AntiRevoke.Chats.Title", emptyKey: "AntiRevoke.Chats.Empty", noticeKey: "AntiRevoke.Chats.Notice", peerIds: {
+        return RGSimpleSettings.shared.antiRevokePeerIds
+    }, removePeerId: { peerId in
+        RGSimpleSettings.shared.setAntiRevokeEnabled(false, forPeer: peerId)
+    })
+}
+
+private func rgPeerSettingListController(context: AccountContext, titleKey: String, emptyKey: String, noticeKey: String, peerIds: @escaping () -> Set<Int64>, removePeerId: @escaping (Int64) -> Void) -> ViewController {
+    let statePromise = ValuePromise<Set<Int64>>(peerIds(), ignoreRepeated: true)
     let revealedPeerId = ValuePromise<EnginePeer.Id?>(nil, ignoreRepeated: true)
 
     var pushControllerImpl: ((ViewController) -> Void)?
@@ -138,8 +155,8 @@ public func rgHiddenUsersController(context: AccountContext) -> ViewController {
             pushControllerImpl?(controller)
         }
     }, removePeer: { peerId in
-        RGSimpleSettings.shared.setPeerBlocked(peerId.toInt64(), blocked: false)
-        statePromise.set(RGSimpleSettings.shared.blockedPeerIds)
+        removePeerId(peerId.toInt64())
+        statePromise.set(peerIds())
     }, setPeerIdWithRevealedOptions: { peerId, fromPeerId in
         // Standard reveal bookkeeping: only accept the change if it is about the currently
         // revealed row (or none is revealed), so two rows never show options at once.
@@ -176,15 +193,15 @@ public func rgHiddenUsersController(context: AccountContext) -> ViewController {
         let lang = presentationData.strings.baseLanguageCode
         var entries: [RGHiddenUsersEntry] = []
         if peers.isEmpty {
-            entries.append(.notice("HiddenUsers.Empty".i18n(lang)))
+            entries.append(.notice(emptyKey.i18n(lang)))
         } else {
-            entries.append(.notice("HiddenUsers.Notice".i18n(lang)))
+            entries.append(.notice(noticeKey.i18n(lang)))
             for (index, peer) in peers.enumerated() {
                 entries.append(.peer(index: index, peer: peer, revealed: revealedPeerId == peer.id))
             }
         }
 
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("HiddenUsers.Title".i18n(lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(titleKey.i18n(lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, emptyStateItem: nil, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
@@ -195,7 +212,7 @@ public func rgHiddenUsersController(context: AccountContext) -> ViewController {
     }
     // Reflect toggles made from profile screens while this list is open.
     controller.didAppear = { _ in
-        statePromise.set(RGSimpleSettings.shared.blockedPeerIds)
+        statePromise.set(peerIds())
     }
     return controller
 }

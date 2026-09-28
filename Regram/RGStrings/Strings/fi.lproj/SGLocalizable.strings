@@ -150,8 +150,6 @@
 
 "MutualContact.Label" = "yhteinen yhteys";
 
-"Settings.swipeForVideoPIP" = "Video PIP pyyhkäisevällä toiminnolla";
-"Settings.swipeForVideoPIP.Notice" = "Jos se on käytössä, videon pyyhkäisy avaa sen kuvassa kuvassa -tilassa.";
 
 "SessionBackup.Title" = "Istunnon varmuuskopio";
 "SessionBackup.Sessions.Title" = "Istunnot";

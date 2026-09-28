@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Vols fer una videotrucada?";
 
 "MutualContact.Label" = "contacte mutu";
-
-"Settings.swipeForVideoPIP" = "Vídeo PIP amb desplaçament";
-"Settings.swipeForVideoPIP.Notice" = "Si està habilitat, desplaçar el vídeo l'obrirà en mode Imatge en Imatge.";

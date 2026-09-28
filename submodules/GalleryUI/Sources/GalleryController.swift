@@ -631,10 +631,6 @@ public struct GalleryConfiguration {
     }
     
     static func with(appConfiguration: AppConfiguration) -> GalleryConfiguration {
-        // MARK: Regram
-        if appConfiguration.rgWebSettings.global.ytPip {
-            return GalleryConfiguration(youtubePictureInPictureEnabled: true)
-        }
         if let data = appConfiguration.data, let value = data["youtube_pip"] as? String {
             return GalleryConfiguration(youtubePictureInPictureEnabled: value != "disabled")
         } else {
@@ -863,7 +859,7 @@ public class GalleryController: ViewController, StandalonePresentableController,
                 |> map { translationState in
                     if let translationState, translationState.isEnabled {
                         let translateToLanguage = translationState.toLang ?? baseLanguageCode
-                        return normalizeTranslationLanguage(translateToLanguage)
+                        return normalizeTranslationTargetLanguage(translateToLanguage)
                     } else {
                         return nil
                     }

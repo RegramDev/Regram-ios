@@ -4415,7 +4415,7 @@ extension ChatControllerImpl {
             guard let self, let peerId = self.chatLocation.peerId else {
                 return
             }
-            let langCode = normalizeTranslationLanguage(langCode)
+            let langCode = normalizeTranslationTargetLanguage(langCode)
             let _ = updateChatTranslationStateInteractively(engine: self.context.engine, peerId: peerId, threadId: self.chatLocation.threadId, { current in
                 return current?.withToLang(langCode).withIsEnabled(true)
             }).startStandalone()

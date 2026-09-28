@@ -987,7 +987,7 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                 } else {
                                     // MARK: Regram — Anti-revoke. History validation prunes anything the server no
                                     // longer returns, which would silently undo the kept messages.
-                                    if !RGSimpleSettings.shared.antiRevoke {
+                                    if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
                                         _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
                                     }
                                     Logger.shared.log("HistoryValidation", "deleting message \(id) in \(id.peerId)")
@@ -1174,7 +1174,7 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                         if !validMessageIds.contains(id) {
                             // MARK: Regram — Anti-revoke. History validation prunes anything the server no
                             // longer returns, which would silently undo the kept messages.
-                            if !RGSimpleSettings.shared.antiRevoke {
+                            if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
                                 _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
                             }
                             Logger.shared.log("HistoryValidation", "deleting thread message \(id) in \(id.peerId)")

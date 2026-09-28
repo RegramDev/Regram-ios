@@ -1,9 +1,5 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
-    "//Regram/RGSimpleSettings:RGSimpleSettings"
-]
-
 swift_library(
     name = "UniversalMediaPlayer",
     module_name = "UniversalMediaPlayer",
@@ -13,7 +9,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = [
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/Postbox:Postbox",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

@@ -8,6 +8,8 @@ import TelegramCore
 import SwiftUI
 import Translation
 import Combine
+import RGGTranslate
+import RGSimpleSettings
 
 // Incuding at least one Objective-C class in a swift file ensures that it doesn't get stripped by the linker
 private final class LinkHelperClass: NSObject {
@@ -176,6 +178,16 @@ public func normalizeTranslationLanguage(_ code: String) -> String {
         code = "no"
     }
     return code
+}
+
+/// Target selection is separate from source recognition and the ignored-language set. Both
+/// Chinese scripts still compare as "zh" for button availability, while Google needs the script
+/// for its request and translated-message cache. Telegram and system targets keep their codes.
+public func normalizeTranslationTargetLanguage(_ code: String) -> String {
+    if RGSimpleSettings.shared.translationBackendIsExternal, getGTranslateLang(code) == "zh-TW" {
+        return "zh-hant"
+    }
+    return normalizeTranslationLanguage(code)
 }
 
 public func canTranslateChats(context: AccountContext) -> Bool {

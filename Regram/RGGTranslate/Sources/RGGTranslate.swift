@@ -267,18 +267,26 @@ private func gtranslateViaMobilePage(_ text: String, _ toLang: String) -> Signal
 // MARK: - Public entry points
 
 public func getGTranslateLang(_ userLang: String) -> String {
-    var lang: String = userLang
+    var lang = userLang.replacingOccurrences(of: "_", with: "-").lowercased()
     let rawSuffix: String = "-raw"
     if lang.hasSuffix(rawSuffix) {
         lang = String(lang.dropLast(rawSuffix.count))
     }
-    lang = lang.lowercased()
+
+    let components = lang.components(separatedBy: "-")
+    if components.first == "zh" {
+        // Prefer an explicit script over the region. All Traditional Chinese targets use
+        // Google's Taiwan variant; regional aliases must not fall through to bare "zh".
+        if components.contains("hans") {
+            return "zh-CN"
+        }
+        if components.contains("hant") || components.contains("tw") || components.contains("hk") || components.contains("mo") {
+            return "zh-TW"
+        }
+        return "zh-CN"
+    }
 
     switch lang {
-    case "zh-hans", "zh":
-        return "zh-CN"
-    case "zh-hant":
-        return "zh-TW"
     case "he":
         return "iw"
     default:

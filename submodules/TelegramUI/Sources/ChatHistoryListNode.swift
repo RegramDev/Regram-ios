@@ -2279,12 +2279,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     if languageCode.hasSuffix(rawSuffix) {
                         languageCode = String(languageCode.dropLast(rawSuffix.count))
                     }
-                    languageCode = normalizeTranslationLanguage(languageCode)
+                    languageCode = normalizeTranslationTargetLanguage(languageCode)
                     let translateToLanguageRG = languageCode
                 // }
                 var translateToLanguage: (fromLang: String, toLang: String)?
                 if let translationState, (isPremium || autoTranslate || true) && translationState.isEnabled {
-                    translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), normalizeTranslationLanguage(languageCode))
+                    translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), languageCode)
                 }
                 
                 var isSuspiciousPeer = false

@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Vill du göra ett videosamtal?";
 
 "MutualContact.Label" = "ömsesidig kontakt";
-
-"Settings.swipeForVideoPIP" = "Video PIP med svep";
-"Settings.swipeForVideoPIP.Notice" = "Om aktiverat, kommer svepning av video att öppna det i bild-i-bild-läge.";

@@ -160,6 +160,7 @@
 
 "Settings.Stickers.Size" = "SIZE";
 "Settings.Stickers.Timestamp" = "Show Timestamp";
+"Settings.Stickers.RecentLimit" = "Recent Stickers Limit";
 
 "Settings.RecordingButton" = "Voice Recording Button";
 
@@ -197,8 +198,6 @@
 
 "MutualContact.Label" = "mutual contact";
 
-"Settings.swipeForVideoPIP" = "Video PIP with Swipe";
-"Settings.swipeForVideoPIP.Notice" = "If enabled, swiping video will open it in Picture-in-Picture mode.";
 
 "SessionBackup.Title" = "Accounts Backup";
 "SessionBackup.Sessions.Title" = "Sessions";
@@ -375,3 +374,19 @@ Matching is case-insensitive.";
 "Ghost.DontSendTyping" = "Don't send typing status";
 "Pangu.Title" = "Pangu spacing";
 "Pangu.Notice" = "Inserts a space between CJK characters and adjacent Latin letters or digits in messages you send. Code and quote blocks are left untouched.";
+"OutgoingFormatting.Title" = "Default Message Formatting";
+"OutgoingFormatting.none" = "Off";
+"OutgoingFormatting.bold" = "Bold";
+"OutgoingFormatting.italic" = "Italic";
+"OutgoingFormatting.underline" = "Underline";
+"OutgoingFormatting.strikethrough" = "Strikethrough";
+"OutgoingFormatting.spoiler" = "Spoiler";
+"OutgoingFormatting.Notice" = "Applies the selected style to new text messages when sent. Existing manual formatting is kept; code, quotes, and custom emoji are excluded.";
+
+/* Per-chat anti-revoke */
+"AntiRevoke.PerChat.Title" = "Keep Deleted Messages";
+"AntiRevoke.PerChat.Notice" = "When on, messages deleted by the other side in this chat are kept and marked as deleted.";
+"AntiRevoke.PerChat.AllChats" = "Deleted messages are kept in all chats. You can change this in Regram Pro → Anti-Deletion & Restrictions.";
+"AntiRevoke.Chats.Title" = "Chats Keeping Deleted Messages";
+"AntiRevoke.Chats.Notice" = "Messages deleted in these chats are kept and marked as deleted. Swipe left to remove; tap to open the profile.";
+"AntiRevoke.Chats.Empty" = "No chats yet. Open a chat's profile and turn on \"Keep Deleted Messages\".";

@@ -153,8 +153,6 @@
 
 "MutualContact.Label" = "相互連絡先";
 
-"Settings.swipeForVideoPIP" = "ビデオ PIP スワイプ";
-"Settings.swipeForVideoPIP.Notice" = "有効になっている場合、ビデオをスワイプするとピクチャーインピクチャーモードで開きます。";
 
 "SessionBackup.Title" = "アカウントのバックアップ";
 "SessionBackup.Sessions.Title" = "セッション";

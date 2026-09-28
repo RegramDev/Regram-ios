@@ -178,6 +178,39 @@ private final class PendingSwitchToChatLocation {
     }
 }
 
+/// Add the selected style only to text sent from the composer. The attributed input state is
+/// left untouched, so drafts and manually applied formatting keep their original appearance.
+private func rgApplyDefaultOutgoingFormatting(_ text: NSAttributedString, format: RGSimpleSettings.DefaultOutgoingFormat) -> NSAttributedString {
+    let key: NSAttributedString.Key
+    switch format {
+    case .none:
+        return text
+    case .bold:
+        key = ChatTextInputAttributes.bold
+    case .italic:
+        key = ChatTextInputAttributes.italic
+    case .underline:
+        key = ChatTextInputAttributes.underline
+    case .strikethrough:
+        key = ChatTextInputAttributes.strikethrough
+    case .spoiler:
+        key = ChatTextInputAttributes.spoiler
+    }
+
+    let result = NSMutableAttributedString(attributedString: text)
+    text.enumerateAttributes(in: NSRange(location: 0, length: text.length), options: []) { attributes, range, _ in
+        // A default text style must not turn a code/quote span or custom emoji into a second,
+        // overlapping Telegram entity. Existing manual styles on other spans are preserved.
+        if attributes[ChatTextInputAttributes.monospace] == nil
+            && attributes[ChatTextInputAttributes.block] == nil
+            && attributes[ChatTextInputAttributes.collapsedBlock] == nil
+            && attributes[ChatTextInputAttributes.customEmoji] == nil {
+            result.addAttribute(key, value: NSNumber(value: true), range: range)
+        }
+    }
+    return result
+}
+
 class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     let context: AccountContext
     private(set) var chatLocation: ChatLocation
@@ -5143,14 +5176,16 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     messages.append(.message(text: "", attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets))
                 } else {
                 do {
+                    let defaultFormatting: RGSimpleSettings.DefaultOutgoingFormat = sendWithoutFormatting ? .none : RGSimpleSettings.shared.defaultOutgoingFormat
                     for text in breakChatInputText(trimChatInputText(inputText)) {
                         if text.length != 0 {
+                            let formattedText = rgApplyDefaultOutgoingFormatting(text, format: defaultFormatting)
                             var attributes: [MessageAttribute] = []
                             let entities: [MessageTextEntity]
                             if case let .customChatContents(customChatContents) = self.chatPresentationInterfaceState.subject, case .businessLinkSetup = customChatContents.kind {
-                                entities = generateChatInputTextEntities(text, generateLinks: false)
+                                entities = generateChatInputTextEntities(formattedText, generateLinks: false)
                             } else {
-                                entities = generateTextEntities(text.string, enabledTypes: .all, currentEntities: generateChatInputTextEntities(text, maxAnimatedEmojisInText: 0))
+                                entities = generateTextEntities(formattedText.string, enabledTypes: .all, currentEntities: generateChatInputTextEntities(formattedText, maxAnimatedEmojisInText: 0))
                             }
                             if !entities.isEmpty {
                                 attributes.append(TextEntitiesMessageAttribute(entities: entities))
@@ -5181,7 +5216,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                                 bubbleUpEmojiOrStickersets.removeAll()
                             }
                             
-                            messages.append(.message(text: text.string, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets))
+                            messages.append(.message(text: formattedText.string, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets))
                             mediaReference = nil
                         }
                     }

@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Uskutečnit video hovor?";
 
 "MutualContact.Label" = "vzájemný kontakt";
-
-"Settings.swipeForVideoPIP" = "Video PIP s přetahováním";
-"Settings.swipeForVideoPIP.Notice" = "Pokud je povoleno, poslání videa jej otevře v režimu Obraz v obraze.";

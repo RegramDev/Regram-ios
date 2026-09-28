@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import SwiftSignalKit
+import RGSimpleSettings
 
 
 enum RecentlyUsedMediaCategory {
@@ -40,7 +41,7 @@ func addSynchronizeRecentlyUsedMediaOperation(transaction: Transaction, category
 func addRecentlyUsedSticker(transaction: Transaction, fileReference: FileMediaReference) {
     if let resource = fileReference.media.resource as? CloudDocumentMediaResource {
         if let entry = CodableEntry(RecentMediaItem(fileReference.media)) {
-            transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(fileReference.media.fileId).rawValue, contents: entry), removeTailIfCountExceeds: 20)
+            transaction.addOrMoveToFirstPositionOrderedItemListItem(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, item: OrderedItemListEntry(id: RecentMediaItemId(fileReference.media.fileId).rawValue, contents: entry), removeTailIfCountExceeds: RGSimpleSettings.shared.recentStickerLimitValue)
         }
         addSynchronizeRecentlyUsedMediaOperation(transaction: transaction, category: .stickers, operation: .add(id: resource.fileId, accessHash: resource.accessHash, fileReference: fileReference))
     }

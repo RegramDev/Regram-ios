@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "هل ترغب في إجراء مكالمة فيديو؟";
 
 "MutualContact.Label" = "جهة اتصال مشتركة";
-
-"Settings.swipeForVideoPIP" = "فيديو PIP مع السحب";
-"Settings.swipeForVideoPIP.Notice" = "إذا تم تمكينه، سيفتح سحب الفيديو في وضع الصورة في الصورة.";

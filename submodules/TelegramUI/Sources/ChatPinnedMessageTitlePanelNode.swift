@@ -497,7 +497,7 @@ final class ChatPinnedMessageTitlePanelNode: ChatTitleAccessoryPanelNode {
         
         var translateToLanguage: (fromLang: String, toLang: String)?
         if let translationState = interfaceState.translationState, translationState.isEnabled {
-            translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), normalizeTranslationLanguage(translationState.toLang))
+            translateToLanguage = (normalizeTranslationLanguage(translationState.fromLang), normalizeTranslationTargetLanguage(translationState.toLang))
         }
         
         var currentTranslateToLanguageUpdated = false

@@ -297,7 +297,10 @@ func processSecretChatIncomingDecryptedOperations(encryptionProvider: Encryption
                                             }
                                         }
                                         // MARK: Regram — Anti-revoke (secret chats)
-                                        if !RGSimpleSettings.shared.antiRevoke {
+                                        // The switch on a secret chat's profile may be stored under the other user's
+                                        // regular id, so either one keeps the messages.
+                                        let rgRegularPeerId = (transaction.getPeer(peerId) as? TelegramSecretChat)?.regularPeerId
+                                        if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: peerId.toInt64()) && !(rgRegularPeerId.flatMap { RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: $0.toInt64()) } ?? false) {
                                             _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: filteredMessageIds)
                                         }
                                     }

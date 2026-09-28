@@ -7145,7 +7145,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
     
     @objc private func quickTranslateButtonPressed() {
         if let item = self.item {
-            let translateToLanguage = item.associatedData.translateToLanguageRG ?? item.presentationData.strings.baseLanguageCode
+            let translateToLanguage = normalizeTranslationTargetLanguage(item.associatedData.translateToLanguageRG ?? item.presentationData.strings.baseLanguageCode)
             if let quickTranslationAttribute = item.message.attributes.first(where: { $0 is QuickTranslationMessageAttribute }) as? QuickTranslationMessageAttribute {
                 let _ = (item.context.account.postbox.transaction { transaction in
                     transaction.updateMessage(item.message.id, update: { currentMessage in

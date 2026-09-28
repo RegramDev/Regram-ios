@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Een video-oproep maken?";
 
 "MutualContact.Label" = "gemeenschappelijke contactpersoon";
-
-"Settings.swipeForVideoPIP" = "Video PIP met veeg";
-"Settings.swipeForVideoPIP.Notice" = "Als ingeschakeld, opent het swipen van video het in de modus Beeld-in-Beeld.";

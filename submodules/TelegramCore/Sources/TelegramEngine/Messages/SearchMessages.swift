@@ -346,18 +346,7 @@ func _internal_searchMessages(account: Account, location: SearchMessagesLocation
                     // MARK: Regram
                     var result: [Message] = []
                     if forceLocal {
-                        transaction.withAllMessages(peerId: peerId, reversed: true, { message in
-                            if result.count >= limit {
-                                return false
-                            }
-                            if let tags = tags, message.tags != tags {
-                                return true
-                            }
-                            if message.text.contains(query) {
-                                result.append(message)
-                            }
-                            return true
-                        })
+                        result = transaction.rgSearchMessagesByText(peerId: peerId, query: query, tags: tags, limit: Int(limit))
                     } else {
                         result = transaction.searchMessages(peerId: peerId, query: query, tags: tags)
                     }

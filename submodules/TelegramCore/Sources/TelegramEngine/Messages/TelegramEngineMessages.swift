@@ -133,12 +133,21 @@ public extension TelegramEngine {
 
         public func searchMessages(location: SearchMessagesLocation, query: String, state: SearchMessagesState?, centerId: MessageId? = nil, limit: Int32 = 100) -> Signal<(SearchMessagesResult, SearchMessagesState), NoError> {
             return _internal_searchMessages(account: self.account, location: location, query: query, state: state, centerId: centerId, limit: limit)
-            // TODO(regram): Try to fallback on error when searching. RX is hard...
-            |> mapToSignal { result -> Signal<(SearchMessagesResult, SearchMessagesState), NoError> in
-                if (result.0.totalCount > 0) {
+            // MARK: Regram — when the server finds nothing in a chat, search what is stored locally
+            // (messages it no longer has, such as ones kept by anti-revoke).
+            //
+            // Only a single chat can be searched locally: for any other location `forceLocal` is
+            // ignored and this used to send the identical server request a second time. The local
+            // scan cannot be interrupted once it runs on the Postbox queue, so it waits out a short
+            // pause first; typing on disposes this signal, and only the query the user stopped at is
+            // scanned.
+            |> mapToSignal { [account = self.account] result -> Signal<(SearchMessagesResult, SearchMessagesState), NoError> in
+                guard result.0.totalCount == 0, state == nil, !query.isEmpty, case .peer = location else {
                     return .single(result)
                 }
-                return _internal_searchMessages(account: self.account, location: location, query: query, state: state, centerId: centerId, limit: limit, forceLocal: true)
+                return Signal<(SearchMessagesResult, SearchMessagesState), NoError>.complete()
+                |> delay(0.35, queue: Queue.concurrentDefaultQueue())
+                |> then(_internal_searchMessages(account: account, location: location, query: query, state: state, centerId: centerId, limit: limit, forceLocal: true))
             }
         }
         

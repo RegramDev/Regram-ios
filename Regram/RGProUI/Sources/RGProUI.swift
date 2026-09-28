@@ -31,6 +31,7 @@ private enum RGProDisclosureLink: String {
     case sessionBackupManager
     case messageFilter
     case hiddenUsers
+    case antiRevokeChats
     case appIcons
     case appBages
 }
@@ -48,6 +49,7 @@ private enum RGProToggles: String {
 private enum RGProOneFromManySetting: String {
     case pinnedMessageNotifications
     case mentionsAndRepliesNotifications
+    case defaultOutgoingFormatting
 }
 
 private enum RGProAction {
@@ -82,7 +84,11 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     // MARK: Regram — pangu spacing.
     entries.append(.toggle(id: id.count, section: .base, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "Pangu.Notice".i18n(lang)))
+    entries.append(.oneFromManySelector(id: id.count, section: .base, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .base, text: "OutgoingFormatting.Notice".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiFeatures, text: "AntiFeatures.Header".i18n(lang)))
+    // MARK: Regram — chats anti-revoke is on for individually (toggled from their profile).
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiRevokeChats, text: "AntiRevoke.Chats.Title".i18n(lang)))
     // MARK: Regram — ghost mode.
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .ghostMode, text: "Ghost.Header".i18n(lang)))
 
@@ -144,6 +150,14 @@ public func rgProController(context: AccountContext) -> ViewController {
         var items: [ActionSheetItem] = []
         
         switch (setting) {
+            case .defaultOutgoingFormatting:
+                for format in RGSimpleSettings.DefaultOutgoingFormat.allCases {
+                    items.append(ActionSheetButtonItem(title: "OutgoingFormatting.\(format.rawValue)".i18n(lang), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.defaultOutgoingFormatting = format.rawValue
+                        simplePromise.set(true)
+                    }))
+                }
             case .pinnedMessageNotifications:
                 let setAction: (String) -> Void = { value in
                     RGSimpleSettings.shared.pinnedMessageNotifications = value
@@ -191,6 +205,8 @@ public func rgProController(context: AccountContext) -> ViewController {
                 pushControllerImpl?(rgMessageFilterController(context: context, presentationData: presentationData))
             case .hiddenUsers:
                 pushControllerImpl?(rgHiddenUsersController(context: context))
+            case .antiRevokeChats:
+                pushControllerImpl?(rgAntiRevokeChatsController(context: context))
             case .appIcons:
                 pushControllerImpl?(themeSettingsController(context: context, focusOnItemTag: .icon))
             case .appBages:
@@ -291,4 +307,3 @@ public func rgProController(context: AccountContext) -> ViewController {
 
     return controller
 }
-

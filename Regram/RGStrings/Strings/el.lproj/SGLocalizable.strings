@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "Να κάνω μια Βιντεοκλήση;";
 
 "MutualContact.Label" = "αμοιβαία επαφή";
-
-"Settings.swipeForVideoPIP" = "Βίντεο PIP με Swipe";
-"Settings.swipeForVideoPIP.Notice" = "Αν είναι ενεργοποιημένο, το σ swipe video θα το ανοίξει σε λειτουργία Εικόνα μέσα στην Εικόνα.";

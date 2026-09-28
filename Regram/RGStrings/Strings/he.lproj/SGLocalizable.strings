@@ -147,6 +147,3 @@
 "CallConfirmation.Video.Title" = "לבצע שיחת וידאו?";
 
 "MutualContact.Label" = "איש קשר משותף";
-
-"Settings.swipeForVideoPIP" = "וידאו PIP עם החלקה";
-"Settings.swipeForVideoPIP.Notice" = "אם מופעל, החלקת הווידאו תפתח אותו במצב תמונה בתוך תמונה.";

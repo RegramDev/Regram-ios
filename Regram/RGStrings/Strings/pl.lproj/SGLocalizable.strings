@@ -152,8 +152,6 @@
 
 "MutualContact.Label" = "wzajemny kontakt";
 
-"Settings.swipeForVideoPIP" = "Wideo PIP po przesunięciu";
-"Settings.swipeForVideoPIP.Notice" = "Jeśli włączone, przesunięcie palcem otworzy film w trybie obrazu w obrazie.";
 
 "SessionBackup.Title" = "Kopia zapasowa kont";
 "SessionBackup.Sessions.Title" = "Sesje";

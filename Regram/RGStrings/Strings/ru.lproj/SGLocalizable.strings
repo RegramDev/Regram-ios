@@ -171,8 +171,6 @@
 
 "MutualContact.Label" = "взаимный контакт";
 
-"Settings.swipeForVideoPIP" = "Видео PIP свайпом";
-"Settings.swipeForVideoPIP.Notice" = "Если включено, свайп видео откроет его в режиме «Картинка в картинке».";
 
 "SessionBackup.Title" = "Бэкап аккаунтов";
 "SessionBackup.Sessions.Title" = "Сессии";

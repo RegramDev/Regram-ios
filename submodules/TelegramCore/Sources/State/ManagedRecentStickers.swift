@@ -3,6 +3,7 @@ import Postbox
 import TelegramApi
 import SwiftSignalKit
 import MtProtoKit
+import RGSimpleSettings
 
 private func hashForIds(_ ids: [Int64]) -> Int64 {
     var acc: UInt64 = 0
@@ -32,7 +33,29 @@ private func managedRecentMedia(postbox: Postbox, network: Network, collectionId
                         }
                     }
 
+                    let receivedItems = items
                     return postbox.transaction { transaction -> Void in
+                        var items = receivedItems
+                        if collectionId == Namespaces.OrderedItemList.CloudRecentStickers {
+                            let limit = RGSimpleSettings.shared.recentStickerLimitValue
+                            var existingIds = Set(items.map { $0.id.makeData() })
+                            // Telegram only syncs its server-side recent set. Keep the older local
+                            // entries beyond that set when the user chose a larger local limit.
+                            if items.count < limit {
+                                for existing in transaction.getOrderedListItems(collectionId: collectionId) {
+                                    let id = existing.id.makeData()
+                                    if existingIds.insert(id).inserted {
+                                        items.append(existing)
+                                        if items.count == limit {
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                            if items.count > limit {
+                                items = Array(items.prefix(limit))
+                            }
+                        }
                         transaction.replaceOrderedItemListItems(collectionId: collectionId, items: items)
                     }
                 } else {

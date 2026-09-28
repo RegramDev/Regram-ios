@@ -77,6 +77,7 @@ public class RGSimpleSettings {
             { let _ = self.quickTranslateButton },
             { let _ = self.stickerSize },
             { let _ = self.stickerTimestamp },
+            { let _ = self.recentStickerLimit },
             { let _ = self.hideReactions },
             { let _ = self.disableGalleryCamera },
             { let _ = self.disableSendAsButton },
@@ -156,6 +157,8 @@ public class RGSimpleSettings {
         case disableSnapDeletionEffect
         case stickerSize
         case stickerTimestamp
+        case recentStickerLimit
+        case defaultOutgoingFormatting
         case hideRecordingButton
         case hideTabBar
         case showDC
@@ -177,12 +180,12 @@ public class RGSimpleSettings {
         case hideChannelBottomButton
         case forceSystemSharing
         case confirmCalls
-        case videoPIPSwipeDirection
         case legacyNotificationsFix
         case messageFilterKeywords
         case messageFilterRules
         case blockedPeerIds
         case messageFilterDisabledPeerIds
+        case antiRevokePeerIds
         case inputToolbar
         case pinnedMessageNotifications
         case mentionsAndRepliesNotifications
@@ -253,12 +256,6 @@ public class RGSimpleSettings {
         case edit
     }
     
-    public enum VideoPIPSwipeDirection: String, CaseIterable {
-        case up
-        case down
-        case none
-    }
-
     public enum TranscriptionBackend: String, CaseIterable {
         case `default`
         case apple
@@ -271,6 +268,17 @@ public class RGSimpleSettings {
         case system
         // Make sure to update TranslationConfiguration
     }
+
+    public enum DefaultOutgoingFormat: String, CaseIterable {
+        case none
+        case bold
+        case italic
+        case underline
+        case strikethrough
+        case spoiler
+    }
+
+    public static let recentStickerLimitOptions: [Int32] = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200]
         
     public enum PinnedMessageNotificationsSettings: String, CaseIterable {
         case `default`
@@ -342,6 +350,8 @@ public class RGSimpleSettings {
         Keys.disableSnapDeletionEffect.rawValue: false,
         Keys.stickerSize.rawValue: 100,
         Keys.stickerTimestamp.rawValue: true,
+        Keys.recentStickerLimit.rawValue: 20,
+        Keys.defaultOutgoingFormatting.rawValue: DefaultOutgoingFormat.none.rawValue,
         Keys.hideRecordingButton.rawValue: false,
         Keys.hideTabBar.rawValue: false,
         Keys.showDC.rawValue: false,
@@ -362,7 +372,6 @@ public class RGSimpleSettings {
         Keys.secondsInMessages.rawValue: false,
         Keys.forceSystemSharing.rawValue: false,
         Keys.confirmCalls.rawValue: true,
-        Keys.videoPIPSwipeDirection.rawValue: VideoPIPSwipeDirection.up.rawValue,
         Keys.messageFilterKeywords.rawValue: [],
         Keys.inputToolbar.rawValue: false,
         Keys.primaryUserId.rawValue: "",
@@ -397,6 +406,7 @@ public class RGSimpleSettings {
         Keys.messageFilterRules.rawValue: "[]",
         Keys.blockedPeerIds.rawValue: [],
         Keys.messageFilterDisabledPeerIds.rawValue: [],
+        Keys.antiRevokePeerIds.rawValue: [],
         // MARK: Ghost Mode — the app group suite, because the share/notification extensions run
         // TelegramCore too and must not leak a presence signal the main app is suppressing.
         Keys.ghostDontReadStories.rawValue: false,
@@ -711,6 +721,21 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.stickerTimestamp.rawValue)
     public var stickerTimestamp: Bool    
 
+    @UserDefault(key: Keys.recentStickerLimit.rawValue)
+    public var recentStickerLimit: Int32
+
+    @UserDefault(key: Keys.defaultOutgoingFormatting.rawValue)
+    public var defaultOutgoingFormatting: String
+
+    public var recentStickerLimitValue: Int {
+        let limit = self.recentStickerLimit
+        return RGSimpleSettings.recentStickerLimitOptions.contains(limit) ? Int(limit) : 20
+    }
+
+    public var defaultOutgoingFormat: DefaultOutgoingFormat {
+        return DefaultOutgoingFormat(rawValue: self.defaultOutgoingFormatting) ?? .none
+    }
+
     @UserDefault(key: Keys.hideRecordingButton.rawValue)
     public var hideRecordingButton: Bool
     
@@ -775,9 +800,6 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.confirmCalls.rawValue)
     public var confirmCalls: Bool
     
-    @UserDefault(key: Keys.videoPIPSwipeDirection.rawValue)
-    public var videoPIPSwipeDirection: String
-
     @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var legacyNotificationsFix: Bool
     
@@ -924,6 +946,56 @@ public class RGSimpleSettings {
             ids.remove(peerId)
         }
         self.blockedPeerIds = ids
+    }
+
+    // MARK: Regram — chats anti-revoke is switched on for individually, from the chat's own profile.
+    // `antiRevoke` still covers every chat; this list only adds chats while it is off. Kept in the
+    // app group suite with `antiRevoke`, since the notification extension applies deletions too.
+    @UserDefault(key: Keys.antiRevokePeerIds.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
+    public var antiRevokePeerIdsRaw: [String]
+
+    /// Deletions are checked per message, so the decoded set is memoised.
+    private let antiRevokeCacheLock = NSLock()
+    private var cachedAntiRevokePeerIds: Set<Int64>?
+
+    public var antiRevokePeerIds: Set<Int64> {
+        get {
+            self.antiRevokeCacheLock.lock()
+            defer { self.antiRevokeCacheLock.unlock() }
+            if let cached = self.cachedAntiRevokePeerIds {
+                return cached
+            }
+            let decoded = Set(self.antiRevokePeerIdsRaw.compactMap { Int64($0) })
+            self.cachedAntiRevokePeerIds = decoded
+            return decoded
+        }
+        set {
+            self.antiRevokeCacheLock.lock()
+            self.antiRevokePeerIdsRaw = newValue.map { String($0) }
+            self.cachedAntiRevokePeerIds = newValue
+            self.antiRevokeCacheLock.unlock()
+        }
+    }
+
+    /// Whether anti-revoke applies anywhere, so a deletion can take the upstream path untouched
+    /// when it does not.
+    public var isAntiRevokeActive: Bool {
+        return self.antiRevoke || !self.antiRevokePeerIds.isEmpty
+    }
+
+    /// Whether messages revoked in `peerId` are kept: on for every chat, or for this one.
+    public func isAntiRevokeEnabled(forPeer peerId: Int64) -> Bool {
+        return self.antiRevoke || self.antiRevokePeerIds.contains(peerId)
+    }
+
+    public func setAntiRevokeEnabled(_ enabled: Bool, forPeer peerId: Int64) {
+        var ids = self.antiRevokePeerIds
+        if enabled {
+            ids.insert(peerId)
+        } else {
+            ids.remove(peerId)
+        }
+        self.antiRevokePeerIds = ids
     }
 
     /// Appends a rule, ignoring exact duplicates (same pattern, mode and scope).
