@@ -375,6 +375,8 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
     
     private var currentGeneralScrollDirection: GeneralScrollDirection?
     public final var generalScrollDirectionUpdated: (GeneralScrollDirection) -> Void = { _ in }
+    // MARK: Regram — cumulative movement notifications also fire in the same direction.
+    public final var rgScrollDirectionUpdated: (GeneralScrollDirection) -> Void = { _ in }
     
     public var autoScrollWhenReordering = true
     public private(set) var isReordering = false
@@ -1046,6 +1048,7 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
                 self.currentGeneralScrollDirection = direction
                 self.generalScrollDirectionUpdated(direction)
             }
+            self.rgScrollDirectionUpdated(direction)
         }
         
         self.lastContentOffset = scrollView.contentOffset

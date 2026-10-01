@@ -287,6 +287,21 @@ public extension ChunkMediaPlayerV2.MediaDataReaderParams {
 }
 
 private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContentNode {
+    // MARK: Regram — playback holds download priority independently of a chat screen.
+    private let rgFetchManager: FetchManager
+    private let rgStreamingPriority = MetaDisposable()
+    private var rgPlaybackStatusDisposable: Disposable?
+    private var rgHasStreamingPriority = false
+    private var rgStreamingHasSound = false
+    private let rgDisplayReadyPromise = Promise<Void>()
+    var rgDisplayReady: Signal<Void, NoError> { return self.rgDisplayReadyPromise.get() }
+    var rgStreamingOwnerId: Int64? { return Int64(Int(bitPattern: ObjectIdentifier(self))) }
+    func rgSetRetainedLoadingSuspended(_ suspended: Bool) {
+        if suspended {
+            self.pause()
+            self.fetchDisposable.set(nil)
+        }
+    }
     private let postbox: Postbox
     private let userLocation: MediaResourceUserLocation
     private let fileReference: FileMediaReference
@@ -370,6 +385,8 @@ private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContent
     private let hasSentFramesToDisplay: (() -> Void)?
     
     init(context: AccountContext, postbox: Postbox, audioSessionManager: ManagedAudioSession, userLocation: MediaResourceUserLocation, fileReference: FileMediaReference, previewSourceFileReference: FileMediaReference?, limitedFileRange: Range<Int64>?, imageReference: ImageMediaReference?, streamVideo: MediaPlayerStreaming, loopVideo: Bool, enableSound: Bool, soundMuted: Bool, beginWithAmbientSound: Bool, mixWithOthers: Bool, baseRate: Double, fetchAutomatically: Bool, onlyFullSizeThumbnail: Bool, useLargeThumbnail: Bool, autoFetchFullSizeThumbnail: Bool, startTimestamp: Double?, endTimestamp: Double?, continuePlayingWithoutSoundOnLostAudioSession: Bool = false, placeholderColor: UIColor, tempFilePath: String?, isAudioVideoMessage: Bool, captureProtected: Bool, hintDimensions: CGSize?, storeAfterDownload: (() -> Void)? = nil, displayImage: Bool, hasSentFramesToDisplay: (() -> Void)?) {
+        // MARK: Regram
+        self.rgFetchManager = context.fetchManager
         self.postbox = postbox
         self.userLocation = userLocation
         self.fileReference = fileReference
@@ -419,6 +436,8 @@ private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContent
             }
             didProcessFramesToDisplay = true
             self.playerNode.isHidden = false
+            // MARK: Regram — the cover image cannot fulfill this signal.
+            self.rgDisplayReadyPromise.set(.single(Void()))
             self.hasSentFramesToDisplay?()
         }
         
@@ -554,6 +573,9 @@ private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContent
     
     deinit {
         self.initializePlayerDisposable?.dispose()
+        // MARK: Regram
+        self.rgPlaybackStatusDisposable?.dispose()
+        self.rgStreamingPriority.dispose()
         self.player?.pause()
         self.thumbnailPlayer?.pause()
         self.fetchDisposable.dispose()
@@ -563,6 +585,22 @@ private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContent
     private func initializePlayer(player: PlayerImpl) {
         var player = player
         self.player = player
+        // MARK: Regram — paused/prepared players must not retain streaming priority.
+        self.rgPlaybackStatusDisposable?.dispose()
+        self.rgPlaybackStatusDisposable = (player.status |> deliverOnMainQueue).start(next: { [weak self] status in
+            guard let self else { return }
+            let active: Bool
+            switch status.status {
+            case .playing: active = true
+            case let .buffering(_, whilePlaying, _, _): active = whilePlaying
+            case .paused: active = false
+            }
+            if self.rgHasStreamingPriority != active || (active && self.rgStreamingHasSound != status.soundEnabled) {
+                self.rgHasStreamingPriority = active
+                self.rgStreamingHasSound = status.soundEnabled
+                self.rgStreamingPriority.set(active ? self.rgFetchManager.rgAcquireStreamingPriority(owner: Int64(Int(bitPattern: ObjectIdentifier(self))), resourceIds: [self.fileReference.media.resource.id.stringRepresentation], userInitiated: status.soundEnabled) : nil)
+            }
+        })
         
         var actionAtEndImpl: (() -> Void)?
         if self.enableSound && !self.loopVideo {
@@ -673,7 +711,9 @@ private final class NativeVideoContentNode: ASDisplayNode, UniversalVideoContent
                 return
             }
             processedSentFramesToDisplay = true
-            
+            // MARK: Regram — a decoded preview-video frame is also display-ready;
+            // static image readiness still cannot fulfill this signal.
+            strongSelf.rgDisplayReadyPromise.set(.single(Void()))
             strongSelf.hasSentFramesToDisplay?()
             
             Queue.mainQueue().after(0.1, {

@@ -143,6 +143,11 @@ final class HLSJSServerSource: SharedHLSServer.Source {
     }
     
     func fileData(id: Int64, range: Range<Int>) -> Signal<(TempBoxFile, Range<Int>, Int)?, NoError> {
+        // MARK: Regram — server users without a playback owner retain their path.
+        return self.rgFileData(id: id, range: range, admission: .single(true))
+    }
+
+    func rgFileData(id: Int64, range: Range<Int>, admission: Signal<Bool, NoError>) -> Signal<(TempBoxFile, Range<Int>, Int)?, NoError> {
         guard let (quality, file) = self.qualityFiles.first(where: { $0.value.media.fileId.id == id }) else {
             return .single(nil)
         }
@@ -272,17 +277,18 @@ final class HLSJSServerSource: SharedHLSServer.Source {
                     return EmptyDisposable
                 }
                 
-                let fetchDisposable = fileContext.fetched(
-                    range: mappedRange,
-                    priority: .default,
-                    fetch: { intervals in
-                        return fetchResource(file.media.resource, intervals, params)
-                    },
-                    error: { _ in
-                    },
-                    completed: {
+                // MARK: Regram — cached ranges above bypass the remote lane. A
+                // deferred range keeps its data observer and resumes on admission.
+                let fetchDisposable = MetaDisposable()
+                let admissionDisposable = (admission |> deliverOn(queue) |> distinctUntilChanged).start(next: { admitted in
+                    if admitted {
+                        fetchDisposable.set(fileContext.fetched(range: mappedRange, priority: .default, fetch: { intervals in
+                            return fetchResource(file.media.resource, intervals, params)
+                        }, error: { _ in }, completed: {}))
+                    } else {
+                        fetchDisposable.set(nil)
                     }
-                )
+                })
                 
                 #if DEBUG
                 let startTime = CFAbsoluteTimeGetCurrent()
@@ -309,6 +315,7 @@ final class HLSJSServerSource: SharedHLSServer.Source {
                 
                 return ActionDisposable {
                     queue.async {
+                        admissionDisposable.dispose()
                         fetchDisposable.dispose()
                         dataDisposable.dispose()
                         fileContext.cancelFullRangeFetches()
@@ -745,10 +752,9 @@ private final class SharedHLSVideoJSContext: NSObject {
                                 SharedHLSVideoJSContext.sendErrorAndClose(id: id, error: .badRequest, completion: completion)
                                 return
                             }
-                            let _ = (source.fileData(id: fileIdValue, range: requestRange.lowerBound ..< requestRange.upperBound + 1)
-                            |> deliverOn(.mainQueue())
-                            //|> timeout(5.0, queue: self.queue, alternate: .single(nil))
-                            |> take(1)).start(next: { result in
+                            // MARK: Regram — a fragment is owned by the requesting
+                            // player and can be canceled by JS abort or retention.
+                            context.rgFetchSegment(requestId: id, source: source, fileId: fileIdValue, range: requestRange.lowerBound ..< requestRange.upperBound + 1, completion: { result in
                                 if let (tempFile, tempFileRange, totalSize) = result {
                                     SharedHLSVideoJSContext.sendResponseFileAndClose(id: id, file: tempFile, fileRange: tempFileRange, range: requestRange, totalSize: totalSize, completion: completion)
                                 } else {
@@ -773,6 +779,8 @@ private final class SharedHLSVideoJSContext: NSObject {
                 if let task = self.tempTasks.removeValue(forKey: id) {
                     task.cancel()
                 }
+                // MARK: Regram
+                for reference in self.contextReferences.values { reference.contentNode?.rgCancelSegment(requestId: id) }
                 
                 completion([:])
             }
@@ -929,6 +937,17 @@ private final class SharedHLSVideoJSContext: NSObject {
 }
 
 final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNode {
+    // MARK: Regram — include playlist and quality resources used by the HLS bridge.
+    private let rgFetchManager: FetchManager
+    private var rgStreamingPriorities: [Disposable] = []
+    private var rgHasStreamingPriority = false
+    private var rgStreamingHasSound = false
+    private var rgSegmentRequests: [Int: MetaDisposable] = [:]
+    private var rgRetainedLoadingSuspended = false
+    private let rgLoadingSuspendedPromise = ValuePromise<Bool>(false, ignoreRepeated: true)
+    private let rgDisplayReadyPromise = Promise<Void>()
+    var rgDisplayReady: Signal<Void, NoError> { return self.rgDisplayReadyPromise.get() }
+    var rgStreamingOwnerId: Int64? { return Int64(Int(bitPattern: ObjectIdentifier(self))) }
     fileprivate struct Level {
         let bitrate: Int
         let width: Int
@@ -1048,6 +1067,8 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
     private var contextDisposable: Disposable?
     
     init(context: AccountContext, postbox: Postbox, audioSessionManager: ManagedAudioSession, userLocation: MediaResourceUserLocation, fileReference: FileMediaReference, streamVideo: Bool, loopVideo: Bool, enableSound: Bool, baseRate: Double, fetchAutomatically: Bool, onlyFullSizeThumbnail: Bool, useLargeThumbnail: Bool, autoFetchFullSizeThumbnail: Bool, codecConfiguration: HLSCodecConfiguration) {
+        // MARK: Regram
+        self.rgFetchManager = context.fetchManager
         self.instanceId = HLSVideoJSNativeContentNode.nextInstanceId
         HLSVideoJSNativeContentNode.nextInstanceId += 1
         
@@ -1119,6 +1140,8 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
             }
             didProcessFramesToDisplay = true
             self.playerNode.isHidden = false
+            // MARK: Regram
+            self.rgDisplayReadyPromise.set(.single(Void()))
         }
 
         let thumbnailVideoReference = HLSVideoContent.minimizedHLSQuality(file: fileReference, codecConfiguration: self.codecConfiguration)?.file ?? fileReference
@@ -1159,6 +1182,14 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
             guard let self else {
                 return
             }
+            // MARK: Regram
+            let active: Bool
+            switch status.status {
+            case .playing: active = true
+            case let .buffering(_, whilePlaying, _, _): active = whilePlaying
+            case .paused: active = false
+            }
+            self.rgUpdateStreamingPriority(active: active)
             self.updatePlayerStatus(status: status)
         })
         
@@ -1184,6 +1215,9 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
     }
     
     deinit {
+        // MARK: Regram
+        for priority in self.rgStreamingPriorities { priority.dispose() }
+        for request in self.rgSegmentRequests.values { request.dispose() }
         if let didBecomeActiveObserver = self.didBecomeActiveObserver {
             NotificationCenter.default.removeObserver(didBecomeActiveObserver)
         }
@@ -1261,7 +1295,7 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
         
         self.updateVideoQualityState()
         
-        if self.playerIsReady {
+        if self.playerIsReady && !self.rgRetainedLoadingSuspended { // MARK: Regram
             if !self.hasRequestedPlayerLoad {
                 if !self.playerAvailableLevels.isEmpty {
                     var selectedLevelIndex: Int?
@@ -1464,6 +1498,8 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
     
     func play() {
         assert(Queue.mainQueue().isCurrent())
+        // MARK: Regram — reserve priority before the first HLS fragment is requested.
+        self.rgUpdateStreamingPriority(active: true)
         if !self.initializedStatus {
             self._status.set(MediaPlayerStatus(generationTimestamp: 0.0, duration: Double(self.approximateDuration), dimensions: CGSize(), timestamp: 0.0, baseRate: self.requestedBaseRate, seekId: self.seekId, status: .buffering(initial: true, whilePlaying: true, progress: 0.0, display: true), soundEnabled: self.enableSound))
         }
@@ -1472,7 +1508,60 @@ final class HLSVideoJSNativeContentNode: ASDisplayNode, UniversalVideoContentNod
     
     func pause() {
         assert(Queue.mainQueue().isCurrent())
+        // MARK: Regram
+        self.rgUpdateStreamingPriority(active: false)
         self.player.pause()
+    }
+
+    // MARK: Regram
+    private func rgUpdateStreamingPriority(active: Bool) {
+        guard self.rgHasStreamingPriority != active || (active && self.rgStreamingHasSound != self.enableSound) else { return }
+        self.rgHasStreamingPriority = active
+        self.rgStreamingHasSound = self.enableSound
+        for priority in self.rgStreamingPriorities { priority.dispose() }
+        self.rgStreamingPriorities.removeAll()
+        if active {
+            var resources = Set([self.fileReference.media.resource.id.stringRepresentation])
+            if let source = self.playerSource {
+                for file in source.playlistFiles.values { resources.insert(file.media.resource.id.stringRepresentation) }
+                for file in source.qualityFiles.values { resources.insert(file.media.resource.id.stringRepresentation) }
+            }
+            self.rgStreamingPriorities = [self.rgFetchManager.rgAcquireStreamingPriority(owner: Int64(Int(bitPattern: ObjectIdentifier(self))), resourceIds: Array(resources), userInitiated: self.enableSound)]
+        }
+    }
+
+    // MARK: Regram — retaining a decoder must not retain its background fetches.
+    func rgSetRetainedLoadingSuspended(_ suspended: Bool) {
+        guard self.rgRetainedLoadingSuspended != suspended else { return }
+        self.rgRetainedLoadingSuspended = suspended
+        self.rgLoadingSuspendedPromise.set(suspended)
+        if suspended { self.pause() }
+        let command = suspended ? "hls.stopLoad()" : (self.hasRequestedPlayerLoad ? "hls.startLoad(-1)" : "refreshPlayerStatus()")
+        SharedHLSVideoJSContext.shared.jsContext?.evaluateJavaScript("(function(){var instance=window.hlsPlayer_instances&&window.hlsPlayer_instances[\(self.instanceId)];if(instance){instance.\(command);}})();")
+    }
+
+    fileprivate func rgCancelSegment(requestId: Int) {
+        self.rgSegmentRequests.removeValue(forKey: requestId)?.dispose()
+    }
+
+    fileprivate func rgFetchSegment(requestId: Int, source: HLSJSServerSource, fileId: Int64, range: Range<Int>, completion: @escaping ((TempBoxFile, Range<Int>, Int)?) -> Void) {
+        self.rgCancelSegment(requestId: requestId)
+        guard let resource = source.qualityFiles.values.first(where: { $0.media.fileId.id == fileId })?.media.resource else {
+            completion(nil)
+            return
+        }
+        let request = MetaDisposable()
+        self.rgSegmentRequests[requestId] = request
+        let admission = combineLatest(self.rgFetchManager.rgForegroundStreamingAdmission(resourceId: resource.id.stringRepresentation), self.rgLoadingSuspendedPromise.get())
+        |> map { admitted, suspended in admitted && !suspended }
+        |> distinctUntilChanged
+        request.set((source.rgFileData(id: fileId, range: range, admission: admission)
+        |> deliverOnMainQueue |> take(1)).start(next: { [weak self, weak request] result in
+            guard let self, let request, self.rgSegmentRequests[requestId] === request else { return }
+            self.rgSegmentRequests.removeValue(forKey: requestId)
+            completion(result)
+            request.dispose()
+        }))
     }
     
     func togglePlayPause() {

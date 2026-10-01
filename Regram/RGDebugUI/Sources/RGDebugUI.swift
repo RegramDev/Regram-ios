@@ -28,7 +28,6 @@ private enum RGDebugControllerSection: Int32, RGItemListSection {
 }
 
 private enum RGDebugDisclosureLink: String {
-    case sessionBackupManager
     case messageFilter
     case debugIAP
 }
@@ -217,4 +216,3 @@ public func rgDebugController(context: AccountContext) -> ViewController {
     
     return controller
 }
-

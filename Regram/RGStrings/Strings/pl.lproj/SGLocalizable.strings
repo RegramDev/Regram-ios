@@ -152,26 +152,6 @@
 
 "MutualContact.Label" = "wzajemny kontakt";
 
-
-"SessionBackup.Title" = "Kopia zapasowa kont";
-"SessionBackup.Sessions.Title" = "Sesje";
-"SessionBackup.Actions.Backup" = "Kopia zapasowa do pęku kluczy";
-"SessionBackup.Actions.Restore" = "Przywróć z pęku kluczy";
-"SessionBackup.Actions.DeleteAll" = "Usuń kopię zapasową pęku kluczy";
-"SessionBackup.Actions.DeleteOne" = "Usuń z kopii zapasowej";
-"SessionBackup.Actions.RemoveFromApp" = "Usuń z aplikacji";
-"SessionBackup.LastBackupAt" = "Ostatnia kopia zapasowa: %@";
-"SessionBackup.RestoreOK" = "OK. Przywrócono sesje: %@";
-"SessionBackup.LoggedIn" = "Zalogowano";
-"SessionBackup.LoggedOut" = "Wylogowano";
-"SessionBackup.DeleteAll.Title" = "Usunąć wszystkie sesje?";
-"SessionBackup.DeleteAll.Text" = "Wszystkie sesje zostaną usunięte z pęku kluczy.\n\nKonta nie zostaną wylogowane ze Regram.";
-"SessionBackup.DeleteSingle.Title" = "Usunąć 1 (jedną) sesję?";
-"SessionBackup.DeleteSingle.Text" = "%@ sesja zostanie usunięta z pęku kluczy.\n\nKonto nie zostanie wylogowane ze Regram.";
-"SessionBackup.RemoveFromApp.Title" = "Usunąć konto z aplikacji?";
-"SessionBackup.RemoveFromApp.Text" = "%@ sesja ZOSTANIE USUNIĘTA ze Regram! Sesja pozostanie aktywna, więc możesz ją później przywrócić.";
-"SessionBackup.Notice" = "Sesje są szyfrowane i przechowywane w pęku kluczy urządzenia. Sesje nigdy nie opuszczają urządzenia.\n\nWAŻNE: Aby przywrócić sesje na nowym urządzeniu lub po zresetowaniu systemu operacyjnego, MUSISZ włączyć szyfrowane kopie zapasowe, w przeciwnym razie pęk kluczy nie zostanie przeniesiony.\n\nUWAGA: Sesje mogą zostać unieważnione przez Telegram lub z innego urządzenia.";
-
 "MessageFilter.Title" = "Filtr wiadomości";
 "MessageFilter.SubTitle" = "Usuń elementy rozpraszające uwagę i ukryj wiadomości zawierające poniższe słowa kluczowe.\nW słowach kluczowych rozróżniana jest wielkość liter.";
 "MessageFilter.Keywords.Title" = "Słowa kluczowe";
@@ -190,10 +170,6 @@
 
 
 "PayWall.Text" = "Doładowany funkcjami Pro";
-
-"PayWall.SessionBackup.Title" = "Kopia zapasowa sesji";
-"PayWall.SessionBackup.Notice" = "Przywróć sesje z zaszyfrowanej lokalnej kopii zapasowej pęku kluczy Apple.";
-"PayWall.SessionBackup.Description" = "Zmiana urządzenia lub usunięcie Regrama nie jest już problemem. Przywróć wszystkie sesje, które są nadal aktywne na serwerach Telegrama.";
 
 "PayWall.MessageFilter.Title" = "Filtr wiadomości";
 "PayWall.MessageFilter.Notice" = "Ukryj SPAM, promocje i irytujące wiadomości.";
@@ -241,3 +217,9 @@
 "PayWall.ValidationError" = "Błąd weryfikacji";
 "PayWall.ValidationError.TryAgain" = "Coś poszło nie tak podczas weryfikacji zakupu. Nie martw się! Spróbuj przywrócić zakupy trochę później.";
 "PayWall.ValidationError.Expired" = "Twoja subskrypcja wygasła. Subskrybuj ponownie, aby odzyskać dostęp do funkcji Pro.";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Domyślna jakość wideo";
+"Settings.DefaultVideoQuality.automatic" = "Automatyczna";
+"Settings.DefaultVideoQuality.highest" = "Najwyższa dostępna";
+"Settings.DefaultVideoQuality.lowest" = "Najniższa dostępna";

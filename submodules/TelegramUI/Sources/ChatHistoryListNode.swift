@@ -39,6 +39,9 @@ import TextFormat
 import ChatNewThreadInfoItem
 import PhoneNumberFormat
 import Postbox
+// MARK: Regram
+import ChatMessageInteractiveMediaNode
+import RGChatHistoryProcessing
 
 struct ChatTopVisibleMessageRange: Equatable {
     var lowerBound: MessageIndex
@@ -612,6 +615,17 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     private var currentEarlierPrefetchMessages: [(Message, Media)] = []
     private var currentLaterPrefetchMessages: [(Message, Media)] = []
     private var currentPrefetchDirectionIsToLater: Bool = false
+    // MARK: Regram
+    private var rgMediaLoadingSettingsObserver: NSObjectProtocol?
+    private var rgInlinePlaybackSessionId = Int64.random(in: 1 ... Int64.max)
+    private var rgInlinePlaybackTimer: SwiftSignalKit.Timer?
+    private var rgScrollResourceUpdatePending = false
+    private var rgPlaybackExperimentWasEnabled = false
+    private var rgGalleryResumeTimer: SwiftSignalKit.Timer?
+    private weak var rgGalleryReturnNode: ChatMessageInteractiveMediaNode?
+    private var rgPlaybackObservers: [NSObjectProtocol] = []
+    private var rgMessageProcessor: RGChatHistoryMessageProcessor?
+    private var rgTranslationRequests: [UInt64: MetaDisposable] = [:]
     
     private var maxVisibleMessageIndexReported: MessageIndex?
     var maxVisibleMessageIndexUpdated: ((MessageIndex) -> Void)?
@@ -771,7 +785,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     
     private let clientId: Atomic<Int32>
     
-    private var translationLang: (fromLang: String?, toLang: String)?
+    private var translationLang: (fromLang: String?, toLang: String)? {
+        didSet {
+            // MARK: Regram — a prior language's completion must not unlock new work.
+            if oldValue?.toLang != self.translationLang?.toLang {
+                for request in self.rgTranslationRequests.values { request.dispose() }
+                self.rgTranslationRequests.removeAll()
+                self.rgMessageProcessor?.resetTranslationWork()
+            }
+        }
+    }
     
     private var allowDustEffect: Bool = true
     private var dustEffectLayer: DustEffectLayer?
@@ -1014,6 +1037,23 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
         self.translationProcessingManager.process = { [weak self, weak context] messageIds in
             if let context, let translationLang = self?.translationLang {
+                // MARK: Regram — batch once while the previous RPC is in flight.
+                if RGSimpleSettings.shared.mediaLoadingExperiment, let self, let processor = self.rgMessageProcessor {
+                    let currentPeerId = self.chatLocation.peerId
+                    let ids = messageIds.map(\.messageId).filter { currentPeerId == nil || $0.peerId == currentPeerId }
+                    let work = processor.beginTranslation(Array(ids), language: translationLang.toLang)
+                    guard !work.keys.isEmpty else { return }
+                    let request = MetaDisposable()
+                    self.rgTranslationRequests[work.generation] = request
+                    request.set((translateMessageIds(context: context, messageIds: work.keys, fromLang: translationLang.fromLang, toLang: translationLang.toLang, viaText: !context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal)
+                    |> deliverOnMainQueue).start(completed: { [weak self, weak request] in
+                        guard let self, let request, self.rgTranslationRequests[work.generation] === request else { return }
+                        self.rgTranslationRequests.removeValue(forKey: work.generation)
+                        processor.finishTranslation(work.keys, language: translationLang.toLang, generation: work.generation)
+                        request.dispose()
+                    }))
+                    return
+                }
                 let _ = translateMessageIds(context: context, messageIds: Array(messageIds.map(\.messageId)), fromLang: translationLang.fromLang, toLang: translationLang.toLang, viaText: !context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal).startStandalone()
             }
         }
@@ -1095,11 +1135,20 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 }
             }
         }
+        // MARK: Regram — same-direction motion can refresh the current resource
+        // window without replacing the upstream change-only callback.
+        self.listView.rgScrollDirectionUpdated = { [weak self] _ in
+            guard let self, RGSimpleSettings.shared.mediaLoadingExperiment else { return }
+            self.rgScrollResourceUpdatePending = true
+            self.rgScheduleInlinePlaybackUpdate()
+        }
         
         self.listView.displayedItemRangeChanged = { [weak self] displayedRange, opaqueTransactionState in
             if let strongSelf = self, let transactionState = opaqueTransactionState as? ChatHistoryTransactionOpaqueState {
                 strongSelf.processDisplayedItemRangeChanged(displayedRange: displayedRange, transactionState: transactionState)
             }
+            // MARK: Regram
+            self?.rgScheduleInlinePlaybackUpdate()
         }
         
         self.refreshDisplayedItemRangeTimer = SwiftSignalKit.Timer(timeout: 10.0, repeat: true, completion: { [weak self] in
@@ -1115,6 +1164,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         self.listView.visibleContentOffsetChanged = { [weak self] offset, _ in
             if let strongSelf = self {
                 strongSelf.contentPositionChanged(offset)
+                // MARK: Regram — prioritize by viewport position, not just list indices.
+                strongSelf.rgScheduleInlinePlaybackUpdate()
                 
                 if strongSelf.tag == nil {
                     var atBottom = false
@@ -1331,9 +1382,38 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         self.listView.view.addGestureRecognizer(selectionRecognizer)
 
         self.loadNextGenericReactionEffect(context: context)
+        // MARK: Regram — apply the comparison switch to an already-open chat.
+        self.rgMediaLoadingSettingsObserver = NotificationCenter.default.addObserver(forName: RGMediaLoadingPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.listView.updateVisibleItemRange(force: true)
+            self?.rgScheduleInlinePlaybackUpdate()
+            if !RGSimpleSettings.shared.mediaLoadingExperiment, let self {
+                for request in self.rgTranslationRequests.values { request.dispose() }
+                self.rgTranslationRequests.removeAll()
+                self.rgMessageProcessor?.resetTranslationWork()
+            }
+        }
+        for name in [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification, ProcessInfo.thermalStateDidChangeNotification, RGMediaLoadingPolicy.inlineVideoCapacityChanged] {
+            self.rgPlaybackObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.rgScheduleInlinePlaybackUpdate()
+            })
+        }
     }
     
     deinit {
+        // MARK: Regram
+        if let observer = self.rgMediaLoadingSettingsObserver { NotificationCenter.default.removeObserver(observer) }
+        self.rgInlinePlaybackTimer?.invalidate()
+        self.rgGalleryResumeTimer?.invalidate()
+        for observer in self.rgPlaybackObservers { NotificationCenter.default.removeObserver(observer) }
+        for request in self.rgTranslationRequests.values { request.dispose() }
+        self.rgMessageProcessor?.resetTranslationWork()
+        let rgManager = self.context.sharedContext.mediaManager.universalVideoManager
+        let rgFetchManager = self.context.fetchManager
+        let rgSessionId = self.rgInlinePlaybackSessionId
+        Queue.mainQueue().async {
+            rgManager.rgEndInlineVideoSession(rgSessionId)
+            rgFetchManager.rgSetPreferredStreamingOwner(sessionId: rgSessionId, owner: nil)
+        }
         self.historyDisposable.dispose()
         self.readHistoryDisposable.dispose()
         self.interactiveReadActionDisposable?.dispose()
@@ -1371,6 +1451,19 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         if self.chatLocation == chatLocation {
             return
         }
+        // MARK: Regram — a reused history node must not retain the old chat's player.
+        self.rgGalleryResumeTimer?.invalidate()
+        self.rgGalleryResumeTimer = nil
+        self.rgGalleryReturnNode = nil
+        if RGSimpleSettings.shared.mediaLoadingExperiment {
+            for node in self.rgInlineVideoNodes() { node.rgApplyInlinePlaybackAdmission(false) }
+        }
+        self.context.sharedContext.mediaManager.universalVideoManager.rgEndInlineVideoSession(self.rgInlinePlaybackSessionId)
+        self.context.fetchManager.rgSetPreferredStreamingOwner(sessionId: self.rgInlinePlaybackSessionId, owner: nil)
+        self.rgInlinePlaybackSessionId = Int64.random(in: 1 ... Int64.max)
+        for request in self.rgTranslationRequests.values { request.dispose() }
+        self.rgTranslationRequests.removeAll()
+        self.rgMessageProcessor = nil
         self.chatLocation = chatLocation
         
         self.interactiveReadActionDisposable?.dispose()
@@ -1989,19 +2082,29 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         // order and never dropped: the first update of a view carries its scroll position.
         let rgFilterAccountPeerId = context.account.peerId
         let rgFilterQueue = Queue(name: "regram.chat-history-filter", qos: .userInitiated)
+        let rgProcessor = self.rgMessageProcessor ?? RGChatHistoryMessageProcessor(accountPeerId: rgFilterAccountPeerId)
+        self.rgMessageProcessor = rgProcessor
         historyViewUpdate = historyViewUpdate
         |> mapToQueue { update -> Signal<(ChatHistoryViewUpdate, Int, ChatHistoryLocationInput?, ClosedRange<Int32>?, Set<MessageId>), NoError> in
-            guard case let .HistoryView(view, _, _, _, _, _, _) = update.0, !RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty else {
+            guard case let .HistoryView(view, _, _, _, _, _, _) = update.0 else {
                 return .single(update)
             }
-            let candidates = view.entries.map { entry -> RGContentFilterCandidate in
-                let message = entry.message
-                return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
+            let enabled = RGSimpleSettings.shared.mediaLoadingExperiment
+            if !enabled && RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty { return .single(update) }
+            let queue = enabled ? RGChatHistoryMessageProcessor.queue : rgFilterQueue
+            // MARK: Regram — snapshot preprocessing and filter verdict preparation
+            // are ordered before main-thread UI combination, including first load.
+            return deferred {
+                if enabled { rgProcessor.prepare(view.entries.map(\.message)) }
+                if RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty { return .single(update) }
+                let candidates = view.entries.map { entry -> RGContentFilterCandidate in
+                    let message = entry.message
+                    return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
+                }
+                return rgPrepareContentFilter(candidates: candidates, accountPeerId: rgFilterAccountPeerId, queue: queue)
+                |> map { _ in update }
             }
-            return rgPrepareContentFilter(candidates: candidates, accountPeerId: rgFilterAccountPeerId, queue: rgFilterQueue)
-            |> map { _ in
-                return update
-            }
+            |> runOn(queue)
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
@@ -2668,6 +2771,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             if let strongSelf = self {
                 if strongSelf.canReadHistoryValue != value {
                     strongSelf.canReadHistoryValue = value
+                    // MARK: Regram — visibility owns the prefetch lifetime and priorities.
+                    strongSelf.prefetchManager.rgSetActive(value)
+                    strongSelf.rgScheduleInlinePlaybackUpdate()
+                    if value && RGSimpleSettings.shared.mediaLoadingExperiment {
+                        strongSelf.listView.updateVisibleItemRange(force: true)
+                    }
                     strongSelf.controllerInteraction.canReadHistory = value
                     strongSelf.updateReadHistoryActions()
                     strongSelf.messageReadMetricsTracker?.setIsActive(strongSelf.canReadHistoryValue)
@@ -2968,7 +3077,107 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         }
     }
     
+    // MARK: Regram — merge one turn of visibility/layout changes before changing
+    // ownership. Revoke old admissions first, then attach at most two players.
+    private func rgScheduleInlinePlaybackUpdate() {
+        // Closing the switch needs one cleanup pass; ordinary scrolling with the
+        // switch already off must not traverse the media subtree every frame.
+        guard RGSimpleSettings.shared.mediaLoadingExperiment || self.rgPlaybackExperimentWasEnabled else { return }
+        guard self.rgInlinePlaybackTimer == nil else { return }
+        let timer = SwiftSignalKit.Timer(timeout: 0.0, repeat: false, completion: { [weak self] in
+            guard let self else { return }
+            // MARK: Regram — wait until scrolling has updated node positions,
+            // and avoid reprocessing unchanged visible ranges on every 14 points.
+            if self.rgScrollResourceUpdatePending {
+                self.rgScrollResourceUpdatePending = false
+                if RGSimpleSettings.shared.mediaLoadingExperiment {
+                    self.listView.updateVisibleItemRange()
+                }
+            }
+            self.rgInlinePlaybackTimer = nil
+            self.rgUpdateInlinePlayback()
+        }, queue: .mainQueue())
+        self.rgInlinePlaybackTimer = timer
+        timer.start()
+    }
+
+    private func rgInlineVideoNodes() -> [ChatMessageInteractiveMediaNode] {
+        var result: [ChatMessageInteractiveMediaNode] = []
+        var visited = Set<ObjectIdentifier>()
+        func visit(_ node: ASDisplayNode) {
+            guard visited.insert(ObjectIdentifier(node)).inserted else { return }
+            if let media = node as? ChatMessageInteractiveMediaNode { result.append(media) }
+            for child in node.subnodes ?? [] { visit(child) }
+        }
+        self.forEachItemNode { visit($0) }
+        return result
+    }
+
+    private func rgUpdateInlinePlayback() {
+        let enabled = RGSimpleSettings.shared.mediaLoadingExperiment
+        self.rgPlaybackExperimentWasEnabled = enabled
+        let nodes = self.rgInlineVideoNodes()
+        let sessionId = self.rgInlinePlaybackSessionId
+        let manager = self.context.sharedContext.mediaManager.universalVideoManager
+        for node in nodes {
+            node.rgSetInlinePlaybackCoordinator(sessionId: enabled ? sessionId : nil, changed: { [weak self] in self?.rgScheduleInlinePlaybackUpdate() })
+        }
+        if !enabled {
+            self.rgGalleryResumeTimer?.invalidate()
+            self.rgGalleryResumeTimer = nil
+            self.rgGalleryReturnNode = nil
+            manager.rgEndInlineVideoSession(sessionId)
+            self.context.fetchManager.rgSetPreferredStreamingOwner(sessionId: sessionId, owner: nil)
+            for node in nodes { node.rgApplyInlinePlaybackAdmission(true); node.rgFinishGalleryReturn() }
+            return
+        }
+        let active = self.canReadHistoryValue && UIApplication.shared.applicationState == .active
+        let thermalCritical = ProcessInfo.processInfo.thermalState == .critical
+        let capacity = min(RGMediaLoadingPolicy.maximumInlinePlayers, manager.rgAvailableInlineVideoCapacity(sessionId: sessionId))
+        let viewport = CGRect(origin: .zero, size: self.listView.visibleSize).inset(by: UIEdgeInsets(top: self.insets.top, left: 0, bottom: self.insets.bottom, right: 0))
+        let candidates = nodes.map { $0.rgInlinePlaybackCandidate(frame: $0.convert($0.bounds, to: self.listView), viewport: viewport) }
+        let handoff = nodes.first(where: { $0.rgGalleryHandoffActive })
+        let returningIds = Set(nodes.filter(\.rgGalleryReturnPending).map(\.rgInlinePlaybackId))
+        let selected: [Int64]
+        if handoff != nil {
+            selected = []
+            self.rgGalleryResumeTimer?.invalidate()
+            self.rgGalleryResumeTimer = nil
+            self.rgGalleryReturnNode = nil
+        } else if !returningIds.isEmpty {
+            selected = RGMediaLoadingPolicy.selectedInlineVideos(candidates.filter { returningIds.contains($0.id) }, active: active, thermalCritical: thermalCritical, limit: min(1, capacity))
+        } else {
+            selected = RGMediaLoadingPolicy.selectedInlineVideos(candidates, active: active, thermalCritical: thermalCritical, limit: capacity)
+        }
+        let returning = selected.first.flatMap { id in nodes.first { $0.rgInlinePlaybackId == id && $0.rgGalleryReturnPending } }
+        manager.rgSetPreferredInlineVideo(id: handoff?.rgInlineVideoContentId ?? returning?.rgInlineVideoContentId, sessionId: sessionId)
+        let admitted = Set(selected)
+        for node in nodes where !admitted.contains(node.rgInlinePlaybackId) { node.rgApplyInlinePlaybackAdmission(false) }
+        for id in selected.reversed() { nodes.first { $0.rgInlinePlaybackId == id }?.rgApplyInlinePlaybackAdmission(true) }
+        let preferredOwner = selected.first.flatMap { id in nodes.first { $0.rgInlinePlaybackId == id }?.rgStreamingOwnerId }
+        self.context.fetchManager.rgSetPreferredStreamingOwner(sessionId: sessionId, owner: preferredOwner)
+        if let returning, returning.rgGalleryReturnPending, self.rgGalleryReturnNode !== returning {
+            self.rgGalleryResumeTimer?.invalidate()
+            self.rgGalleryReturnNode = returning
+            let timer = SwiftSignalKit.Timer(timeout: RGMediaLoadingPolicy.galleryReturnFallbackInterval, repeat: false, completion: { [weak self, weak returning] in
+                guard let self, let returning, self.rgGalleryReturnNode === returning, !returning.rgGalleryHandoffActive else { return }
+                self.rgGalleryReturnNode = nil
+                self.rgGalleryResumeTimer = nil
+                returning.rgFinishGalleryReturn()
+                self.rgScheduleInlinePlaybackUpdate()
+            }, queue: .mainQueue())
+            self.rgGalleryResumeTimer = timer
+            timer.start()
+        } else if returning == nil || returning?.rgGalleryReturnPending == false {
+            self.rgGalleryResumeTimer?.invalidate()
+            self.rgGalleryResumeTimer = nil
+            self.rgGalleryReturnNode = nil
+        }
+    }
+
     private func processDisplayedItemRangeChanged(displayedRange: ListViewDisplayedItemRange, transactionState: ChatHistoryTransactionOpaqueState) {
+        // MARK: Regram
+        defer { self.rgScheduleInlinePlaybackUpdate() }
         let historyView = transactionState.historyView
         var isTopReplyThreadMessageShownValue = false
         var topVisibleMessageRange: ChatTopVisibleMessageRange?
@@ -2997,6 +3206,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                     for i in (wideIndexRange.0 ... wideIndexRange.1) {
                         switch historyView.filteredEntries[i] {
                         case let .MessageEntry(message, _, _, _, _, _):
+                            // MARK: Regram — this was prepared on the serial worker.
+                            if RGSimpleSettings.shared.mediaLoadingExperiment, let processor = self.rgMessageProcessor {
+                                if processor.shouldTranslate(message, language: translateToLanguage, grouped: false) { messageIdsToTranslate.append(message.id) }
+                                continue
+                            }
                             guard message.adAttribute == nil && message.id.namespace == Namespaces.Message.Cloud else {
                                 continue
                             }
@@ -3015,6 +3229,11 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                             }
                         case let .MessageGroupEntry(_, messages, _):
                             for (message, _, _, _, _) in messages {
+                                // MARK: Regram
+                                if RGSimpleSettings.shared.mediaLoadingExperiment, let processor = self.rgMessageProcessor {
+                                    if processor.shouldTranslate(message, language: translateToLanguage, grouped: true) { messageIdsToTranslate.append(message.id) }
+                                    continue
+                                }
                                 guard message.adAttribute == nil && message.id.namespace == Namespaces.Message.Cloud else {
                                     continue
                                 }
@@ -3324,7 +3543,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 if media is TelegramMediaImage || media is TelegramMediaFile {
                     messages.append((message, media))
                 }
-                if messages.count >= 3 {
+                // MARK: Regram — keep the original count when comparing with the experiment off.
+                let preloadCount = RGSimpleSettings.shared.mediaLoadingExperiment ? RGMediaLoadingPolicy.preloadCount : 3
+                if messages.count >= preloadCount {
                     return false
                 } else {
                     return true
@@ -3434,6 +3655,16 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             
             self.currentEarlierPrefetchMessages = toEarlierMediaMessages
             self.currentLaterPrefetchMessages = toLaterMediaMessages
+            // MARK: Regram — favor resources near the visible window's center.
+            if RGSimpleSettings.shared.mediaLoadingExperiment {
+                let rgCenter = downloadableResourceIds.count / 2
+                let rgVisibleResourceIds = downloadableResourceIds.enumerated().sorted {
+                    let l = abs($0.offset - rgCenter)
+                    let r = abs($1.offset - rgCenter)
+                    return l == r ? $0.offset < $1.offset : l < r
+                }.map { $0.element.resourceId }
+                self.prefetchManager.rgUpdateVisibleResources(rgVisibleResourceIds)
+            }
             if self.currentPrefetchDirectionIsToLater {
                 self.prefetchManager.updateMessages(toLaterMediaMessages, directionIsToLater: self.currentPrefetchDirectionIsToLater)
             } else {
@@ -3523,6 +3754,15 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             }
         }
         
+        // MARK: Regram — clear a window that disappeared without waiting for deinit.
+        if displayedRange.visibleRange == nil {
+            self.prefetchManager.rgUpdateVisibleResources([])
+            if RGSimpleSettings.shared.mediaLoadingExperiment {
+                self.currentEarlierPrefetchMessages.removeAll()
+                self.currentLaterPrefetchMessages.removeAll()
+                self.prefetchManager.updateMessages([], directionIsToLater: self.currentPrefetchDirectionIsToLater)
+            }
+        }
         if !self.isSettingTopReplyThreadMessageShown {
             self.isSettingTopReplyThreadMessageShown = true
             self.isTopReplyThreadMessageShown.set(isTopReplyThreadMessageShownValue)
@@ -4377,6 +4617,8 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 }
                 
                 strongSelf.historyView = transition.historyView
+                // MARK: Regram — include media nodes created by this transaction.
+                strongSelf.rgScheduleInlinePlaybackUpdate()
                 
                 let loadState: ChatHistoryNodeLoadState
                 var alwaysHasMessages = false

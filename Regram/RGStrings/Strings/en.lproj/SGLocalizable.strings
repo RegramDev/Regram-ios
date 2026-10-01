@@ -99,6 +99,8 @@
 
 "Settings.UploadsBoost" = "Upload Boost";
 "Settings.DownloadsBoost" = "Download Boost";
+"Settings.MediaLoadingExperiment" = "Faster Media Loading (Experimental)";
+"Settings.MediaLoadingExperiment.Notice" = "Prepare photos and videos ahead of time and reduce waits when scrolling back. Turn off to compare with the original behavior.";
 "Settings.DownloadsBoost.Notice" = "Increases number of parallel connections and size of file chunks. In case your network can't handle the load, try different options that suits your connection.";
 "Settings.DownloadsBoost.none" = "Disabled";
 "Settings.DownloadsBoost.medium" = "Medium";
@@ -198,26 +200,6 @@
 
 "MutualContact.Label" = "mutual contact";
 
-
-"SessionBackup.Title" = "Accounts Backup";
-"SessionBackup.Sessions.Title" = "Sessions";
-"SessionBackup.Actions.Backup" = "Backup to Keychain";
-"SessionBackup.Actions.Restore" = "Restore from Keychain";
-"SessionBackup.Actions.DeleteAll" = "Delete Keychain Backup";
-"SessionBackup.Actions.DeleteOne" = "Delete from Backup";
-"SessionBackup.Actions.RemoveFromApp" = "Remove from App";
-"SessionBackup.LastBackupAt" = "Last Backup: %@";
-"SessionBackup.RestoreOK" = "OK. Sessions restored: %@";
-"SessionBackup.LoggedIn" = "Logged In";
-"SessionBackup.LoggedOut" = "Logged Out";
-"SessionBackup.DeleteAll.Title" = "Delete All Sessions?";
-"SessionBackup.DeleteAll.Text" = "All sessions will be removed from Keychain.\n\nAccounts will not be logged out from Regram.";
-"SessionBackup.DeleteSingle.Title" = "Delete 1 (one) Session?";
-"SessionBackup.DeleteSingle.Text" = "%@ session will be removed from Keychain.\n\nAccount will not be logged out from Regram.";
-"SessionBackup.RemoveFromApp.Title" = "Remove account from App?";
-"SessionBackup.RemoveFromApp.Text" = "%@ session WILL BE REMOVED from Regram! Session will remain active, so you can restore it later.";
-"SessionBackup.Notice" = "Sessions are encrypted and stored in the device Keychain. Sessions never leave your device.\n\nIMPORTANT: To restore sessions on a new device or after an OS reset, you MUST enable encrypted backups, otherwise Keychain won't be transfered.\n\nNOTE: Sessions may still be revoked by Telegram or from another device.";
-
 "MessageFilter.Title" = "Message Filter";
 "MessageFilter.SubTitle" = "Remove distractions and hide messages matching the rules below.
 Matching is case-insensitive.";
@@ -237,10 +219,6 @@ Matching is case-insensitive.";
 
 
 "PayWall.Text" = "Supercharged with Pro features";
-
-"PayWall.SessionBackup.Title" = "Accounts Backup";
-"PayWall.SessionBackup.Notice" = "Log-in to accounts without code, even after reinstall. Secure storage with on-device Keychain.";
-"PayWall.SessionBackup.Description" = "Changing device or deleting Regram is no longer an issue. Restore all Sessions that are still Active on Telegram servers.";
 
 "PayWall.MessageFilter.Title" = "Message Filter";
 "PayWall.MessageFilter.Notice" = "Hide SPAM, promotions and annoying messages.";
@@ -312,12 +290,6 @@ Matching is case-insensitive.";
 "AntiFeatures.DisableAds" = "Hide sponsored messages";
 "MessageFilter.InputPlaceholderRegex" = "Enter regular expression";
 "MessageFilter.Regex" = "Regular expression";
-"SessionBackup.Working" = "Processing sessions…";
-"SessionBackup.Retry" = "Reload Backups";
-"SessionBackup.Failed" = "The operation failed. Your list has been preserved. Please try again.";
-"SessionBackup.InvalidEntries" = "%@ backup entries could not be read. They have been kept unchanged.";
-"SessionBackup.Result" = "Completed: %@. Failed: %@. Existing accounts were skipped.";
-"SessionBackup.Cancelled" = "Cancelled. Operations already completed have been kept.";
 "MessageFilter.Regex.Notice" = "Matching is case-insensitive. Regular expressions use ICU syntax; an invalid pattern cannot be added.";
 "MessageFilter.Export" = "Export Rules";
 "MessageFilter.Import" = "Import Rules";
@@ -390,3 +362,9 @@ Matching is case-insensitive.";
 "AntiRevoke.Chats.Title" = "Chats Keeping Deleted Messages";
 "AntiRevoke.Chats.Notice" = "Messages deleted in these chats are kept and marked as deleted. Swipe left to remove; tap to open the profile.";
 "AntiRevoke.Chats.Empty" = "No chats yet. Open a chat's profile and turn on \"Keep Deleted Messages\".";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Default video quality";
+"Settings.DefaultVideoQuality.automatic" = "Automatic";
+"Settings.DefaultVideoQuality.highest" = "Highest available";
+"Settings.DefaultVideoQuality.lowest" = "Lowest available";

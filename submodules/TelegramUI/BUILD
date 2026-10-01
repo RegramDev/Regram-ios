@@ -11,6 +11,7 @@ sgdeps = [
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Regram/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
     "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
     "//Regram/RGLogging:RGLogging",
     "//Regram/RGStrings:RGStrings",

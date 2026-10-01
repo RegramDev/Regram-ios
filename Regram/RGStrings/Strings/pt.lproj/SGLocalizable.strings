@@ -171,26 +171,6 @@
 
 "MutualContact.Label" = "contato mútuo";
 
-
-"SessionBackup.Title" = "Backup de Sessão";
-"SessionBackup.Sessions.Title" = "Sessões";
-"SessionBackup.Actions.Backup" = "Backup para o Keychain";
-"SessionBackup.Actions.Restore" = "Restaurar do Keychain";
-"SessionBackup.Actions.DeleteAll" = "Excluir Backup do Keychain";
-"SessionBackup.Actions.DeleteOne" = "Excluir do Backup";
-"SessionBackup.Actions.RemoveFromApp" = "Remover do App";
-"SessionBackup.LastBackupAt" = "Último Backup: %@";
-"SessionBackup.RestoreOK" = "OK. Sessões restauradas: %@";
-"SessionBackup.LoggedIn" = "Conectado";
-"SessionBackup.LoggedOut" = "Desconectado";
-"SessionBackup.DeleteAll.Title" = "Excluir Todas as Sessões?";
-"SessionBackup.DeleteAll.Text" = "Todas as sessões serão removidas do Keychain.\n\nAs contas não serão desconectadas do Regram.";
-"SessionBackup.DeleteSingle.Title" = "Excluir 1 (uma) Sessão?";
-"SessionBackup.DeleteSingle.Text" = "%@ sessão será removida do Keychain.\n\nA conta não será desconectada do Regram.";
-"SessionBackup.RemoveFromApp.Title" = "Remover conta do App?";
-"SessionBackup.RemoveFromApp.Text" = "%@ sessão SERÁ REMOVIDA do Regram! A sessão permanecerá ativa, para que você possa restaurá-la mais tarde.";
-"SessionBackup.Notice" = "As sessões são criptografadas e armazenadas no Acesso às Chaves do dispositivo. As sessões nunca saem do seu dispositivo.\n\nIMPORTANTE: Para restaurar sessões em um novo dispositivo ou após a redefinição do sistema operacional, você DEVE habilitar backups criptografados, caso contrário o Keychain não será transferido.\n\nNOTA: as sessões ainda podem ser revogadas pelo Telegram ou de outro dispositivo.";
-
 "MessageFilter.Title" = "Filtro de Mensagens";
 "MessageFilter.SubTitle" = "Remova distrações e oculte mensagens contendo as palavras-chave abaixo.\nAs palavras-chave são sensíveis a maiúsculas e minúsculas.";
 "MessageFilter.Keywords.Title" = "Palavras-chave";
@@ -209,10 +189,6 @@
 
 
 "PayWall.Text" = "Supercarregado com recursos Pro";
-
-"PayWall.SessionBackup.Title" = "Backup de Sessão";
-"PayWall.SessionBackup.Notice" = "Faça login em contas sem código, mesmo depois de reinstalar. Armazenamento seguro com Keychain no dispositivo.";
-"PayWall.SessionBackup.Description" = "Alterar o dispositivo ou excluir o Regram não é mais um problema. Restaure todas as sessões que ainda estão ativas nos servidores do Telegram.";
 
 "PayWall.MessageFilter.Title" = "Filtro de Mensagens";
 "PayWall.MessageFilter.Notice" = "Oculte SPAM, promoções e mensagens irritantes.";
@@ -270,3 +246,9 @@
 "Settings.NY.Style.snow" = "Neve";
 "Settings.NY.Style.lightning" = "Raio";
 "Settings.NY.Notice" = "Disponível por tempo limitado!";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Qualidade padrão do vídeo";
+"Settings.DefaultVideoQuality.automatic" = "Automática";
+"Settings.DefaultVideoQuality.highest" = "Maior disponível";
+"Settings.DefaultVideoQuality.lowest" = "Menor disponível";

@@ -152,26 +152,6 @@
 
 "MutualContact.Label" = "взаємний контакт";
 
-
-"SessionBackup.Title" = "Резервне копіювання сесії";
-"SessionBackup.Sessions.Title" = "Сесії";
-"SessionBackup.Actions.Backup" = "Резервне копіювання в Keychain";
-"SessionBackup.Actions.Restore" = "Відновлення з Keychain";
-"SessionBackup.Actions.DeleteAll" = "Видалити резервну копію Keychain";
-"SessionBackup.Actions.DeleteOne" = "Видалити з резервної копії";
-"SessionBackup.Actions.RemoveFromApp" = "Видалити з додатку";
-"SessionBackup.LastBackupAt" = "Останнє резервне копіювання: %@";
-"SessionBackup.RestoreOK" = "ОК. Сесії відновлено: %@";
-"SessionBackup.LoggedIn" = "Увійшли";
-"SessionBackup.LoggedOut" = "Вийшли";
-"SessionBackup.DeleteAll.Title" = "Видалити всі сесії?";
-"SessionBackup.DeleteAll.Text" = "Всі сесії будуть видалені з Keychain.\n\nОблікові записи не будуть вийшли зі Regram.";
-"SessionBackup.DeleteSingle.Title" = "Видалити 1 (одну) сесію?";
-"SessionBackup.DeleteSingle.Text" = "%@ сесія буде видалена з Keychain.\n\nОбліковий запис не буде вийшов зі Regram.";
-"SessionBackup.RemoveFromApp.Title" = "Видалити обліковий запис з додатку?";
-"SessionBackup.RemoveFromApp.Text" = "%@ сесія БУДЕ ВИДАЛЕНА з Regram! Сесія залишиться активною, щоб ви могли відновити її пізніше.";
-"SessionBackup.Notice" = "Сесії зашифровані та зберігаються на пристрої. Сесії ніколи не залишають ваш пристрій.\n\nВАЖЛИВО: Для відновлення сесій на іншому пристрої або після скидання налаштувань, ви повинні ввімкнути шифрування резервних копій, в іншому випадку ключі не будуть перенесені.\n\nТАКОЖ: Сесії можуть бути відкликані Telegram або з іншого пристрою.";
-
 "MessageFilter.Title" = "Фільтр повідомлень";
 "MessageFilter.SubTitle" = "Приховати відволікання та сховати повідомлення, що містять нижчевказані ключові слова.\nКлючові слова чутливі до регістру.";
 "MessageFilter.Keywords.Title" = "Ключові слова";
@@ -190,10 +170,6 @@
 
 
 "PayWall.Text" = "Посилений функціями Pro";
-
-"PayWall.SessionBackup.Title" = "Резервне копіювання сесії";
-"PayWall.SessionBackup.Notice" = "Вхід до облікових записів без коду, навіть після перевстановлення. Безпечне сховище з Ключарем пристрою.";
-"PayWall.SessionBackup.Description" = "Зміна пристрою або видалення Regram більше не проблема. Відновити всі сеанси, які досі активні на серверах Telegram.";
 
 "PayWall.MessageFilter.Title" = "Фільтр повідомлень";
 "PayWall.MessageFilter.Notice" = "Приховати СПАМ, рекламу та набридливі повідомлення.";
@@ -241,3 +217,9 @@
 "PayWall.ValidationError" = "Помилка валідації";
 "PayWall.ValidationError.TryAgain" = "Щось пішло не так під час перевірки покупки. Не хвилюйтеся! Спробуйте відновити покупки трохи пізніше.";
 "PayWall.ValidationError.Expired" = "Ваша підписка застаріла. Підпишіться, щоб відновити доступ до Pro-можливостей.";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Типова якість відео";
+"Settings.DefaultVideoQuality.automatic" = "Автоматично";
+"Settings.DefaultVideoQuality.highest" = "Найвища доступна";
+"Settings.DefaultVideoQuality.lowest" = "Найнижча доступна";

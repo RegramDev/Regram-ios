@@ -171,26 +171,6 @@
 
 "MutualContact.Label" = "взаимный контакт";
 
-
-"SessionBackup.Title" = "Бэкап аккаунтов";
-"SessionBackup.Sessions.Title" = "Сессии";
-"SessionBackup.Actions.Backup" = "Бэкап в Keychain";
-"SessionBackup.Actions.Restore" = "Восстановить из Keychain";
-"SessionBackup.Actions.DeleteAll" = "Удалить Бэкап из Keychain";
-"SessionBackup.Actions.DeleteOne" = "Удалить из Бэкапа";
-"SessionBackup.Actions.RemoveFromApp" = "Удалить из приложения";
-"SessionBackup.LastBackupAt" = "Последний бэкап: %@";
-"SessionBackup.RestoreOK" = "ОК. Восстановлено: %@";
-"SessionBackup.LoggedIn" = "Залогинен";
-"SessionBackup.LoggedOut" = "Разлогинен";
-"SessionBackup.DeleteAll.Title" = "Удалить все сессии?";
-"SessionBackup.DeleteAll.Text" = "Все сессии будут удалены из Keychain.\n\nАккаунты не будут разлогинены из Regram.";
-"SessionBackup.DeleteSingle.Title" = "Удалить 1 (одну) сессию?";
-"SessionBackup.DeleteSingle.Text" = "%@ сессия будет удалена из Keychain.\n\nАккаунт не будет разлогинен из Regram.";
-"SessionBackup.RemoveFromApp.Title" = "Удалить аккаунт из приложения?";
-"SessionBackup.RemoveFromApp.Text" = "%@ сессия БУДЕТ УДАЛЕНА из Regram! Сессия останется активной, чтобы вы могли восстановить ее позже.";
-"SessionBackup.Notice" = "Сессии шифруются и хранятся в Keychain устройства. Сессии никогда не покидают ваше устройство.\n\nВАЖНО: Чтобы восстановить сессии на новом устройстве или после сброса системы, ОБЯЗАТЕЛЬНО включите шифрование резервных копий ОС, иначе Keychain будет утерян при восстановлении.\n\nПРИМЕЧАНИЕ: Сессии всё ещё могут быть разлогинены самим Telegram или с другого устройства.";
-
 "MessageFilter.Title" = "Фильтр сообщений";
 "MessageFilter.SubTitle" = "Убирает отвлекающие факторы и скрывает сообщения, содержащие ключевые слова ниже.\nКлючевые слова чувствительны к регистру.";
 "MessageFilter.Keywords.Title" = "Ключевые слова";
@@ -209,10 +189,6 @@
 
 
 "PayWall.Text" = "Заряжен Pro функциями";
-
-"PayWall.SessionBackup.Title" = "Бэкап Аккаунтов";
-"PayWall.SessionBackup.Notice" = "Вход в аккаунты без кода, даже после переустановки. Безопасное хранение в Keychain на устройстве.";
-"PayWall.SessionBackup.Description" = "Смена устройства или удаление Regram больше не проблема. Восстановите все ваши Сессии, которые активны на серверах Telegram.";
 
 "PayWall.MessageFilter.Title" = "Фильтр сообщений";
 "PayWall.MessageFilter.Notice" = "Скрывает навязчивые сообщения со СПАМом или рекламой.";
@@ -270,3 +246,9 @@
 "Settings.NY.Style.snow" = "Снег";
 "Settings.NY.Style.lightning" = "Молнии";
 "Settings.NY.Notice" = "Доступны только на ограниченное время!";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Качество видео по умолчанию";
+"Settings.DefaultVideoQuality.automatic" = "Автоматически";
+"Settings.DefaultVideoQuality.highest" = "Максимальное доступное";
+"Settings.DefaultVideoQuality.lowest" = "Минимальное доступное";

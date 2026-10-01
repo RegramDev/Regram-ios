@@ -1,6 +1,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 sgdeps = [
+    # MARK: Regram — bounded notification startup and fallback policy.
+    "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier"
 ]
 

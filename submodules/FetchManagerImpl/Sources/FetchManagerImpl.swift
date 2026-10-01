@@ -6,6 +6,8 @@ import TelegramUIPreferences
 import AccountContext
 import UniversalMediaPlayer
 import RangeSet
+// MARK: Regram
+import RGSimpleSettings
 
 public struct FetchManagerLocationEntryId: Hashable {
     public let location: FetchManagerLocation
@@ -79,6 +81,8 @@ private final class FetchManagerActiveContext {
     let userInitiated: Bool
     var ranges = RangeSet<Int64>()
     var disposable: Disposable?
+    // MARK: Regram — ignore completions already queued by a superseded fetch.
+    var rgGeneration: UInt64 = 0
     
     init(userInitiated: Bool) {
         self.userInitiated = userInitiated
@@ -119,9 +123,15 @@ private final class FetchManagerStatusContext {
 }
 
 private final class FetchManagerCategoryContext {
+    // MARK: Regram — bounded, screen-aware scheduling while the experiment is enabled.
+    private var rgVisibleResourceIds: [String] = []
+    private var rgPreloadResourceIds: [String] = []
+    private var rgStreamingResourceIds = Set<String>()
+    private var rgMediaPriorityEnabled: Bool?
     private let postbox: Postbox
     private let storeManager: DownloadedMediaStoreManager?
-    private let entryCompleted: (FetchManagerLocationEntryId) -> Void
+    // MARK: Regram — a failed request releases its slot without reporting a local file.
+    private let entryCompleted: (FetchManagerLocationEntryId, Bool, @escaping () -> Bool) -> Void
     private let activeEntriesUpdated: () -> Void
     
     private var topEntryIdAndPriority: (FetchManagerLocationEntryId, FetchManagerPriorityKey)?
@@ -139,7 +149,7 @@ private final class FetchManagerCategoryContext {
         return false
     }
     
-    init(postbox: Postbox, storeManager: DownloadedMediaStoreManager?, entryCompleted: @escaping (FetchManagerLocationEntryId) -> Void, activeEntriesUpdated: @escaping () -> Void) {
+    init(postbox: Postbox, storeManager: DownloadedMediaStoreManager?, entryCompleted: @escaping (FetchManagerLocationEntryId, Bool, @escaping () -> Bool) -> Void, activeEntriesUpdated: @escaping () -> Void) {
         self.postbox = postbox
         self.storeManager = storeManager
         self.entryCompleted = entryCompleted
@@ -148,6 +158,58 @@ private final class FetchManagerCategoryContext {
     
     func getActiveEntries() -> [FetchManagerLocationEntry] {
         return Array(self.entries.values)
+    }
+
+    // MARK: Regram
+    private func rgCompletion(id: FetchManagerLocationEntryId, context: FetchManagerActiveContext) -> (Bool) -> Void {
+        context.rgGeneration &+= 1
+        let generation = context.rgGeneration
+        return { [weak self, weak context] completed in
+            guard let self, let context, self.activeContexts[id] === context, context.rgGeneration == generation else { return }
+            self.entryCompleted(id, completed, { [weak self, weak context] in
+                guard let self, let context else { return false }
+                return self.activeContexts[id] === context && context.rgGeneration == generation
+            })
+        }
+    }
+
+    // MARK: Regram
+    func rgUpdateMediaPriority(visible: [String], preload: [String], streaming: Set<String>) {
+        let enabled = RGSimpleSettings.shared.mediaLoadingExperiment
+        guard self.rgMediaPriorityEnabled != enabled || self.rgVisibleResourceIds != visible || self.rgPreloadResourceIds != preload || self.rgStreamingResourceIds != streaming else { return }
+        self.rgMediaPriorityEnabled = enabled
+        self.rgVisibleResourceIds = visible
+        self.rgPreloadResourceIds = preload
+        self.rgStreamingResourceIds = streaming
+        self.topEntryIdAndPriority = nil
+        let _ = self.maybeFindAndActivateNewTopEntry()
+        self.activeEntriesUpdated()
+    }
+
+    private func rgReconcileActiveEntries() -> Bool {
+        let candidates = self.entries.values.filter { !$0.isPaused && $0.priorityKey != nil && !$0.combinedRanges.isEmpty }.sorted { lhs, rhs in
+            let l = lhs.priorityKey!
+            let r = rhs.priorityKey!
+            return l == r ? lhs.episode < rhs.episode : l < r
+        }
+        let selectedResources = RGMediaLoadingPolicy.selectedResources(candidates: candidates.map { entry in
+            RGMediaFetchCandidate(resourceId: entry.id.resourceId.stringRepresentation, isUserInitiated: entry.userInitiated, isForegroundPrefetch: entry.references.copyItems().contains(where: {
+                if case .foregroundPrefetch = $0 { return true }
+                return false
+            }))
+        }, visible: self.rgVisibleResourceIds, preload: self.rgPreloadResourceIds, streaming: self.rgStreamingResourceIds)
+        let selectedIds = Set(candidates.filter { selectedResources.contains($0.id.resourceId.stringRepresentation) }.map { $0.id })
+        var changed = false
+        for id in Array(self.activeContexts.keys) where !selectedIds.contains(id) {
+            self.activeContexts.removeValue(forKey: id)?.disposable?.dispose()
+            changed = true
+        }
+        for entry in candidates where selectedIds.contains(entry.id) {
+            self.topEntryIdAndPriority = (entry.id, entry.priorityKey!)
+            changed = self.activateTopEntry() || changed
+        }
+        self.topEntryIdAndPriority = nil
+        return changed
     }
     
     func withEntry(id: FetchManagerLocationEntryId, takeNew: (() -> (AnyMediaReference?, MediaResourceReference, MediaResourceStatsCategory, Int32))?, _ f: (FetchManagerLocationEntry) -> Void) {
@@ -224,7 +286,8 @@ private final class FetchManagerCategoryContext {
             if activeContext.disposable == nil || activeContext.ranges != ranges {
                 if let entry = self.entries[id] {
                     activeContext.ranges = ranges
-                    let entryCompleted = self.entryCompleted
+                    // MARK: Regram
+                    let finish = self.rgCompletion(id: id, context: activeContext)
                     let storeManager = self.storeManager
                     let parsedRanges: [(Range<Int64>, MediaBoxFetchPriority)]?
                     
@@ -277,7 +340,10 @@ private final class FetchManagerCategoryContext {
                     }
                     |> deliverOnMainQueue).start(next: { _ in
                         Logger.shared.log("FetchManager", "Completed fetching \(entry.resourceReference.resource.id.stringRepresentation)")
-                        entryCompleted(id)
+                        finish(true)
+                    }, error: { _ in
+                        // MARK: Regram — do not strand a bounded scheduler slot on failure.
+                        if RGSimpleSettings.shared.mediaLoadingExperiment { finish(false) }
                     })
                 } else {
                     assertionFailure()
@@ -305,6 +371,10 @@ private final class FetchManagerCategoryContext {
     }
     
     func maybeFindAndActivateNewTopEntry() -> Bool {
+        // MARK: Regram — keep the original scheduler available for comparison.
+        if RGSimpleSettings.shared.mediaLoadingExperiment {
+            return self.rgReconcileActiveEntries()
+        }
         if self.topEntryIdAndPriority == nil && !self.entries.isEmpty {
             var topEntryIdAndPriority: (FetchManagerLocationEntryId, FetchManagerPriorityKey)?
             for (id, entry) in self.entries {
@@ -327,6 +397,10 @@ private final class FetchManagerCategoryContext {
             self.topEntryIdAndPriority = topEntryIdAndPriority
         }
         
+        return self.activateTopEntry()
+    }
+
+    private func activateTopEntry() -> Bool {
         if let topEntryId = self.topEntryIdAndPriority?.0 {
             if let entry = self.entries[topEntryId] {
                 let ranges = entry.combinedRanges
@@ -390,7 +464,8 @@ private final class FetchManagerCategoryContext {
                         userContentType = .other
                     }
                     
-                    let entryCompleted = self.entryCompleted
+                    // MARK: Regram
+                    let finish = self.rgCompletion(id: topEntryId, context: activeContext)
                     let storeManager = self.storeManager
                     activeContext.disposable?.dispose()
                     if isVideoPreload {
@@ -399,7 +474,9 @@ private final class FetchManagerCategoryContext {
                         |> map { _ -> FetchResourceSourceType in }
                         |> then(.single(.local))
                         |> deliverOnMainQueue).start(next: { _ in
-                            entryCompleted(topEntryId)
+                            finish(true)
+                        }, error: { _ in
+                            if RGSimpleSettings.shared.mediaLoadingExperiment { finish(false) }
                         })
                     } else if ranges.isEmpty {
                     } else {
@@ -442,7 +519,9 @@ private final class FetchManagerCategoryContext {
                         }
                         |> deliverOnMainQueue).start(next: { _ in
                             Logger.shared.log("FetchManager", "Completed fetching \(entry.resourceReference.resource.id.stringRepresentation)")
-                            entryCompleted(topEntryId)
+                            finish(true)
+                        }, error: { _ in
+                            if RGSimpleSettings.shared.mediaLoadingExperiment { finish(false) }
                         })
                     }
                     return true
@@ -687,6 +766,14 @@ private func filterDownloadStatsEntry(entry: FetchManagerLocationEntry) -> Bool 
 }
 
 public final class FetchManagerImpl: FetchManager {
+    // MARK: Regram — an owner can only clear its own screen priorities. Playback holds
+    // independent references so leaving a chat does not lose gallery/PiP priority.
+    private var rgPriorityState = RGMediaPriorityState()
+    private var rgStreamingAdmission = RGStreamingAdmissionState()
+    private let rgStreamingAdmissionPromise = ValuePromise<Set<String>>(Set(), ignoreRepeated: true)
+    private var rgPriorityDisposables: [String: (weight: Int, disposable: Disposable)] = [:]
+    private let rgPushPriority: (String, Int) -> Disposable
+    private var rgSettingsObserver: NSObjectProtocol?
     public let queue = Queue.mainQueue()
     private let postbox: Postbox
     private let storeManager: DownloadedMediaStoreManager?
@@ -705,9 +792,99 @@ public final class FetchManagerImpl: FetchManager {
         return self.entriesSummaryValue.get()
     }
     
-    public init(postbox: Postbox, storeManager: DownloadedMediaStoreManager?) {
+    public init(postbox: Postbox, storeManager: DownloadedMediaStoreManager?, rgPushPriority: @escaping (String, Int) -> Disposable = { _, _ in EmptyDisposable }) {
         self.postbox = postbox
         self.storeManager = storeManager
+        // MARK: Regram
+        self.rgPushPriority = rgPushPriority
+        self.rgSettingsObserver = NotificationCenter.default.addObserver(forName: RGMediaLoadingPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.rgRefreshMediaPriorities()
+        }
+    }
+
+    // MARK: Regram
+    deinit {
+        if let observer = self.rgSettingsObserver { NotificationCenter.default.removeObserver(observer) }
+        for (_, priority) in self.rgPriorityDisposables { priority.disposable.dispose() }
+    }
+
+    public func rgSetChatMediaPriority(owner: Int64, visibleResourceIds: [String], preloadResourceIds: [String]) {
+        self.queue.async { [weak self] in
+            guard let self else { return }
+            guard self.rgPriorityState.updateScreen(owner: owner, visible: visibleResourceIds, preload: preloadResourceIds) else { return }
+            self.rgRefreshMediaPriorities()
+        }
+    }
+
+    public func rgAcquireStreamingPriority(resourceId: String) -> Disposable {
+        self.queue.async { [weak self] in
+            guard let self else { return }
+            self.rgPriorityState.acquireStreaming(resourceId)
+            self.rgRefreshMediaPriorities()
+        }
+        return ActionDisposable { [weak self] in
+            guard let self else { return }
+            self.queue.async { [weak self] in
+                guard let self else { return }
+                self.rgPriorityState.releaseStreaming(resourceId)
+                self.rgRefreshMediaPriorities()
+            }
+        }
+    }
+
+    // MARK: Regram — group all qualities under one playback owner, with a live
+    // admission signal so deferred fragments resume when the foreground releases.
+    public func rgAcquireStreamingPriority(owner: Int64, resourceIds: [String], userInitiated: Bool) -> Disposable {
+        let resourceIds = Array(Set(resourceIds))
+        let lease = Atomic<UInt64?>(value: nil)
+        self.queue.async { [weak self] in
+            guard let self else { return }
+            let generation = self.rgStreamingAdmission.acquire(owner: owner, resources: resourceIds, userInitiated: userInitiated)
+            let _ = lease.swap(generation)
+            for id in resourceIds { self.rgPriorityState.acquireStreaming(id) }
+            self.rgRefreshMediaPriorities()
+        }
+        return ActionDisposable { [weak self] in
+            guard let self else { return }
+            self.queue.async { [weak self] in
+                guard let self else { return }
+                self.rgStreamingAdmission.release(owner: owner, generation: lease.with { $0 })
+                for id in resourceIds { self.rgPriorityState.releaseStreaming(id) }
+                self.rgRefreshMediaPriorities()
+            }
+        }
+    }
+
+    public func rgForegroundStreamingAdmission(resourceId: String) -> Signal<Bool, NoError> {
+        return self.rgStreamingAdmissionPromise.get()
+        |> map { selected in selected.isEmpty || selected.contains(resourceId) }
+        |> distinctUntilChanged
+    }
+
+    public func rgSetPreferredStreamingOwner(sessionId: Int64, owner: Int64?) {
+        self.queue.async { [weak self] in
+            guard let self else { return }
+            guard self.rgStreamingAdmission.prefer(owner: owner, session: sessionId) else { return }
+            self.rgRefreshMediaPriorities()
+        }
+    }
+
+    private func rgRefreshMediaPriorities() {
+        let enabled = RGSimpleSettings.shared.mediaLoadingExperiment
+        self.rgStreamingAdmissionPromise.set(enabled ? self.rgStreamingAdmission.selectedResources : [])
+        let visible = enabled ? self.rgPriorityState.visible : []
+        let preload = enabled ? self.rgPriorityState.preload : []
+        let streaming = enabled ? self.rgPriorityState.streaming : []
+        let weights = self.rgPriorityState.weights(enabled: enabled)
+        for id in Array(self.rgPriorityDisposables.keys) where self.rgPriorityDisposables[id]?.weight != weights[id] {
+            self.rgPriorityDisposables.removeValue(forKey: id)?.disposable.dispose()
+        }
+        for (id, weight) in weights where self.rgPriorityDisposables[id] == nil {
+            self.rgPriorityDisposables[id] = (weight, self.rgPushPriority(id, weight))
+        }
+        for context in Array(self.categoryContexts.values) {
+            context.rgUpdateMediaPriority(visible: visible, preload: preload, streaming: streaming)
+        }
     }
     
     private func takeNextEpisodeId() -> Int32 {
@@ -729,13 +906,13 @@ public final class FetchManagerImpl: FetchManager {
             context = current
         } else {
             let queue = self.queue
-            context = FetchManagerCategoryContext(postbox: self.postbox, storeManager: self.storeManager, entryCompleted: { [weak self] id in
+            context = FetchManagerCategoryContext(postbox: self.postbox, storeManager: self.storeManager, entryCompleted: { [weak self] id, isCompleted, isCurrent in
                 queue.async {
-                    guard let strongSelf = self else {
+                    guard let strongSelf = self, isCurrent() else {
                         return
                     }
                     strongSelf.withCategoryContext(key, { context in
-                        context.cancelEntry(id, isCompleted: true)
+                        context.cancelEntry(id, isCompleted: isCompleted)
                     })
                 }
             }, activeEntriesUpdated: { [weak self] in
@@ -763,6 +940,8 @@ public final class FetchManagerImpl: FetchManager {
                 }
             })
             self.categoryContexts[key] = context
+            // MARK: Regram — new categories inherit the current screen and playback.
+            context.rgUpdateMediaPriority(visible: self.rgPriorityState.visible, preload: self.rgPriorityState.preload, streaming: self.rgPriorityState.streaming)
         }
         
         f(context)

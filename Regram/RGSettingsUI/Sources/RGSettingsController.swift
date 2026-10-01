@@ -54,6 +54,7 @@ private enum RGBoolSetting: String {
     case startTelescopeWithRearCam
     case hideStories
     case uploadSpeedBoost
+    case mediaLoadingExperiment
     case showProfileId
     case warnOnStoriesOpen
     case sendWithReturnKey
@@ -112,6 +113,7 @@ private enum RGOneFromManySetting: String {
     case nyStyle
     case bottomTabStyle
     case downloadSpeedBoost
+    case defaultVideoQuality
     case allChatsTitleLengthOverride
 //    case allChatsFolderPositionOverride
     case translationBackend
@@ -319,6 +321,9 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .other, settingName: .uploadSpeedBoost, value: RGSimpleSettings.shared.uploadSpeedBoost, text: i18n("Settings.UploadsBoost", lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .downloadSpeedBoost, text: i18n("Settings.DownloadsBoost", lang), value: i18n("Settings.DownloadsBoost.\(RGSimpleSettings.shared.downloadSpeedBoost)", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.DownloadsBoost.Notice", lang)))
+    entries.append(.toggle(id: id.count, section: .other, settingName: .mediaLoadingExperiment, value: RGSimpleSettings.shared.mediaLoadingExperiment, text: i18n("Settings.MediaLoadingExperiment", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.MediaLoadingExperiment.Notice", lang)))
+    entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .defaultVideoQuality, text: i18n("Settings.DefaultVideoQuality", lang), value: i18n("Settings.DefaultVideoQuality.\(RGSimpleSettings.shared.defaultVideoQuality)", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .sendWithReturnKey, value: RGSimpleSettings.shared.sendWithReturnKey, text: i18n("Settings.SendWithReturnKey", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .forceEmojiTab, value: RGSimpleSettings.shared.forceEmojiTab, text: i18n("Settings.ForceEmojiTab", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .defaultEmojisFirst, value: RGSimpleSettings.shared.defaultEmojisFirst, text: i18n("Settings.DefaultEmojisFirst", lang), enabled: true))
@@ -415,6 +420,8 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.quickTranslateButton = value
         case .uploadSpeedBoost:
             RGSimpleSettings.shared.uploadSpeedBoost = value
+        case .mediaLoadingExperiment:
+            RGSimpleSettings.shared.mediaLoadingExperiment = value
         case .hideReactions:
             RGSimpleSettings.shared.hideReactions = value
         case .showRepostToStory:
@@ -559,6 +566,15 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
                                 transaction.replaceOrderedItemListItems(collectionId: Namespaces.OrderedItemList.CloudRecentStickers, items: Array(recent.prefix(Int(limit))))
                             }
                         }.startStandalone()
+                    }))
+                }
+            case .defaultVideoQuality:
+                let lang = presentationData.strings.primaryComponent.languageCode
+                for preference in RGVideoQualityPreference.allCases {
+                    items.append(ActionSheetButtonItem(title: i18n("Settings.DefaultVideoQuality.\(preference.rawValue)", lang), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.defaultVideoQuality = preference.rawValue
+                        simplePromise.set(true)
                     }))
                 }
             case .downloadSpeedBoost:

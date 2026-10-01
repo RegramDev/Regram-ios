@@ -53,6 +53,7 @@ swift_library(
         ":HlsBundle",
     ],
     deps = [
+        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/Postbox:Postbox",

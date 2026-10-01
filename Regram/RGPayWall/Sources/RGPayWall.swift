@@ -259,7 +259,6 @@ struct RGProFeatureView: View {
 }
 
 enum RGProFeatureId: Hashable {
-    case backup
     case filter
     case notifications
     case toolbar
@@ -278,8 +277,6 @@ struct RGProFeature: Identifiable {
     @ViewBuilder
     public var icon: some View {
         switch (id) {
-        case .backup:
-            FeatureIcon(icon: "lock.fill", backgroundColor: .blue)
         case .filter:
             FeatureIcon(icon: "nosign", backgroundColor: .gray, fontWeight: .bold)
         case .notifications:
@@ -299,8 +296,6 @@ struct RGProFeature: Identifiable {
 
     public var image: Image {
         switch (id) {
-        case .backup:
-            return Image("ProDetailsBackup")
         case .filter:
             return Image("ProDetailsFilter")
         case .notifications:
@@ -365,7 +360,6 @@ struct RGPayWallView: View {
             RGProFeature(id: .toolbar, title: "PayWall.InputToolbar.Title".i18n(lang), subtitle: "PayWall.InputToolbar.Notice".i18n(lang), description: "PayWall.InputToolbar.Description".i18n(lang)),
             RGProFeature(id: .filter, title: "PayWall.MessageFilter.Title".i18n(lang), subtitle: "PayWall.MessageFilter.Notice".i18n(lang), description: "PayWall.MessageFilter.Description".i18n(lang)),
             RGProFeature(id: .icons, title: "PayWall.AppIcons.Title".i18n(lang), subtitle: "PayWall.AppIcons.Notice".i18n(lang), description: nil),
-            RGProFeature(id: .backup, title: "PayWall.SessionBackup.Title".i18n(lang), subtitle: "PayWall.SessionBackup.Notice".i18n(lang), description: "PayWall.SessionBackup.Description".i18n(lang)),
             RGProFeature(id: .notifications, title: "PayWall.Notifications.Title".i18n(lang), subtitle: "PayWall.Notifications.Notice".i18n(lang), description: "PayWall.Notifications.Description".i18n(lang)),
         ]
     }

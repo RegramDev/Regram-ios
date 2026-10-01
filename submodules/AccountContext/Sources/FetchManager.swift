@@ -163,7 +163,27 @@ public protocol FetchManager {
     func cancelInteractiveFetches(resourceId: String)
     func toggleInteractiveFetchPaused(resourceId: String, isPaused: Bool)
     func raisePriority(resourceId: String)
+    // MARK: Regram — screen ownership and playback lifetimes drive the experiment.
+    func rgSetChatMediaPriority(owner: Int64, visibleResourceIds: [String], preloadResourceIds: [String])
+    func rgAcquireStreamingPriority(resourceId: String) -> Disposable
+    // MARK: Regram — remote fragment admission follows a player's entire quality set.
+    func rgAcquireStreamingPriority(owner: Int64, resourceIds: [String], userInitiated: Bool) -> Disposable
+    func rgForegroundStreamingAdmission(resourceId: String) -> Signal<Bool, NoError>
+    func rgSetPreferredStreamingOwner(sessionId: Int64, owner: Int64?)
     func fetchStatus(category: FetchManagerCategory, location: FetchManagerLocation, locationKey: FetchManagerLocationKey, resource: EngineRawMediaResource) -> Signal<EngineMediaResourceStatus, NoError>
+}
+
+// MARK: Regram — other FetchManager implementations may retain their existing behavior.
+public extension FetchManager {
+    func rgSetChatMediaPriority(owner: Int64, visibleResourceIds: [String], preloadResourceIds: [String]) {}
+    func rgAcquireStreamingPriority(resourceId: String) -> Disposable { return EmptyDisposable }
+    func rgAcquireStreamingPriority(owner: Int64, resourceIds: [String], userInitiated: Bool) -> Disposable {
+        let disposables = DisposableSet()
+        for id in Set(resourceIds) { disposables.add(self.rgAcquireStreamingPriority(resourceId: id)) }
+        return disposables
+    }
+    func rgForegroundStreamingAdmission(resourceId: String) -> Signal<Bool, NoError> { return .single(true) }
+    func rgSetPreferredStreamingOwner(sessionId: Int64, owner: Int64?) {}
 }
 
 public protocol PrefetchManager {

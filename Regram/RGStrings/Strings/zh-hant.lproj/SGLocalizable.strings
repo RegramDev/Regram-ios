@@ -74,6 +74,8 @@
 
 "Settings.UploadsBoost" = "上傳加速";
 "Settings.DownloadsBoost" = "下載加速";
+"Settings.MediaLoadingExperiment" = "媒體載入最佳化（實驗）";
+"Settings.MediaLoadingExperiment.Notice" = "提前準備聊天中的照片和影片，減少來回捲動的等待。關閉可與原有方式比較。";
 "Settings.DownloadsBoost.Notice" = "增加並行連接的數量和文件區塊的大小。如果您的網路無法承受負載，請嘗試不同適合您連接的選項。";
 "Settings.DownloadsBoost.none" = "已停用";
 "Settings.DownloadsBoost.medium" = "中等";
@@ -172,26 +174,6 @@
 
 "MutualContact.Label" = "雙向聯絡人";
 
-
-"SessionBackup.Title" = "帳號備份";
-"SessionBackup.Sessions.Title" = "會話";
-"SessionBackup.Actions.Backup" = "備份到鑰匙串";
-"SessionBackup.Actions.Restore" = "從鑰匙串還原";
-"SessionBackup.Actions.DeleteAll" = "刪除鑰匙串備份";
-"SessionBackup.Actions.DeleteOne" = "從備份刪除";
-"SessionBackup.Actions.RemoveFromApp" = "從應用中移除";
-"SessionBackup.LastBackupAt" = "最後備份時間: %@";
-"SessionBackup.RestoreOK" = "確定。還原的會話: %@";
-"SessionBackup.LoggedIn" = "已登錄";
-"SessionBackup.LoggedOut" = "已登出";
-"SessionBackup.DeleteAll.Title" = "刪除所有會話？";
-"SessionBackup.DeleteAll.Text" = "所有會話將從鑰匙串中移除。\n\n帳戶將不會從 Regram 登出。";
-"SessionBackup.DeleteSingle.Title" = "刪除 1 (一) 會話？";
-"SessionBackup.DeleteSingle.Text" = "%@ 會話將從鑰匙串中移除。\n\n帳戶將不會從 Regram 登出。";
-"SessionBackup.RemoveFromApp.Title" = "從應用中移除帳戶？";
-"SessionBackup.RemoveFromApp.Text" = "%@ 會話將從 Regram 中移除！會話將保持活躍，以便您稍後恢復。";
-"SessionBackup.Notice" = "會話會被加密並儲存在設備的鑰匙圈中。會話從不離開您的設備。\n\n重要提示：要在新設備上或在操作系統重置後恢復會話，您必須啟用加密備份，否則鑰匙圈將無法轉移。\n\n注意：會話仍然可能被 Telegram 或其他設備撤銷。";
-
 "MessageFilter.Title" = "訊息過濾器";
 "MessageFilter.SubTitle" = "移除干擾並直接隱藏符合以下規則的訊息。
 比對不區分大小寫。";
@@ -211,10 +193,6 @@
 
 
 "PayWall.Text" = "以 Pro 功能強化";
-
-"PayWall.SessionBackup.Title" = "帳號備份";
-"PayWall.SessionBackup.Notice" = "即使在重新安裝後也可以登錄到沒有代碼的帳戶。使用設備上的密鑰鏈來安全存儲。";
-"PayWall.SessionBackup.Description" = "更改設備或刪除 Regram 不再是問題。恢復 Telegram 伺服器上仍然活躍的所有會話。";
 
 "PayWall.MessageFilter.Title" = "訊息過濾器";
 "PayWall.MessageFilter.Notice" = "隱藏 SPAM、促銷和煩人的訊息。";
@@ -276,12 +254,6 @@
 "AntiFeatures.DisableAds" = "隱藏贊助訊息";
 "MessageFilter.InputPlaceholderRegex" = "輸入正規表達式";
 "MessageFilter.Regex" = "正規表達式";
-"SessionBackup.Working" = "正在處理工作階段…";
-"SessionBackup.Retry" = "重新讀取備份";
-"SessionBackup.Failed" = "操作失敗，已保留原列表，請重試。";
-"SessionBackup.InvalidEntries" = "%@ 條備份無法讀取，原始資料已保留。";
-"SessionBackup.Result" = "完成 %@ 條，失敗 %@ 條。已存在的帳號已略過。";
-"SessionBackup.Cancelled" = "已取消，之前已完成的操作會保留。";
 "MessageFilter.Regex.Notice" = "比對不區分大小寫。正規表達式使用 ICU 語法，無法新增無效的表達式。";
 "MessageFilter.Export" = "匯出規則";
 "MessageFilter.Import" = "匯入規則";
@@ -334,3 +306,9 @@
 "AntiRevoke.Chats.Title" = "防收回的對話";
 "AntiRevoke.Chats.Notice" = "這些對話中被收回的訊息會保留下來，並標記為已刪除。左滑可移除，點擊可查看資料。";
 "AntiRevoke.Chats.Empty" = "尚未加入任何對話。打開對話的資料頁，開啟「防收回」即可。";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "預設影片畫質";
+"Settings.DefaultVideoQuality.automatic" = "自動";
+"Settings.DefaultVideoQuality.highest" = "最高可用畫質";
+"Settings.DefaultVideoQuality.lowest" = "最低可用畫質";

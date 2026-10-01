@@ -8,7 +8,6 @@ Regram 是基于 [Telegram for iOS](https://github.com/TelegramMessenger/Telegra
 - 隐私与消息操作：防撤回、隐藏指定用户的消息、幽灵模式、可调整的消息菜单。
 - 翻译与转写：可选翻译后端、聊天翻译和语音转写。
 - 界面定制：图标、贴纸显示与最近贴纸数量、聊天列表及标签栏选项。
-- 会话备份与恢复。
 
 功能可用性受 Telegram 服务端权限、iOS 版本及所选翻译后端影响。部分界面和数据处理仍在上游模块中；Regram 自有模块位于 **Regram/**，对上游源码的改动标有 **MARK: Regram**。
 

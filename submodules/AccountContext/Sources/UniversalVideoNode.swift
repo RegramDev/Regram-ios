@@ -9,6 +9,8 @@ import TelegramAudio
 import UniversalMediaPlayer
 import AVFoundation
 import RangeSet
+// MARK: Regram
+import RGSimpleSettings
 
 public enum UniversalVideoContentVideoQuality: Equatable {
     case auto
@@ -17,6 +19,10 @@ public enum UniversalVideoContentVideoQuality: Equatable {
 
 public protocol UniversalVideoContentNode: AnyObject {
     var ready: Signal<Void, NoError> { get }
+    // MARK: Regram — decoded frame readiness is separate from thumbnail readiness.
+    var rgDisplayReady: Signal<Void, NoError> { get }
+    var rgStreamingOwnerId: Int64? { get }
+    func rgSetRetainedLoadingSuspended(_ suspended: Bool)
     var status: Signal<MediaPlayerStatus, NoError> { get }
     var bufferingStatus: Signal<(RangeSet<Int64>, Int64)?, NoError> { get }
     var isNativePictureInPictureActive: Signal<Bool, NoError> { get }
@@ -46,6 +52,15 @@ public protocol UniversalVideoContentNode: AnyObject {
     func enterNativePictureInPicture() -> Bool
     func exitNativePictureInPicture()
     func setNativePictureInPictureIsActive(_ value: Bool)
+}
+
+// MARK: Regram — preserve the behavior of other player implementations.
+public extension UniversalVideoContentNode {
+    var rgDisplayReady: Signal<Void, NoError> { return self.ready }
+    var rgStreamingOwnerId: Int64? { return nil }
+    func rgSetRetainedLoadingSuspended(_ suspended: Bool) {
+        if suspended { self.pause() }
+    }
 }
 
 public protocol UniversalVideoContent {
@@ -110,6 +125,10 @@ public final class UniversalVideoNode: ASDisplayNode {
     
     private var playbackCompletedIndex: Int?
     private var contentRequestIndex: (AnyHashable, Int32)?
+    // MARK: Regram
+    private let rgGlobalQualityDisposable = MetaDisposable()
+    private var rgQualitySettingsObserver: NSObjectProtocol?
+    private var rgManualVideoQuality: UniversalVideoContentVideoQuality?
     
     public var playbackCompleted: (() -> Void)?
     
@@ -139,6 +158,19 @@ public final class UniversalVideoNode: ASDisplayNode {
     public var ready: Signal<Void, NoError> {
         return self._ready.get()
     }
+
+    // MARK: Regram
+    private let rgDisplayReadyPromise = Promise<Void>()
+    public var rgDisplayReady: Signal<Void, NoError> { return self.rgDisplayReadyPromise.get() }
+    public var rgContentId: AnyHashable { return self.content.id }
+    public var rgStreamingOwnerId: Int64? { return self.contentNode?.rgStreamingOwnerId }
+    public var rgInlineAutoplaySessionId: Int64? {
+        didSet {
+            if let (id, index) = self.contentRequestIndex {
+                self.manager.rgSetInlineVideoRetention(id: id, index: index, sessionId: self.rgInlineAutoplaySessionId)
+            }
+        }
+    }
     
     public var canAttachContent: Bool = false {
         didSet {
@@ -157,6 +189,10 @@ public final class UniversalVideoNode: ASDisplayNode {
                             strongSelf.updateContentNode(contentNodeAndFlags)
                         }
                     })
+                    // MARK: Regram
+                    if let (id, index) = self.contentRequestIndex, let sessionId = self.rgInlineAutoplaySessionId {
+                        self.manager.rgSetInlineVideoRetention(id: id, index: index, sessionId: sessionId)
+                    }
                 } else {
                     assert(self.contentRequestIndex != nil)
                     if let (id, index) = self.contentRequestIndex {
@@ -184,6 +220,10 @@ public final class UniversalVideoNode: ASDisplayNode {
         self.snapshotContentWhenGone = snapshotContentWhenGone
         
         super.init()
+        // MARK: Regram — apply after qualities become available, including cold HLS.
+        self.rgQualitySettingsObserver = NotificationCenter.default.addObserver(forName: RGVideoQualityPreference.settingsChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.rgApplyGlobalVideoQuality(forceAutomatic: true)
+        }
         
         self.playbackCompletedIndex = self.manager.addPlaybackCompleted(id: self.content.id, { [weak self] in
             self?.playbackCompleted?()
@@ -214,6 +254,8 @@ public final class UniversalVideoNode: ASDisplayNode {
     
     deinit {
         assert(Queue.mainQueue().isCurrent())
+        self.rgGlobalQualityDisposable.dispose()
+        if let observer = self.rgQualitySettingsObserver { NotificationCenter.default.removeObserver(observer) }
         
         if let playbackCompletedIndex = self.playbackCompletedIndex {
             self.manager.removePlaybackCompleted(id: self.content.id, index: playbackCompletedIndex)
@@ -237,6 +279,9 @@ public final class UniversalVideoNode: ASDisplayNode {
             if let (contentNode, initiatedCreation) = contentNode {
                 contentNode.layer.removeAllAnimations()
                 self._ready.set(contentNode.ready)
+                // MARK: Regram
+                self.rgDisplayReadyPromise.set(contentNode.rgDisplayReady)
+                self.rgApplyGlobalVideoQuality()
                 if initiatedCreation && self.autoplay {
                     self.play()
                 }
@@ -254,7 +299,10 @@ public final class UniversalVideoNode: ASDisplayNode {
         }
         
         if contentNode == nil {
+            self.rgGlobalQualityDisposable.set(nil)
             self._ready.set(.single(Void()))
+            // MARK: Regram — detached content must not emit a thumbnail as a frame.
+            self.rgDisplayReadyPromise.set(.never())
         }
     }
     
@@ -351,11 +399,38 @@ public final class UniversalVideoNode: ASDisplayNode {
     }
     
     public func setVideoQuality(_ videoQuality: UniversalVideoContentVideoQuality) {
+        // MARK: Regram — a manual choice must not be replaced by a delayed default.
+        self.rgManualVideoQuality = videoQuality
+        self.rgGlobalQualityDisposable.set(nil)
         self.manager.withUniversalVideoContent(id: self.content.id, { contentNode in
             if let contentNode = contentNode {
                 contentNode.setVideoQuality(videoQuality)
             }
         })
+    }
+
+    // MARK: Regram
+    private func rgApplyGlobalVideoQuality(forceAutomatic: Bool = false) {
+        self.rgGlobalQualityDisposable.set(nil)
+        if forceAutomatic { self.rgManualVideoQuality = nil }
+        guard let node = self.contentNode else { return }
+        if let quality = self.rgManualVideoQuality {
+            node.setVideoQuality(quality)
+            return
+        }
+        let preference = RGVideoQualityPreference(rawValue: RGSimpleSettings.shared.defaultVideoQuality) ?? .automatic
+        if preference == .automatic {
+            if forceAutomatic { node.setVideoQuality(.auto) }
+            return
+        }
+        self.rgGlobalQualityDisposable.set((node.videoQualityStateSignal()
+        |> deliverOnMainQueue
+        |> filter { ($0?.available.count ?? 0) > 1 }
+        |> take(1)).start(next: { [weak self, weak node] state in
+            guard let self, let node, self.contentNode === node, let state,
+                  let quality = preference.selectedQuality(available: state.available) else { return }
+            node.setVideoQuality(.quality(quality))
+        }))
     }
     
     public func videoQualityState() -> (current: Int, preferred: UniversalVideoContentVideoQuality, available: [Int])? {

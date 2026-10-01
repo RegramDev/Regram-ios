@@ -1,4 +1,5 @@
 import RGAppGroupIdentifier
+import RGSimpleSettings // MARK: Regram
 import Foundation
 import UserNotifications
 import SwiftSignalKit
@@ -543,6 +544,11 @@ private struct NotificationContent: CustomStringConvertible {
     var silent = false
     // MARK: Regram
     var isEmpty: Bool
+    // MARK: Regram — Nagram-style explicit control disposition survives polling.
+    var dismissAfterDelivery = false
+    var shouldSuppressAsEmptyControlNotification: Bool {
+        return RGNotificationPolicy.shouldSuppress(markedControl: self.isEmpty || self.dismissAfterDelivery || self.forceIsEmpty, hasText: !(self.title ?? "").isEmpty || !(self.subtitle ?? "").isEmpty || !(self.body ?? "").isEmpty, hasAttachments: !self.attachments.isEmpty, hasSender: self.senderPerson != nil)
+    }
     var isMentionOrReply: Bool
     var isPinned: Bool = false
     // MARK: Regram
@@ -644,8 +650,12 @@ private struct NotificationContent: CustomStringConvertible {
         #if DEBUG
         print("body:\(content.body) silent:\(self.silent) isMentionOrReply:\(self.isMentionOrReply) MENTION_AND_REPLY_ACTION:\(MENTION_AND_REPLY_ACTION) isPinned:\(self.isPinned) PINNED_MESSAGE_ACTION:\(PINNED_MESSAGE_ACTION)" +  " forceIsEmpty:\(self.forceIsEmpty) forceIsSilent:\(self.forceIsSilent)")
         #endif
-        if self.forceIsEmpty && !RG_SILENCE_EMPTY_NOTIFICATIONS {
-            return UNNotificationContent()
+        if self.shouldSuppressAsEmptyControlNotification && !RG_SILENCE_EMPTY_NOTIFICATIONS {
+            // MARK: Regram — filtering forbids alert fields, but an unread count
+            // computed by read/delete synchronization must still update the badge.
+            let filtered = UNMutableNotificationContent()
+            if let badge = self.badge { filtered.badge = badge as NSNumber }
+            return filtered
         }
         // MARK: Regram
         if self.isForeignSession {
@@ -800,7 +810,7 @@ private struct NotificationContent: CustomStringConvertible {
         // own alert, the server's placeholder "You have a new message". `self.body` is checked too
         // because a body with inline emoji goes out as `attributedBody`, leaving `content.body` empty.
         let rgHasVisibleText = !content.title.isEmpty || !content.subtitle.isEmpty || !content.body.isEmpty || !(self.body ?? "").isEmpty
-        if (self.isEmpty || self.forceIsEmpty || !rgHasVisibleText) && RG_SILENCE_EMPTY_NOTIFICATIONS {
+        if (self.shouldSuppressAsEmptyControlNotification || (!rgHasVisibleText && self.attachments.isEmpty && self.senderPerson == nil)) && RG_SILENCE_EMPTY_NOTIFICATIONS {
             // MARK: Regram — built from scratch rather than by blanking the title. A mention or
             // pinned-message notification the user disabled arrives here with its real text,
             // attachments and sender avatar already filled in, and the passive row stays in
@@ -817,8 +827,12 @@ private struct NotificationContent: CustomStringConvertible {
             // `.passive` already suppresses sound, but it does not exist below iOS 15 and the push
             // may well carry one. A notification meant to be invisible must not chime.
             silenced.sound = nil
+            // MARK: Regram — retain a badge computed from the current account
+            // after read/delete updates. Never recover a control push's original badge.
             silenced.badge = content.badge
-            silenced.userInfo = content.userInfo
+            if !self.isEmpty && !self.dismissAfterDelivery && !self.forceIsEmpty {
+                silenced.userInfo = content.userInfo
+            }
             content = silenced
         }
         
@@ -826,6 +840,41 @@ private struct NotificationContent: CustomStringConvertible {
             content.sound = nil
         }
         return content
+    }
+}
+
+// MARK: Regram — cold account opens may temporarily fail while the app publishes
+// its database. Retry the same account within the extension's bounded time budget.
+private func rgStandaloneStateManagerWithRetry(queue: Queue, accountManager: AccountManager<TelegramAccountManagerTypes>, networkArguments: NetworkInitializationArguments, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters, rootPath: String, auxiliaryMethods: AccountAuxiliaryMethods, attempt: Int = 1) -> Signal<AccountStateManager?, NoError> {
+    return standaloneStateManager(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods)
+    |> mapToSignal { stateManager in
+        guard stateManager == nil, attempt < RGNotificationPolicy.maximumStartupAttempts else { return .single(stateManager) }
+        return Signal<AccountStateManager?, NoError>.complete()
+        |> delay(RGNotificationPolicy.retryDelay(attempt: attempt), queue: queue)
+        |> then(rgStandaloneStateManagerWithRetry(queue: queue, accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods, attempt: attempt + 1))
+    }
+}
+
+// MARK: Regram — account records are an in-memory atomic-state snapshot.
+// Reopen metadata after a routing miss to see writes made by the main app.
+private typealias RGNotificationAccountSnapshot = (AccountManager<TelegramAccountManagerTypes>, AccountRecordsView<TelegramAccountManagerTypes>, AccountSharedDataView<TelegramAccountManagerTypes>)
+private func rgNotificationAccountSnapshot(accountManager: AccountManager<TelegramAccountManagerTypes>, keyId: Data?, queue: Queue, attempt: Int = 1) -> Signal<RGNotificationAccountSnapshot, NoError> {
+    return combineLatest(queue: queue, accountManager.accountRecords(), accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings, ApplicationSpecificSharedDataKeys.voiceCallSettings, ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings, SharedDataKeys.loggingSettings, ApplicationSpecificSharedDataKeys.rgStatus]))
+    |> take(1)
+    |> mapToSignal { records, sharedData in
+        let matched = keyId != nil && records.records.contains { record in
+            record.attributes.contains { attribute in
+                if case let .backupData(backup) = attribute { return backup.data?.notificationEncryptionKeyId == keyId }
+                return false
+            }
+        }
+        guard keyId != nil, !matched, attempt < RGNotificationPolicy.maximumStartupAttempts else { return .single((accountManager, records, sharedData)) }
+        return Signal<RGNotificationAccountSnapshot, NoError>.complete()
+        |> delay(RGNotificationPolicy.retryDelay(attempt: attempt), queue: queue)
+        |> then(deferred {
+            let refreshedManager = AccountManager<TelegramAccountManagerTypes>(basePath: accountManager.basePath, isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
+            return rgNotificationAccountSnapshot(accountManager: refreshedManager, keyId: keyId, queue: queue, attempt: attempt + 1)
+        })
     }
 }
 
@@ -857,7 +906,7 @@ private func getCurrentRenderedTotalUnreadCount(accountManager: AccountManager<T
 @available(iOSApplicationExtension 10.0, iOS 10.0, *)
 private final class NotificationServiceHandler {
     private let queue: Queue
-    private let accountManager: AccountManager<TelegramAccountManagerTypes>
+    private var accountManager: AccountManager<TelegramAccountManagerTypes>
     private let encryptionParameters: ValueBoxEncryptionParameters
     private var stateManager: AccountStateManager?
 
@@ -908,27 +957,12 @@ private final class NotificationServiceHandler {
         let deviceSpecificEncryptionParameters = BuildConfig.deviceSpecificEncryptionParameters(rootPath, baseAppBundleId: baseAppBundleId)
         self.encryptionParameters = ValueBoxEncryptionParameters(forceEncryptionIfNoSet: false, key: ValueBoxEncryptionParameters.Key(data: deviceSpecificEncryptionParameters.key)!, salt: ValueBoxEncryptionParameters.Salt(data: deviceSpecificEncryptionParameters.salt)!)
         
-        let semaphore = DispatchSemaphore(value: 0)
+        // MARK: Regram — never block the extension queue on a metadata transaction.
+        // Apply persisted logging settings with the account snapshot below.
         var loggingSettings = LoggingSettings.defaultSettings
         if buildConfig.isInternalBuild {
             loggingSettings = LoggingSettings(logToFile: true, logToConsole: false, redactSensitiveData: true)
         }
-        let _ = (self.accountManager.transaction { transaction -> LoggingSettings? in
-            if let value = transaction.getSharedData(SharedDataKeys.loggingSettings)?.get(LoggingSettings.self) {
-                return value
-            } else {
-                return nil
-            }
-        }).start(next: { value in
-            if let value {
-                loggingSettings = value
-            }
-            semaphore.signal()
-        })
-        semaphore.wait()
-        
-        Logger.shared.log("NotificationService \(episode)", "Logging settings: (logToFile: \(loggingSettings.logToFile))")
-        
         Logger.shared.logToFile = loggingSettings.logToFile
         Logger.shared.logToConsole = loggingSettings.logToConsole
         Logger.shared.redactSensitiveData = loggingSettings.redactSensitiveData
@@ -968,19 +1002,23 @@ private final class NotificationServiceHandler {
             Logger.shared.log("NotificationService \(episode)", "Invalid payload 2")
             return nil
         }
+        // MARK: Regram — reject truncated headers/ciphertext before decryption's
+        // fixed-range reads can terminate the extension instead of completing it.
+        guard RGNotificationPolicy.isPlausibleEncryptedPayload(byteCount: payloadData.count) else {
+            Logger.shared.log("NotificationService \(episode)", "Invalid encrypted payload size")
+            return nil
+        }
 
-        let _ = (combineLatest(queue: self.queue,
-            self.accountManager.accountRecords(),
-            self.accountManager.sharedData(keys: [
-                ApplicationSpecificSharedDataKeys.inAppNotificationSettings,
-                ApplicationSpecificSharedDataKeys.voiceCallSettings,
-                ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings,
-                SharedDataKeys.loggingSettings,
-                ApplicationSpecificSharedDataKeys.rgStatus
-            ])
-        )
-        |> take(1)
-        |> deliverOn(self.queue)).start(next: { [weak self] records, sharedData in
+        let _ = (rgNotificationAccountSnapshot(accountManager: self.accountManager, keyId: notificationPayloadKeyId(data: payloadData), queue: self.queue)
+        |> deliverOn(self.queue)).start(next: { [weak self] accountManager, records, sharedData in
+            // MARK: Regram — account opens and unread counts use the same fresh snapshot.
+            self?.accountManager = accountManager
+            // MARK: Regram — settings are optional; their read must not block startup.
+            if let loggingSettings = sharedData.entries[SharedDataKeys.loggingSettings]?.get(LoggingSettings.self) {
+                Logger.shared.logToFile = loggingSettings.logToFile
+                Logger.shared.logToConsole = loggingSettings.logToConsole
+                Logger.shared.redactSensitiveData = loggingSettings.redactSensitiveData
+            }
             var recordId: AccountRecordId?
             var isCurrentAccount: Bool = false
             
@@ -1033,7 +1071,8 @@ private final class NotificationServiceHandler {
                 return
             }
 
-            let _ = (standaloneStateManager(
+            let _ = (rgStandaloneStateManagerWithRetry(
+                queue: strongSelf.queue,
                 accountManager: strongSelf.accountManager,
                 networkArguments: networkArguments,
                 id: recordId,
@@ -1072,7 +1111,7 @@ private final class NotificationServiceHandler {
 
                         return
                     }
-                    guard let notificationsKey = notificationsKey else {
+                    guard let notificationsKey = notificationsKey, notificationsKey.data.count >= 128 else { // MARK: Regram
                         Logger.shared.log("NotificationService \(episode)", "Didn't receive decryption key")
 
                         let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
@@ -1573,6 +1612,9 @@ private final class NotificationServiceHandler {
                             updateCurrentContent(content)
                             completed()
                         case let .poll(peerId, initialContent, messageId, reportDelivery, enableInlineEmoji):
+                            // MARK: Regram — preserve the decrypted alert while
+                            // waiting for network enrichment or attachment downloads.
+                            updateCurrentContent(initialContent)
                             Logger.shared.log("NotificationService \(episode)", "Will poll")
                             if let stateManager = strongSelf.stateManager {
                                 let shouldKeepConnection = stateManager.network.shouldKeepConnection
@@ -1945,7 +1987,7 @@ private final class NotificationServiceHandler {
                                                     return
                                                 }
 
-                                                if isCurrentAccount {
+                                                if isCurrentAccount && !content.dismissAfterDelivery && !content.isEmpty {
                                                     content.badge = Int(value.0)
                                                 }
 
@@ -2034,6 +2076,7 @@ private final class NotificationServiceHandler {
 
                                                 if wasDisplayed {
                                                     content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
+                                                    content.dismissAfterDelivery = true
                                                     Logger.shared.log("NotificationService \(episode)", "Was already displayed, skipping content")
                                                 } else if let messageId {
                                                     let _ = (stateManager.postbox.transaction { transaction -> Void in
@@ -2125,6 +2168,7 @@ private final class NotificationServiceHandler {
                                                             if maxIncomingReadId >= messageId.id {
                                                                 Logger.shared.log("NotificationService \(episode)", "maxIncomingReadId: \(maxIncomingReadId), messageId: \(messageId.id), skipping")
                                                                 content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
+                                                                content.dismissAfterDelivery = true
                                                             } else {
                                                                 Logger.shared.log("NotificationService \(episode)", "maxIncomingReadId: \(maxIncomingReadId), messageId: \(messageId.id), not skipping")
                                                             }
@@ -2148,7 +2192,7 @@ private final class NotificationServiceHandler {
                                             var content = content
                                             
                                             var parsedMedia: Media?
-                                            if let messageId, let message = transaction.getMessage(messageId), !message.containsSecretMedia, !message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
+                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, !message.containsSecretMedia, !message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
                                                 if let media = message.media.first {
                                                     parsedMedia = media
                                                 }
@@ -2203,6 +2247,8 @@ private final class NotificationServiceHandler {
                                 completed()
                             }
                         case let .pollStories(peerId, initialContent, storyId, isReaction):
+                            // MARK: Regram — a slow story fetch must retain its decoded alert.
+                            updateCurrentContent(initialContent)
                             Logger.shared.log("NotificationService \(episode)", "Will poll stories for \(peerId) isReaction: \(isReaction)")
                             if let stateManager = strongSelf.stateManager {
                                 let pollCompletion: (NotificationContent) -> Void = { content in
@@ -2692,6 +2738,15 @@ final class NotificationService: UNNotificationServiceExtension {
     private let completionLock = NSLock()
     private var currentRequestIdentifier: String?
     private var episode: String?
+    // MARK: Regram — completion uses an immutable snapshot of its own request.
+    private var rgDeadlineWorkItem: DispatchWorkItem?
+    private struct RGDelivery {
+        let handler: (UNNotificationContent) -> Void
+        let content: NotificationContent?
+        let initialContent: UNNotificationContent?
+        let requestIdentifier: String?
+        let episode: String?
+    }
     // MARK: Regram
     
     override init() {
@@ -2747,68 +2802,101 @@ final class NotificationService: UNNotificationServiceExtension {
         }
     }
 
-    private func takeContentHandler() -> ((UNNotificationContent) -> Void)? {
+    private func rgTakeDelivery(episode: String? = nil) -> RGDelivery? {
         self.completionLock.lock()
         defer { self.completionLock.unlock() }
-        let result = self.contentHandler
+        if let episode, self.episode != episode { return nil }
+        guard let handler = self.contentHandler else { return nil }
+        let result = RGDelivery(handler: handler, content: self.content.with({ $0 }), initialContent: self.initialContent, requestIdentifier: self.currentRequestIdentifier, episode: self.episode)
         self.contentHandler = nil
+        self.rgDeadlineWorkItem?.cancel()
+        self.rgDeadlineWorkItem = nil
         return result
+    }
+
+    private func rgIsPendingRequest(_ episode: String) -> Bool {
+        self.completionLock.lock()
+        defer { self.completionLock.unlock() }
+        return self.episode == episode && self.contentHandler != nil
+    }
+
+    // MARK: Regram — checking ownership and publishing content must be atomic.
+    private func rgUpdateCurrentContent(_ value: NotificationContent, episode: String) {
+        self.completionLock.lock()
+        defer { self.completionLock.unlock() }
+        guard self.episode == episode, self.contentHandler != nil else { return }
+        let _ = self.content.swap(value)
+    }
+
+    // MARK: Regram — network/database stalls also happen after installation.
+    // A separate queue can finish even while the worker awaits account data.
+    private func rgComplete(episode: String? = nil, reason: String) {
+        guard let delivery = self.rgTakeDelivery(episode: episode) else { return }
+        Logger.shared.log("NotificationService \(delivery.episode ?? "???")", "Completing: \(reason), hasContent=\(delivery.content != nil)")
+        self.rgDeliver(delivery)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.completionLock.lock()
+            defer { self.completionLock.unlock() }
+            if self.episode == delivery.episode {
+                self.impl = nil
+            }
+        }
     }
     
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        let episode = String(UInt32.random(in: 0 ..< UInt32.max), radix: 16)
-        self.episode = episode
-        
-        self.initialContent = request.content
-        self.currentRequestIdentifier = request.identifier
-        let _ = self.content.swap(nil)
+        // MARK: Regram — an OS request identifier may be reused; each receive
+        // needs its own generation for callbacks and deadline ownership.
+        self.rgComplete(reason: "superseded")
+        let episode = UUID().uuidString
+        let deadline = DispatchWorkItem { [weak self] in
+            self?.rgComplete(episode: episode, reason: "processing deadline")
+        }
         self.completionLock.lock()
+        self.episode = episode
+        self.initialContent = request.content
+        let _ = self.content.swap(nil)
+        self.currentRequestIdentifier = request.identifier
         self.contentHandler = contentHandler
+        self.rgDeadlineWorkItem = deadline
         self.completionLock.unlock()
 
         self.impl = nil
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + RGNotificationPolicy.processingDeadline, execute: deadline)
+        self.rgStartHandler(request: request, episode: episode, attempt: 1)
+    }
 
-        let content = self.content
-
+    // MARK: Regram — transient App Group resolution can also fail before an
+    // account is opened. Retries belong to this request and stop after expiry.
+    private func rgStartHandler(request: UNNotificationRequest, episode: String, attempt: Int) {
+        guard self.rgIsPendingRequest(episode) else { return }
         self.impl = QueueLocalObject(queue: queue, generate: { [weak self] in
+            guard self?.rgIsPendingRequest(episode) == true else { return BoxedNotificationServiceHandler(value: nil) }
             let handler = NotificationServiceHandler(
                 queue: queue,
                 episode: episode,
                 updateCurrentContent: { value in
-                    let _ = content.swap(value)
+                    self?.rgUpdateCurrentContent(value, episode: episode)
                 },
                 completed: {
-                    guard let strongSelf = self else {
-                        return
-                    }
-                    strongSelf.impl = nil
-
-                    if let contentHandler = strongSelf.takeContentHandler() {
-                        Logger.shared.log("NotificationService \(episode)", "Complete handling notification")
-                        
-                        
-                        if let content = content.with({ $0 }) {
-                            // MARK: Regram
-                            // MARK: Regram — a silenced push, whether it is an "empty" sync push or a
-                            // foreign-session duplicate, still gets delivered and has to be swept out
-                            // of Notification Center afterwards. Both carry the "empty-notification"
-                            // thread identifier these helpers match on.
-                            strongSelf.removeEmptyNotificationsOnce()
-                            strongSelf.rgDeliver(content.generate(), contentHandler)
-                        } else {
-                            strongSelf.rgCompleteWithoutContent(contentHandler)
-                        }
-                    } else {
-                        Logger.shared.log("NotificationService \(episode)", "Attempted to repeatedly complete handling notification")
-                    }
+                    self?.rgComplete(episode: episode, reason: "handler completed")
                 },
                 payload: request.content.userInfo
             )
             // MARK: Regram — a handler that fails to start never calls `completed`, so the push used
             // to wait out the whole time limit and then show its placeholder alert.
-            if handler == nil, let strongSelf = self, let contentHandler = strongSelf.takeContentHandler() {
-                Logger.shared.log("NotificationService \(episode)", "Handler failed to start")
-                strongSelf.rgCompleteWithoutContent(contentHandler)
+            if handler == nil, let strongSelf = self, strongSelf.rgIsPendingRequest(episode) {
+                if attempt < RGNotificationPolicy.maximumStartupAttempts {
+                    queue.after(RGNotificationPolicy.retryDelay(attempt: attempt)) { [weak self] in
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self, self.rgIsPendingRequest(episode) else { return }
+                            self.impl = nil
+                            self.rgStartHandler(request: request, episode: episode, attempt: attempt + 1)
+                        }
+                    }
+                } else {
+                    strongSelf.rgComplete(episode: episode, reason: "handler startup exhausted")
+                }
             }
             return BoxedNotificationServiceHandler(value: handler)
         })
@@ -2816,51 +2904,41 @@ final class NotificationService: UNNotificationServiceExtension {
 
     // MARK: Regram — delivers `generated`, then sweeps it out of Notification Center if `generate()`
     // silenced it (see RG_SILENCE_EMPTY_NOTIFICATIONS): a silenced notification is still delivered.
-    private func rgDeliver(_ generated: UNNotificationContent, _ contentHandler: (UNNotificationContent) -> Void) {
-        let requestId = self.currentRequestIdentifier
+    private func rgDeliver(_ delivery: RGDelivery) {
+        let generated: UNNotificationContent
+        if let content = delivery.content {
+            generated = content.generate()
+        } else if let initial = delivery.initialContent, initial.userInfo["p"] is String {
+            // An unresolved encrypted alert is the server placeholder, not the
+            // decrypted privacy preview. Preserve its badge in the passive fallback.
+            var content = NotificationContent(rgStatus: RGStatus.default, isLockedMessage: nil, isEmpty: true)
+            content.badge = initial.badge?.intValue
+            generated = content.generate()
+        } else {
+            delivery.handler(delivery.initialContent ?? UNNotificationContent())
+            return
+        }
         let isSilenced = generated.threadIdentifier == "empty-notification"
         var delivered = generated
         // A notification with nothing to show still has to update the badge. The failure paths
         // (no account could be opened, a payload that did not decrypt) give up before counting
         // anything, so fall back to the badge the push itself carried — except for a push meant for
         // another session, whose badge counts another account.
-        let isForeignSession = self.content.with({ $0 })?.isForeignSession ?? false
-        if generated.badge == nil, !isForeignSession, isSilenced || (generated.title.isEmpty && generated.body.isEmpty), let badge = self.initialContent?.badge, let mutable = generated.mutableCopy() as? UNMutableNotificationContent {
+        let isForeignSession = delivery.content?.isForeignSession ?? false
+        let isControl = delivery.content.map { $0.isEmpty || $0.dismissAfterDelivery || $0.forceIsEmpty } ?? false
+        if RG_SILENCE_EMPTY_NOTIFICATIONS, generated.badge == nil, RGNotificationPolicy.shouldRecoverBadge(foreignSession: isForeignSession, markedControl: isControl), isSilenced || (generated.title.isEmpty && generated.body.isEmpty), let badge = delivery.initialContent?.badge, let mutable = generated.mutableCopy() as? UNMutableNotificationContent {
             mutable.badge = badge
             delivered = mutable
         }
-        contentHandler(delivered)
-        if isSilenced, let requestId {
+        self.removeEmptyNotificationsOnce()
+        delivery.handler(delivered)
+        if isSilenced, let requestId = delivery.requestIdentifier {
             self.removeEmptyNotifications(requestId: requestId)
         }
     }
 
-    // MARK: Regram — no content was produced at all: the handler could not start, or finished or ran
-    // out of time before producing any. The request is then all there is, and for an encrypted push
-    // its alert is only the server's placeholder, "You have a new message" — so it is silenced like any
-    // other empty notification, keeping its badge. An unencrypted push carries its real alert and is
-    // delivered as it came.
-    private func rgCompleteWithoutContent(_ contentHandler: (UNNotificationContent) -> Void) {
-        guard let initialContent = self.initialContent, initialContent.userInfo["p"] is String else {
-            contentHandler(self.initialContent ?? UNNotificationContent())
-            return
-        }
-        var content = NotificationContent(rgStatus: RGStatus.default, isLockedMessage: nil, isEmpty: true)
-        content.badge = initialContent.badge?.intValue
-        self.rgDeliver(content.generate(), contentHandler)
-    }
-    
     override func serviceExtensionTimeWillExpire() {
-        if let contentHandler = self.takeContentHandler() {
-            
-            Logger.shared.log("NotificationService \(self.episode ?? "???")", "Completing due to serviceExtensionTimeWillExpire")
-            
-            if let content = self.content.with({ $0 }) {
-                self.rgDeliver(content.generate(), contentHandler)
-            } else {
-                self.rgCompleteWithoutContent(contentHandler)
-            }
-        }
+        self.rgComplete(reason: "system expiry")
     }
 }
 

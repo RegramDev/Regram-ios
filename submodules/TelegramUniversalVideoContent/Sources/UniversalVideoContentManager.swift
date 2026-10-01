@@ -5,12 +5,16 @@ import SwiftSignalKit
 import UniversalMediaPlayer
 import AccountContext
 import RangeSet
+// MARK: Regram
+import RGSimpleSettings
 
 private final class UniversalVideoContentSubscriber {
     let id: Int32
     let priority: UniversalVideoPriority
     let update: (((UniversalVideoContentNode & ASDisplayNode), Bool)?) -> Void
     var active: Bool = false
+    // MARK: Regram
+    var rgRetentionSessionId: Int64?
     
     init(id: Int32, priority: UniversalVideoPriority, update: @escaping (((UniversalVideoContentNode & ASDisplayNode), Bool)?) -> Void) {
         self.id = id
@@ -24,6 +28,8 @@ private final class UniversalVideoContentHolder {
     private var subscribers: [UniversalVideoContentSubscriber] = []
     let content: UniversalVideoContent
     let contentNode: UniversalVideoContentNode & ASDisplayNode
+    // MARK: Regram — survives a temporary move to a gallery subscriber.
+    var rgLastInlineSessionId: Int64?
     
     var statusDisposable: Disposable?
     var statusValue: MediaPlayerStatus?
@@ -77,6 +83,27 @@ private final class UniversalVideoContentHolder {
     
     var isEmpty: Bool {
         return self.subscribers.isEmpty
+    }
+
+    // MARK: Regram
+    var rgHasInlineSubscriber: Bool {
+        return self.subscribers.contains { $0.priority == .embedded && $0.rgRetentionSessionId != nil }
+    }
+    var rgInlineSessions: Set<Int64> { return Set(self.subscribers.compactMap(\.rgRetentionSessionId)) }
+
+    func rgSetRetention(index: Int32, sessionId: Int64?) -> Bool {
+        guard let subscriber = self.subscribers.first(where: { $0.id == index && $0.priority == .embedded }), subscriber.rgRetentionSessionId != sessionId else { return false }
+        subscriber.rgRetentionSessionId = sessionId
+        if let sessionId { self.rgLastInlineSessionId = sessionId }
+        else if !self.rgHasInlineSubscriber { self.rgLastInlineSessionId = nil }
+        return true
+    }
+
+    func rgEndSession(_ sessionId: Int64) {
+        for subscriber in self.subscribers where subscriber.rgRetentionSessionId == sessionId {
+            subscriber.rgRetentionSessionId = nil
+        }
+        if self.rgLastInlineSessionId == sessionId { self.rgLastInlineSessionId = nil }
     }
     
     func addSubscriber(priority: UniversalVideoPriority, update: @escaping (((UniversalVideoContentNode & ASDisplayNode), Bool)?) -> Void) -> Int32 {
@@ -154,8 +181,63 @@ private final class UniversalVideoContentHolderCallbacks {
 public final class UniversalVideoManagerImpl: UniversalVideoManager {
     private var holders: [AnyHashable: UniversalVideoContentHolder] = [:]
     private var holderCallbacks: [AnyHashable: UniversalVideoContentHolderCallbacks] = [:]
+    // MARK: Regram
+    private var rgRetainedHolders: [AnyHashable: UniversalVideoContentHolder] = [:]
+    private var rgRetention = RGInlineVideoRetention<AnyHashable>()
+    private var rgObservers: [NSObjectProtocol] = []
     
     public init() {
+        // MARK: Regram — retained nodes never outlive memory/background/thermal pressure.
+        for name in [UIApplication.didReceiveMemoryWarningNotification, UIApplication.didEnterBackgroundNotification, ProcessInfo.thermalStateDidChangeNotification, RGMediaLoadingPolicy.settingsChanged] {
+            self.rgObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                guard let self else { return }
+                if notification.name == ProcessInfo.thermalStateDidChangeNotification && ProcessInfo.processInfo.thermalState != .critical { return }
+                if notification.name == RGMediaLoadingPolicy.settingsChanged && RGSimpleSettings.shared.mediaLoadingExperiment { return }
+                self.rgEvictRetained(self.rgRetention.reset())
+                if !RGSimpleSettings.shared.mediaLoadingExperiment {
+                    for holder in self.holders.values {
+                        if let sessionId = holder.rgLastInlineSessionId { holder.rgEndSession(sessionId) }
+                    }
+                }
+            })
+        }
+    }
+
+    // MARK: Regram
+    deinit {
+        for observer in self.rgObservers { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    private var rgActiveInlineCount: Int { return self.holders.values.filter(\.rgHasInlineSubscriber).count }
+
+    private func rgEvictRetained(_ ids: [AnyHashable]) {
+        for id in ids { self.rgRetainedHolders.removeValue(forKey: id) }
+    }
+
+    public func rgSetInlineVideoRetention(id: AnyHashable, index: Int32, sessionId: Int64?) {
+        assert(Queue.mainQueue().isCurrent())
+        guard self.holders[id]?.rgSetRetention(index: index, sessionId: RGSimpleSettings.shared.mediaLoadingExperiment ? sessionId : nil) == true else { return }
+        self.rgEvictRetained(self.rgRetention.trim(activeInlineCount: self.rgActiveInlineCount))
+        NotificationCenter.default.post(name: RGMediaLoadingPolicy.inlineVideoCapacityChanged, object: nil)
+    }
+
+    public func rgSetPreferredInlineVideo(id: AnyHashable?, sessionId: Int64) {
+        assert(Queue.mainQueue().isCurrent())
+        self.rgEvictRetained(self.rgRetention.prefer(id, session: sessionId))
+    }
+
+    public func rgEndInlineVideoSession(_ sessionId: Int64) {
+        assert(Queue.mainQueue().isCurrent())
+        let changedCapacity = self.holders.values.contains { $0.rgInlineSessions.contains(sessionId) }
+        self.rgEvictRetained(self.rgRetention.end(session: sessionId))
+        for holder in self.holders.values { holder.rgEndSession(sessionId) }
+        if changedCapacity { NotificationCenter.default.post(name: RGMediaLoadingPolicy.inlineVideoCapacityChanged, object: nil) }
+    }
+
+    public func rgAvailableInlineVideoCapacity(sessionId: Int64) -> Int {
+        assert(Queue.mainQueue().isCurrent())
+        let outside = self.holders.values.filter { $0.rgHasInlineSubscriber && !$0.rgInlineSessions.contains(sessionId) }.count
+        return max(0, RGMediaLoadingPolicy.maximumInlineHolders - outside)
     }
     
     public func attachUniversalVideoContent(content: UniversalVideoContent, priority: UniversalVideoPriority, create: () -> UniversalVideoContentNode & ASDisplayNode, update: @escaping (((UniversalVideoContentNode & ASDisplayNode), Bool)?) -> Void) -> (AnyHashable, Int32) {
@@ -166,6 +248,12 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
         let holder: UniversalVideoContentHolder
         if let current = self.holders[content.id] {
             holder = current
+        // MARK: Regram — reuse the actual player, not just its MediaBox bytes.
+        } else if RGSimpleSettings.shared.mediaLoadingExperiment, let retained = self.rgRetainedHolders.removeValue(forKey: content.id) {
+            self.rgRetention.take(content.id)
+            holder = retained
+            self.holders[content.id] = retained
+            retained.contentNode.rgSetRetainedLoadingSuspended(false)
         } else {
             let foundHolder: UniversalVideoContentHolder? = nil
             for (_, current) in self.holders {
@@ -224,9 +312,22 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
         assert(Queue.mainQueue().isCurrent())
         
         if let holder = self.holders[id] {
+            // MARK: Regram — notify other transitioning chat sessions after release.
+            let wasInline = holder.rgHasInlineSubscriber
             holder.removeSubscriberAndUpdate(id: index)
             if holder.isEmpty {
                 self.holders.removeValue(forKey: id)
+                // MARK: Regram — only detached chat autoplay content enters the pool.
+                if RGSimpleSettings.shared.mediaLoadingExperiment,
+                   let sessionId = holder.rgLastInlineSessionId,
+                   UIApplication.shared.applicationState == .active,
+                   ProcessInfo.processInfo.thermalState != .critical,
+                   !holder.isNativePictureInPictureActiveValue {
+                    holder.contentNode.pause()
+                    holder.contentNode.rgSetRetainedLoadingSuspended(true)
+                    self.rgRetainedHolders[id] = holder
+                    self.rgEvictRetained(self.rgRetention.retain(id, session: sessionId, activeInlineCount: self.rgActiveInlineCount))
+                }
                 
                 if let current = self.holderCallbacks[id] {
                     for subscriber in current.status.copyItems() {
@@ -234,6 +335,7 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
                     }
                 }
             }
+            if wasInline { NotificationCenter.default.post(name: RGMediaLoadingPolicy.inlineVideoCapacityChanged, object: nil) }
         }
     }
     
@@ -260,7 +362,7 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
     public func removePlaybackCompleted(id: AnyHashable, index: Int) {
         if let current = self.holderCallbacks[id] {
             current.playbackCompleted.remove(index)
-            if current.playbackCompleted.isEmpty {
+            if current.isEmpty { // MARK: Regram — retain the other callback bags.
                 self.holderCallbacks.removeValue(forKey: id)
             }
         }
@@ -290,7 +392,7 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
                 Queue.mainQueue().async {
                     if let current = self.holderCallbacks[content.id] {
                         current.status.remove(index)
-                        if current.playbackCompleted.isEmpty {
+                        if current.isEmpty { // MARK: Regram
                             self.holderCallbacks.removeValue(forKey: content.id)
                         }
                     }
@@ -322,8 +424,9 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
             return ActionDisposable {
                 Queue.mainQueue().async {
                     if let current = self.holderCallbacks[content.id] {
-                        current.status.remove(index)
-                        if current.playbackCompleted.isEmpty {
+                        // MARK: Regram — dispose the bag that owns this index.
+                        current.bufferingStatus.remove(index)
+                        if current.isEmpty {
                             self.holderCallbacks.removeValue(forKey: content.id)
                         }
                     }
@@ -355,8 +458,9 @@ public final class UniversalVideoManagerImpl: UniversalVideoManager {
             return ActionDisposable {
                 Queue.mainQueue().async {
                     if let current = self.holderCallbacks[content.id] {
-                        current.status.remove(index)
-                        if current.playbackCompleted.isEmpty {
+                        // MARK: Regram
+                        current.isNativePictureInPictureActive.remove(index)
+                        if current.isEmpty {
                             self.holderCallbacks.removeValue(forKey: content.id)
                         }
                     }

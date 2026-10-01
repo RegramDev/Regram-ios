@@ -150,26 +150,6 @@
 
 "MutualContact.Label" = "yhteinen yhteys";
 
-
-"SessionBackup.Title" = "Istunnon varmuuskopio";
-"SessionBackup.Sessions.Title" = "Istunnot";
-"SessionBackup.Actions.Backup" = "Varmenteet Keychainiin";
-"SessionBackup.Actions.Restore" = "Palauta Keychainista";
-"SessionBackup.Actions.DeleteAll" = "Poista Keychain-varmuuskopio";
-"SessionBackup.Actions.DeleteOne" = "Poista varmuuskopiosta";
-"SessionBackup.Actions.RemoveFromApp" = "Poista sovelluksesta";
-"SessionBackup.LastBackupAt" = "Viimeisin varmuuskopio: %@";
-"SessionBackup.RestoreOK" = "OK. Istunnot palautettu: %@";
-"SessionBackup.LoggedIn" = "Sisäänkirjautuneena";
-"SessionBackup.LoggedOut" = "Uloskirjautuneena";
-"SessionBackup.DeleteAll.Title" = "Poista kaikki istunnot?";
-"SessionBackup.DeleteAll.Text" = "Kaikki istunnot poistetaan Keychainista.\n\nTilejä ei kirjaudu ulos Regramista.";
-"SessionBackup.DeleteSingle.Title" = "Poista 1 (yksi) istunto?";
-"SessionBackup.DeleteSingle.Text" = "%@ istunto poistetaan Keychainista.\n\nTiliä ei kirjaudu ulos Regramista.";
-"SessionBackup.RemoveFromApp.Title" = "Poista tili sovelluksesta?";
-"SessionBackup.RemoveFromApp.Text" = "%@ istunto POISTETAAN Regramista! Istunto pysyy aktiivisena, joten voit palauttaa sen myöhemmin.";
-"SessionBackup.Notice" = "Istunnot on salattu ja tallennettu laitteen Keychain. Istunnot eivät koskaan jätä laitettasi.\n\nTÄRKEÄÄ: Voit palauttaa istunnot uudelle laitteelle tai käyttöjärjestelmän palautuksen jälkeen sinun TÄYTYY ottaa salatut varmuuskopiot käyttöön, muuten Keychain ei siirretä.\n\nHUOMAUTUS: Istunnot voidaan silti peruuttaa Telegramin tai toisen laitteen kautta.";
-
 "MessageFilter.Title" = "Viestisuoja";
 "MessageFilter.SubTitle" = "Poista häiriötekijät ja piilota viestit, jotka sisältävät alla olevia avainsanoja.\nAvainsanat ovat kirjainkoon suhteen herkkiä.";
 "MessageFilter.Keywords.Title" = "Avainsanat";
@@ -188,9 +168,6 @@
 
 
 "PayWall.Text" = "Tehostettu Pro-ominaisuuksilla";
-
-"PayWall.SessionBackup.Title" = "Istunnon varmuuskopio";
-"PayWall.SessionBackup.Notice" = "Palauta istunnot salatusta paikallisesta Apple Keychain -varmuuskopiosta.";
 
 "PayWall.MessageFilter.Title" = "Viestisuodatin";
 "PayWall.MessageFilter.Notice" = "Piilota roskaposti, mainokset ja ärsyttävät viestit.";
@@ -226,3 +203,9 @@
 "Paywall.Error.Title" = "Virhe";
 "PayWall.ValidationError" = "Vahvistusvirhe";
 "PayWall.ValidationError.TryAgain" = "Ostovahvistuksessa tapahtui jokin virhe. Ei hätää! Yritä palauttaa ostot hieman myöhemmin.";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Videon oletuslaatu";
+"Settings.DefaultVideoQuality.automatic" = "Automaattinen";
+"Settings.DefaultVideoQuality.highest" = "Korkein saatavilla";
+"Settings.DefaultVideoQuality.lowest" = "Matalin saatavilla";

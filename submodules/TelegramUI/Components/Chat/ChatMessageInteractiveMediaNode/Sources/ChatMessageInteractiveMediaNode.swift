@@ -480,6 +480,17 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
     private let coverFetchDisposable = MetaDisposable()
     
     private let videoNodeReadyDisposable = MetaDisposable()
+    // MARK: Regram — page-scoped admission and gallery/first-frame handoff.
+    private let rgDisplayReadyDisposable = MetaDisposable()
+    private var rgInlinePlaybackAdmitted = false
+    private var rgInlinePlaybackSessionId: Int64?
+    private var rgInlinePlaybackChanged: (() -> Void)?
+    private var rgHasDisplayReady = false
+    public private(set) var rgGalleryHandoffActive = false
+    public private(set) var rgGalleryReturnPending = false
+    public var rgInlinePlaybackId: Int64 { return Int64(Int(bitPattern: ObjectIdentifier(self))) }
+    public var rgInlineVideoContentId: AnyHashable? { return self.videoNode?.rgContentId }
+    public var rgStreamingOwnerId: Int64? { return self.videoNode?.rgStreamingOwnerId }
     private let playerStatusDisposable = MetaDisposable()
     
     private var playerUpdateTimer: SwiftSignalKit.Timer?
@@ -502,6 +513,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
     public var visibility: Bool = false {
         didSet {
             self.updateVisibility()
+            // MARK: Regram
+            self.rgInlinePlaybackChanged?()
         }
     }
     
@@ -511,7 +524,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
         let visibility = self.visibility && self.internallyVisible && !isPreview
         
         if let videoNode = self.videoNode {
-            if visibility {
+            // MARK: Regram — visibility alone must not start every video decoder.
+            if visibility && (!RGSimpleSettings.shared.mediaLoadingExperiment || (self.rgInlinePlaybackAdmitted && !self.rgGalleryHandoffActive)) {
                 if !videoNode.canAttachContent {
                     videoNode.canAttachContent = true
                     if videoNode.hasAttachedContext {
@@ -524,6 +538,52 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
         }
         self.animatedStickerNode?.visibility = visibility
         self.visibilityPromise.set(visibility)
+    }
+
+    // MARK: Regram
+    public func rgSetInlinePlaybackCoordinator(sessionId: Int64?, changed: @escaping () -> Void) {
+        self.rgInlinePlaybackSessionId = sessionId
+        self.rgInlinePlaybackChanged = changed
+        self.videoNode?.rgInlineAutoplaySessionId = sessionId
+        if RGSimpleSettings.shared.mediaLoadingExperiment, let videoNode = self.videoNode, videoNode.ownsContentNode, !self.rgHasDisplayReady {
+            self.rgUpdateDisplayReady(videoNode: videoNode, owns: true)
+        }
+        if !RGSimpleSettings.shared.mediaLoadingExperiment {
+            self.videoNode?.isHidden = !(self.videoNode?.ownsContentNode ?? false)
+            self.updateVisibility()
+        }
+    }
+
+    public func rgInlinePlaybackCandidate(frame: CGRect, viewport: CGRect) -> RGInlineVideoCandidate {
+        let intersection = frame.intersection(viewport)
+        let fraction = frame.height > 0 && frame.width > 0 && !intersection.isNull ? Double(intersection.width * intersection.height / (frame.width * frame.height)) : 0
+        let hasSound = self.playerStatus?.soundEnabled ?? false
+        return RGInlineVideoCandidate(id: self.rgInlinePlaybackId, stableId: Int64(self.message?.stableId ?? 0), eligible: self.videoNode != nil && self.automaticPlayback == true && self.visibility && self.internallyVisible && !(self.themeAndStrings?.3 ?? false) && !self.rgGalleryHandoffActive, visibleFraction: fraction, distanceFromCenter: Double(abs(frame.midY - viewport.midY)), userInitiated: hasSound || self.rgGalleryReturnPending, hasSound: hasSound, alreadyAdmitted: self.rgInlinePlaybackAdmitted)
+    }
+
+    public func rgApplyInlinePlaybackAdmission(_ admitted: Bool) {
+        guard self.rgInlinePlaybackAdmitted != admitted else { return }
+        self.rgInlinePlaybackAdmitted = admitted
+        self.updateVisibility()
+    }
+
+    public func rgFinishGalleryReturn() {
+        guard self.rgGalleryReturnPending else { return }
+        self.rgGalleryReturnPending = false
+        self.rgInlinePlaybackChanged?()
+    }
+
+    private func rgUpdateDisplayReady(videoNode: UniversalVideoNode, owns: Bool) {
+        self.rgDisplayReadyDisposable.set(nil)
+        self.rgHasDisplayReady = false
+        guard RGSimpleSettings.shared.mediaLoadingExperiment, owns else { return }
+        videoNode.isHidden = true
+        self.rgDisplayReadyDisposable.set((videoNode.rgDisplayReady |> deliverOnMainQueue |> take(1)).start(next: { [weak self, weak videoNode] _ in
+            guard let self, let videoNode, self.videoNode === videoNode, videoNode.ownsContentNode else { return }
+            self.rgHasDisplayReady = true
+            videoNode.isHidden = false
+            self.rgFinishGalleryReturn()
+        }))
     }
     
     public var activateLocalContent: (InteractiveMediaNodeActivateContent) -> Void = { _ in }
@@ -643,6 +703,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
     deinit {
         self.statusDisposable.dispose()
         self.videoNodeReadyDisposable.dispose()
+        // MARK: Regram
+        self.rgDisplayReadyDisposable.dispose()
         self.playerStatusDisposable.dispose()
         self.fetchDisposable.dispose()
         self.coverFetchDisposable.dispose()
@@ -2059,7 +2121,9 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                                                     videoNode.seek(Double(videoTimestamp))
                                                 }
                                             }
+                                            // MARK: Regram — keep the cover until an actual frame.
                                             videoNode.isHidden = !owns
+                                            strongSelf.rgUpdateDisplayReady(videoNode: videoNode, owns: owns)
                                             if owns {
                                                 videoNode.alpha = 1.0
                                                 videoNode.setBaseRate(1.0)
@@ -2182,16 +2246,9 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                                     transition.animator.updateFrame(layer: videoNode.layer, frame: CGRect(origin: CGPoint(), size: imageFrame.size), completion: nil)
                                 }
                                 
-                                if strongSelf.visibility && strongSelf.internallyVisible && !presentationData.isPreview {
-                                    if !videoNode.canAttachContent {
-                                        videoNode.canAttachContent = true
-                                        if videoNode.hasAttachedContext {
-                                            videoNode.play()
-                                        }
-                                    }
-                                } else {
-                                    videoNode.canAttachContent = false
-                                }
+                                // MARK: Regram — use the same admission gate as visibility updates.
+                                strongSelf.updateVisibility()
+                                strongSelf.rgInlinePlaybackChanged?()
                             }
                             
                             if displayInlineScrubber, videoTimestamp != nil, let file = media as? TelegramMediaFile, let duration = file.duration, duration > 1.0 {
@@ -3278,6 +3335,16 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
     }
     
     public func updateIsHidden(_ isHidden: Bool) {
+        // MARK: Regram — the gallery's hidden-media signal brackets a handoff.
+        if let videoNode = self.videoNode, self.rgGalleryHandoffActive != isHidden {
+            self.rgGalleryHandoffActive = isHidden
+            self.rgGalleryReturnPending = RGSimpleSettings.shared.mediaLoadingExperiment && !isHidden
+            if RGSimpleSettings.shared.mediaLoadingExperiment, isHidden, let sessionId = self.rgInlinePlaybackSessionId {
+                self.context?.sharedContext.mediaManager.universalVideoManager.rgSetPreferredInlineVideo(id: videoNode.rgContentId, sessionId: sessionId)
+            }
+            self.updateVisibility()
+            self.rgInlinePlaybackChanged?()
+        }
         if isHidden && !self.internallyVisible {
             self.internallyVisible = true
             self.updateVisibility()

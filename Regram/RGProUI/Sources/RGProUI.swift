@@ -28,7 +28,6 @@ private enum RGProControllerSection: Int32, RGItemListSection {
 private enum RGProDisclosureLink: String {
     case antiFeatures
     case ghostMode
-    case sessionBackupManager
     case messageFilter
     case hiddenUsers
     case antiRevokeChats
@@ -65,7 +64,6 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     
     let id = RGItemListCounter()
     
-    entries.append(.disclosure(id: id.count, section: .base, link: .sessionBackupManager, text: "SessionBackup.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .base, settingName: .inputToolbar, value: RGSimpleSettings.shared.inputToolbar, text: "InputToolbar.Title".i18n(lang), enabled: true))
@@ -195,8 +193,6 @@ public func rgProController(context: AccountContext) -> ViewController {
     }, openDisclosureLink: { link in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch (link) {
-            case .sessionBackupManager:
-                pushControllerImpl?(rgSessionBackupManagerController(context: context, presentationData: presentationData))
             case .antiFeatures:
                 pushControllerImpl?(rgAntiFeaturesController(context: context))
             case .ghostMode:

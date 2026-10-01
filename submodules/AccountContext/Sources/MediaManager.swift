@@ -274,6 +274,19 @@ public protocol UniversalVideoManager: AnyObject {
     func statusSignal(content: UniversalVideoContent) -> Signal<MediaPlayerStatus?, NoError>
     func bufferingStatusSignal(content: UniversalVideoContent) -> Signal<(RangeSet<Int64>, Int64)?, NoError>
     func isNativePictureInPictureActiveSignal(content: UniversalVideoContent) -> Signal<Bool, NoError>
+    // MARK: Regram — only chat autoplay subscribers opt into detached retention.
+    func rgSetInlineVideoRetention(id: AnyHashable, index: Int32, sessionId: Int64?)
+    func rgSetPreferredInlineVideo(id: AnyHashable?, sessionId: Int64)
+    func rgEndInlineVideoSession(_ sessionId: Int64)
+    func rgAvailableInlineVideoCapacity(sessionId: Int64) -> Int
+}
+
+// MARK: Regram
+public extension UniversalVideoManager {
+    func rgSetInlineVideoRetention(id: AnyHashable, index: Int32, sessionId: Int64?) {}
+    func rgSetPreferredInlineVideo(id: AnyHashable?, sessionId: Int64) {}
+    func rgEndInlineVideoSession(_ sessionId: Int64) {}
+    func rgAvailableInlineVideoCapacity(sessionId: Int64) -> Int { return 2 }
 }
 
 public enum AudioRecordingState: Equatable {

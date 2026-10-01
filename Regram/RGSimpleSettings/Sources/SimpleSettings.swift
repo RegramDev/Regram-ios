@@ -111,6 +111,8 @@ public class RGSimpleSettings {
         case accountColorsSaturation
         case uploadSpeedBoost
         case downloadSpeedBoost
+        case mediaLoadingExperiment
+        case defaultVideoQuality // MARK: Regram
         case bottomTabStyle
         case rememberLastFolder
         case lastAccountFolders
@@ -305,6 +307,8 @@ public class RGSimpleSettings {
         Keys.accountColorsSaturation.rawValue: 100,
         Keys.uploadSpeedBoost.rawValue: false,
         Keys.downloadSpeedBoost.rawValue: DownloadSpeedBoostValues.none.rawValue,
+        Keys.mediaLoadingExperiment.rawValue: RGMediaLoadingPolicy.enabledByDefault,
+        Keys.defaultVideoQuality.rawValue: RGVideoQualityPreference.automatic.rawValue,
         Keys.rememberLastFolder.rawValue: false,
         Keys.bottomTabStyle.rawValue: BottomTabStyleValues.telegram.rawValue,
         Keys.lastAccountFolders.rawValue: [:],
@@ -433,6 +437,19 @@ public class RGSimpleSettings {
     
     @UserDefault(key: Keys.downloadSpeedBoost.rawValue)
     public var downloadSpeedBoost: String
+
+    // MARK: Regram — reversible comparison with the original media loading behavior.
+    @UserDefault(key: Keys.mediaLoadingExperiment.rawValue)
+    public var mediaLoadingExperiment: Bool {
+        didSet {
+            NotificationCenter.default.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil)
+        }
+    }
+
+    @UserDefault(key: Keys.defaultVideoQuality.rawValue)
+    public var defaultVideoQuality: String {
+        didSet { NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil) }
+    }
     
     @UserDefault(key: Keys.rememberLastFolder.rawValue)
     public var rememberLastFolder: Bool

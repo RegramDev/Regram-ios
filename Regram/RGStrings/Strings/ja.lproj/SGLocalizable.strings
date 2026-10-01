@@ -153,26 +153,6 @@
 
 "MutualContact.Label" = "相互連絡先";
 
-
-"SessionBackup.Title" = "アカウントのバックアップ";
-"SessionBackup.Sessions.Title" = "セッション";
-"SessionBackup.Actions.Backup" = "キーチェーンにバックアップ";
-"SessionBackup.Actions.Restore" = "キーチェーンから復元";
-"SessionBackup.Actions.DeleteAll" = "キーチェーンのバックアップを削除";
-"SessionBackup.Actions.DeleteOne" = "バックアップから削除";
-"SessionBackup.Actions.RemoveFromApp" = "アプリから削除";
-"SessionBackup.LastBackupAt" = "最終バックアップ: %@";
-"SessionBackup.RestoreOK" = "OK。復元されたセッション: %@";
-"SessionBackup.LoggedIn" = "ログイン中";
-"SessionBackup.LoggedOut" = "ログアウトしました";
-"SessionBackup.DeleteAll.Title" = "すべてのセッションを削除しますか？";
-"SessionBackup.DeleteAll.Text" = "すべてのセッションがキーチェーンから削除されます。\n\nアカウントはRegramからログアウトされません。";
-"SessionBackup.DeleteSingle.Title" = "1つのセッションを削除しますか？";
-"SessionBackup.DeleteSingle.Text" = "%@のセッションがキーチェーンから削除されます。\n\nアカウントはRegramからログアウトされません。";
-"SessionBackup.RemoveFromApp.Title" = "アプリからアカウントを削除しますか？";
-"SessionBackup.RemoveFromApp.Text" = "%@のセッションがRegramから削除されます！セッションはアクティブなままなので、後で復元できます。";
-"SessionBackup.Notice" = "セッションは暗号化され、デバイスのキーチェーンに保存されます。セッションはあなたのデバイスを離れることはありません。\n\n重要: 新しいデバイスまたはOSのリセット後にセッションを復元するには、暗号化されたバックアップを有効にする必要があります。さもなければキーチェーンは移行されません。\n\n注意: セッションはTelegramや他のデバイスからも取り消される可能性があります。";
-
 "MessageFilter.Title" = "メッセージフィルター";
 "MessageFilter.SubTitle" = "下記のキーワードを含むメッセージを非表示にし、気を散らさないようにします。\nキーワードは大文字と小文字を区別します。";
 "MessageFilter.Keywords.Title" = "キーワード";
@@ -191,10 +171,6 @@
 
 
 "PayWall.Text" = "プロ機能で強化";
-
-"PayWall.SessionBackup.Title" = "アカウントのバックアップ";
-"PayWall.SessionBackup.Notice" = "コードなしでアカウントにログインできます。再インストール後も可能です。デバイス上のキーチェーンで安全に保存されています";
-"PayWall.SessionBackup.Description" = "デバイスを変更したりRegramを削除したりしても、もはや問題にはなりません。Telegramサーバー上でまだアクティブなすべてのセッションを復元します";
 
 "PayWall.MessageFilter.Title" = "メッセージフィルター";
 "PayWall.MessageFilter.Notice" = "SPAM、プロモーション、および煩わしいメッセージを非表示にします。";
@@ -242,3 +218,9 @@
 "PayWall.ValidationError" = "検証エラー";
 "PayWall.ValidationError.TryAgain" = "購入の検証中に問題が発生しました。心配しないでください！後で購入を復元してみてください。";
 "PayWall.ValidationError.Expired" = "サブスクリプションの有効期限が切れました。Pro機能へのアクセスを取り戻すには、再度サブスクリプションを登録してください。";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "動画の既定の画質";
+"Settings.DefaultVideoQuality.automatic" = "自動";
+"Settings.DefaultVideoQuality.highest" = "利用可能な最高画質";
+"Settings.DefaultVideoQuality.lowest" = "利用可能な最低画質";
