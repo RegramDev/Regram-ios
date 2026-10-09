@@ -1157,6 +1157,7 @@ private final class RecentSessionSheetComponent: CombinedComponent {
                         )
                     },
                     backgroundColor: .color(environment.theme.list.modalBlocksBackgroundColor),
+                    centeredSize: environment.metrics.widthClass == .regular ? CGSize(width: 414.0, height: 640.0) : nil,
                     animateOut: animateOut
                 ),
                 environment: {

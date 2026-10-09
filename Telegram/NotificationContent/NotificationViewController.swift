@@ -1,4 +1,5 @@
 import UIKit
+import PasscodeCore
 import UserNotifications
 import UserNotificationsUI
 import TelegramUI
@@ -25,9 +26,8 @@ class NotificationViewController: UIViewController, UNNotificationContentExtensi
             
             let languagesCategory = "ios"
             
-            // MARK: Regram — must resolve the container the same way the app does; a re-signing
-            // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
-            // account to read and the app with data it cannot see.
+            let appGroupName = rgAppGroupIdentifier()
+            try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
             let maybeAppGroupUrl = rgDataContainerURL()
             
             guard let appGroupUrl = maybeAppGroupUrl else {

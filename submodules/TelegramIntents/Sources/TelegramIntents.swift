@@ -200,7 +200,7 @@ public func donateSendMessageIntent(account: Account, sharedContext: SharedAccou
                 
                 let recipient = INPerson(personHandle: recipientHandle, nameComponents: nameComponents, displayName: displayTitle, image: personImage, contactIdentifier: nil, customIdentifier: "tg\(peer.id.toInt64())")
                
-                let intent = INSendMessageIntent(recipients: [recipient], content: nil, speakableGroupName: INSpeakableString(spokenPhrase: displayTitle), conversationIdentifier: "tg\(peer.id.toInt64())", serviceName: nil, sender: nil)
+                let intent = INSendMessageIntent(recipients: [recipient], outgoingMessageType: .outgoingMessageText, content: nil, speakableGroupName: INSpeakableString(spokenPhrase: displayTitle), conversationIdentifier: "tg\(peer.id.toInt64())", serviceName: nil, sender: nil, attachments: nil)
                 // MARK: Regram — `INInteraction` asserts the Siri entitlement and calls abort()
                 // when the running signature does not carry it, from inside a `dispatch_once` where
                 // the exception cannot be caught. Donating only feeds Siri suggestions, so a build

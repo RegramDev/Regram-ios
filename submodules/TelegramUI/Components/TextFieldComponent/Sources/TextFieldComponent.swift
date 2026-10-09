@@ -10,12 +10,13 @@ import EmojiTextAttachmentView
 import AccountContext
 import TextFormat
 import Pasteboard
-import MobileCoreServices
+import UniformTypeIdentifiers
 import ImageTransparency
 import ChatInputTextNode
 import TextInputMenu
 import ObjCRuntimeUtils
 import MultilineTextComponent
+import Speak
 
 public final class EmptyInputView: UIView, UIInputViewAudioFeedback {
     public var enableInputClicksWhenVisible: Bool {
@@ -529,7 +530,7 @@ public final class TextFieldComponent: Component {
             let pasteboard = UIPasteboard.general
                         
             var attributedString: NSAttributedString?
-            if let data = pasteboard.data(forPasteboardType: kUTTypeRTF as String) {
+            if let data = pasteboard.data(forPasteboardType: UTType.rtf.identifier) {
                 attributedString = chatInputStateStringFromRTF(data, type: NSAttributedString.DocumentType.rtf)
             } else if let data = pasteboard.data(forPasteboardType: "com.apple.flat-rtfd") {
                 attributedString = chatInputStateStringFromRTF(data, type: NSAttributedString.DocumentType.rtfd)
@@ -577,15 +578,15 @@ public final class TextFieldComponent: Component {
                         images.append(image)
                         isPNG = true
                         isMemoji = true
-                    } else if let image = item[kUTTypePNG as String] as? UIImage {
+                    } else if let image = item[UTType.png.identifier] as? UIImage {
                         images.append(image)
                         isPNG = true
                     } else if let image = item["com.apple.uikit.image"] as? UIImage {
                         images.append(image)
                         isPNG = true
-                    } else if let image = item[kUTTypeJPEG as String] as? UIImage {
+                    } else if let image = item[UTType.jpeg.identifier] as? UIImage {
                         images.append(image)
-                    } else if let image = item[kUTTypeGIF as String] as? UIImage {
+                    } else if let image = item[UTType.gif.identifier] as? UIImage {
                         images.append(image)
                     }
                 }
@@ -909,6 +910,26 @@ public final class TextFieldComponent: Component {
                 return true
             }
             return true
+        }
+        
+        private var currentSpeechHolder: SpeechSynthesizerHolder?
+        @objc public func _accessibilitySpeak(_ sender: Any) {
+            let selectionRange = self.inputState.selectionRange
+            let text = self.inputState.inputText.attributedSubstring(from: NSRange(location: selectionRange.startIndex, length: selectionRange.count))
+            if let speechHolder = speakText(text: text.string) {
+                speechHolder.completion = { [weak self, weak speechHolder] in
+                    if let strongSelf = self, strongSelf.currentSpeechHolder == speechHolder {
+                        strongSelf.currentSpeechHolder = nil
+                    }
+                }
+                self.currentSpeechHolder = speechHolder
+            }
+            if #available(iOS 13.0, *) {
+                UIMenuController.shared.hideMenu()
+            } else {
+                UIMenuController.shared.isMenuVisible = false
+                UIMenuController.shared.update()
+            }
         }
         
         public func chatInputTextNodeTargetForAction(action: Selector) -> ChatInputTextNode.TargetForAction? {

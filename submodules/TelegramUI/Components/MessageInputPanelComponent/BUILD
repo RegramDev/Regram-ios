@@ -17,6 +17,7 @@ swift_library(
     ],
     deps = sgDeps + [
         "//submodules/Display",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/ComponentFlow",
         "//submodules/AppBundle",
         "//submodules/TelegramCore",

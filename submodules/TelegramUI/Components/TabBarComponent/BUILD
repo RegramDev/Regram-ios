@@ -15,6 +15,7 @@ swift_library(
     ],
     deps = sgdeps + [
         "//submodules/Display",
+        "//submodules/LottieSettings:LottieSettings",
         "//submodules/TelegramPresentationData",
         "//submodules/ComponentFlow",
         "//submodules/Components/ComponentDisplayAdapters",

@@ -1,3 +1,5 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library") # MARK: Regram — Bazel 9 removes native objc_library.
+
 objc_library(
     name = "RGCloudKitGuard",
     module_name = "RGCloudKitGuard",

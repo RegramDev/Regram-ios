@@ -75,17 +75,14 @@ submodules/OpusBinding/SharedHeaders/*
 submodules/FFMpegBinding/SharedHeaders/*
 submodules/OpenSSLEncryptionProvider/SharedHeaders/*
 submodules/TelegramCore/FlatSerialization/Sources/*
-buildServer.json
 .build/**
-Telegram.LSP.json
 **/.build/**
 spm-files
 xcode-files
-.bsp/**
-.sourcekit-lsp/**
+# MARK: Regram — preserve the ignore rule for existing local editor configuration.
+Telegram.LSP.json
 /.claude/
 **/.claude/settings.local.json
-**/.vscode/launch.json
 /buildbox/*
 **/node_modules/
 tools/sim-watcher/dist/

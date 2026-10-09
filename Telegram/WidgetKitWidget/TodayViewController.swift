@@ -1,6 +1,7 @@
 #if arch(arm64) || arch(x86_64)
 
 import UIKit
+import PasscodeCore
 import NotificationCenter
 import BuildConfig
 import WidgetItems
@@ -82,9 +83,8 @@ private func getCommonTimeline(friends: [Friend]?, in context: TimelineProviderC
     
     let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
     
-    // MARK: Regram — must resolve the container the same way the app does; a re-signing
-    // tool never grants group.<bundle id>, so hardcoding it leaves the extension with no
-    // account to read and the app with data it cannot see.
+    let appGroupName = rgAppGroupIdentifier()
+    try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
     let maybeAppGroupUrl = rgDataContainerURL()
     
     guard let appGroupUrl = maybeAppGroupUrl else {

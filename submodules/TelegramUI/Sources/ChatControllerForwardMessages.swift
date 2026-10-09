@@ -27,8 +27,12 @@ extension ChatControllerImpl {
         })
     }
 
-    func forwardMessages(forceHideNames: Bool = false, messages: [EngineRawMessage], options: ChatInterfaceForwardOptionsState? = nil, resetCurrent: Bool) {
-        let _ = self.presentVoiceMessageDiscardAlert(action: {
+    func forwardMessages(forceHideNames: Bool = false, /* MARK: Regram */ messages: [EngineRawMessage], options: ChatInterfaceForwardOptionsState? = nil, resetCurrent: Bool) {
+        let _ = self.presentVoiceMessageDiscardAlert(action: { [weak self] in
+            guard let self else {
+                return
+            }
+
             var filter: ChatListNodePeersFilter = [.onlyWriteable, .excludeDisabled, .doNotSearchMessages]
             var hasPublicPolls = false
             var hasPublicQuiz = false

@@ -326,12 +326,6 @@ public class ChatMessageShareButton: ASDisplayNode {
             self.backgroundBlurView?.view.isHidden = true
             backgroundContent.cornerRadius = min(size.width, size.height) / 2.0
             backgroundContent.frame = CGRect(origin: CGPoint(), size: size)
-            if let (rect, containerSize) = self.absolutePosition {
-                var backgroundFrame = backgroundContent.frame
-                backgroundFrame.origin.x += rect.minX
-                backgroundFrame.origin.y += rect.minY
-                backgroundContent.update(rect: backgroundFrame, within: containerSize, transition: .immediate)
-            }
         } else {
             //self.backgroundNode.isHidden = false
             self.backgroundBlurView?.view.isHidden = false
@@ -358,12 +352,6 @@ public class ChatMessageShareButton: ASDisplayNode {
     
     public func updateAbsoluteRect(_ rect: CGRect, within containerSize: CGSize) {
         self.absolutePosition = (rect, containerSize)
-        if let backgroundContent = self.backgroundContent {
-            var backgroundFrame = backgroundContent.frame
-            backgroundFrame.origin.x += rect.minX
-            backgroundFrame.origin.y += rect.minY
-            backgroundContent.update(rect: backgroundFrame, within: containerSize, transition: .immediate)
-        }
     }
 }
 

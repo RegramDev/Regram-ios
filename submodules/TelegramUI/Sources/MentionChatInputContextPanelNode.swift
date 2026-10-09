@@ -160,30 +160,19 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
                             }
                             
                             if let range = mentionQueryRange {
-                                let inputText = NSMutableAttributedString(attributedString: textInputState.inputText)
-                                
                                 if let addressName = peer.addressName, !addressName.isEmpty {
                                     // MARK: Regram
-                                    let replacementText = addressName + (mentionNext ? " @" : " ")
-                                    
-                                    inputText.replaceCharacters(in: range, with: replacementText)
-                                    
-                                    let selectionPosition = range.lowerBound + (replacementText as NSString).length
-                                    
-                                    return (ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition), inputMode)
+                                    return (textInputState.replacingFlatRange(range, with: addressName + (mentionNext ? " @" : " ")), inputMode)
                                 } else if !peer.compactDisplayTitle.isEmpty {
                                     let replacementText = NSMutableAttributedString()
                                     replacementText.append(NSAttributedString(string: peer.compactDisplayTitle, attributes: [ChatTextInputAttributes.textMention: ChatTextInputTextMentionAttribute(peerId: peer.id)]))
                                     // MARK: Regram
                                     replacementText.append(NSAttributedString(string: mentionNext ? " @" : " "))
-                                    
+
+                                    // The widened range eats the leading "@" as well as the query.
                                     let updatedRange = NSRange(location: range.location - 1, length: range.length + 1)
-                                    
-                                    inputText.replaceCharacters(in: updatedRange, with: replacementText)
-                                    
-                                    let selectionPosition = updatedRange.lowerBound + replacementText.length
-                                    
-                                    return (ChatTextInputState(inputText: inputText, selectionRange: selectionPosition ..< selectionPosition), inputMode)
+
+                                    return (textInputState.replacingFlatRange(updatedRange, with: replacementText), inputMode)
                                 }
                             }
                             return (textInputState, inputMode)

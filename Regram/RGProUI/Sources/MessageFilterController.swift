@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import UniformTypeIdentifiers
 import SwiftUI
 import RGSwiftUI
 import RGStrings
@@ -29,7 +30,7 @@ private final class RGMessageFilterImportDelegate: NSObject, UIDocumentPickerDel
 
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         if let url = urls.first {
-            // `.import` hands back a copy in the app's own container, so no security scope to open.
+            // Copy mode hands back a file in the app's own container, so no security scope to open.
             self.onPick(url)
         }
         rgMessageFilterImportDelegate = nil
@@ -352,7 +353,8 @@ struct MessageFilterView: View {
         guard let presenter = topPresenter() else {
             return
         }
-        let picker = UIDocumentPickerViewController(documentTypes: ["public.json", "public.text"], in: .import)
+        // MARK: Regram — keep import-copy semantics with the iOS 14+ typed document picker.
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json, .text], asCopy: true)
         let delegate = RGMessageFilterImportDelegate { url in
             guard let data = try? Data(contentsOf: url), let json = String(data: data, encoding: .utf8) else {
                 return

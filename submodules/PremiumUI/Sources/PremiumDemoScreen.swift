@@ -1,5 +1,6 @@
 import RGStrings
 import Foundation
+import LottieSettings
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -1364,7 +1365,8 @@ private final class DemoSheetContent: CombinedComponent {
                     color: .white,
                     startingPosition: .begin,
                     size: CGSize(width: 30.0, height: 30.0),
-                    loop: true
+                    loop: true,
+                    lottieSettings: component.context.lottieRenderingSettings
                 ))))
             }
             let button = button.update(

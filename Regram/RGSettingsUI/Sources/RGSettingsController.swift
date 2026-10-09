@@ -710,7 +710,7 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             })
         ])])
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-    }, openDisclosureLink: { link in
+    }, openDisclosureLink: { [context] link in
         switch (link) {
             case .languageSettings:
                 pushControllerImpl?(context.sharedContext.makeLocalizationListController(context: context))
