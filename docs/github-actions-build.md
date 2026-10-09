@@ -14,7 +14,7 @@
 
 ## 缓存及校验
 
-Actions 缓存仅包含 Bazel 的输出缓存，生成配置目录不在缓存路径中。标准托管 runner 的内存较小，因此限制 Bazel 并行任务与 Swift 编译线程。构建前应用仓库跟踪的 rules_apple 兼容补丁。Bazel 从固定发行版本下载并核对 `versions.json` 中的 SHA-256，Actions 依赖固定到完整提交 SHA。
+Actions 缓存仅包含 Bazel 的输出缓存，生成配置目录不在缓存路径中。标准托管 runner 的内存较小，因此限制 Bazel 并行任务与 Swift 编译线程。构建前应用仓库跟踪的 rules_apple 兼容补丁，并下载 Xcode 27 镜像中未预装的 MetalToolchain。Bazel 从固定发行版本下载并核对 `versions.json` 中的 SHA-256，Actions 依赖固定到完整提交 SHA。
 
 [package.py](../build-system/ci/package.py) 会重新解包最终 IPA，检查七个 Bundle 的身份、构建号、最低 iOS 15.0、arm64 架构、严格签名、12 个 dSYM UUID、字体目录与许可文件，并确认没有内置按需字体二进制。验证失败不会上传半成品。
 
