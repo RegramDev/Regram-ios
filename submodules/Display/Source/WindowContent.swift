@@ -349,6 +349,9 @@ public final class WindowKeyboardGestureRecognizerDelegate: NSObject, UIGestureR
 public class Window1 {
     public let hostView: WindowHostView
     public let badgeView: UIImageView
+    // MARK: Regram — keep a stable insertion anchor when the badge moves to its iOS 27 window.
+    private let badgeInsertionAnchor = UIView()
+    private let badgeOverlay: RGAppBadgeOverlay
     
     private(set) var deviceMetrics: DeviceMetrics
     
@@ -450,15 +453,17 @@ public class Window1 {
     public init(hostView: WindowHostView, statusBarHost: StatusBarHost?) {
         self.hostView = hostView
         self.badgeView = UIImageView()
+        self.badgeOverlay = RGAppBadgeOverlay(badgeView: self.badgeView)
         if RGSimpleSettings.shared.status > 1, let image = UIImage(bundleImageName: RGSimpleSettings.shared.customAppBadge) {
             self.badgeView.image = image
         } else {
         self.badgeView.image = UIImage(bundleImageName: "Components/AppBadge")
         }
-        // MARK: Regram — render the badge above iOS 26+ glass navigation compositing.
+        // MARK: Regram — order the fallback badge above app content; this cannot order system windows.
         self.badgeView.isOpaque = false
         self.badgeView.layer.zPosition = 1000
         self.badgeView.isHidden = true
+        self.badgeInsertionAnchor.isHidden = true
         
         self.systemUserInterfaceStyle = hostView.systemUserInterfaceStyle
         
@@ -832,6 +837,8 @@ public class Window1 {
         }
         self.windowPanRecognizer = recognizer
         self.hostView.containerView.addGestureRecognizer(recognizer)
+        // MARK: Regram
+        self.hostView.containerView.addSubview(self.badgeInsertionAnchor)
         self.hostView.containerView.addSubview(self.badgeView)
     }
             
@@ -905,10 +912,33 @@ public class Window1 {
                 let badgeShouldBeHidden = !self.deviceMetrics.showAppBadge || self.forceBadgeHidden || self.windowLayout.size.width > self.windowLayout.size.height
                 if badgeShouldBeHidden == badgeIsHidden {
                     self.badgeView.isHidden = badgeIsHidden
+                    // MARK: Regram
+                    self.updateBadgePresentation()
                 }
             }
         } else {
             self.badgeView.isHidden = badgeIsHidden
+        }
+        // MARK: Regram
+        self.updateBadgePresentation()
+    }
+
+    // MARK: Regram — isolate Dynamic Island badges from the iOS 27 top-area compositing path.
+    private func updateBadgePresentation() {
+        if #available(iOS 27.0, *) {
+            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden)
+        }
+    }
+
+    // MARK: Regram — image changes need layout even when the cached window geometry is unchanged.
+    public func updateAppBadgeLayout() {
+        guard let image = self.badgeView.image else { return }
+        self.updateBadgeVisibility()
+        self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
+        self.updateBadgePresentation()
+        self.hostView.containerView.bringSubviewToFront(self.badgeInsertionAnchor)
+        if self.badgeView.superview === self.hostView.containerView {
+            self.hostView.containerView.bringSubviewToFront(self.badgeView)
         }
     }
     
@@ -1142,7 +1172,8 @@ public class Window1 {
                 if let coveringView = self.coveringView {
                     self.hostView.containerView.insertSubview(controller.view, belowSubview: coveringView)
                 } else {
-                    self.hostView.containerView.insertSubview(controller.view, belowSubview: self.badgeView)
+                    // MARK: Regram — badgeView may belong to the dedicated badge window.
+                    self.hostView.containerView.insertSubview(controller.view, belowSubview: self.badgeInsertionAnchor)
                 }
                 
                 if let controller = controller as? ViewController {
@@ -1182,7 +1213,8 @@ public class Window1 {
                     if let controller = self.topPresentationContext.controllers.first {
                         self.hostView.containerView.insertSubview(coveringView, belowSubview: controller.0.displayNode.view)
                     } else {
-                        self.hostView.containerView.insertSubview(coveringView, belowSubview: self.badgeView)
+                        // MARK: Regram
+                        self.hostView.containerView.insertSubview(coveringView, belowSubview: self.badgeInsertionAnchor)
                     }
                     if !self.windowLayout.size.width.isZero {
                         coveringView.frame = CGRect(origin: CGPoint(), size: self.windowLayout.size)
@@ -1433,11 +1465,8 @@ public class Window1 {
                     coveringView.updateLayout(self.windowLayout.size)
                 }
                 
-                if let image = self.badgeView.image {
-                    self.updateBadgeVisibility()
-                    self.hostView.containerView.bringSubviewToFront(self.badgeView)
-                    self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
-                }
+                // MARK: Regram
+                self.updateAppBadgeLayout()
             }
         }
     }

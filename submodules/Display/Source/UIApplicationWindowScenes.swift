@@ -25,7 +25,9 @@ public extension UIApplication {
 
         var result: [UIWindow] = []
         for windowScene in effectiveScenes {
-            result.append(contentsOf: windowScene.windows.sorted(by: { $0.windowLevel < $1.windowLevel }))
+            // MARK: Regram — the decorative badge window must never host dialogs or be mistaken
+            // for the foreground/keyboard window by callers taking last or reversed.
+            result.append(contentsOf: windowScene.windows.filter { !($0 is RGAppBadgeWindow) }.sorted(by: { $0.windowLevel < $1.windowLevel }))
         }
         return result
     }

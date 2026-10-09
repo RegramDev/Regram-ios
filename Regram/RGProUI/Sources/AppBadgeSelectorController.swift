@@ -81,7 +81,11 @@ struct AppBadgeSettingsView: View {
         if self.context.sharedContext.immediateRGStatus.status > 1 {
             DispatchQueue.main.async {
                 RGSimpleSettings.shared.customAppBadge = selectedBadge.assetName
-                self.context.sharedContext.mainWindow?.badgeView.image = image
+                if let window = self.context.sharedContext.mainWindow {
+                    window.badgeView.image = image
+                    // The badge can now live outside the main view tree. Relayout its new width.
+                    window.updateAppBadgeLayout()
+                }
             }
         }
     }
