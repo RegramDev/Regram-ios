@@ -69,8 +69,6 @@ extension PeerInfoScreenNode {
                     self.controller?.present(self.context.sharedContext.makeRGUpdateIOSController(), animated: true)
                 }
             }
-        case .nsfw:
-            self.controller?.push(rgNSFWController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()
         case .edit:

@@ -738,10 +738,10 @@ public extension TelegramEngine {
                 }
                 |> castError(TranslationError.self)
                 |> mapToSignal { inputPeer in
-                    return rgWrappedTranslateSingle(text: text, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id))
+                    return rgWrappedTranslateSingle(text: text, entities: entities, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id))
                 }
             } else {
-                return rgWrappedTranslateSingle(text: text, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone))
+                return rgWrappedTranslateSingle(text: text, entities: entities, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone))
             }
         }
         
@@ -2124,21 +2124,50 @@ func rgExternalTranslate(_ text: String, _ toLang: String) -> Signal<String, Tra
     }
 }
 
+// MARK: Regram — external backends must preserve literal and formatted links exactly.
+func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity], toLang: String) -> Signal<(String, [MessageTextEntity]), TranslateFetchError> {
+    var links = entities.filter { entity in
+        switch entity.type { case .Url, .TextUrl, .Email: return true; default: return false }
+    }
+    for range in RGTranslationLinkPlan.literalLinkRanges(in: text) {
+        let interval = range.location..<NSMaxRange(range)
+        if !links.contains(where: { $0.range.overlaps(interval) }) { links.append(MessageTextEntity(range: interval, type: .Url)) }
+    }
+    let plan = RGTranslationLinkPlan(text: text, ranges: links.enumerated().map { index, entity in
+        RGTranslationLinkPlan.ProtectedRange(range: NSRange(location: entity.range.lowerBound, length: entity.range.count), id: index)
+    })
+    let signals: [Signal<String, TranslateFetchError>] = plan.segments.map { segment in
+        if segment.id != nil || segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .single(segment.text) }
+        let leading = String(segment.text.prefix { $0.isWhitespace })
+        let trailing = String(segment.text.reversed().prefix { $0.isWhitespace }.reversed())
+        let core = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return rgExternalTranslate(core, toLang) |> map { leading + $0 + trailing }
+    }
+    if signals.isEmpty { return .single((text, [])) }
+    return combineLatest(signals) |> map { values in
+        let restored = plan.restore(translations: values)
+        return (restored.text, restored.ranges.map { protected in
+            MessageTextEntity(range: protected.range.location..<NSMaxRange(protected.range), type: links[protected.id].type)
+        })
+    }
+}
+
 private func rgWrappedTranslateSingle(
     text: String,
+    entities: [MessageTextEntity],
     toLang: String,
     `default`: Signal<(String, [MessageTextEntity])?, TranslationError>
 ) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
     if RGSimpleSettings.shared.translationBackendIsExternal {
-        return rgExternalTranslate(text, toLang)
-            |> map { ($0, []) }
+        return rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
+            |> map(Optional.init)
             |> mapError { _ in .generic }
     }
 
     return `default`
         |> `catch` { originalError in
-            rgExternalTranslate(text, toLang)
-                |> map { ($0, []) }
+            rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
+                |> map(Optional.init)
                 |> mapError { _ in originalError }
         }
 }
@@ -2149,9 +2178,8 @@ private func rgWrappedTranslateMultiple(
     `default`: Signal<[(String, [MessageTextEntity])], TranslationError>
 ) -> Signal<[(String, [MessageTextEntity])], TranslationError> {
     if RGSimpleSettings.shared.translationBackendIsExternal {
-        let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, _) in
-            rgExternalTranslate(text, toLang)
-                |> map { ($0, []) }
+        let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, entities) in
+            rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
                 |> mapError { _ in .generic }
         }
         return combineLatest(translatedSignals)
@@ -2159,9 +2187,8 @@ private func rgWrappedTranslateMultiple(
 
     return `default`
         |> `catch` { originalError in
-            let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, _) in
-                rgExternalTranslate(text, toLang)
-                    |> map { ($0, []) }
+            let translatedSignals: [Signal<(String, [MessageTextEntity]), TranslationError>] = texts.map { (text, entities) in
+                rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
                     |> mapError { _ in originalError }
             }
             return combineLatest(translatedSignals)

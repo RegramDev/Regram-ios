@@ -40,7 +40,6 @@ private enum RGProToggles: String {
     case inputToolbar
     // MARK: Regram
     case mentionAsUserIdLink
-    case nsfwEnabled
     case localPremium
     case disableLinkPreview
     case panguSpacing
@@ -71,9 +70,6 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     // MARK: Regram
     entries.append(.toggle(id: id.count, section: .base, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "Mention.UserIdLink.Notice".i18n(lang)))
-    // MARK: Regram — NSFW section switch.
-    entries.append(.toggle(id: id.count, section: .base, settingName: .nsfwEnabled, value: RGSimpleSettings.shared.nsfwEnabled, text: "NSFW.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "NSFW.Notice".i18n(lang)))
     // MARK: Regram — local Premium switch.
     entries.append(.toggle(id: id.count, section: .base, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "LocalPremium.Notice".i18n(lang)))
@@ -129,8 +125,6 @@ public func rgProController(context: AccountContext) -> ViewController {
                 RGSimpleSettings.shared.inputToolbar = value
             case .mentionAsUserIdLink:
                 RGSimpleSettings.shared.mentionAsUserIdLink = value
-            case .nsfwEnabled:
-                RGSimpleSettings.shared.nsfwEnabled = value
             case .localPremium:
                 RGSimpleSettings.shared.localPremium = value
                 // Screens that already read the old value keep it until they are rebuilt, so offer

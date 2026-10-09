@@ -19,6 +19,8 @@ public struct RGFontSettingsView: SwiftUI.View {
     @State private var importing = false
     @State private var errorPresented = false
     @State private var errorText = ""
+    @State private var filter = ""
+    @State private var script = 0
     @State private var family = RGSimpleSettings.shared.fontConfiguration.family
     @State private var chineseFamily = RGSimpleSettings.shared.fontConfiguration.chineseFamily
     @State private var messages = RGSimpleSettings.shared.fontApplyToMessages
@@ -79,110 +81,154 @@ public struct RGFontSettingsView: SwiftUI.View {
         .accessibilityAddTraits(selected.wrappedValue ? .isSelected : [])
     }
 
+    private func matches(_ title: String) -> Bool {
+        self.filter.isEmpty || title.localizedCaseInsensitiveContains(self.filter)
+    }
+
+    private func fontRow(title: String, sample: String, selected: Bool, available: Bool, font: SwiftUI.Font, action: @escaping () -> Void) -> some SwiftUI.View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(title).font(.system(size: 15, weight: .semibold)).foregroundColor(.primary)
+                    Text(sample).font(font).foregroundColor(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: selected ? "checkmark.circle.fill" : available ? "circle" : "icloud.and.arrow.down")
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundColor(selected ? .accentColor : .secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(selected ? Color.accentColor.opacity(0.5) : Color.clear, lineWidth: 1.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(self.store.downloading != nil)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     public var body: some SwiftUI.View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20.0) {
-                Text("Fonts.Preview".i18n(self.lang)).font(.headline)
-                VStack(alignment: .leading, spacing: 12.0) {
-                    Text("Hello, Regram! 中文混排 0123456789").font(self.previewFont())
-                    Text("Fonts.Sample".i18n(self.lang)).font(self.previewFont())
-                    Text("粗体 Bold → ≠ <= !=").font(self.previewFont(weight: .bold))
-                    Text("Italic / 斜体").font(self.previewFont(italic: true))
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack {
+                        Label("Fonts.Preview".i18n(self.lang), systemImage: "textformat")
+                            .font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                        Spacer()
+                        Text("Aa · 字").font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
+                    }
+                    Text("Hello, Regram!").font(self.previewFont(weight: .medium))
+                    Text("Fonts.Sample".i18n(self.lang)).font(self.previewFont()).foregroundColor(.secondary)
+                    HStack(spacing: 18) {
+                        Text("Bold 粗体").font(self.previewFont(weight: .bold))
+                        Text("Italic 斜体").font(self.previewFont(italic: true))
+                    }
+                    Divider()
+                    Text("0123456789   →  ≠  <=").font(self.previewFont()).foregroundColor(.secondary)
                 }
+                .padding(22)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16.0)
                 .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .cornerRadius(12.0)
+                .cornerRadius(22)
                 .accessibilityIdentifier("regram.font.preview")
 
-                Text("Fonts.Areas".i18n(self.lang)).font(.headline)
-                VStack(spacing: 0.0) {
-                    self.areaRow("Fonts.Messages", id: "regram.font.messages", selected: self.$messages)
-                    self.areaRow("Fonts.Interface", id: "regram.font.interface", selected: self.$interface)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Fonts.Areas".i18n(self.lang)).font(.headline)
+                    VStack(spacing: 0) {
+                        self.areaRow("Fonts.Messages", id: "regram.font.messages", selected: self.$messages)
+                        Divider().padding(.leading, 36)
+                        self.areaRow("Fonts.Interface", id: "regram.font.interface", selected: self.$interface)
+                    }.padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
+                    Text((self.messages || self.interface ? "Fonts.Areas.Notice" : "Fonts.NoArea").i18n(self.lang))
+                        .font(.footnote).foregroundColor(.secondary)
                 }
-                Text("Fonts.Areas.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                if !self.messages && !self.interface {
-                    Text("Fonts.NoArea".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                }
-                Text("Fonts.Cloud.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
+
                 if let downloading = self.store.downloading {
-                    VStack(alignment: .leading) {
-                        Text("\(downloading) · \(Int(self.store.progress * 100))%")
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Label(downloading, systemImage: "arrow.down.circle")
+                            Spacer()
+                            Text("\(Int(self.store.progress * 100))%").monospacedDigit()
+                        }.font(.subheadline)
                         ProgressView(value: self.store.progress)
                         Button("Fonts.Cancel".i18n(self.lang)) { self.store.cancel() }
-                    }
+                    }.padding(18).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
                 }
-                Button("Fonts.Import".i18n(self.lang)) { self.importer = true }.disabled(self.importing || self.store.downloading != nil)
-                if self.importing { ProgressView() }
-                Text("Fonts.Import.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                Text("Fonts.Latin.Title".i18n(self.lang)).font(.headline)
-                ForEach(RGFontFamily.latinChoices, id: \.rawValue) { option in
-                    Button(action: { self.download(option.bundledPrefix) { self.family = option; self.importedLatin = "" } }) {
-                        HStack {
-                            Text(option.title.i18n(self.lang))
-                                .font(SwiftUI.Font(RGTypography.font(family: option, size: 17.0) ?? UIFont.systemFont(ofSize: 17.0)))
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if !self.store.isDownloaded(prefix: option.bundledPrefix) { Image(systemName: "icloud.and.arrow.down") }
-                            if self.importedLatin.isEmpty && self.family == option { Image(systemName: "checkmark").font(.system(size: 17.0, weight: .semibold)) }
+
+                VStack(spacing: 14) {
+                    Picker("Fonts.Title".i18n(self.lang), selection: self.$script) {
+                        Text("Fonts.Latin.Title".i18n(self.lang)).tag(0)
+                        Text("Fonts.Chinese.Title".i18n(self.lang)).tag(1)
+                    }.pickerStyle(.segmented)
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+                        TextField(self.lang.hasPrefix("zh") ? "搜索字体" : "Search fonts", text: self.$filter)
+                            .autocapitalization(.none).disableAutocorrection(true)
+                        if !self.filter.isEmpty { Button { self.filter = "" } label: { Image(systemName: "xmark.circle.fill").foregroundColor(.secondary) } }
+                    }.padding(14).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(14)
+                }
+
+                if self.script == 0 {
+                    LazyVStack(spacing: 10) {
+                        ForEach(RGFontFamily.latinChoices.filter { self.matches($0.title.i18n(self.lang)) }, id: \.rawValue) { option in
+                            self.fontRow(title: option.title.i18n(self.lang), sample: "The quick brown fox 0123", selected: self.importedLatin.isEmpty && self.family == option, available: self.store.isDownloaded(prefix: option.bundledPrefix), font: SwiftUI.Font(RGTypography.font(family: option, size: 18) ?? UIFont.systemFont(ofSize: 18))) {
+                                self.download(option.bundledPrefix) { self.family = option; self.importedLatin = "" }
+                            }.accessibilityIdentifier("regram.font.family.\(option.rawValue)")
                         }
-                        .padding(.vertical, 10.0)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("regram.font.family.\(option.rawValue)")
-                    .disabled(self.store.downloading != nil)
-                    .accessibilityAddTraits(self.importedLatin.isEmpty && self.family == option ? .isSelected : [])
-                }
-                ForEach(["Anthropic", "Google"], id: \.self) { group in
-                    Text(group).font(.headline)
-                    ForEach(RGFontStore.additionalFamilies.filter { $0.group == group }) { option in
-                        Button(action: { self.download(option.id) { self.importedLatin = option.selectionId } }) {
-                            HStack {
-                                Text(option.title).foregroundColor(.primary)
-                                Spacer()
-                                if !self.store.isDownloaded(prefix: option.id) { Image(systemName: "icloud.and.arrow.down") }
-                                if self.importedLatin == option.selectionId { Image(systemName: "checkmark") }
-                            }.padding(.vertical, 10).contentShape(Rectangle())
-                        }.buttonStyle(.plain).disabled(self.store.downloading != nil)
-                        .accessibilityIdentifier("regram.font.additional.\(option.id)")
-                    }
-                }
-                self.importedRows(chinese: false)
-                Text("Fonts.Chinese.Title".i18n(self.lang)).font(.headline)
-                ForEach(RGChineseFontFamily.allCases, id: \.rawValue) { option in
-                    Button(action: { self.download(option == .system ? nil : (option == .ibmPlexSansSC ? "IBMPlexSansSC" : "NotoSerifSC")) { self.chineseFamily = option; self.importedChinese = "" } }) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4.0) {
-                                Text(option.title.i18n(self.lang)).foregroundColor(.primary)
-                                Text("Fonts.Chinese.Sample".i18n(self.lang))
-                                    .font(SwiftUI.Font(RGTypography.chineseFont(family: option, size: 17.0)))
-                                    .foregroundColor(.secondary)
+                        ForEach(["Anthropic", "Google"], id: \.self) { group in
+                            let options = RGFontStore.additionalFamilies.filter { $0.group == group && self.matches($0.title) }
+                            if !options.isEmpty {
+                                Text(group).font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14).padding(.bottom, 2)
+                                ForEach(options) { option in
+                                    self.fontRow(title: option.title, sample: "The quick brown fox 0123", selected: self.importedLatin == option.selectionId, available: self.store.isDownloaded(prefix: option.id), font: .system(size: 18)) {
+                                        self.download(option.id) { self.importedLatin = option.selectionId }
+                                    }.accessibilityIdentifier("regram.font.additional.\(option.id)")
+                                }
                             }
-                            Spacer()
-                            if !self.store.isDownloaded(prefix: option == .system ? nil : (option == .ibmPlexSansSC ? "IBMPlexSansSC" : "NotoSerifSC")) { Image(systemName: "icloud.and.arrow.down") }
-                            if self.importedChinese.isEmpty && self.chineseFamily == option { Image(systemName: "checkmark").font(.system(size: 17.0, weight: .semibold)) }
                         }
-                        .padding(.vertical, 10.0)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("regram.font.chinese.\(option.rawValue)")
-                    .disabled(self.store.downloading != nil)
-                    .accessibilityAddTraits(self.importedChinese.isEmpty && self.chineseFamily == option ? .isSelected : [])
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(RGChineseFontFamily.allCases.filter { self.matches($0.title.i18n(self.lang)) }, id: \.rawValue) { option in
+                            let prefix: String? = option == .system ? nil : (option == .ibmPlexSansSC ? "IBMPlexSansSC" : "NotoSerifSC")
+                            self.fontRow(title: option.title.i18n(self.lang), sample: "Fonts.Chinese.Sample".i18n(self.lang), selected: self.importedChinese.isEmpty && self.chineseFamily == option, available: self.store.isDownloaded(prefix: prefix), font: SwiftUI.Font(RGTypography.chineseFont(family: option, size: 18))) {
+                                self.download(prefix) { self.chineseFamily = option; self.importedChinese = "" }
+                            }.accessibilityIdentifier("regram.font.chinese.\(option.rawValue)")
+                        }
+                    }
                 }
-                self.importedRows(chinese: true)
+                if !self.store.imported.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Fonts.Imported".i18n(self.lang)).font(.headline)
+                        self.importedRows(chinese: self.script == 1)
+                    }.padding(16).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
+                }
+                Button { self.importer = true } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "square.and.arrow.down").font(.system(size: 22))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Fonts.Import".i18n(self.lang)).font(.subheadline.weight(.semibold))
+                            Text("TTF · OTF · TTC").font(.caption).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if self.importing { ProgressView() } else { Image(systemName: "chevron.right").font(.caption.weight(.semibold)) }
+                    }.padding(18).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
+                }.buttonStyle(.plain).disabled(self.importing || self.store.downloading != nil)
+                Text("Fonts.Cloud.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Scripts.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                Text("Fonts.More.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                Text("Fonts.Fallback".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                Button("Fonts.Reset".i18n(self.lang)) { self.store.cancel(); self.family = .system; self.chineseFamily = .system; self.importedLatin = ""; self.importedChinese = ""; self.messages = true; self.interface = true }
+                Button("Fonts.Reset".i18n(self.lang)) {
+                    self.store.cancel(); self.family = .system; self.chineseFamily = .system
+                    self.importedLatin = ""; self.importedChinese = ""; self.messages = true; self.interface = true
+                }.font(.footnote).frame(maxWidth: .infinity).padding(.vertical, 8)
                     .accessibilityIdentifier("regram.font.reset")
-            }
-            .padding(20.0)
+            }.padding(20)
         }
-        .font(SwiftUI.Font(RGTypography.font(configuration: RGFontConfiguration(family: self.family.rawValue, messages: false, interface: self.interface, chineseFamily: self.chineseFamily.rawValue, importedLatin: self.importedLatin, importedChinese: self.importedChinese, assetsRevision: self.store.revision), size: 17.0) ?? UIFont.systemFont(ofSize: 17.0)))
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .fileImporter(isPresented: self.$importer, allowedContentTypes: ["ttf", "otf", "ttc"].compactMap { UTType(filenameExtension: $0) }, allowsMultipleSelection: false) { result in
+        .fileImporter(isPresented: self.$importer, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
             guard case let .success(urls) = result, let url = urls.first else { return }
             self.importing = true
             self.store.importFont(url: url) { result in

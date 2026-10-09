@@ -165,7 +165,6 @@ enum PeerInfoContextSubject {
 enum PeerInfoSettingsSection {
     case regram
     case regramPro
-    case nsfw
     case avatar
     case edit
     case proxy

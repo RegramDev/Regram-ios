@@ -38,20 +38,10 @@
 
 "Mention.UserIdLink" = "Mention by Name";
 "Mention.UserIdLink.Notice" = "Long-pressing an avatar to mention inserts the user's full name as a mention instead of @username. Tapping it opens their profile.";
-"NSFW.Title" = "NSFW";
-"NSFW.Notice" = "Shows an NSFW row in Settings (between My Profile and Proxy) that opens an in-app web section. 18+ only.";
 "LocalPremium.Title" = "Local Premium";
 "LocalPremium.Notice" = "Treats your accounts as Premium inside this app, so Premium-only screens, options and limits unlock. Nothing is sent to Telegram: anything the server checks — premium stickers and reactions, emoji status, real limits — still needs a subscription.";
 "LinkPreview.Disable" = "Disable Previews for Sent Links";
 "LinkPreview.Disable.Notice" = "Sends links without webpage previews. The preview can still appear while composing, and messages from other people are unaffected.";
-"NSFW.Tab.Recommend" = "Recommended";
-"NSFW.Recommend.Header" = "Recommended";
-"NSFW.Recommend.Subtitle" = "Tap a code to open it, or search by keyword.";
-"NSFW.Recommend.SearchPlaceholder" = "Search code or keyword";
-"NSFW.AgeGate.Title" = "18+ Content";
-"NSFW.AgeGate.Text" = "This section contains adult material intended for viewers 18 years or older. By continuing you confirm you are of legal age in your jurisdiction.";
-"NSFW.AgeGate.Confirm" = "I am 18 or older";
-"NSFW.AgeGate.Leave" = "Leave";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "Open on Groups in Common";
 "Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "Show the Groups tab first when opening a user or bot you share groups with.";
 "Settings.Profiles.Header" = "PROFILES";
@@ -101,10 +91,8 @@
 "Settings.DownloadsBoost" = "Download Boost";
 "Settings.MediaLoadingExperiment" = "Faster Media Loading (Experimental)";
 "Settings.MediaLoadingExperiment.Notice" = "Prepare photos and videos ahead of time and reduce waits when scrolling back. Turn off to compare with the original behavior.";
-"Settings.DownloadsBoost.Notice" = "Increases number of parallel connections and size of file chunks. In case your network can't handle the load, try different options that suits your connection.";
+"Settings.DownloadsBoost.Notice" = "Increase concurrent downloads and chunk size when enabled.";
 "Settings.DownloadsBoost.none" = "Disabled";
-"Settings.DownloadsBoost.medium" = "Medium";
-"Settings.DownloadsBoost.maximum" = "Maximum";
 
 "Settings.ShowProfileID" = "Show Profile ID";
 "Settings.ShowDC" = "Show Data Center";
@@ -415,4 +403,3 @@ Matching is case-insensitive.";
 "Fonts.Import.Error" = "Could not import the font. Choose a valid TTF, OTF or TTC file up to 64 MB.";
 "Fonts.Error.Title" = "Fonts";
 "Fonts.OK" = "OK";
-"NSFW.Back" = "Previous Page";

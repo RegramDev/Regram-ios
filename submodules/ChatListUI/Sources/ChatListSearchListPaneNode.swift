@@ -1,3 +1,5 @@
+// MARK: Regram — hide sponsored search peers as well as sponsored messages.
+import RGSimpleSettings
 import Foundation
 import LottieSettings
 import UIKit
@@ -3353,7 +3355,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
                 var numberOfGlobalPeers = 0
                 index = 0
-                if !adsHidden {
+                if !adsHidden && !RGSimpleSettings.shared.disableAllAds {
                     for peer in foundRemotePeers.2 {
                         if !existingPeerIds.contains(peer.peer.id), filteredPeer(peer.peer, EnginePeer(accountPeer)) {
                             existingPeerIds.insert(peer.peer.id)

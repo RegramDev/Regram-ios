@@ -1,0 +1,5 @@
+# GitHub-hosted public-preview label published by actions/runner-images; older actionlint
+# releases do not yet list it among hosted runners. This only extends lint validation.
+self-hosted-runner:
+  labels:
+    - xcode-27

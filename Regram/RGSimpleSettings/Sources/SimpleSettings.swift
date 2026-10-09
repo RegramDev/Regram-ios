@@ -24,6 +24,10 @@ public class RGSimpleSettings {
     }
     
     private func migrate() {
+        // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
+        if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
+        UserDefaults.standard.removeObject(forKey: "nsfwEnabled")
+        UserDefaults.standard.removeObject(forKey: "nsfwAgeConfirmed")
         let showRepostToStoryMigrationKey = "migrated_\(Keys.showRepostToStory.rawValue)"
         if let groupUserDefaults = APP_GROUP_USER_DEFAULTS {
             if !groupUserDefaults.bool(forKey: showRepostToStoryMigrationKey) {
@@ -178,8 +182,6 @@ public class RGSimpleSettings {
         case mentionAsUserIdLink
         case localPremium
         case localPremiumEmojiStatus
-        case nsfwEnabled
-        case nsfwAgeConfirmed
         case disableLinkPreview
         case disableScrollToNextChannel
         case disableScrollToNextTopic
@@ -256,8 +258,7 @@ public class RGSimpleSettings {
     
     public enum DownloadSpeedBoostValues: String, CaseIterable {
         case none
-        case medium
-        case maximum
+        case enabled = "medium"
     }
     
     public enum BottomTabStyleValues: String, CaseIterable {
@@ -381,8 +382,6 @@ public class RGSimpleSettings {
         Keys.mentionAsUserIdLink.rawValue: false,
         Keys.localPremium.rawValue: false,
         Keys.localPremiumEmojiStatus.rawValue: [:],
-        Keys.nsfwEnabled.rawValue: false,
-        Keys.nsfwAgeConfirmed.rawValue: false,
         Keys.disableLinkPreview.rawValue: false,
         Keys.disableScrollToNextChannel.rawValue: false,
         Keys.disableScrollToNextTopic.rawValue: false,
@@ -705,17 +704,6 @@ public class RGSimpleSettings {
     /// re-applied when the peer is read. Values are JSON-encoded `PeerEmojiStatus`; written from the
     /// main queue and read from the Postbox queue, hence `threadSafe`.
     public var localPremiumEmojiStatus = UserDefaultsBackedDictionary<String, String>(userDefaultsKey: Keys.localPremiumEmojiStatus.rawValue, threadSafe: true)
-
-    // MARK: Regram — NSFW section. Off by default; enabled from the Regram Pro screen. When on, a
-    // disclosure row appears in the main settings list (between My Profile and Proxy) that opens an
-    // in-app web section.
-    @UserDefault(key: Keys.nsfwEnabled.rawValue)
-    public var nsfwEnabled: Bool
-
-    /// Set once the user has confirmed they are of age on first entry, so the 18+ gate is not shown
-    /// on every visit.
-    @UserDefault(key: Keys.nsfwAgeConfirmed.rawValue)
-    public var nsfwAgeConfirmed: Bool
 
     // MARK: Regram — disable previews for sent links. Off by default; enabled from Regram Pro.
     // The composer preview remains available, but outgoing messages carry Telegram's
@@ -1204,16 +1192,11 @@ public func getRGDownloadPartSize(_ default: Int64, fileSize: Int64?) -> Int64 {
     // Increasing chunk size for small files make it worse in terms of overall download performance
     let smallFileSizeThreshold = 1 * 1024 * 1024 // 1 MB
     switch (currentDownloadSetting) {
-        case RGSimpleSettings.DownloadSpeedBoostValues.medium.rawValue:
+        case RGSimpleSettings.DownloadSpeedBoostValues.enabled.rawValue:
             if let fileSize, fileSize <= smallFileSizeThreshold {
                 return `default`
             }
             return 512 * 1024
-        case RGSimpleSettings.DownloadSpeedBoostValues.maximum.rawValue:
-            if let fileSize, fileSize <= smallFileSizeThreshold {
-                return `default`
-            }
-            return 1024 * 1024
         default:
             return `default`
     }
@@ -1222,10 +1205,8 @@ public func getRGDownloadPartSize(_ default: Int64, fileSize: Int64?) -> Int64 {
 public func getRGMaxPendingParts(_ default: Int) -> Int {
     let currentDownloadSetting = RGSimpleSettings.shared.downloadSpeedBoost
     switch (currentDownloadSetting) {
-        case RGSimpleSettings.DownloadSpeedBoostValues.medium.rawValue:
+        case RGSimpleSettings.DownloadSpeedBoostValues.enabled.rawValue:
             return 8
-        case RGSimpleSettings.DownloadSpeedBoostValues.maximum.rawValue:
-            return 12
         default:
             return `default`
     }

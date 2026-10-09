@@ -21,8 +21,6 @@ enum SettingsSection: Int, CaseIterable {
     case phone
     case accounts
     case myProfile
-    // MARK: Regram — sits between My Profile and Proxy; only populated when the NSFW switch is on.
-    case nsfw
     case wallet
     case proxy
     case regram
@@ -185,15 +183,6 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
             interaction.openSettings(.profile)
         }))
 
-        // MARK: Regram — NSFW row, between My Profile and Proxy. Only shown when the Regram Pro switch
-        // is on; the same style/placement the user asked for.
-        if RGSimpleSettings.shared.nsfwEnabled {
-            items[.nsfw]!.append(PeerInfoScreenDisclosureItem(id: 0, text: "NSFW.Title".i18n(presentationData.strings.baseLanguageCode), icon: PresentationResourcesSettings.nsfw, action: {
-                interaction.openSettings(.nsfw)
-            }))
-        }
-
-        
         if WalletConfiguration.with(appConfiguration: context.currentAppConfiguration.with { $0 }).isAvailable {
             let balanceText: NSAttributedString
             if let balance = settings.walletBalance, balance > 10_000_000 {

@@ -1,3 +1,5 @@
+// MARK: Regram — cover sponsored global search results in the hide-advertising setting.
+import RGSimpleSettings
 import Foundation
 import Postbox
 import SwiftSignalKit
@@ -39,13 +41,14 @@ public class AdPeer: Equatable {
 }
 
 func _internal_searchAdPeers(account: Account, query: String) -> Signal<[AdPeer], NoError> {
+    if RGSimpleSettings.shared.disableAllAds { return .single([]) }
     return account.network.request(Api.functions.contacts.getSponsoredPeers(q: query))
     |> map(Optional.init)
     |> `catch` { _ in
         return .single(nil)
     }
     |> mapToSignal { result in
-        guard let result else {
+        guard !RGSimpleSettings.shared.disableAllAds, let result else {
             return .single([])
         }
         return account.postbox.transaction { transaction -> [AdPeer] in

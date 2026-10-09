@@ -455,6 +455,9 @@ public class Window1 {
         } else {
         self.badgeView.image = UIImage(bundleImageName: "Components/AppBadge")
         }
+        // MARK: Regram — render the badge above iOS 26+ glass navigation compositing.
+        self.badgeView.isOpaque = false
+        self.badgeView.layer.zPosition = 1000
         self.badgeView.isHidden = true
         
         self.systemUserInterfaceStyle = hostView.systemUserInterfaceStyle
@@ -1432,6 +1435,7 @@ public class Window1 {
                 
                 if let image = self.badgeView.image {
                     self.updateBadgeVisibility()
+                    self.hostView.containerView.bringSubviewToFront(self.badgeView)
                     self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
                 }
             }

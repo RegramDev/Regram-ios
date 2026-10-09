@@ -35,16 +35,6 @@
 "Mention.UserIdLink" = "按昵称提及";
 "LinkPreview.Disable" = "发送链接时关闭预览";
 "LinkPreview.Disable.Notice" = "发送链接时不附带网页预览。输入时仍可查看预览，别人发来的消息也不受影响。";
-"NSFW.Title" = "NSFW";
-"NSFW.Notice" = "在设置中（我的资料与代理之间）显示一个 NSFW 跳转栏，进入内置网页。仅限 18 岁以上。";
-"NSFW.Tab.Recommend" = "推荐";
-"NSFW.Recommend.Header" = "番号推荐";
-"NSFW.Recommend.Subtitle" = "点击番号直接打开，或按关键词搜索。";
-"NSFW.Recommend.SearchPlaceholder" = "搜索番号或关键词";
-"NSFW.AgeGate.Title" = "18+ 内容";
-"NSFW.AgeGate.Text" = "本板块包含面向 18 岁及以上人群的成人内容。继续即表示你确认已达到所在地区的法定年龄。";
-"NSFW.AgeGate.Confirm" = "我已年满 18 岁";
-"NSFW.AgeGate.Leave" = "离开";
 "Mention.UserIdLink.Notice" = "长按头像提及时，插入对方的完整昵称作为提及，而不是 @用户名。点按可打开对方资料。";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "默认展示共同群组";
 "Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "打开有共同群组的用户或机器人时，优先显示「群组」标签。";
@@ -78,10 +68,8 @@
 "Settings.DownloadsBoost" = "下载加速";
 "Settings.MediaLoadingExperiment" = "媒体加载优化（实验）";
 "Settings.MediaLoadingExperiment.Notice" = "提前准备聊天中的照片和视频，减少来回滑动的等待。关闭可与原有方式比较。";
-"Settings.DownloadsBoost.Notice" = "增加并行连接的数量和文件块的大小。如果您的网络无法承受负载，请尝试不同适合您连接的选项。";
+"Settings.DownloadsBoost.Notice" = "开启后增加下载并行数和文件块大小。";
 "Settings.DownloadsBoost.none" = "停用";
-"Settings.DownloadsBoost.medium" = "中等";
-"Settings.DownloadsBoost.maximum" = "最大";
 
 "Settings.ShowProfileID" = "显示用户 UID";
 "Settings.ShowDC" = "显示数据中心";
@@ -381,4 +369,3 @@
 "Fonts.Import.Error" = "无法导入该字体。请选择有效的 TTF、OTF 或 TTC 文件，大小不超过 64 MB。";
 "Fonts.Error.Title" = "字体";
 "Fonts.OK" = "好";
-"NSFW.Back" = "返回上一页";

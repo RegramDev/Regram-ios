@@ -53,6 +53,7 @@ private enum RGBoolSetting: String {
     case startTelescopeWithRearCam
     case hideStories
     case uploadSpeedBoost
+    case downloadSpeedBoost
     case mediaLoadingExperiment
     case showProfileId
     case warnOnStoriesOpen
@@ -109,7 +110,6 @@ private enum RGBoolSetting: String {
 
 private enum RGOneFromManySetting: String {
     case nyStyle
-    case downloadSpeedBoost
     case defaultVideoQuality
     case allChatsTitleLengthOverride
 //    case allChatsFolderPositionOverride
@@ -315,7 +315,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .other, settingName: .disableScrollToNextTopic, value: !RGSimpleSettings.shared.disableScrollToNextTopic, text: i18n("Settings.PullToNextTopic", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hideReactions, value: RGSimpleSettings.shared.hideReactions, text: i18n("Settings.HideReactions", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .uploadSpeedBoost, value: RGSimpleSettings.shared.uploadSpeedBoost, text: i18n("Settings.UploadsBoost", lang), enabled: true))
-    entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .downloadSpeedBoost, text: i18n("Settings.DownloadsBoost", lang), value: i18n("Settings.DownloadsBoost.\(RGSimpleSettings.shared.downloadSpeedBoost)", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .other, settingName: .downloadSpeedBoost, value: RGSimpleSettings.shared.downloadSpeedBoost != RGSimpleSettings.DownloadSpeedBoostValues.none.rawValue, text: i18n("Settings.DownloadsBoost", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.DownloadsBoost.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .mediaLoadingExperiment, value: RGSimpleSettings.shared.mediaLoadingExperiment, text: i18n("Settings.MediaLoadingExperiment", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.MediaLoadingExperiment.Notice", lang)))
@@ -408,6 +408,13 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.disableSwipeToRecordStory = value
         case .quickTranslateButton:
             RGSimpleSettings.shared.quickTranslateButton = value
+        case .downloadSpeedBoost:
+            RGSimpleSettings.shared.downloadSpeedBoost = value ? RGSimpleSettings.DownloadSpeedBoostValues.enabled.rawValue : RGSimpleSettings.DownloadSpeedBoostValues.none.rawValue
+            let _ = updateNetworkSettingsInteractively(postbox: context.account.postbox, network: context.account.network, { settings in
+                var settings = settings
+                settings.useExperimentalDownload = value
+                return settings
+            }).start(completed: { Queue.mainQueue().async { askForRestart?() } })
         case .uploadSpeedBoost:
             RGSimpleSettings.shared.uploadSpeedBoost = value
         case .mediaLoadingExperiment:
@@ -565,38 +572,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
                         actionSheet?.dismissAnimated()
                         RGSimpleSettings.shared.defaultVideoQuality = preference.rawValue
                         simplePromise.set(true)
-                    }))
-                }
-            case .downloadSpeedBoost:
-                let setAction: (String) -> Void = { value in
-                    RGSimpleSettings.shared.downloadSpeedBoost = value
-                    
-                    let enableDownloadX: Bool
-                    switch (value) {
-                        case RGSimpleSettings.DownloadSpeedBoostValues.none.rawValue:
-                            enableDownloadX = false
-                        default:
-                            enableDownloadX = true
-                    }
-                    
-                    // Updating controller
-                    simplePromise.set(true)
-
-                    let _ = updateNetworkSettingsInteractively(postbox: context.account.postbox, network: context.account.network, { settings in
-                        var settings = settings
-                        settings.useExperimentalDownload = enableDownloadX
-                        return settings
-                    }).start(completed: {
-                        Queue.mainQueue().async {
-                            askForRestart?()
-                        }
-                    })
-                }
-
-                for value in RGSimpleSettings.DownloadSpeedBoostValues.allCases {
-                    items.append(ActionSheetButtonItem(title: i18n("Settings.DownloadsBoost.\(value.rawValue)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
-                        setAction(value.rawValue)
                     }))
                 }
             case .allChatsTitleLengthOverride:

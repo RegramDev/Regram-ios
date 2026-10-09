@@ -493,17 +493,21 @@ func _internal_translateMessagesViaText(account: Account, messagesDict: [EngineM
             //                guard let translatedText = result else {
             //                    return .complete()
             //                }
-            rgExternalTranslate(text, toLang)
+            account.postbox.transaction { transaction -> [MessageTextEntity] in
+                transaction.getMessage(messageId)?.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.first?.entities ?? []
+            }
+            |> castError(TranslateFetchError.self)
+            |> mapToSignal { entities in rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang) }
             |> mapError { _ -> TranslationError in
                 return .generic
             }
-            |> mapToSignal { translatedText -> Signal<Void, TranslationError> in
+            |> mapToSignal { translated -> Signal<Void, TranslationError> in
 //                guard case let .result(translatedText) = result else {
 //                    return .complete()
 //                }
                 return account.postbox.transaction { transaction in
                     transaction.updateMessage(messageId, update: { currentMessage in
-                        let updatedAttribute: TranslationMessageAttribute = TranslationMessageAttribute(text: translatedText, entities: generateEntitiesFunction(translatedText), toLang: toLang)
+                        let updatedAttribute: TranslationMessageAttribute = TranslationMessageAttribute(text: translated.0, entities: translated.1 + generateEntitiesFunction(translated.0).filter { generated in !translated.1.contains(where: { $0.range.overlaps(generated.range) }) }, toLang: toLang)
                         let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
                         var attributes = currentMessage.attributes.filter { !($0 is TranslationMessageAttribute) }
 

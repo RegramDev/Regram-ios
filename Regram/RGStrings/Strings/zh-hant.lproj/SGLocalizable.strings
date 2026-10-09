@@ -33,16 +33,6 @@
 "Settings.ChatList.Lines.3" = "3 行（預設）";
 
 "Mention.UserIdLink" = "按暱稱提及";
-"NSFW.Title" = "NSFW";
-"NSFW.Notice" = "在設定中（我的資料與代理之間）顯示一個 NSFW 跳轉欄，進入內建網頁。僅限 18 歲以上。";
-"NSFW.Tab.Recommend" = "推薦";
-"NSFW.Recommend.Header" = "番號推薦";
-"NSFW.Recommend.Subtitle" = "點擊番號直接開啟，或按關鍵字搜尋。";
-"NSFW.Recommend.SearchPlaceholder" = "搜尋番號或關鍵字";
-"NSFW.AgeGate.Title" = "18+ 內容";
-"NSFW.AgeGate.Text" = "本板塊包含面向 18 歲及以上人群的成人內容。繼續即表示你確認已達到所在地區的法定年齡。";
-"NSFW.AgeGate.Confirm" = "我已年滿 18 歲";
-"NSFW.AgeGate.Leave" = "離開";
 "Mention.UserIdLink.Notice" = "長按頭像提及時，插入對方的完整暱稱作為提及，而不是 @使用者名稱。點按可開啟對方資料。";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "預設顯示共同群組";
 "Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "開啟有共同群組的使用者或機器人時，優先顯示「群組」標籤。";
@@ -76,10 +66,8 @@
 "Settings.DownloadsBoost" = "下載加速";
 "Settings.MediaLoadingExperiment" = "媒體載入最佳化（實驗）";
 "Settings.MediaLoadingExperiment.Notice" = "提前準備聊天中的照片和影片，減少來回捲動的等待。關閉可與原有方式比較。";
-"Settings.DownloadsBoost.Notice" = "增加並行連接的數量和文件區塊的大小。如果您的網路無法承受負載，請嘗試不同適合您連接的選項。";
+"Settings.DownloadsBoost.Notice" = "開啟後增加下載並行數與檔案區塊大小。";
 "Settings.DownloadsBoost.none" = "已停用";
-"Settings.DownloadsBoost.medium" = "中等";
-"Settings.DownloadsBoost.maximum" = "最大";
 
 "Settings.ShowProfileID" = "顯示用戶 UID";
 "Settings.ShowDC" = "顯示資料中心 (DC)";
@@ -359,4 +347,3 @@
 "Fonts.Import.Error" = "无法导入该字体。请选择有效的 TTF、OTF 或 TTC 文件，大小不超过 64 MB。";
 "Fonts.Error.Title" = "字体";
 "Fonts.OK" = "好";
-"NSFW.Back" = "返回上一页";
