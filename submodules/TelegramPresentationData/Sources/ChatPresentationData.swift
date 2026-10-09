@@ -54,20 +54,22 @@ public final class ChatPresentationData {
         self.isPreview = isPreview
         
         let baseFontSize = fontSize.baseDisplaySize
-        self.messageFont = Font.regular(baseFontSize)
-        self.messageEmojiFont = Font.regular(53.0)
-        self.messageBoldFont = Font.bold(baseFontSize)
-        self.messageItalicFont = Font.italic(baseFontSize)
-        self.messageBoldItalicFont = Font.semiboldItalic(baseFontSize)
+        // MARK: Regram — chat and interface typefaces can be selected independently.
+        self.messageFont = Font.with(size: baseFontSize, area: .messages)
+        self.messageEmojiFont = Font.with(size: 53.0, area: .system)
+        self.messageBoldFont = Font.with(size: baseFontSize, weight: .bold, area: .messages)
+        self.messageItalicFont = Font.with(size: baseFontSize, traits: .italic, area: .messages)
+        self.messageBoldItalicFont = Font.with(size: baseFontSize, weight: .bold, traits: .italic, area: .messages)
         self.messageFixedFont = Font.monospace(baseFontSize)
-        self.messageBlockQuoteFont = Font.regular(baseFontSize - 1.0)
+        self.messageBlockQuoteFont = Font.with(size: baseFontSize - 1.0, area: .messages)
         
         self.animatedEmojiScale = animatedEmojiScale
     }
     
     public func withTheme(_ theme: ChatPresentationThemeData) -> ChatPresentationData {
         return ChatPresentationData(
-            theme: self.theme,
+            // MARK: Regram — use the requested theme when refreshing chat presentation.
+            theme: theme,
             fontSize: self.fontSize,
             strings: self.strings,
             dateTimeFormat: self.dateTimeFormat,

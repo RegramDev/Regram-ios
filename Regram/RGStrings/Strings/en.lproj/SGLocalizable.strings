@@ -368,3 +368,30 @@ Matching is case-insensitive.";
 "Settings.DefaultVideoQuality.automatic" = "Automatic";
 "Settings.DefaultVideoQuality.highest" = "Highest available";
 "Settings.DefaultVideoQuality.lowest" = "Lowest available";
+
+// MARK: Regram — Telegram 13 appearance controls.
+"Settings.Tabs.Width" = "Tab Bar Width";
+"Settings.Tabs.Width.Preview" = "Preview";
+"Settings.Tabs.Width.Automatic" = "Automatic";
+"Settings.Tabs.Width.Actual" = "Current width: %@ pt";
+"Settings.Tabs.Width.Notice" = "Choose 50–100% of the available width (up to 500 pt). The bar keeps enough room for each tab. Changes apply immediately.";
+"Settings.Tabs.Width.Hidden" = "The tab bar is currently hidden. Turn off Hide Tab Bar to display it.";
+"Settings.Tabs.Width.Reset" = "Reset to Automatic";
+"Fonts.Title" = "Fonts";
+"Fonts.System" = "System Default";
+"Fonts.Rounded" = "System Rounded";
+"Fonts.Serif" = "System Serif";
+"Fonts.Preview" = "Preview";
+"Fonts.Sample" = "聊天文字 · 中文字体自动回退";
+"Fonts.Areas" = "Apply To";
+"Fonts.Messages" = "Chat Messages";
+"Fonts.Interface" = "Main Interface";
+"Fonts.Areas.Notice" = "Checked areas update immediately. Code, icons and large emoji keep their own fonts.";
+"Fonts.Selected" = "Selected";
+"Fonts.Unselected" = "Not selected";
+"Fonts.NoArea" = "Select an area to apply this font.";
+"Fonts.Family" = "Typeface";
+"Fonts.Fallback" = "JetBrains Mono NL has no programming ligatures. Characters unavailable in a font, including Chinese, use system fallback fonts.";
+"Fonts.Reset" = "Restore System Default";
+
+"Fonts.More.Notice" = "Poppins and Lora are used in Anthropic’s published brand-style example. IBM Plex Sans SC includes Chinese glyphs; its italic preview uses an oblique style.";

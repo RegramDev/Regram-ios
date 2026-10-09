@@ -356,6 +356,9 @@ public final class TabBarComponent: Component {
     public let search: Search?
     public let selectedId: AnyHashable?
     public let outerInsets: UIEdgeInsets
+    // MARK: Regram — include preferences in component identity so cached views refresh immediately.
+    public let widthPercent: Int32
+    public let showTabNames: Bool
     
     public init(
         theme: PresentationTheme,
@@ -365,7 +368,9 @@ public final class TabBarComponent: Component {
         items: [Item],
         search: Search?,
         selectedId: AnyHashable?,
-        outerInsets: UIEdgeInsets
+        outerInsets: UIEdgeInsets,
+        widthPercent: Int32 = RGSimpleSettings.shared.tabBarWidthPercent,
+        showTabNames: Bool = RGSimpleSettings.shared.showTabNames
     ) {
         self.theme = theme
         self.tintSelectedItem = tintSelectedItem
@@ -375,9 +380,12 @@ public final class TabBarComponent: Component {
         self.search = search
         self.selectedId = selectedId
         self.outerInsets = outerInsets
+        self.widthPercent = RGTabBarLayoutPolicy.normalizedPercent(widthPercent)
+        self.showTabNames = showTabNames
     }
     
     public static func ==(lhs: TabBarComponent, rhs: TabBarComponent) -> Bool {
+        if lhs.widthPercent != rhs.widthPercent || lhs.showTabNames != rhs.showTabNames { return false }
         if lhs.theme !== rhs.theme {
             return false
         }
@@ -655,28 +663,11 @@ public final class TabBarComponent: Component {
             let _ = alphaTransition
 
             let innerInset: CGFloat = 4.0
-            var availableSize = CGSize(width: min(500.0, availableSize.width), height: availableSize.height)
-            if !(RGSimpleSettings.shared.wideTabBar || component.search?.isActive ?? false) { 
-                let widthReducer: CGFloat
-
-                switch component.items.count {
-                case 1:
-                    widthReducer = 1.75
-                case 2:
-                    widthReducer = 1.5
-                case 3:
-                    widthReducer = 1.25
-                case 4:
-                    widthReducer = 1.0
-                default:
-                    widthReducer = 1.0
-                }
-                availableSize.width = availableSize.width / widthReducer
-                if !RGSimpleSettings.shared.tabBarSearchEnabled {
-                    availableSize.width -= 48.0
-                    availableSize.width -= innerInset * 2.0
-                }
-            }
+            guard !component.items.isEmpty else { return .zero }
+            // MARK: Regram — shared adjustable geometry; the removed search button reserves no space.
+            let requestedBarHeight: CGFloat = (component.showTabNames ? 56.0 : 40.0) + innerInset * 2.0
+            let supportedWidth = RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: component.items.count, percent: component.widthPercent, searchButtonWidth: component.search == nil ? 0.0 : Double(requestedBarHeight + 8.0), searchActive: component.search?.isActive == true)
+            let availableSize = CGSize(width: CGFloat(supportedWidth), height: availableSize.height)
             
             let previousComponent = self.component
             self.component = component
@@ -684,7 +675,7 @@ public final class TabBarComponent: Component {
             
             self.overrideUserInterfaceStyle = component.theme.overallDarkAppearance ? .dark : .light
 
-            let barHeight: CGFloat = (RGSimpleSettings.shared.showTabNames ? 56.0 : 40.0) + innerInset * 2.0
+            let barHeight = requestedBarHeight
 
             var availableItemsWidth: CGFloat = availableSize.width - innerInset * 2.0
             if component.search != nil {
@@ -694,7 +685,6 @@ public final class TabBarComponent: Component {
             var unboundItemWidths: [CGFloat] = []
             
             var validIds: [AnyHashable] = []
-            var unboundItemWidthSum: CGFloat = 0.0
             for index in 0 ..< component.items.count {
                 let item = component.items[index]
                 validIds.append(item.id)
@@ -715,14 +705,14 @@ public final class TabBarComponent: Component {
                         isCompact: false,
                         isSelected: false,
                         tintSelectedItem: true,
-                        isUnconstrained: true
+                        isUnconstrained: true,
+                        showTabNames: component.showTabNames
                     )),
                     environment: {},
-                    containerSize: CGSize(width: 200.0, height: RGSimpleSettings.shared.showTabNames ? 56.0 : 40.0)
+                    containerSize: CGSize(width: 200.0, height: component.showTabNames ? 56.0 : 40.0)
                 )
                 
                 unboundItemWidths.append(itemSize.width)
-                unboundItemWidthSum += itemSize.width
             }
             
             let itemWidths: [CGFloat]
@@ -735,11 +725,11 @@ public final class TabBarComponent: Component {
                 totalItemsWidth = equalWidth * CGFloat(component.items.count)
             } else {
                 // Some items need more space — use weighted fit
-                let itemWeightNorm: CGFloat = availableItemsWidth / unboundItemWidthSum
+                let boundedWidths = RGTabBarLayoutPolicy.itemWidths(availableWidth: Double(availableItemsWidth), naturalWidths: unboundItemWidths.map(Double.init))
                 var widths: [CGFloat] = []
                 var total: CGFloat = 0.0
                 for index in 0 ..< component.items.count {
-                    let itemWidth = floorToScreenPixels(unboundItemWidths[index] * itemWeightNorm)
+                    let itemWidth = floorToScreenPixels(CGFloat(boundedWidths[index]))
                     widths.append(itemWidth)
                     total += itemWidth
                 }
@@ -747,7 +737,7 @@ public final class TabBarComponent: Component {
                 totalItemsWidth = total
             }
 
-            let itemHeight: CGFloat = (RGSimpleSettings.shared.showTabNames ? 56.0 : 40.0)
+            let itemHeight: CGFloat = (component.showTabNames ? 56.0 : 40.0)
             let contentWidth: CGFloat = innerInset * 2.0 + totalItemsWidth
             let tabsSize = CGSize(width: min(availableSize.width, contentWidth), height: itemHeight + innerInset * 2.0)
 
@@ -792,7 +782,8 @@ public final class TabBarComponent: Component {
                         isCompact: component.search?.isActive == true,
                         isSelected: false,
                         tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false
+                        isUnconstrained: false,
+                        showTabNames: component.showTabNames
                     )),
                     environment: {},
                     containerSize: itemSize
@@ -805,7 +796,8 @@ public final class TabBarComponent: Component {
                         isCompact: component.search?.isActive == true,
                         isSelected: true,
                         tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false
+                        isUnconstrained: false,
+                        showTabNames: component.showTabNames
                     )),
                     environment: {},
                     containerSize: itemSize
@@ -894,7 +886,7 @@ public final class TabBarComponent: Component {
             } else if let selectionFrame {
                 lensSelection = (selectionFrame.minX - innerInset, selectionFrame.width + innerInset * 2.0)
             } else {
-                lensSelection = (0.0, (RGSimpleSettings.shared.showTabNames ? 56.0 : 40.0))
+                lensSelection = (0.0, (component.showTabNames ? 56.0 : 40.0))
             }
 
             var lensSize: CGSize = tabsSize
@@ -985,17 +977,20 @@ private final class ItemComponent: Component {
     let isSelected: Bool
     let tintSelectedItem: Bool
     let isUnconstrained: Bool
+    let showTabNames: Bool // MARK: Regram
     
-    init(item: TabBarComponent.Item, theme: PresentationTheme, isCompact: Bool, isSelected: Bool, tintSelectedItem: Bool, isUnconstrained: Bool) {
+    init(item: TabBarComponent.Item, theme: PresentationTheme, isCompact: Bool, isSelected: Bool, tintSelectedItem: Bool, isUnconstrained: Bool, showTabNames: Bool) {
         self.item = item
         self.theme = theme
         self.isCompact = isCompact
         self.isSelected = isSelected
         self.tintSelectedItem = tintSelectedItem
         self.isUnconstrained = isUnconstrained
+        self.showTabNames = showTabNames
     }
     
     static func ==(lhs: ItemComponent, rhs: ItemComponent) -> Bool {
+        if lhs.showTabNames != rhs.showTabNames { return false }
         if lhs.item != rhs.item {
             return false
         }
@@ -1310,12 +1305,15 @@ private final class ItemComponent: Component {
                 containerSize: CGSize(width: availableSize.width, height: 100.0)
             )
             let titleFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - titleSize.width) * 0.5), y: availableSize.height - 8.0 - titleSize.height), size: titleSize)
-            if RGSimpleSettings.shared.showTabNames, let titleView = self.title.view {
+            if component.showTabNames, let titleView = self.title.view {
                 if titleView.superview == nil {
                     self.contextContainerView.contentView.addSubview(titleView)
                 }
                 titleView.frame = titleFrame
                 alphaTransition.setAlpha(view: titleView, alpha: component.isCompact ? 0.0 : 1.0)
+            } else if let titleView = self.title.view {
+                // MARK: Regram — remove already-rendered names when the preference changes live.
+                titleView.removeFromSuperview()
             }
 
             if let badgeText = badgeValue, !badgeText.isEmpty {

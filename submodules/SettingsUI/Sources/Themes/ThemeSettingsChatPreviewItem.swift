@@ -70,10 +70,6 @@ class ThemeSettingsChatPreviewItem: ListViewItem, ItemListItem {
     }
     
     func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, neighbors: ListViewItemNeighbors, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
-        // MARK: Regram — main queue, not the caller's background `async`. The message items this
-        // lays out deliver their configuration callback via Queue.mainQueue().async, which only runs
-        // inline when already on main; off-main it was deferred and the layout below force-unwrapped
-        // a node that had not been produced yet.
         Queue.mainQueue().async {
             let node = ThemeSettingsChatPreviewItemNode()
             let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topFacet: neighbors.previous?.base(ItemListNeighborFacet.self), bottomFacet: neighbors.next?.base(ItemListNeighborFacet.self)))

@@ -312,3 +312,30 @@
 "Settings.DefaultVideoQuality.automatic" = "自動";
 "Settings.DefaultVideoQuality.highest" = "最高可用畫質";
 "Settings.DefaultVideoQuality.lowest" = "最低可用畫質";
+
+// MARK: Regram — Telegram 13 appearance controls.
+"Settings.Tabs.Width" = "底欄寬度";
+"Settings.Tabs.Width.Preview" = "效果預覽";
+"Settings.Tabs.Width.Automatic" = "自動寬度";
+"Settings.Tabs.Width.Actual" = "目前寬度：%@ pt";
+"Settings.Tabs.Width.Notice" = "可調整為可用寬度的 50–100%（最高 500 pt）。底欄會為各按鈕保留足夠的點擊空間。調整立即生效。";
+"Settings.Tabs.Width.Hidden" = "目前已隱藏底欄，請關閉「隱藏底欄」以顯示。";
+"Settings.Tabs.Width.Reset" = "恢復自動寬度";
+"Fonts.Title" = "更改字型";
+"Fonts.System" = "系統預設";
+"Fonts.Rounded" = "系統圓體";
+"Fonts.Serif" = "系統襯線體";
+"Fonts.Preview" = "字型預覽";
+"Fonts.Sample" = "聊天文字 · 中文字型自動回退";
+"Fonts.Areas" = "套用位置";
+"Fonts.Messages" = "聊天內容";
+"Fonts.Interface" = "主要介面文字";
+"Fonts.Areas.Notice" = "勾選的位置會立即更新。程式碼、圖示和大表情保留各自的字型。";
+"Fonts.Selected" = "已勾選";
+"Fonts.Unselected" = "未勾選";
+"Fonts.NoArea" = "勾選套用位置後，所選字型才會生效。";
+"Fonts.Family" = "選擇字型";
+"Fonts.Fallback" = "JetBrains Mono NL 不使用程式連字。字型未包含的字元（如中文）會自動使用系統後備字型。";
+"Fonts.Reset" = "恢復系統預設字型";
+
+"Fonts.More.Notice" = "Poppins 與 Lora 來自 Anthropic 官方品牌風格範例。IBM Plex Sans SC 包含中文字形，斜體採用傾斜顯示。";

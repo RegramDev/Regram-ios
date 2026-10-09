@@ -49,7 +49,6 @@ private enum RGBoolSetting: String {
     case showTabNames
     case showContactsTab
     case showCallsTab
-    case wideTabBar
     case foldersAtBottom
     case startTelescopeWithRearCam
     case hideStories
@@ -106,12 +105,10 @@ private enum RGBoolSetting: String {
     case enableVoipTcp
     case nyStyleSnow
     case nyStyleLightning
-    case tabBarSearchEnabled
 }
 
 private enum RGOneFromManySetting: String {
     case nyStyle
-    case bottomTabStyle
     case downloadSpeedBoost
     case defaultVideoQuality
     case allChatsTitleLengthOverride
@@ -132,6 +129,7 @@ private enum RGDisclosureLink: String {
     case languageSettings
     // MARK: Regram
     case contextMenuOrder
+    case tabBarWidth
 }
 
 private struct PeerNameColorScreenState: Equatable {
@@ -178,9 +176,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showContactsTab, value: callListSettings.showContactsTab, text: i18n("Settings.Tabs.ShowContacts", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showCallsTab, value: callListSettings.showTab, text: strings.CallSettings_TabIcon, enabled: !RGSimpleSettings.shared.hideTabBar))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .showTabNames, value: RGSimpleSettings.shared.showTabNames, text: i18n("Settings.Tabs.ShowNames", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .tabBarSearchEnabled, value: RGSimpleSettings.shared.tabBarSearchEnabled, text: i18n("Settings.Tabs.SearchButton", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .wideTabBar, value: RGSimpleSettings.shared.wideTabBar, text: i18n("Settings.Tabs.WideTabBar", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.notice(id: id.count, section: .tabs, text: i18n("Settings.Tabs.WideTabBar.Notice", lang)))
+    entries.append(.disclosure(id: id.count, section: .tabs, link: .tabBarWidth, text: i18n("Settings.Tabs.Width", lang)))
     
     entries.append(.header(id: id.count, section: .folders, text: strings.Settings_ChatFolders.uppercased(), badge: nil))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .foldersAtBottom, value: experimentalUISettings.foldersTabAtBottom, text: i18n("Settings.Folders.BottomTab", lang), enabled: true))
@@ -371,7 +367,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             askForRestart?()
         case .showTabNames:
             RGSimpleSettings.shared.showTabNames = value
-            askForRestart?()
         case .showContactsTab:
             let _ = (
                 updateCallListSettingsInteractively(
@@ -384,11 +379,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
                     accountManager: context.sharedContext.accountManager, { $0.withUpdatedShowTab(value) }
                 )
             ).start()
-        case .tabBarSearchEnabled:
-            RGSimpleSettings.shared.tabBarSearchEnabled = value
-        case .wideTabBar:
-            RGSimpleSettings.shared.wideTabBar = value
-            askForRestart?()
         case .foldersAtBottom:
             let _ = (
                 updateExperimentalUISettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
@@ -609,18 +599,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
                         setAction(value.rawValue)
                     }))
                 }
-            case .bottomTabStyle:
-                let setAction: (String) -> Void = { value in
-                    RGSimpleSettings.shared.bottomTabStyle = value
-                    simplePromise.set(true)
-                }
-
-                for value in RGSimpleSettings.BottomTabStyleValues.allCases {
-                    items.append(ActionSheetButtonItem(title: i18n("Settings.Folders.BottomTabStyle.\(value.rawValue)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
-                        setAction(value.rawValue)
-                    }))
-                }
             case .allChatsTitleLengthOverride:
                 let setAction: (String) -> Void = { value in
                     RGSimpleSettings.shared.allChatsTitleLengthOverride = value
@@ -724,6 +702,9 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             // MARK: Regram
             case .contextMenuOrder:
                 pushControllerImpl?(rgContextMenuOrderController(context: context))
+            case .tabBarWidth:
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                pushControllerImpl?(rgTabBarWidthController(context: context))
         }
     }, searchInput: { searchQuery in
         updateState { state in

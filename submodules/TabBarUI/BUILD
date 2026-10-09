@@ -4,14 +4,12 @@ sgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings",
 ]
 
-sgsrc = [
-    "//Regram/RGTabBarHeightModifier:RGTabBarHeightModifier"
-]
+
 
 swift_library(
     name = "TabBarUI",
     module_name = "TabBarUI",
-    srcs = sgsrc + glob([
+    srcs = glob([
 		"Sources/**/*.swift",
     ]),
     copts = [

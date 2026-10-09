@@ -58,6 +58,18 @@ public class RGSimpleSettings {
             }
             UserDefaults.standard.set(true, forKey: chatListLinesMigrationKey)
         }
+
+        // MARK: Regram — retain the old wide-bar choice without retaining its obsolete search math.
+        let tabBarWidthMigrationKey = "migrated_\(Keys.tabBarWidthPercent.rawValue)"
+        if !UserDefaults.standard.bool(forKey: tabBarWidthMigrationKey) {
+            let stored = Bundle.main.bundleIdentifier.flatMap {
+                UserDefaults.standard.persistentDomain(forName: $0)?[Keys.tabBarWidthPercent.rawValue]
+            }
+            if stored == nil {
+                self.tabBarWidthPercent = RGTabBarLayoutPolicy.migratedPercent(legacyWide: self.wideTabBar)
+            }
+            UserDefaults.standard.set(true, forKey: tabBarWidthMigrationKey)
+        }
     }
     
     private func preCacheValues() {
@@ -65,10 +77,9 @@ public class RGSimpleSettings {
 
         let tasks = [
 //            { let _ = self.allChatsFolderPositionOverride },
-            { let _ = self.tabBarSearchEnabled },
+            { let _ = self.tabBarWidthPercent },
             { let _ = self.allChatsHidden },
             { let _ = self.hideTabBar },
-            { let _ = self.bottomTabStyle },
             { let _ = self.compactChatList },
             { let _ = self.chatListLines },
             { let _ = self.compactFolderNames },
@@ -107,6 +118,9 @@ public class RGSimpleSettings {
     public enum Keys: String, CaseIterable {
         case hidePhoneInSettings
         case showTabNames
+        case fontFamily
+        case fontApplyToMessages
+        case fontApplyToInterface
         case startTelescopeWithRearCam
         case accountColorsSaturation
         case uploadSpeedBoost
@@ -201,6 +215,7 @@ public class RGSimpleSettings {
         case canUseNY
         case nyStyle
         case wideTabBar
+        case tabBarWidthPercent // MARK: Regram
         case tabBarSearchEnabled
         case hideStories
         case disableAllAds
@@ -303,6 +318,9 @@ public class RGSimpleSettings {
     public static let defaultValues: [String: Any] = [
         Keys.hidePhoneInSettings.rawValue: true,
         Keys.showTabNames.rawValue: true,
+        Keys.fontFamily.rawValue: RGFontFamily.system.rawValue,
+        Keys.fontApplyToMessages.rawValue: true,
+        Keys.fontApplyToInterface.rawValue: true,
         Keys.startTelescopeWithRearCam.rawValue: false,
         Keys.accountColorsSaturation.rawValue: 100,
         Keys.uploadSpeedBoost.rawValue: false,
@@ -387,6 +405,7 @@ public class RGSimpleSettings {
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
         Keys.wideTabBar.rawValue: false,
+        Keys.tabBarWidthPercent.rawValue: Int32(0),
         Keys.tabBarSearchEnabled.rawValue: true,
         Keys.hideStories.rawValue: false,
         Keys.disableAllAds.rawValue: false,
@@ -423,8 +442,31 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.hidePhoneInSettings.rawValue)
     public var hidePhoneInSettings: Bool
     
+    public var fontConfiguration: RGFontConfiguration {
+        return RGFontConfiguration(family: fontFamily, messages: fontApplyToMessages, interface: fontApplyToInterface)
+    }
+
+    @UserDefault(key: Keys.fontFamily.rawValue)
+    public var fontFamily: String {
+        didSet { if fontFamily != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
+    @UserDefault(key: Keys.fontApplyToMessages.rawValue)
+    public var fontApplyToMessages: Bool {
+        didSet { if fontApplyToMessages != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
+    @UserDefault(key: Keys.fontApplyToInterface.rawValue)
+    public var fontApplyToInterface: Bool {
+        didSet { if fontApplyToInterface != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
     @UserDefault(key: Keys.showTabNames.rawValue)
-    public var showTabNames: Bool
+    public var showTabNames: Bool {
+        didSet {
+            if showTabNames != oldValue { NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
+        }
+    }
     
     @UserDefault(key: Keys.startTelescopeWithRearCam.rawValue)
     public var startTelescopeWithRearCam: Bool
@@ -1066,6 +1108,13 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.wideTabBar.rawValue)
     public var wideTabBar: Bool
+
+    @UserDefault(key: Keys.tabBarWidthPercent.rawValue)
+    public var tabBarWidthPercent: Int32 {
+        didSet {
+            if tabBarWidthPercent != oldValue { NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
+        }
+    }
     
     @UserDefault(key: Keys.tabBarSearchEnabled.rawValue)
     public var tabBarSearchEnabled: Bool

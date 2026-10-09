@@ -1,7 +1,12 @@
 import Foundation
 import UIKit
+// MARK: Regram — scoped, cached typography; semantic monospace and icon fonts stay independent.
+import RGSimpleSettings
+import RGTypography
 
 public struct Font {
+    // MARK: Regram — font roles are explicit across message renderers.
+    public typealias Area = RGFontArea
     public enum Design {
         case regular
         case serif
@@ -159,11 +164,22 @@ public struct Font {
 
     private static let cache = Cache()
     
-    public static func with(size: CGFloat, design: Design = .regular, weight: Weight = .regular, width: Width = .standard, traits: Traits = []) -> UIFont {
-        let key = "\(size)_\(design.key)_\(weight.key)_\(width.key)_\(traits.rawValue)"
+    public static func with(size: CGFloat, design: Design = .regular, weight: Weight = .regular, width: Width = .standard, traits: Traits = [], area: RGFontArea = .interface) -> UIFont {
+        let family = design == .regular && width == .standard ? RGSimpleSettings.shared.fontConfiguration.family(for: area) : .system
+        let key = "\(size)_\(design.key)_\(weight.key)_\(width.key)_\(traits.rawValue)_\(family.rawValue)"
         
         if let cachedFont = self.cache.get(key) {
             return cachedFont
+        }
+        if let custom = RGTypography.font(family: family, size: size, weight: weight.weight, italic: traits.contains(.italic)) {
+            var font = custom
+            if traits.contains(.monospacedNumbers) {
+                font = UIFont(descriptor: custom.fontDescriptor.addingAttributes([.featureSettings: [
+                    [UIFontDescriptor.FeatureKey.type.rawValue: kNumberSpacingType, UIFontDescriptor.FeatureKey.selector.rawValue: kMonospacedNumbersSelector]
+                ]]), size: size)
+            }
+            self.cache.set(font, key: key)
+            return font
         }
         if #available(iOS 13.0, *), design != .camera {
             let descriptor: UIFontDescriptor
@@ -288,19 +304,29 @@ public struct Font {
         }
     }
     
+    // MARK: Regram — most interface text uses these convenience factories rather than `with`.
+    private static func customInterfaceFont(_ size: CGFloat, weight: Weight = .regular, traits: Traits = []) -> UIFont? {
+        guard RGSimpleSettings.shared.fontConfiguration.family(for: .interface) != .system else { return nil }
+        return self.with(size: size, weight: weight, traits: traits)
+    }
+
     public static func regular(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .regular, traits: []) { return font }
         return UIFont.systemFont(ofSize: size)
     }
     
     public static func medium(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .medium, traits: []) { return font }
         return UIFont.systemFont(ofSize: size, weight: UIFont.Weight.medium)
     }
     
     public static func semibold(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .semibold, traits: []) { return font }
         return UIFont.systemFont(ofSize: size, weight: UIFont.Weight.semibold)
     }
     
     public static func bold(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .bold, traits: []) { return font }
         if #available(iOS 8.2, *) {
             return UIFont.boldSystemFont(ofSize: size)
         } else {
@@ -313,10 +339,12 @@ public struct Font {
     }
     
     public static func light(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .light, traits: []) { return font }
         return UIFont.systemFont(ofSize: size, weight: UIFont.Weight.light)
     }
     
     public static func semiboldItalic(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .semibold, traits: .italic) { return font }
         if let descriptor = UIFont.systemFont(ofSize: size).fontDescriptor.withSymbolicTraits([.traitBold, .traitItalic]) {
             return UIFont(descriptor: descriptor, size: size)
         } else {
@@ -325,6 +353,7 @@ public struct Font {
     }
     
     public static func mediumItalic(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .medium, traits: .italic) { return font }
         if let descriptor = UIFont.systemFont(ofSize: size, weight: .medium).fontDescriptor.withSymbolicTraits([.traitItalic]) {
             return UIFont(descriptor: descriptor, size: size)
         } else {
@@ -349,6 +378,7 @@ public struct Font {
     }
     
     public static func italic(_ size: CGFloat) -> UIFont {
+        if let font = self.customInterfaceFont(size, weight: .regular, traits: .italic) { return font }
         return UIFont.italicSystemFont(ofSize: size)
     }
 }

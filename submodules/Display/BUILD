@@ -7,6 +7,7 @@ sgsrc = [
 sgdeps = [
     "//submodules/Utils/DeviceModel",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Regram/RGTypography:RGTypography",
 ]
 
 swift_library(

@@ -33,6 +33,7 @@ private enum RGProDisclosureLink: String {
     case antiRevokeChats
     case appIcons
     case appBages
+    case fonts
 }
 
 private enum RGProToggles: String {
@@ -96,6 +97,7 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .mentionsAndRepliesNotifications, text: "Notifications.MentionsAndReplies.Title".i18n(lang), value: "Notifications.MentionsAndReplies.value.\(RGSimpleSettings.shared.mentionsAndRepliesNotifications)".i18n(lang), enabled: true))
     entries.append(.header(id: id.count, section: .appearance, text: presentationData.strings.Appearance_Title.uppercased(), badge: nil))
+    entries.append(.disclosure(id: id.count, section: .appearance, link: .fonts, text: "Fonts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
     entries.append(.notice(id: id.count, section: .appearance, text: "AppBadge.Notice".i18n(lang)))
@@ -203,6 +205,8 @@ public func rgProController(context: AccountContext) -> ViewController {
                 pushControllerImpl?(rgHiddenUsersController(context: context))
             case .antiRevokeChats:
                 pushControllerImpl?(rgAntiRevokeChatsController(context: context))
+            case .fonts:
+                pushControllerImpl?(rgFontSettingsController(context: context))
             case .appIcons:
                 pushControllerImpl?(themeSettingsController(context: context, focusOnItemTag: .icon))
             case .appBages:

@@ -397,7 +397,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGPayWall:RGPayWallAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
+RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGPayWall:RGPayWallAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
 
 swift_library(
     name = "Lib",
@@ -949,14 +949,7 @@ genrule(
     cmd_bash =
 """
     echo 'for f in $$1/*.framework; do binary_name=`echo $$(basename $$f) | sed -e "s/\\\\.framework//"`; strip -ST $$f/$$binary_name; done;' > $(location StripFramework.sh)
-    # MARK: Regram
-    echo 'find "$$1" -type f \\( -perm +111 -o -name "*.dylib" \\) | while read -r bin; do \
-        if otool -L "$$bin" | grep -q "/usr/lib/swift/libswift_Concurrency.dylib"; then \
-            echo "Patching concurrency backport in: $$bin"; \
-            chmod +w "$$(dirname $$bin)/"; \
-            install_name_tool -change /usr/lib/swift/libswift_Concurrency.dylib @rpath/libswift_Concurrency.dylib "$$bin"; \
-        fi; \
-    done;' >> $(location StripFramework.sh)
+    # MARK: Regram — iOS 15+ uses the system concurrency runtime; no iOS 14 backport rewrite.
     echo '' >> $(location StripFramework.sh)
 """,
     outs = [
@@ -1204,24 +1197,6 @@ swift_library(
     ],
 )
 
-'''genrule(
-    name = "SetMinOsVersionNotificationContentExtension",
-    cmd_bash =
-"""
-    name=NotificationContentExtension.appex
-    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/10\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionNotificationContentExtension.sh)
-""",
-    srcs = [
-        "PatchMinOSVersion.source.sh",
-    ],
-    outs = [
-        "SetMinOsVersionNotificationContentExtension.sh",
-    ],
-    executable = True,
-    visibility = [
-        "//visibility:public",
-    ]
-)'''
 
 ios_extension(
     name = "NotificationContentExtension",
@@ -1240,7 +1215,6 @@ ios_extension(
         ":AppNameInfoPlist",
     ],
     minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
-    #ipa_post_processor = ":SetMinOsVersionNotificationContentExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
         "//conditions:default": "@build_configuration//provisioning:NotificationContent.mobileprovision",
@@ -1311,24 +1285,6 @@ swift_library(
     ],
 )
 
-genrule(
-    name = "SetMinOsVersionWidgetExtension",
-    cmd_bash =
-"""
-    name=WidgetExtension.appex
-    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/14\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionWidgetExtension.sh)
-""",
-    srcs = [
-        "PatchMinOSVersion.source.sh",
-    ],
-    outs = [
-        "SetMinOsVersionWidgetExtension.sh",
-    ],
-    executable = True,
-    visibility = [
-        "//visibility:public",
-    ]
-)
 
 ios_extension(
     name = "WidgetExtension",
@@ -1351,7 +1307,6 @@ ios_extension(
     # extension could ship while the app min was 13.0. Now that the app min is >= 14, stamping
     # a plist minimum *below* the binary's minos makes App Store validation reject the bundle
     # (error 90208). Same reason the other extensions' patches are commented out.
-    #ipa_post_processor = ":SetMinOsVersionWidgetExtension",
     #provides_main = True,
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
@@ -1486,24 +1441,6 @@ ios_unit_test(
     ],
 )
 
-'''genrule(
-    name = "SetMinOsVersionIntentsExtension",
-    cmd_bash =
-"""
-    name=IntentsExtension.appex
-    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/10\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionIntentsExtension.sh)
-""",
-    srcs = [
-        "PatchMinOSVersion.source.sh",
-    ],
-    outs = [
-        "SetMinOsVersionIntentsExtension.sh",
-    ],
-    executable = True,
-    visibility = [
-        "//visibility:public",
-    ]
-)'''
 
 ios_extension(
     name = "IntentsExtension",
@@ -1522,7 +1459,6 @@ ios_extension(
         ":AppNameInfoPlist",
     ],
     minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
-    #ipa_post_processor = ":SetMinOsVersionIntentsExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
         "//conditions:default": "@build_configuration//provisioning:Intents.mobileprovision",
@@ -1623,24 +1559,6 @@ swift_library(
     ],
 )
 
-genrule(
-    name = "SetMinOsVersionSGActionRequestHandler",
-    cmd_bash =
-"""
-    name=SGActionRequestHandler.appex
-    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/14\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionSGActionRequestHandler.sh)
-""",
-    srcs = [
-        "PatchMinOSVersion.source.sh",
-    ],
-    outs = [
-        "SetMinOsVersionSGActionRequestHandler.sh",
-    ],
-    executable = True,
-    visibility = [
-        "//visibility:public",
-    ]
-)
 
 ios_extension(
     name = "SGActionRequestHandler",
@@ -1659,7 +1577,6 @@ ios_extension(
         # ":AppNameInfoPlist",
     ],
     minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
-    ipa_post_processor = ":SetMinOsVersionSGActionRequestHandler",
     #provides_main = True,
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
@@ -1723,24 +1640,6 @@ swift_library(
     ],
 )
 
-'''genrule(
-    name = "SetMinOsVersionBroadcastUploadExtension",
-    cmd_bash =
-"""
-    name=BroadcastUploadExtension.appex
-    cat $(location PatchMinOSVersion.source.sh) | sed -e "s/<<<MIN_OS_VERSION>>>/11\\.0/g" | sed -e "s/<<<NAME>>>/$$name/g" > $(location SetMinOsVersionBroadcastUploadExtension.sh)
-""",
-    srcs = [
-        "PatchMinOSVersion.source.sh",
-    ],
-    outs = [
-        "SetMinOsVersionBroadcastUploadExtension.sh",
-    ],
-    executable = True,
-    visibility = [
-        "//visibility:public",
-    ]
-)'''
 
 ios_extension(
     name = "BroadcastUploadExtension",
@@ -1759,7 +1658,6 @@ ios_extension(
         ":AppNameInfoPlist",
     ],
     minimum_os_version = minimum_os_version, # maintain the same minimum OS version across extensions
-    #ipa_post_processor = ":SetMinOsVersionBroadcastUploadExtension",
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
         "//conditions:default": "@build_configuration//provisioning:BroadcastUpload.mobileprovision",

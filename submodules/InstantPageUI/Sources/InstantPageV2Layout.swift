@@ -3783,6 +3783,8 @@ func instantPageV2LeadingEdgeX(boundingWidth: CGFloat, horizontalInset: CGFloat,
 // MARK: - Style helpers (ported from V1 InstantPageLayout.swift lines 32–88)
 
 private func setupStyleStack(_ stack: InstantPageTextStyleStack, theme: InstantPageTheme, attributes: InstantPageTextAttributes) {
+    // MARK: Regram — scope survives nested blocks and inline formatting.
+    stack.push(.fontArea(theme.fontArea))
     stack.push(.textColor(attributes.color))
     stack.push(.markerColor(theme.markerColor))
     stack.push(.linkColor(theme.linkColor))

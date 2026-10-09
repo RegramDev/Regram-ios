@@ -4,6 +4,8 @@ import TelegramCore
 import Display
 
 enum InstantPageTextStyle {
+    // MARK: Regram — distinguish rich-message text from interface typography.
+    case fontArea(Font.Area)
     case fontSize(CGFloat)
     case lineSpacingFactor(CGFloat)
     case fontSerif(Bool)
@@ -58,6 +60,7 @@ final class InstantPageTextStyleStack {
     }
     
     func textAttributes() -> [NSAttributedString.Key: Any] {
+        var fontArea: Font.Area?
         var fontSize: CGFloat?
         var fontSerif: Bool?
         var fontFixed: Bool?
@@ -79,6 +82,8 @@ final class InstantPageTextStyleStack {
         
         for item in self.items.reversed() {
             switch item {
+                case let .fontArea(value):
+                    if fontArea == nil { fontArea = value }
                 case let .fontSize(value):
                     if fontSize == nil {
                         fontSize = value
@@ -234,6 +239,12 @@ final class InstantPageTextStyleStack {
             }
         }
         
+        // MARK: Regram — protect authored code/serif runs and scope all other rich-message styles.
+        if let fontArea, fontArea != .interface, fontFixed != true, fontSerif != true {
+            let weight: Font.Weight = bold == true ? .bold : semibold == true ? .semibold : medium == true ? .medium : .regular
+            attributes[.font] = Font.with(size: parsedFontSize, weight: weight, traits: italic == true ? .italic : [], area: fontArea)
+        }
+
         if strikethrough != nil && strikethrough! {
             attributes[NSAttributedString.Key.strikethroughStyle] = NSUnderlineStyle.single.rawValue as NSNumber
         }

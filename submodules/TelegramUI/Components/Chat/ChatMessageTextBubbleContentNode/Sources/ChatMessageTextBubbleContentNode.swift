@@ -641,10 +641,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     customTruncationToken = { baseFont, isQuote in
                         let truncationToken = NSMutableAttributedString()
                         if isQuote {
-                            truncationToken.append(NSAttributedString(string: "\u{2026}", font: Font.regular(baseFont.pointSize), textColor: messageTheme.primaryTextColor))
+                            truncationToken.append(NSAttributedString(string: "\u{2026}", font: Font.with(size: baseFont.pointSize, area: .messages), textColor: messageTheme.primaryTextColor))
                         } else {
-                            truncationToken.append(NSAttributedString(string: "\u{2026} ", font: Font.regular(baseFont.pointSize), textColor: messageTheme.primaryTextColor))
-                            truncationToken.append(NSAttributedString(string: truncationTokenText, font: Font.regular(baseFont.pointSize), textColor: messageTheme.accentTextColor))
+                            truncationToken.append(NSAttributedString(string: "\u{2026} ", font: Font.with(size: baseFont.pointSize, area: .messages), textColor: messageTheme.primaryTextColor))
+                            truncationToken.append(NSAttributedString(string: truncationTokenText, font: Font.with(size: baseFont.pointSize, area: .messages), textColor: messageTheme.accentTextColor))
                         }
                         return truncationToken
                     }

@@ -396,10 +396,25 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             self.energyUsageSettings = self.currentAutomaticMediaDownloadSettings.energyUsageSettings
         }
         
-        let presentationData: Signal<PresentationData, NoError> = .single(initialPresentationDataAndSettings.presentationData)
+        let basePresentationData: Signal<PresentationData, NoError> = .single(initialPresentationDataAndSettings.presentationData)
         |> then(
             updatedPresentationData(accountManager: self.accountManager, applicationInForeground: self.applicationBindings.applicationInForeground, systemUserInterfaceStyle: mainWindow?.systemUserInterfaceStyle ?? .single(.light))
         )
+        // MARK: Regram — an appearance refresh also rebuilds cached text on already open screens.
+        let fontConfiguration = Signal<RGFontConfiguration, NoError> { subscriber in
+            let observer = NotificationCenter.default.addObserver(forName: RGFontConfiguration.settingsChanged, object: nil, queue: .main) { _ in
+                subscriber.putNext(RGSimpleSettings.shared.fontConfiguration)
+            }
+            subscriber.putNext(RGSimpleSettings.shared.fontConfiguration)
+            return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+        } |> distinctUntilChanged
+        let presentationData = combineLatest(basePresentationData, fontConfiguration)
+        |> map { data, _ -> PresentationData in
+            let theme = data.theme.withUpdated(preview: data.theme.preview)
+            theme.forceSync = data.theme.forceSync
+            theme.starGift = data.theme.starGift
+            return data.withUpdated(theme: theme)
+        }
         self._presentationData.set(presentationData)
         self._automaticMediaDownloadSettings.set(.single(initialPresentationDataAndSettings.automaticMediaDownloadSettings)
         |> then(accountManager.sharedData(keys: [SharedDataKeys.autodownloadSettings, ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings])

@@ -264,6 +264,11 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             self.currentController?.tabBarDeactivateSearch()
         })
         
+        // MARK: Regram — update the active controller's bottom inset when label height changes.
+        self.tabBarControllerNode.rgAppearanceChanged = { [weak self] in
+            guard let self, let layout = self.validLayout else { return }
+            self.containerLayoutUpdated(layout, transition: .immediate)
+        }
         self.updateSelectedIndex()
         self.displayNodeDidLoad()
     }

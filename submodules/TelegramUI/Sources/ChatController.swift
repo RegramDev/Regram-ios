@@ -436,6 +436,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     private var isApplicationInForegroundValue = true
     
     var chatThemeAndDarkAppearancePreviewPromise = Promise<(ChatTheme?, Bool?)>((nil, nil))
+    // MARK: Regram — forced/per-chat themes also need a live typography refresh.
+    private var rgFontConfiguration = RGSimpleSettings.shared.fontConfiguration
     var didSetPresentationData = false
     var presentationData: PresentationData
     var presentationDataPromise = Promise<PresentationData>()
@@ -6950,6 +6952,14 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     presentationData = presentationData.withUpdated(chatWallpaper: chatWallpaper)
                 }
                 
+                let fontConfiguration = RGSimpleSettings.shared.fontConfiguration
+                if strongSelf.rgFontConfiguration != fontConfiguration {
+                    strongSelf.rgFontConfiguration = fontConfiguration
+                    let theme = presentationData.theme.withUpdated(preview: presentationData.theme.preview)
+                    theme.forceSync = presentationData.theme.forceSync
+                    theme.starGift = presentationData.theme.starGift
+                    presentationData = presentationData.withUpdated(theme: theme)
+                }
                 let isFirstTime = !strongSelf.didSetPresentationData
                 strongSelf.presentationData = presentationData
                 strongSelf.didSetPresentationData = true

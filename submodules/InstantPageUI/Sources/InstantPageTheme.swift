@@ -1,3 +1,5 @@
+// MARK: Regram — the public font-role default requires its declaring module.
+import RGSimpleSettings
 import Foundation
 import UIKit
 import Display
@@ -145,6 +147,8 @@ public final class InstantPageTheme {
     
     public let textCategories: InstantPageTextCategories
     public let serif: Bool
+    // MARK: Regram — rich chat messages use the same independent font scope as plain messages.
+    public let fontArea: Font.Area
     /// The product of every `sizeMultiplier` applied to this theme's categories through
     /// `withUpdatedFontStyles` — exactly 1.0 for a theme built straight from its table. The heading
     /// ladder scales by THIS rather than by a ratio recovered from the already-floored subheader:
@@ -214,11 +218,12 @@ public final class InstantPageTheme {
         )
     }
 
-    public init(type: InstantPageThemeType, pageBackgroundColor: UIColor, textCategories: InstantPageTextCategories, serif: Bool, codeBlockBackgroundColor: UIColor, linkColor: UIColor, textHighlightColor: UIColor, linkHighlightColor: UIColor, markerColor: UIColor, panelBackgroundColor: UIColor, panelHighlightedBackgroundColor: UIColor, panelPrimaryColor: UIColor, panelSecondaryColor: UIColor, panelAccentColor: UIColor, tableBorderColor: UIColor, tableHeaderColor: UIColor, controlColor: UIColor, imageTintColor: UIColor?, overlayPanelColor: UIColor, separatorColor: UIColor, secondaryControlColor: UIColor, quoteAccentColor: UIColor, buttonDangerBackgroundColor: UIColor = UIColor(rgb: 0xff3b30).withMultipliedAlpha(0.15), buttonDangerForegroundColor: UIColor = UIColor(rgb: 0xff3b30), buttonSuccessBackgroundColor: UIColor = UIColor(rgb: 0x34c759).withMultipliedAlpha(0.15), buttonSuccessForegroundColor: UIColor = UIColor(rgb: 0x34c759), checkboxFill: UIColor = UIColor(rgb: 0x007aff), checkboxForeground: UIColor = .white, neutralButtonBackgroundColor: UIColor = UIColor(rgb: 0xf3f4f5), neutralButtonForegroundColor: UIColor = .black, unsupportedPillFillColor: UIColor = UIColor(white: 0.0, alpha: 0.1), unsupportedPillPrimaryColor: UIColor = .white, fontSizeMultiplier: CGFloat = 1.0) {
+    public init(type: InstantPageThemeType, pageBackgroundColor: UIColor, textCategories: InstantPageTextCategories, serif: Bool, codeBlockBackgroundColor: UIColor, linkColor: UIColor, textHighlightColor: UIColor, linkHighlightColor: UIColor, markerColor: UIColor, panelBackgroundColor: UIColor, panelHighlightedBackgroundColor: UIColor, panelPrimaryColor: UIColor, panelSecondaryColor: UIColor, panelAccentColor: UIColor, tableBorderColor: UIColor, tableHeaderColor: UIColor, controlColor: UIColor, imageTintColor: UIColor?, overlayPanelColor: UIColor, separatorColor: UIColor, secondaryControlColor: UIColor, quoteAccentColor: UIColor, buttonDangerBackgroundColor: UIColor = UIColor(rgb: 0xff3b30).withMultipliedAlpha(0.15), buttonDangerForegroundColor: UIColor = UIColor(rgb: 0xff3b30), buttonSuccessBackgroundColor: UIColor = UIColor(rgb: 0x34c759).withMultipliedAlpha(0.15), buttonSuccessForegroundColor: UIColor = UIColor(rgb: 0x34c759), checkboxFill: UIColor = UIColor(rgb: 0x007aff), checkboxForeground: UIColor = .white, neutralButtonBackgroundColor: UIColor = UIColor(rgb: 0xf3f4f5), neutralButtonForegroundColor: UIColor = .black, unsupportedPillFillColor: UIColor = UIColor(white: 0.0, alpha: 0.1), unsupportedPillPrimaryColor: UIColor = .white, fontSizeMultiplier: CGFloat = 1.0, fontArea: Font.Area = .interface) {
         self.type = type
         self.pageBackgroundColor = pageBackgroundColor
         self.textCategories = textCategories
         self.serif = serif
+        self.fontArea = fontArea
         self.codeBlockBackgroundColor = codeBlockBackgroundColor
         self.linkColor = linkColor
         self.textHighlightColor = textHighlightColor
@@ -255,7 +260,7 @@ public final class InstantPageTheme {
         // reverts to its `init` default — for the button danger/success colours that would reset a
         // chat bubble's theme-derived button colours the moment the user changes Instant View font
         // size or forces serif. Nothing warns; it compiles. Keep this list exhaustive.
-        return InstantPageTheme(type: type, pageBackgroundColor: pageBackgroundColor, textCategories: self.textCategories.withUpdatedFontStyles(sizeMultiplier: sizeMultiplier, lineSpacingFactor: lineSpacingFactor, forceSerif: forceSerif), serif: forceSerif, codeBlockBackgroundColor: codeBlockBackgroundColor, linkColor: linkColor, textHighlightColor: textHighlightColor, linkHighlightColor: linkHighlightColor, markerColor: markerColor, panelBackgroundColor: panelBackgroundColor, panelHighlightedBackgroundColor: panelHighlightedBackgroundColor, panelPrimaryColor: panelPrimaryColor, panelSecondaryColor: panelSecondaryColor, panelAccentColor: panelAccentColor, tableBorderColor: tableBorderColor, tableHeaderColor: tableHeaderColor, controlColor: controlColor, imageTintColor: imageTintColor, overlayPanelColor: overlayPanelColor, separatorColor: separatorColor, secondaryControlColor: secondaryControlColor, quoteAccentColor: quoteAccentColor, buttonDangerBackgroundColor: buttonDangerBackgroundColor, buttonDangerForegroundColor: buttonDangerForegroundColor, buttonSuccessBackgroundColor: buttonSuccessBackgroundColor, buttonSuccessForegroundColor: buttonSuccessForegroundColor, checkboxFill: checkboxFill, checkboxForeground: checkboxForeground, neutralButtonBackgroundColor: neutralButtonBackgroundColor, neutralButtonForegroundColor: neutralButtonForegroundColor, unsupportedPillFillColor: unsupportedPillFillColor, unsupportedPillPrimaryColor: unsupportedPillPrimaryColor, fontSizeMultiplier: self.fontSizeMultiplier * sizeMultiplier)
+        return InstantPageTheme(type: type, pageBackgroundColor: pageBackgroundColor, textCategories: self.textCategories.withUpdatedFontStyles(sizeMultiplier: sizeMultiplier, lineSpacingFactor: lineSpacingFactor, forceSerif: forceSerif), serif: forceSerif, codeBlockBackgroundColor: codeBlockBackgroundColor, linkColor: linkColor, textHighlightColor: textHighlightColor, linkHighlightColor: linkHighlightColor, markerColor: markerColor, panelBackgroundColor: panelBackgroundColor, panelHighlightedBackgroundColor: panelHighlightedBackgroundColor, panelPrimaryColor: panelPrimaryColor, panelSecondaryColor: panelSecondaryColor, panelAccentColor: panelAccentColor, tableBorderColor: tableBorderColor, tableHeaderColor: tableHeaderColor, controlColor: controlColor, imageTintColor: imageTintColor, overlayPanelColor: overlayPanelColor, separatorColor: separatorColor, secondaryControlColor: secondaryControlColor, quoteAccentColor: quoteAccentColor, buttonDangerBackgroundColor: buttonDangerBackgroundColor, buttonDangerForegroundColor: buttonDangerForegroundColor, buttonSuccessBackgroundColor: buttonSuccessBackgroundColor, buttonSuccessForegroundColor: buttonSuccessForegroundColor, checkboxFill: checkboxFill, checkboxForeground: checkboxForeground, neutralButtonBackgroundColor: neutralButtonBackgroundColor, neutralButtonForegroundColor: neutralButtonForegroundColor, unsupportedPillFillColor: unsupportedPillFillColor, unsupportedPillPrimaryColor: unsupportedPillPrimaryColor, fontSizeMultiplier: self.fontSizeMultiplier * sizeMultiplier, fontArea: self.fontArea)
     }
 
     /// The H1–H6 ladder: **22 / 20 / 18 / 17 / 16 / 15**, serif medium.

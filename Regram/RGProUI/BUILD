@@ -18,6 +18,8 @@ swift_library(
         "//Regram/RGAPI:RGAPI",
         "//Regram/RGAPIToken:RGAPIToken",
         "//Regram/RGSwiftUI:RGSwiftUI",
+        "//Regram/RGTypography:RGTypography",
+        "//submodules/LegacyUI:LegacyUI",
         #
         "//submodules/SettingsUI:SettingsUI",
         #

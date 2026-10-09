@@ -770,7 +770,9 @@ public class ChatMessageRichDataBubbleContentNode: ChatMessageBubbleContentNode 
                     neutralButtonBackgroundColor: tableHeaderColor,
                     neutralButtonForegroundColor: isIncoming ? messageTheme.primaryTextColor : messageTheme.accentControlColor,
                     unsupportedPillFillColor: selectDateFillStaticColor(theme: item.presentationData.theme.theme, wallpaper: item.presentationData.theme.wallpaper),
-                    unsupportedPillPrimaryColor: serviceColor.primaryText
+                    unsupportedPillPrimaryColor: serviceColor.primaryText,
+                    // MARK: Regram — include rich-message body, quotes and tables in chat font selection.
+                    fontArea: .messages
                 )
                 
                 var hasDraft = false

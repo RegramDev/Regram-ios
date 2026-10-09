@@ -30,6 +30,8 @@ public final class InstantPageLayout {
 }
 
 private func setupStyleStack(_ stack: InstantPageTextStyleStack, theme: InstantPageTheme, attributes: InstantPageTextAttributes) {
+    // MARK: Regram — scope survives nested blocks and inline formatting.
+    stack.push(.fontArea(theme.fontArea))
     stack.push(.textColor(attributes.color))
     stack.push(.markerColor(theme.markerColor))
     stack.push(.linkColor(theme.linkColor))

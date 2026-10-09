@@ -1,0 +1,47 @@
+import Foundation
+
+@main
+private enum AppearancePolicyTests {
+    static func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
+        if !condition() { fatalError(message) }
+    }
+    static func main() {
+        expect(RGTabBarLayoutPolicy.migratedPercent(legacyWide: true) == 100, "A saved wide bar must remain wide")
+        expect(RGTabBarLayoutPolicy.migratedPercent(legacyWide: false) == 0, "A default bar keeps automatic sizing")
+        expect(RGTabBarLayoutPolicy.normalizedPercent(-100) == 0, "Invalid old values must be safe")
+        expect(RGTabBarLayoutPolicy.normalizedPercent(1) == 50 && RGTabBarLayoutPolicy.normalizedPercent(200) == 100, "Manual sizing must stay in the supported range")
+        for container in [120.0, 280.0, 320.0, 390.0, 768.0, 1024.0] {
+            for count in 1...4 {
+                var previous = 0.0
+                for percent in 50...100 {
+                    let width = RGTabBarLayoutPolicy.width(containerWidth: container, itemCount: count, percent: Int32(percent))
+                    expect(width <= min(500.0, container) && width >= previous, "Sizing must stay inside the viewport and grow monotonically")
+                    let widths = RGTabBarLayoutPolicy.itemWidths(availableWidth: width - 8.0, naturalWidths: (0..<count).map { $0 == 0 ? 200.0 : 20.0 })
+                    expect(abs(widths.reduce(0, +) - (width - 8.0)) < 0.000001, "Long labels must not spill outside the bar")
+                    if width - 8.0 >= Double(count) * 44.0 { expect(widths.allSatisfy { $0 >= 44.0 }, "Each available tap target must be at least 44 pt") }
+                    expect(widths.allSatisfy { $0.isFinite && $0 >= 0 }, "Small screens must have valid frames")
+                    previous = width
+                }
+                let full = RGTabBarLayoutPolicy.width(containerWidth: container, itemCount: count, percent: 100)
+                expect(full == min(500.0, container), "100% must use all supported width regardless of removed search controls")
+                let automatic = RGTabBarLayoutPolicy.width(containerWidth: container, itemCount: count, percent: 0)
+                let withSearch = RGTabBarLayoutPolicy.width(containerWidth: container, itemCount: count, percent: 0, searchButtonWidth: 64)
+                expect(withSearch >= automatic && withSearch <= full, "An actual search button must reserve space without exceeding the viewport")
+            }
+        }
+        expect(RGTabBarLayoutPolicy.width(containerWidth: .nan, itemCount: 2, percent: 50) == 0, "Invalid viewport dimensions must not create NaN frames")
+        expect(RGTabBarLayoutPolicy.itemWidths(availableWidth: 100, naturalWidths: [.infinity, .nan]).allSatisfy { $0 == 50 }, "Invalid measurements must fall back safely")
+        for family in RGFontFamily.allCases {
+            for messages in [false, true] {
+                for interface in [false, true] {
+                    let config = RGFontConfiguration(family: family.rawValue, messages: messages, interface: interface)
+                    expect(config.family(for: .messages) == (messages ? family : .system), "Chat scope must be independent")
+                    expect(config.family(for: .interface) == (interface ? family : .system), "Interface scope must be independent")
+                    expect(config.family(for: .system) == .system, "Emoji and other protected system content must never be overridden")
+                }
+            }
+        }
+        expect(RGFontConfiguration(family: "unknown-font", messages: true, interface: true).family == .system, "Unknown persisted fonts must use system defaults")
+        print("Appearance policy regression checks passed")
+    }
+}

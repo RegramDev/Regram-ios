@@ -15,6 +15,9 @@ final class TabBarControllerNode: ASDisplayNode {
         let toolbar: Toolbar?
         let isTabBarHidden: Bool
         let currentControllerSearchState: ViewController.TabBarSearchState?
+        // MARK: Regram — sizing preferences must invalidate cached content insets too.
+        let rgWidthPercent: Int32
+        let rgShowTabNames: Bool
         
         init(
             layout: ContainerViewLayout,
@@ -26,6 +29,8 @@ final class TabBarControllerNode: ASDisplayNode {
             self.toolbar = toolbar
             self.isTabBarHidden = isTabBarHidden
             self.currentControllerSearchState = currentControllerSearchState
+            self.rgWidthPercent = RGSimpleSettings.shared.tabBarWidthPercent
+            self.rgShowTabNames = RGSimpleSettings.shared.showTabNames
         }
     }
     
@@ -73,6 +78,9 @@ final class TabBarControllerNode: ASDisplayNode {
     private var layoutResult: LayoutResult?
     private var isUpdateRequested: Bool = false
     private var isChangingSelectedIndex: Bool = false
+    // MARK: Regram — width/name changes are live layout updates, not restart-only settings.
+    private var rgAppearanceObserver: NSObjectProtocol?
+    var rgAppearanceChanged: (() -> Void)?
     
     func setCurrentController(_ controller: ViewController?) -> () -> Void {
         guard controller !== self.currentController else {
@@ -140,9 +148,18 @@ final class TabBarControllerNode: ASDisplayNode {
         }
         
         self.backgroundColor = theme.list.plainBackgroundColor
+        self.rgAppearanceObserver = NotificationCenter.default.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            if let update = self.rgAppearanceChanged { update() }
+            else { self.requestUpdate() }
+        }
         
         //self.addSubnode(self.tabBarNode)
         //self.addSubnode(self.disabledOverlayNode)
+    }
+
+    deinit {
+        if let observer = self.rgAppearanceObserver { NotificationCenter.default.removeObserver(observer) }
     }
     
     override func didLoad() {
@@ -266,7 +283,7 @@ final class TabBarControllerNode: ASDisplayNode {
                         }
                     )
                 },
-                search: (!RGSimpleSettings.shared.tabBarSearchEnabled) ? nil : self.currentController?.tabBarSearchState.flatMap { tabBarSearchState in
+                search: self.currentController?.tabBarSearchState.flatMap { tabBarSearchState in
                     return TabBarComponent.Search(
                         isActive: tabBarSearchState.isActive,
                         activate: { [weak self] in
