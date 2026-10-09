@@ -76,19 +76,20 @@ final class RGAppBadgeOverlay {
         self.window?.rootViewController = nil
     }
 
-    func update(hostWindow: UIWindow?, fallbackView: UIView, enabled: Bool) {
-        guard enabled, let hostWindow, let scene = hostWindow.windowScene else {
-            self.restore(to: fallbackView)
+    func update(hostWindow: UIWindow?, fallbackView: UIView, badgeFrame: CGRect, enabled: Bool) {
+        guard enabled, !badgeFrame.isEmpty, let hostWindow, let scene = hostWindow.windowScene else {
+            self.restore(to: fallbackView, badgeFrame: badgeFrame)
             return
         }
         self.hostWindow = hostWindow
         if self.window?.windowScene !== scene {
-            self.restore(to: fallbackView)
+            self.restore(to: fallbackView, badgeFrame: badgeFrame)
             self.hostWindow = hostWindow
             self.sceneIsDeactivating = scene.activationState != .foregroundActive
             let window = RGAppBadgeWindow(windowScene: scene)
             window.backgroundColor = .clear
             window.isOpaque = false
+            window.clipsToBounds = true
             window.accessibilityElementsHidden = true
             window.rootViewController = RGAppBadgeRootController(hostWindow: hostWindow)
             self.window = window
@@ -97,19 +98,24 @@ final class RGAppBadgeOverlay {
         // zPosition only orders layers inside one window; a separate window establishes the
         // rendering boundary without changing the navigation bar's blur or the main window's level.
         window.windowLevel = UIWindow.Level(rawValue: max(UIWindow.Level.statusBar.rawValue, hostWindow.windowLevel.rawValue) + 1.0)
-        window.frame = hostWindow.frame
+        // Keep this render surface confined to the badge. A full-screen transparent window can
+        // participate in system/glass compositing far beyond the image it is meant to display.
+        window.overrideUserInterfaceStyle = hostWindow.traitCollection.userInterfaceStyle
+        window.frame = hostWindow.convert(badgeFrame, to: nil)
         container.frame = window.bounds
         if self.badgeView.superview !== container {
             container.addSubview(self.badgeView)
         }
+        self.badgeView.frame = CGRect(origin: .zero, size: badgeFrame.size)
         self.updateVisibility()
     }
 
-    private func restore(to fallbackView: UIView) {
+    private func restore(to fallbackView: UIView, badgeFrame: CGRect) {
         self.window?.isHidden = true
         if self.badgeView.superview !== fallbackView {
             fallbackView.addSubview(self.badgeView)
         }
+        self.badgeView.frame = badgeFrame
         self.window?.rootViewController = nil
         self.window = nil
         self.hostWindow = nil

@@ -926,7 +926,9 @@ public class Window1 {
     // MARK: Regram — isolate Dynamic Island badges from the iOS 27 top-area compositing path.
     private func updateBadgePresentation() {
         if #available(iOS 27.0, *) {
-            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden)
+            let imageSize = self.badgeView.image?.size ?? .zero
+            let badgeFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - imageSize.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: imageSize)
+            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, badgeFrame: badgeFrame, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden)
         }
     }
 
