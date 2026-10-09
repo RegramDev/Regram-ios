@@ -12,13 +12,14 @@ import Display
 public struct RGFontSettingsView: SwiftUI.View {
     @SwiftUI.Environment(\.lang) private var lang
     @State private var family = RGSimpleSettings.shared.fontConfiguration.family
+    @State private var chineseFamily = RGSimpleSettings.shared.fontConfiguration.chineseFamily
     @State private var messages = RGSimpleSettings.shared.fontApplyToMessages
     @State private var interface = RGSimpleSettings.shared.fontApplyToInterface
 
     public init() {}
 
     private func previewFont(weight: UIFont.Weight = .regular, italic: Bool = false) -> SwiftUI.Font {
-        if let font = RGTypography.font(family: self.family, size: 19.0, weight: weight, italic: italic) { return SwiftUI.Font(font) }
+        if let font = RGTypography.font(configuration: RGFontConfiguration(family: self.family.rawValue, messages: true, interface: true, chineseFamily: self.chineseFamily.rawValue), size: 19.0, weight: weight, italic: italic) { return SwiftUI.Font(font) }
         var descriptor = UIFont.systemFont(ofSize: 19.0, weight: weight).fontDescriptor
         if italic, let updated = descriptor.withSymbolicTraits(descriptor.symbolicTraits.union(.traitItalic)) { descriptor = updated }
         return SwiftUI.Font(UIFont(descriptor: descriptor, size: 19.0))
@@ -47,9 +48,9 @@ public struct RGFontSettingsView: SwiftUI.View {
             VStack(alignment: .leading, spacing: 20.0) {
                 Text("Fonts.Preview".i18n(self.lang)).font(.headline)
                 VStack(alignment: .leading, spacing: 12.0) {
-                    Text("Hello, Regram! 0123456789").font(self.previewFont())
+                    Text("Hello, Regram! 中文混排 0123456789").font(self.previewFont())
                     Text("Fonts.Sample".i18n(self.lang)).font(self.previewFont())
-                    Text("Aa Bb → ≠ <= !=").font(self.previewFont(weight: .bold))
+                    Text("粗体 Bold → ≠ <= !=").font(self.previewFont(weight: .bold))
                     Text("Italic / 斜体").font(self.previewFont(italic: true))
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -67,8 +68,8 @@ public struct RGFontSettingsView: SwiftUI.View {
                 if !self.messages && !self.interface {
                     Text("Fonts.NoArea".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 }
-                Text("Fonts.Family".i18n(self.lang)).font(.headline)
-                ForEach(RGFontFamily.allCases, id: \.rawValue) { option in
+                Text("Fonts.Latin.Title".i18n(self.lang)).font(.headline)
+                ForEach(RGFontFamily.latinChoices, id: \.rawValue) { option in
                     Button(action: { self.family = option }) {
                         HStack {
                             Text(option.title.i18n(self.lang))
@@ -84,16 +85,38 @@ public struct RGFontSettingsView: SwiftUI.View {
                     .accessibilityIdentifier("regram.font.family.\(option.rawValue)")
                     .accessibilityAddTraits(self.family == option ? .isSelected : [])
                 }
+                Text("Fonts.Chinese.Title".i18n(self.lang)).font(.headline)
+                ForEach(RGChineseFontFamily.allCases, id: \.rawValue) { option in
+                    Button(action: { self.chineseFamily = option }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4.0) {
+                                Text(option.title.i18n(self.lang)).foregroundColor(.primary)
+                                Text("Fonts.Chinese.Sample".i18n(self.lang))
+                                    .font(SwiftUI.Font(RGTypography.chineseFont(family: option, size: 17.0)))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if self.chineseFamily == option { Image(systemName: "checkmark").font(.system(size: 17.0, weight: .semibold)) }
+                        }
+                        .padding(.vertical, 10.0)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("regram.font.chinese.\(option.rawValue)")
+                    .accessibilityAddTraits(self.chineseFamily == option ? .isSelected : [])
+                }
+                Text("Fonts.Scripts.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.More.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Fallback".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
-                Button("Fonts.Reset".i18n(self.lang)) { self.family = .system; self.messages = true; self.interface = true }
+                Button("Fonts.Reset".i18n(self.lang)) { self.family = .system; self.chineseFamily = .system; self.messages = true; self.interface = true }
                     .accessibilityIdentifier("regram.font.reset")
             }
             .padding(20.0)
         }
-        .font(SwiftUI.Font(RGTypography.font(family: self.interface ? self.family : .system, size: 17.0) ?? UIFont.systemFont(ofSize: 17.0)))
+        .font(SwiftUI.Font(RGTypography.font(configuration: RGFontConfiguration(family: self.family.rawValue, messages: false, interface: self.interface, chineseFamily: self.chineseFamily.rawValue), size: 17.0) ?? UIFont.systemFont(ofSize: 17.0)))
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
         .onChange(of: self.family) { RGSimpleSettings.shared.fontFamily = $0.rawValue }
+        .onChange(of: self.chineseFamily) { RGSimpleSettings.shared.fontChineseFamily = $0.rawValue }
         .onChange(of: self.messages) { RGSimpleSettings.shared.fontApplyToMessages = $0 }
         .onChange(of: self.interface) { RGSimpleSettings.shared.fontApplyToInterface = $0 }
     }

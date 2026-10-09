@@ -335,7 +335,17 @@
 "Fonts.Unselected" = "未勾選";
 "Fonts.NoArea" = "勾選套用位置後，所選字型才會生效。";
 "Fonts.Family" = "選擇字型";
-"Fonts.Fallback" = "JetBrains Mono NL 不使用程式連字。字型未包含的字元（如中文）會自動使用系統後備字型。";
+"Fonts.Fallback" = "所選字型未包含的字元使用系統後備字型。程式碼和大表情保留各自的字型。";
 "Fonts.Reset" = "恢復系統預設字型";
 
-"Fonts.More.Notice" = "Poppins 與 Lora 來自 Anthropic 官方品牌風格範例。IBM Plex Sans SC 包含中文字形，斜體採用傾斜顯示。";
+"Fonts.More.Notice" = "Poppins 與 Lora 來自 Anthropic 官方品牌風格範例。IBM Plex Sans SC 與 Noto Serif SC 包含中文字形，斜體採用傾斜顯示。";
+
+"Fonts.Latin.Title" = "英文字型";
+
+"Fonts.Chinese.Title" = "中文字型";
+
+"Fonts.Chinese.System" = "系統中文字型";
+
+"Fonts.Chinese.Sample" = "中文字型範例：你好，世界。";
+
+"Fonts.Scripts.Notice" = "英文字母、數字和英文標點使用英文字型；漢字及中文標點使用中文字型。兩項選擇都套用到勾選的位置。";

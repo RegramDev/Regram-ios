@@ -59,6 +59,20 @@ public class RGSimpleSettings {
             UserDefaults.standard.set(true, forKey: chatListLinesMigrationKey)
         }
 
+        // MARK: Regram — split the old single typeface choice without replacing saved script settings.
+        let fontScriptsMigrationKey = "migrated_fontScripts"
+        if !UserDefaults.standard.bool(forKey: fontScriptsMigrationKey) {
+            let stored = Bundle.main.bundleIdentifier.flatMap {
+                UserDefaults.standard.persistentDomain(forName: $0)?[Keys.fontChineseFamily.rawValue]
+            }
+            if stored == nil {
+                let choices = RGFontConfiguration.migratedChoices(legacyFamily: self.fontFamily)
+                self.fontFamily = choices.latin.rawValue
+                self.fontChineseFamily = choices.chinese.rawValue
+            }
+            UserDefaults.standard.set(true, forKey: fontScriptsMigrationKey)
+        }
+
         // MARK: Regram — retain the old wide-bar choice without retaining its obsolete search math.
         let tabBarWidthMigrationKey = "migrated_\(Keys.tabBarWidthPercent.rawValue)"
         if !UserDefaults.standard.bool(forKey: tabBarWidthMigrationKey) {
@@ -119,6 +133,7 @@ public class RGSimpleSettings {
         case hidePhoneInSettings
         case showTabNames
         case fontFamily
+        case fontChineseFamily
         case fontApplyToMessages
         case fontApplyToInterface
         case startTelescopeWithRearCam
@@ -319,6 +334,7 @@ public class RGSimpleSettings {
         Keys.hidePhoneInSettings.rawValue: true,
         Keys.showTabNames.rawValue: true,
         Keys.fontFamily.rawValue: RGFontFamily.system.rawValue,
+        Keys.fontChineseFamily.rawValue: RGChineseFontFamily.system.rawValue,
         Keys.fontApplyToMessages.rawValue: true,
         Keys.fontApplyToInterface.rawValue: true,
         Keys.startTelescopeWithRearCam.rawValue: false,
@@ -443,12 +459,17 @@ public class RGSimpleSettings {
     public var hidePhoneInSettings: Bool
     
     public var fontConfiguration: RGFontConfiguration {
-        return RGFontConfiguration(family: fontFamily, messages: fontApplyToMessages, interface: fontApplyToInterface)
+        return RGFontConfiguration(family: fontFamily, messages: fontApplyToMessages, interface: fontApplyToInterface, chineseFamily: fontChineseFamily)
     }
 
     @UserDefault(key: Keys.fontFamily.rawValue)
     public var fontFamily: String {
         didSet { if fontFamily != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
+    @UserDefault(key: Keys.fontChineseFamily.rawValue)
+    public var fontChineseFamily: String {
+        didSet { if fontChineseFamily != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
     }
 
     @UserDefault(key: Keys.fontApplyToMessages.rawValue)

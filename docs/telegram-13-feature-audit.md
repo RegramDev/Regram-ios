@@ -52,6 +52,10 @@
 | 富文本编辑和气泡 | 发送／编辑／草稿／复制粘贴、InstantPage V2、表格／引用／代码／任务项及媒体仍接入并随新版编译。字体作用域新增传到富文本气泡；专有代码及图标字体保持独立。所有复杂组合与跨设备还原仍需单独验收。 |
 | WebApp 用户脚本 | 当前仍有 TODO；没有可用脚本管理／注入入口，不能列为已完成能力。本次未新增此功能。 |
 
+## b34580：中英文独立字体
+
+增加独立中文选择：系统中文、IBM Plex Sans SC、Noto Serif SC；英文字母／数字／ASCII 标点保留英文选择。汉字、中文标点、全角形式使用中文选择，Emoji 保持系统回退，代码保留独立等宽字体。两项都使用原有聊天内容／主要界面的勾选范围。旧 Latin 选择保留；旧 Plex SC 选择迁到中文栏。新增 fontChineseFamily 后，现行持久化键共 114 项。详情见 [字体分脚本说明](font-script-separation.md)。
+
 ## 逐键追踪
 
 下面的“接入”仅表示当前生产源码存在消费路径。内部状态、旧迁移键和有条件入口单独标注。机器可读列表见 [telegram-13-settings-audit.json](telegram-13-settings-audit.json)。
@@ -168,9 +172,10 @@
 | `showProfileId` | 资料ID | 源码仍接入 | [SharedAccountContext+RGUISettingsMigration.swift](../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift) |
 | `sendWithReturnKey` | 返回键发送 | 源码仍接入 | [SharedAccountContext+RGUISettingsMigration.swift](../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift) |
 | `tabBarWidthPercent` | 可调节底栏宽度 | 新增并接入 | [TabBarComponent.swift](../submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift) |
-| `fontFamily` | 字体选择 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
+| `fontFamily` | 英文字体选择 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
 | `fontApplyToMessages` | 聊天内容字体范围 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
 | `fontApplyToInterface` | 主要界面字体范围 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
+| `fontChineseFamily` | 独立中文字体选择 | b34580 新增并接入 | [RGTypography.swift](../Regram/RGTypography/Sources/RGTypography.swift) |
 
 ## 验证与剩余范围
 

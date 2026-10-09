@@ -3,6 +3,8 @@ import Foundation
 public enum RGFontFamily: String, CaseIterable {
     case system, jetBrainsMono, jetBrainsMonoNL, inter, poppins, lora, ibmPlexSans, ibmPlexSerif, ibmPlexMono, ibmPlexSansSC, sourceSans3, sourceSerif4, rounded, serif
 
+    public static var latinChoices: [RGFontFamily] { return self.allCases.filter { $0 != .ibmPlexSansSC } }
+
     public var bundledPrefix: String? {
         switch self {
         case .jetBrainsMono: return "JetBrainsMono"
@@ -40,16 +42,30 @@ public enum RGFontFamily: String, CaseIterable {
     }
 }
 
+public enum RGChineseFontFamily: String, CaseIterable {
+    case system, ibmPlexSansSC, notoSerifSC
+
+    public var title: String {
+        switch self {
+        case .system: return "Fonts.Chinese.System"
+        case .ibmPlexSansSC: return "IBM Plex Sans SC"
+        case .notoSerifSC: return "Noto Serif SC"
+        }
+    }
+}
+
 public enum RGFontArea { case interface, messages, system }
 
 public struct RGFontConfiguration: Equatable {
     public static let settingsChanged = Notification.Name("Regram.FontSettingsChanged")
     public let family: RGFontFamily
+    public let chineseFamily: RGChineseFontFamily
     public let messages: Bool
     public let interface: Bool
 
-    public init(family: String, messages: Bool, interface: Bool) {
+    public init(family: String, messages: Bool, interface: Bool, chineseFamily: String = RGChineseFontFamily.system.rawValue) {
         self.family = RGFontFamily(rawValue: family) ?? .system
+        self.chineseFamily = RGChineseFontFamily(rawValue: chineseFamily) ?? .system
         self.messages = messages
         self.interface = interface
     }
@@ -61,4 +77,25 @@ public struct RGFontConfiguration: Equatable {
         case .system: return .system
         }
     }
+    public func chineseFamily(for area: RGFontArea) -> RGChineseFontFamily {
+        switch area {
+        case .messages: return messages ? chineseFamily : .system
+        case .interface: return interface ? chineseFamily : .system
+        case .system: return .system
+        }
+    }
+
+    public func usesCustomFonts(for area: RGFontArea) -> Bool {
+        return self.family(for: area) != .system || self.chineseFamily(for: area) != .system
+    }
+
+    public func cacheKey(for area: RGFontArea) -> String {
+        return self.family(for: area).rawValue + ":" + self.chineseFamily(for: area).rawValue
+    }
+
+    public static func migratedChoices(legacyFamily: String) -> (latin: RGFontFamily, chinese: RGChineseFontFamily) {
+        if legacyFamily == RGFontFamily.ibmPlexSansSC.rawValue { return (.system, .ibmPlexSansSC) }
+        return (RGFontFamily(rawValue: legacyFamily) ?? .system, .system)
+    }
+
 }

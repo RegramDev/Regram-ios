@@ -357,7 +357,17 @@
 "Fonts.Unselected" = "未勾选";
 "Fonts.NoArea" = "勾选应用位置后，所选字体才会生效。";
 "Fonts.Family" = "选择字体";
-"Fonts.Fallback" = "JetBrains Mono NL 不使用编程连字。字体未包含的字符（如中文）会自动使用系统后备字体。";
+"Fonts.Fallback" = "所选字体未包含的字符使用系统后备字体。代码和大表情保留各自的字体。";
 "Fonts.Reset" = "恢复系统默认字体";
 
-"Fonts.More.Notice" = "Poppins 与 Lora 来自 Anthropic 官方品牌风格示例。IBM Plex Sans SC 包含中文字形，斜体采用倾斜显示。";
+"Fonts.More.Notice" = "Poppins 与 Lora 来自 Anthropic 官方品牌风格示例。IBM Plex Sans SC 与 Noto Serif SC 包含中文字形，斜体采用倾斜显示。";
+
+"Fonts.Latin.Title" = "英文字体";
+
+"Fonts.Chinese.Title" = "中文字体";
+
+"Fonts.Chinese.System" = "系统中文字体";
+
+"Fonts.Chinese.Sample" = "中文字体示例：你好，世界。";
+
+"Fonts.Scripts.Notice" = "英文字母、数字和英文标点使用英文字体；汉字及中文标点使用中文字体。两项选择都应用到勾选的位置。";

@@ -42,6 +42,19 @@ private enum AppearancePolicyTests {
             }
         }
         expect(RGFontConfiguration(family: "unknown-font", messages: true, interface: true).family == .system, "Unknown persisted fonts must use system defaults")
+        let english = RGFontConfiguration(family: "jetBrainsMono", messages: true, interface: false, chineseFamily: "ibmPlexSansSC")
+        let serifChinese = RGFontConfiguration(family: "jetBrainsMono", messages: true, interface: false, chineseFamily: "notoSerifSC")
+        expect(english.chineseFamily(for: .messages) == .ibmPlexSansSC && english.chineseFamily(for: .interface) == .system, "Chinese must respect application areas independently of Latin")
+        expect(english.cacheKey(for: .messages) != serifChinese.cacheKey(for: .messages), "Changing only Chinese must invalidate font caches")
+        expect(english.cacheKey(for: .system) == serifChinese.cacheKey(for: .system), "Protected fonts must be independent of both selections")
+        let chineseOnly = RGFontConfiguration(family: "system", messages: true, interface: true, chineseFamily: "notoSerifSC")
+        expect(chineseOnly.usesCustomFonts(for: .messages), "Chinese-only selection must apply while English remains native")
+        let legacyChinese = RGFontConfiguration.migratedChoices(legacyFamily: "ibmPlexSansSC")
+        expect(legacyChinese.latin == .system && legacyChinese.chinese == .ibmPlexSansSC, "Old Chinese choice must migrate to the Chinese selector")
+        let legacyEnglish = RGFontConfiguration.migratedChoices(legacyFamily: "lora")
+        expect(legacyEnglish.latin == .lora && legacyEnglish.chinese == .system, "Old English choice must be retained")
+        expect(RGFontConfiguration(family: "inter", messages: true, interface: true, chineseFamily: "unknown").chineseFamily == .system, "Unknown Chinese choices must fall back safely")
+        expect(!RGFontFamily.latinChoices.contains(.ibmPlexSansSC), "Chinese faces belong in their own selector")
         print("Appearance policy regression checks passed")
     }
 }

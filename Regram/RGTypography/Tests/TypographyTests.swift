@@ -11,6 +11,7 @@ final class TypographyTests: XCTestCase {
         self.original = RGSimpleSettings.shared.fontConfiguration
     }
     override func tearDown() {
+        RGSimpleSettings.shared.fontChineseFamily = self.original.chineseFamily.rawValue
         RGSimpleSettings.shared.fontFamily = self.original.family.rawValue
         RGSimpleSettings.shared.fontApplyToMessages = self.original.messages
         RGSimpleSettings.shared.fontApplyToInterface = self.original.interface
@@ -36,6 +37,7 @@ final class TypographyTests: XCTestCase {
     func testAreasAndCacheRespondImmediately() {
         let settings = RGSimpleSettings.shared
         settings.fontFamily = RGFontFamily.system.rawValue
+        settings.fontChineseFamily = RGChineseFontFamily.system.rawValue
         let system = Font.regular(17).fontName
         let fixed = Font.monospace(17).fontName
         settings.fontApplyToInterface = true
@@ -74,6 +76,21 @@ final class TypographyTests: XCTestCase {
         XCTAssertEqual(UserDefaults.standard.string(forKey: RGSimpleSettings.Keys.fontFamily.rawValue), RGFontFamily.jetBrainsMonoNL.rawValue)
         XCTAssertFalse(UserDefaults.standard.bool(forKey: RGSimpleSettings.Keys.fontApplyToMessages.rawValue))
         XCTAssertFalse(UserDefaults.standard.bool(forKey: RGSimpleSettings.Keys.fontApplyToInterface.rawValue))
+    }
+
+    func testChangingChineseDoesNotReplaceTheLatinFace() {
+        let settings = RGSimpleSettings.shared
+        settings.fontApplyToMessages = true
+        settings.fontApplyToInterface = true
+        settings.fontFamily = RGFontFamily.jetBrainsMono.rawValue
+        settings.fontChineseFamily = RGChineseFontFamily.ibmPlexSansSC.rawValue
+        let first = Font.regular(17)
+        settings.fontChineseFamily = RGChineseFontFamily.notoSerifSC.rawValue
+        let second = Font.regular(17)
+        XCTAssertEqual(first.fontName, second.fontName)
+        XCTAssertFalse(first === second, "The Chinese selection must create a new cached composite")
+        settings.fontFamily = RGFontFamily.system.rawValue
+        XCTAssertNotNil(RGTypography.font(configuration: settings.fontConfiguration, size: 17), "Chinese-only configuration must still compose a font")
     }
 
     func testChineseEmojiAndMixedFormattingRender() {

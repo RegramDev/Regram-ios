@@ -391,7 +391,17 @@ Matching is case-insensitive.";
 "Fonts.Unselected" = "Not selected";
 "Fonts.NoArea" = "Select an area to apply this font.";
 "Fonts.Family" = "Typeface";
-"Fonts.Fallback" = "JetBrains Mono NL has no programming ligatures. Characters unavailable in a font, including Chinese, use system fallback fonts.";
+"Fonts.Fallback" = "Characters outside the selected fonts use system fallback. Code and large emoji keep their own fonts.";
 "Fonts.Reset" = "Restore System Default";
 
-"Fonts.More.Notice" = "Poppins and Lora are used in Anthropic’s published brand-style example. IBM Plex Sans SC includes Chinese glyphs; its italic preview uses an oblique style.";
+"Fonts.More.Notice" = "Poppins and Lora appear in Anthropic’s published brand-style example. Plex Sans SC and Noto Serif SC include Chinese glyphs; their italic emphasis uses an oblique style.";
+
+"Fonts.Latin.Title" = "English and Latin Font";
+
+"Fonts.Chinese.Title" = "Chinese Font";
+
+"Fonts.Chinese.System" = "System Chinese Font";
+
+"Fonts.Chinese.Sample" = "中文字体示例：你好，世界。";
+
+"Fonts.Scripts.Notice" = "English letters, digits and Latin punctuation use the English font. Han characters and Chinese punctuation use the Chinese font. Both choices apply to the checked areas.";

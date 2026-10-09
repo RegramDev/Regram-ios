@@ -165,13 +165,15 @@ public struct Font {
     private static let cache = Cache()
     
     public static func with(size: CGFloat, design: Design = .regular, weight: Weight = .regular, width: Width = .standard, traits: Traits = [], area: RGFontArea = .interface) -> UIFont {
-        let family = design == .regular && width == .standard ? RGSimpleSettings.shared.fontConfiguration.family(for: area) : .system
-        let key = "\(size)_\(design.key)_\(weight.key)_\(width.key)_\(traits.rawValue)_\(family.rawValue)"
+        // MARK: Regram — both script choices participate in the font cache and scope selection.
+        let configuration = RGSimpleSettings.shared.fontConfiguration
+        let fontArea: RGFontArea = design == .regular && width == .standard ? area : .system
+        let key = "\(size)_\(design.key)_\(weight.key)_\(width.key)_\(traits.rawValue)_\(configuration.cacheKey(for: fontArea))"
         
         if let cachedFont = self.cache.get(key) {
             return cachedFont
         }
-        if let custom = RGTypography.font(family: family, size: size, weight: weight.weight, italic: traits.contains(.italic)) {
+        if let custom = RGTypography.font(configuration: configuration, area: fontArea, size: size, weight: weight.weight, italic: traits.contains(.italic)) {
             var font = custom
             if traits.contains(.monospacedNumbers) {
                 font = UIFont(descriptor: custom.fontDescriptor.addingAttributes([.featureSettings: [
@@ -306,7 +308,7 @@ public struct Font {
     
     // MARK: Regram — most interface text uses these convenience factories rather than `with`.
     private static func customInterfaceFont(_ size: CGFloat, weight: Weight = .regular, traits: Traits = []) -> UIFont? {
-        guard RGSimpleSettings.shared.fontConfiguration.family(for: .interface) != .system else { return nil }
+        guard RGSimpleSettings.shared.fontConfiguration.usesCustomFonts(for: .interface) else { return nil }
         return self.with(size: size, weight: weight, traits: traits)
     }
 

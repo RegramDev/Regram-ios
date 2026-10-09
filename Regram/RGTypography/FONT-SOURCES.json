@@ -469,6 +469,16 @@
       "file": "Fonts/JetBrainsMonoNL-SemiBoldItalic.ttf",
       "source": "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/cd5227bd1f61dff3bbd6c814ceaf7ffd95e947d9/fonts/ttf/JetBrainsMonoNL-SemiBoldItalic.ttf",
       "sha256": "f813544badbdab235b1f2f9933bb978be0a87cbde0133aaa05b80a84a7d94c22"
+    },
+    {
+      "file": "Fonts/NotoSerifSC-Variable.ttf",
+      "source": "https://raw.githubusercontent.com/google/fonts/2eb0b48d5f760f62e286216f0859a8c540dbc1bd/ofl/notoserifsc/NotoSerifSC%5Bwght%5D.ttf",
+      "sha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9"
+    },
+    {
+      "file": "Licenses/NotoSerifSC-OFL.txt",
+      "source": "https://raw.githubusercontent.com/google/fonts/2eb0b48d5f760f62e286216f0859a8c540dbc1bd/ofl/notoserifsc/OFL.txt",
+      "sha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6"
     }
   ],
   "inter_version": "4.1",
@@ -513,6 +523,12 @@
       "repository": "adobe-fonts/source-sans",
       "commit": "87b37a2daaed80fcb8e8ccb0085c4d72ddade12e",
       "font": "SourceSans3"
+    },
+    {
+      "repository": "google/fonts",
+      "commit": "2eb0b48d5f760f62e286216f0859a8c540dbc1bd",
+      "font": "Noto Serif SC",
+      "note": "Unmodified variable font, renamed file only; wght axis selects weights"
     }
   ]
 }
