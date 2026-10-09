@@ -133,6 +133,9 @@ public class RGSimpleSettings {
         case hidePhoneInSettings
         case showTabNames
         case fontFamily
+        case fontImportedLatin
+        case fontImportedChinese
+        case fontAssetsRevision
         case fontChineseFamily
         case fontApplyToMessages
         case fontApplyToInterface
@@ -334,6 +337,9 @@ public class RGSimpleSettings {
         Keys.hidePhoneInSettings.rawValue: true,
         Keys.showTabNames.rawValue: true,
         Keys.fontFamily.rawValue: RGFontFamily.system.rawValue,
+        Keys.fontImportedLatin.rawValue: "",
+        Keys.fontImportedChinese.rawValue: "",
+        Keys.fontAssetsRevision.rawValue: 0,
         Keys.fontChineseFamily.rawValue: RGChineseFontFamily.system.rawValue,
         Keys.fontApplyToMessages.rawValue: true,
         Keys.fontApplyToInterface.rawValue: true,
@@ -459,7 +465,22 @@ public class RGSimpleSettings {
     public var hidePhoneInSettings: Bool
     
     public var fontConfiguration: RGFontConfiguration {
-        return RGFontConfiguration(family: fontFamily, messages: fontApplyToMessages, interface: fontApplyToInterface, chineseFamily: fontChineseFamily)
+        return RGFontConfiguration(family: fontFamily, messages: fontApplyToMessages, interface: fontApplyToInterface, chineseFamily: fontChineseFamily, importedLatin: fontImportedLatin, importedChinese: fontImportedChinese, assetsRevision: fontAssetsRevision)
+    }
+
+    @UserDefault(key: Keys.fontImportedLatin.rawValue)
+    public var fontImportedLatin: String {
+        didSet { if fontImportedLatin != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
+    @UserDefault(key: Keys.fontImportedChinese.rawValue)
+    public var fontImportedChinese: String {
+        didSet { if fontImportedChinese != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
+    }
+
+    @UserDefault(key: Keys.fontAssetsRevision.rawValue)
+    public var fontAssetsRevision: Int {
+        didSet { if fontAssetsRevision != oldValue { NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil) } }
     }
 
     @UserDefault(key: Keys.fontFamily.rawValue)

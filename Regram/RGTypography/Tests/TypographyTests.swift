@@ -1,5 +1,6 @@
 import XCTest
 import UIKit
+import AppBundle
 import RGTypography
 import RGSimpleSettings
 import Display
@@ -9,8 +10,22 @@ final class TypographyTests: XCTestCase {
     override func setUp() {
         super.setUp()
         self.original = RGSimpleSettings.shared.fontConfiguration
+        RGSimpleSettings.shared.fontImportedLatin = ""
+        RGSimpleSettings.shared.fontImportedChinese = ""
+        // Offline fixtures belong only to the test host, never the shipping application.
+        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!.appendingPathComponent("RegramFonts/Cloud")
+        for url in getAppBundle().urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [] {
+            let prefix = String(url.lastPathComponent.prefix { $0 != "-" })
+            let directory = root.appendingPathComponent(prefix)
+            try! FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let destination = directory.appendingPathComponent(url.lastPathComponent)
+            if !FileManager.default.fileExists(atPath: destination.path) { try! FileManager.default.copyItem(at: url, to: destination) }
+        }
+        RGSimpleSettings.shared.fontAssetsRevision += 1
     }
     override func tearDown() {
+        RGSimpleSettings.shared.fontImportedLatin = self.original.importedLatin
+        RGSimpleSettings.shared.fontImportedChinese = self.original.importedChinese
         RGSimpleSettings.shared.fontChineseFamily = self.original.chineseFamily.rawValue
         RGSimpleSettings.shared.fontFamily = self.original.family.rawValue
         RGSimpleSettings.shared.fontApplyToMessages = self.original.messages
@@ -18,11 +33,11 @@ final class TypographyTests: XCTestCase {
         super.tearDown()
     }
 
-    func testEveryBundledFaceLoadsFromAppResources() {
+    func testEveryDownloadedFaceLoadsFromOfflineFixtures() {
         for family in RGFontFamily.allCases.filter({ $0.bundledPrefix != nil }) {
             for weight in [UIFont.Weight.regular, .medium, .semibold, .bold] {
                 let font = RGTypography.font(family: family, size: 19, weight: weight)
-                XCTAssertNotNil(font, "Bundled font \(family)/\(weight) must load")
+                XCTAssertNotNil(font, "Downloaded font \(family)/\(weight) must load")
                 XCTAssertEqual(font?.pointSize, 19)
                 XCTAssertTrue(font?.fontName.hasPrefix(family.bundledPrefix! + "-") == true)
             }

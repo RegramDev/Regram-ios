@@ -13,8 +13,8 @@ import RGStrings
 // MARK: Regram — the NSFW section.
 //
 // Reached from the settings row that appears (between My Profile and Proxy) once the switch in Regram
-// Pro is on. It is a small in-app browser: a "Recommended" landing page generated locally, plus two
-// external sites. Content is gated behind an 18+ confirmation shown once and remembered.
+// Pro is on. It is a small in-app browser: a "Recommended" landing page generated locally, plus external
+// sites. Content is gated behind an 18+ confirmation shown once and remembered.
 //
 // Deliberately self-contained in this module (WebKit is a system framework, no new Bazel dep) so it
 // can be pushed straight from `PeerInfoScreenSettingsActions`.
@@ -23,6 +23,8 @@ private enum RGNSFWSource: Int, CaseIterable {
     case recommendations
     case novel
     case missav
+    case huangguo
+    case javranking
 
     var externalURL: URL? {
         switch self {
@@ -32,6 +34,10 @@ private enum RGNSFWSource: Int, CaseIterable {
             return URL(string: "https://nv-pu-sa.pages.dev")
         case .missav:
             return URL(string: "https://missav.ws/")
+        case .huangguo:
+            return URL(string: "https://huangguoai.com/")
+        case .javranking:
+            return URL(string: "https://javranking.cc/zh-hans/")
         }
     }
 }
@@ -173,13 +179,17 @@ private func rgNSFWRecommendationsHTML(theme: PresentationTheme, lang: String) -
     """#
 }
 
-private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate {
+private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate, WKUIDelegate {
     private let context: AccountContext
     private var presentationData: PresentationData
 
     private let topPanelNode: ASDisplayNode
     private let separatorNode: ASDisplayNode
     private let segmentedControl: UISegmentedControl
+    // MARK: Regram — webpage history is separate from leaving the NSFW screen.
+    private let backButton = UIButton(type: .system)
+    private let sourceScrollView = UIScrollView()
+    private var backObservation: NSKeyValueObservation?
     private let progressView: UIProgressView
     private let webView: WKWebView
 
@@ -205,7 +215,9 @@ private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate {
         self.segmentedControl = UISegmentedControl(items: [
             "NSFW.Tab.Recommend".i18n(presentationData.strings.baseLanguageCode),
             "Nv",
-            "MissAV"
+            "MissAV",
+            "黄果",
+            "JAV Ranking"
         ])
         self.segmentedControl.selectedSegmentIndex = 0
 
@@ -223,18 +235,31 @@ private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate {
 
     deinit {
         self.progressObservation?.invalidate()
+        self.backObservation?.invalidate()
     }
 
     override func didLoad() {
         super.didLoad()
 
         self.webView.navigationDelegate = self
+        self.webView.uiDelegate = self
         self.webView.backgroundColor = self.presentationData.theme.list.plainBackgroundColor
         self.webView.scrollView.backgroundColor = self.presentationData.theme.list.plainBackgroundColor
         self.view.addSubview(self.webView)
 
         self.segmentedControl.addTarget(self, action: #selector(self.segmentChanged), for: .valueChanged)
-        self.topPanelNode.view.addSubview(self.segmentedControl)
+        self.sourceScrollView.showsHorizontalScrollIndicator = false
+        self.topPanelNode.view.addSubview(self.sourceScrollView)
+        self.sourceScrollView.addSubview(self.segmentedControl)
+        self.backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        self.backButton.tintColor = self.presentationData.theme.rootController.navigationBar.accentTextColor
+        self.backButton.accessibilityLabel = "NSFW.Back".i18n(self.presentationData.strings.baseLanguageCode)
+        self.backButton.isEnabled = false
+        self.backButton.addTarget(self, action: #selector(self.goBack), for: .touchUpInside)
+        self.topPanelNode.view.addSubview(self.backButton)
+        self.backObservation = self.webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] webView, _ in
+            self?.backButton.isEnabled = webView.canGoBack
+        }
 
         self.progressView.progressTintColor = self.presentationData.theme.rootController.navigationBar.accentTextColor
         self.progressView.trackTintColor = .clear
@@ -261,6 +286,10 @@ private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate {
         self.contentRevealed = true
         self.webView.isHidden = false
         self.loadSource(self.currentSource)
+    }
+
+    @objc private func goBack() {
+        if self.webView.canGoBack { self.webView.goBack() }
     }
 
     @objc private func segmentChanged() {
@@ -303,11 +332,22 @@ private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate {
         transition.updateFrame(node: self.separatorNode, frame: CGRect(origin: CGPoint(x: 0.0, y: topPanelFrame.maxY), size: CGSize(width: layout.size.width, height: UIScreenPixel)))
 
         let controlInset: CGFloat = 8.0
-        self.segmentedControl.frame = CGRect(x: leftInset + controlInset, y: 6.0, width: layout.size.width - leftInset - rightInset - controlInset * 2.0, height: panelHeight - 12.0)
+        self.backButton.frame = CGRect(x: leftInset, y: 0, width: 44, height: panelHeight)
+        let sourceWidth = max(1, layout.size.width - leftInset - rightInset - 44 - controlInset)
+        self.sourceScrollView.frame = CGRect(x: leftInset + 44, y: 0, width: sourceWidth, height: panelHeight)
+        let contentWidth = max(440, sourceWidth)
+        self.segmentedControl.frame = CGRect(x: 0, y: 6, width: contentWidth, height: panelHeight - 12)
+        self.sourceScrollView.contentSize = CGSize(width: contentWidth, height: panelHeight)
         self.progressView.frame = CGRect(x: 0.0, y: panelHeight - 2.5, width: layout.size.width, height: 2.5)
 
         let webViewFrame = CGRect(x: leftInset, y: topPanelFrame.maxY + UIScreenPixel, width: layout.size.width - leftInset - rightInset, height: max(1.0, layout.size.height - topPanelFrame.maxY - bottomInset))
         transition.updateFrame(view: self.webView, frame: webViewFrame)
+    }
+
+    // MARK: Regram — open target=_blank links in the same browser so Back remains usable.
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if navigationAction.targetFrame == nil { webView.load(navigationAction.request) }
+        return nil
     }
 
     // MARK: WKNavigationDelegate — keep every tap inside the in-app browser.

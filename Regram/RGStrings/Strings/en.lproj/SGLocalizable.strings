@@ -405,3 +405,14 @@ Matching is case-insensitive.";
 "Fonts.Chinese.Sample" = "中文字体示例：你好，世界。";
 
 "Fonts.Scripts.Notice" = "English letters, digits and Latin punctuation use the English font. Han characters and Chinese punctuation use the Chinese font. Both choices apply to the checked areas.";
+
+"Fonts.Cloud.Notice" = "Fonts download on demand from official sources and remain available offline.";
+"Fonts.Import" = "Import Font from Files";
+"Fonts.Imported" = "Imported";
+"Fonts.Import.Notice" = "Supports TTF, OTF and TTC up to 64 MB. Select the imported font in the Latin or Chinese list. TTC uses its first face.";
+"Fonts.Cancel" = "Cancel Download";
+"Fonts.Download.Error" = "Download failed. Check your connection and try again. Your current font is unchanged.";
+"Fonts.Import.Error" = "Could not import the font. Choose a valid TTF, OTF or TTC file up to 64 MB.";
+"Fonts.Error.Title" = "Fonts";
+"Fonts.OK" = "OK";
+"NSFW.Back" = "Previous Page";

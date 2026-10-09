@@ -253,6 +253,8 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
     private var fetchDisposable = MetaDisposable()
     private let statusDisposable = MetaDisposable()
     private let dataDisposable = MetaDisposable()
+    // MARK: Regram — cancel a pending image copy when this item is replaced or dismissed.
+    private let rgCopyDisposable = MetaDisposable()
     private let recognitionDisposable = MetaDisposable()
     private var status: EngineMediaResource.FetchStatus?
     private var fetchedDimensions: PixelDimensions?
@@ -343,6 +345,7 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
         self.statusDisposable.dispose()
         self.dataDisposable.dispose()
         self.recognitionDisposable.dispose()
+        self.rgCopyDisposable.dispose()
     }
     
     override func ready() -> Signal<Void, NoError> {
@@ -463,6 +466,7 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
         self.displayInfo = displayInfo
         self.translateToLanguage = translateToLanguage
         self.peerIsCopyProtected = peerIsCopyProtected
+        self.rgCopyDisposable.set(nil)
         self.isSecret = isSecret
         self.imageNode.captureProtected = message.id.peerId.namespace == Namespaces.Peer.SecretChat || message.isCopyProtected() || peerIsCopyProtected || isSecret || message.paidContent != nil
         self.updateFooter(animated: false)
@@ -739,6 +743,31 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
                 })))
                 
                 if !message.isCopyProtected() && !self.peerIsCopyProtected && message.paidContent == nil, let media = self.contextAndMedia?.1 {
+                    // MARK: Regram — Copy in the top-right image menu uses the full media resource.
+                    if !self.isSecret {
+                        items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Conversation_ContextMenuCopy, icon: { theme in
+                            generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)
+                        }, action: { [weak self] _, f in
+                            f(.default)
+                            guard let self else { return }
+                            let progress = OverlayStatusController(theme: self.presentationData.theme, type: .loading(cancelled: { [weak self] in self?.rgCopyDisposable.set(nil) }))
+                            self.galleryController()?.present(progress, in: .window(.root))
+                            self.rgCopyDisposable.set((fetchMediaData(context: context, userLocation: .peer(message.id.peerId), mediaReference: media)
+                            |> filter { value, isImage in
+                                if case let .data(data) = value { return data.isComplete && isImage }
+                                return false
+                            }
+                            |> take(1)
+                            |> afterDisposed { Queue.mainQueue().async { progress.dismiss() } }
+                            |> deliverOnMainQueue).start(next: { [weak self] value, _ in
+                                guard let self, case let .data(data) = value,
+                                      let image = UIImage(contentsOfFile: data.path) else { return }
+                                UIPasteboard.general.image = image
+                                self.galleryController()?.present(UndoOverlayController(presentationData: self.presentationData, content: .copy(text: self.presentationData.strings.Conversation_ImageCopied), elevatedLayout: false, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
+                            }))
+                        })))
+                    }
+
                     items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Gallery_CreateSticker, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Sticker"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self else {

@@ -60,12 +60,18 @@ public struct RGFontConfiguration: Equatable {
     public static let settingsChanged = Notification.Name("Regram.FontSettingsChanged")
     public let family: RGFontFamily
     public let chineseFamily: RGChineseFontFamily
+    public let importedLatin: String
+    public let importedChinese: String
+    public let assetsRevision: Int
     public let messages: Bool
     public let interface: Bool
 
-    public init(family: String, messages: Bool, interface: Bool, chineseFamily: String = RGChineseFontFamily.system.rawValue) {
+    public init(family: String, messages: Bool, interface: Bool, chineseFamily: String = RGChineseFontFamily.system.rawValue, importedLatin: String = "", importedChinese: String = "", assetsRevision: Int = 0) {
         self.family = RGFontFamily(rawValue: family) ?? .system
         self.chineseFamily = RGChineseFontFamily(rawValue: chineseFamily) ?? .system
+        self.importedLatin = importedLatin
+        self.importedChinese = importedChinese
+        self.assetsRevision = assetsRevision
         self.messages = messages
         self.interface = interface
     }
@@ -85,12 +91,20 @@ public struct RGFontConfiguration: Equatable {
         }
     }
 
+    public func importedFont(for area: RGFontArea, chinese: Bool) -> String {
+        switch area {
+        case .messages: return messages ? (chinese ? importedChinese : importedLatin) : ""
+        case .interface: return interface ? (chinese ? importedChinese : importedLatin) : ""
+        case .system: return ""
+        }
+    }
+
     public func usesCustomFonts(for area: RGFontArea) -> Bool {
-        return self.family(for: area) != .system || self.chineseFamily(for: area) != .system
+        return !self.importedFont(for: area, chinese: false).isEmpty || !self.importedFont(for: area, chinese: true).isEmpty || self.family(for: area) != .system || self.chineseFamily(for: area) != .system
     }
 
     public func cacheKey(for area: RGFontArea) -> String {
-        return self.family(for: area).rawValue + ":" + self.chineseFamily(for: area).rawValue
+        return self.family(for: area).rawValue + ":" + self.chineseFamily(for: area).rawValue + ":" + self.importedFont(for: area, chinese: false) + ":" + self.importedFont(for: area, chinese: true) + ":" + (self.usesCustomFonts(for: area) ? String(self.assetsRevision) : "0")
     }
 
     public static func migratedChoices(legacyFamily: String) -> (latin: RGFontFamily, chinese: RGChineseFontFamily) {

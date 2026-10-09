@@ -2,7 +2,7 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 filegroup(
     name = "Fonts",
-    srcs = glob(["Fonts/*.ttf", "Licenses/*.txt"]),
+    srcs = ["RGFontCatalog.json"] + glob(["Licenses/*.txt"]),
     visibility = ["//visibility:public"],
 )
 
@@ -11,18 +11,24 @@ swift_library(
     module_name = "RGTypography",
     srcs = glob(["Sources/*.swift"]),
     copts = ["-warnings-as-errors"],
-    deps = ["//Regram/RGSimpleSettings:RGSimpleSettings", "//submodules/AppBundle:AppBundle"],
+    deps = ["//Regram/RGSimpleSettings:RGSimpleSettings", "//submodules/AppBundle:AppBundle", "//third-party/ZipArchive:ZipArchive"],
     visibility = ["//visibility:public"],
 )
 
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_application", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
+filegroup(
+    name = "TestFonts",
+    testonly = True,
+    srcs = glob(["Fonts/*.ttf"]),
+)
+
 swift_library(
     name = "TypographyTestHostLib",
     testonly = True,
     srcs = ["Tests/Host.swift"],
-    data = [":Fonts"],
+    data = [":Fonts", ":TestFonts"],
 )
 
 ios_application(
@@ -39,7 +45,7 @@ swift_library(
     name = "TypographyTestsLib",
     testonly = True,
     srcs = ["Tests/TypographyTests.swift"],
-    deps = [":RGTypography", "//Regram/RGSimpleSettings", "//submodules/Display"],
+    deps = [":RGTypography", "//Regram/RGSimpleSettings", "//submodules/Display", "//submodules/AppBundle"],
 )
 
 ios_test_runner(

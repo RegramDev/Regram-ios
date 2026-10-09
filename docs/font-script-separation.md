@@ -1,11 +1,13 @@
 # 独立的中文与英文字体
 
+后续 b34581 已将字体改为[按需下载及本地导入](font-downloads-and-mentions.md)，不再将自定义字体二进制放入发行包。以下 b34580 的包体校验记录为该版本历史记录。
+
 b34580 修正了 b34579 只提供一个字体族、中文依赖隐式回退的问题。
 
 Regram Pro → 更改字体现在有两个独立选择区：
 
 - **英文字体**：13 个选项，包括系统、JetBrains Mono／NL、Inter、Poppins、Lora、IBM Plex 的拉丁字族、Source Sans／Serif、系统圆体和衬线体。
-- **中文字体**：系统中文字体、IBM Plex Sans SC 黑体、Noto Serif SC 衬线体。Noto 使用未修改的可变字体文件，wght 轴应用 Regular／Medium／Semibold／Bold；两个自带中文族的斜体使用倾斜描述符。
+- **中文字体**：系统中文字体、IBM Plex Sans SC 黑体、Noto Serif SC 衬线体。Noto 使用未修改的可变字体文件，wght 轴应用 Regular／Medium／Semibold／Bold；两个可下载中文族的斜体使用倾斜描述符。
 
 英文选择负责拉丁字母、ASCII 数字与标点；中文选择负责汉字、中文标点与全角形式。选择其中一套不会替换另一套。两套字体都按“聊天内容／主要界面文字”的勾选范围即时更新，预览始终显示当前组合。代码、大表情及图标的独立字体路径保持原有规则；所选字体缺少的字形使用系统后备。
 
