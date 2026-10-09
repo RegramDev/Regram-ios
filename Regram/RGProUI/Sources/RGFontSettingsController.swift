@@ -134,6 +134,20 @@ public struct RGFontSettingsView: SwiftUI.View {
                     .disabled(self.store.downloading != nil)
                     .accessibilityAddTraits(self.importedLatin.isEmpty && self.family == option ? .isSelected : [])
                 }
+                ForEach(["Anthropic", "Google"], id: \.self) { group in
+                    Text(group).font(.headline)
+                    ForEach(RGFontStore.additionalFamilies.filter { $0.group == group }) { option in
+                        Button(action: { self.download(option.id) { self.importedLatin = option.selectionId } }) {
+                            HStack {
+                                Text(option.title).foregroundColor(.primary)
+                                Spacer()
+                                if !self.store.isDownloaded(prefix: option.id) { Image(systemName: "icloud.and.arrow.down") }
+                                if self.importedLatin == option.selectionId { Image(systemName: "checkmark") }
+                            }.padding(.vertical, 10).contentShape(Rectangle())
+                        }.buttonStyle(.plain).disabled(self.store.downloading != nil)
+                        .accessibilityIdentifier("regram.font.additional.\(option.id)")
+                    }
+                }
                 self.importedRows(chinese: false)
                 Text("Fonts.Chinese.Title".i18n(self.lang)).font(.headline)
                 ForEach(RGChineseFontFamily.allCases, id: \.rawValue) { option in

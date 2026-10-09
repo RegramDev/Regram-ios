@@ -160,6 +160,11 @@ final class MentionChatInputContextPanelNode: ChatInputContextPanelNode {
                             }
                             
                             if let range = mentionQueryRange {
+                                // MARK: Regram — username suggestions must use the long-press nickname entity.
+                                if let replacement = rgNicknameMentionText(peer: peer, suffix: mentionNext ? " @" : " ") {
+                                    let updatedRange = NSRange(location: range.location - 1, length: range.length + 1)
+                                    return (textInputState.replacingFlatRange(updatedRange, with: replacement), inputMode)
+                                }
                                 if let addressName = peer.addressName, !addressName.isEmpty {
                                     // MARK: Regram
                                     return (textInputState.replacingFlatRange(range, with: addressName + (mentionNext ? " @" : " ")), inputMode)

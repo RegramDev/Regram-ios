@@ -1,5 +1,6 @@
-// MARK: Regram — manual @username input uses the same native mention entities as the picker.
+// MARK: Regram — type or pick @username to insert the same native nickname mention as long press.
 import Foundation
+import UIKit
 import SwiftSignalKit
 import TelegramCore
 import Postbox
@@ -7,110 +8,126 @@ import AccountContext
 import TextFormat
 import RGSimpleSettings
 
+func rgNicknameMentionText(peer: EnginePeer, suffix: String) -> NSAttributedString? {
+    guard RGSimpleSettings.shared.mentionAsUserIdLink, case let .user(user) = peer else { return nil }
+    let fullName = [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+    let title = fullName.isEmpty ? peer.compactDisplayTitle : fullName
+    guard !title.isEmpty else { return nil }
+    let result = NSMutableAttributedString(string: title, attributes: [ChatTextInputAttributes.textMention: ChatTextInputTextMentionAttribute(peerId: peer.id)])
+    result.append(NSAttributedString(string: suffix))
+    return result
+}
+
 private struct RGMentionCandidate {
-    let range: Range<Int>
+    let range: NSRange
     let username: String
 }
-private func rgMentionCandidates(text: String, entities: [MessageTextEntity]) -> [RGMentionCandidate] {
-    let detected = generateTextEntities(text, enabledTypes: .all, currentEntities: entities)
-    let string = text as NSString
+private func rgMentionCandidates(state: ChatTextInputState) -> [RGMentionCandidate] {
+    let input = state.inputText
+    // Detect usernames independently of formatting: upstream suppresses detection inside ANY
+    // existing entity, including bold/italic spans. Only semantic/code spans should exclude them.
+    let detected = generateTextEntities(input.string, enabledTypes: .all)
+    let entities = generateChatInputTextEntities(input) + detected
+    let string = input.string as NSString
+    var seen = Set<Int>()
     return detected.compactMap { entity in
         guard case .Mention = entity.type, entity.range.count > 1, entity.range.lowerBound >= 0, entity.range.upperBound <= string.length else { return nil }
-        for other in detected where other.range.overlaps(entity.range) {
+        for other in entities where other.range.overlaps(entity.range) {
             switch other.type {
             case .Code, .Pre, .Url, .Email, .TextUrl, .TextMention, .CustomEmoji, .BotCommand: return nil
             default: break
             }
         }
-        let name = string.substring(with: NSRange(location: entity.range.lowerBound + 1, length: entity.range.count - 1)).lowercased()
-        return RGMentionCandidate(range: entity.range, username: name)
+        // A caret in the middle of a username is still editing that token.
+        if entity.range.contains(state.selectionRange.lowerBound) && state.selectionRange.lowerBound != entity.range.lowerBound { return nil }
+        guard seen.insert(entity.range.lowerBound).inserted else { return nil }
+        let range = NSRange(location: entity.range.lowerBound, length: entity.range.count)
+        let username = string.substring(with: NSRange(location: range.location + 1, length: range.length - 1)).lowercased()
+        return RGMentionCandidate(range: range, username: username)
     }
 }
 
-/// Resolve each unique username once per batch. The FIFO also preserves ordering across rapid sends.
-final class RGNicknameMentionQueue {
+/// Debounce typing and discard stale lookups. Conversion is applied to the structural draft, not to
+/// the outgoing message, so rich text, cursor position and native mention rendering agree.
+final class RGNicknameMentionInputResolver {
     private let context: AccountContext
-    private var jobs: [([EnqueueMessage], ([EnqueueMessage]) -> Void)] = []
-    private var working = false
     private let disposable = MetaDisposable()
     init(context: AccountContext) { self.context = context }
     deinit { self.disposable.dispose() }
-    func resolve(_ messages: [EnqueueMessage], completion: @escaping ([EnqueueMessage]) -> Void) {
-        self.jobs.append((messages, completion))
-        self.drain()
-    }
-    private func drain() {
-        guard !self.working, !self.jobs.isEmpty else { return }
-        self.working = true
-        let (messages, completion) = self.jobs.removeFirst()
+
+    func update(state: ChatTextInputState, canApply: @escaping () -> Bool, apply: @escaping (ChatTextInputState) -> Void) {
+        self.disposable.set(nil)
+        guard RGSimpleSettings.shared.mentionAsUserIdLink, state.selectionRange.isEmpty else { return }
+        let candidates = rgMentionCandidates(state: state)
         var names: [String] = []
-        if RGSimpleSettings.shared.mentionAsUserIdLink {
-            for message in messages {
-                guard case let .message(text, attributes, _, _, _, _, _, _, _, _) = message else { continue }
-                let entities = attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap { $0.entities }
-                for candidate in rgMentionCandidates(text: text, entities: entities) where !names.contains(candidate.username) {
-                    if names.count < 16 { names.append(candidate.username) }
+        for candidate in candidates where !names.contains(candidate.username) {
+            if names.count < 16 { names.append(candidate.username) }
+        }
+        guard !names.isEmpty else { return }
+        let signal = (Signal<Void, NoError>.single(()) |> delay(0.65, queue: .mainQueue()))
+        |> mapToSignal { [context] _ -> Signal<[(String, EnginePeer?)], NoError> in
+            return combineLatest(names.map { name -> Signal<(String, EnginePeer?), NoError> in
+                context.engine.peers.resolvePeerByName(name: name, referrer: nil, ageLimit: 10)
+                |> mapToSignal { result -> Signal<EnginePeer?, NoError> in
+                    if case let .result(peer) = result { return .single(peer) }
+                    return .complete()
                 }
-            }
+                |> take(1)
+                |> timeout(4.0, queue: .mainQueue(), alternate: .single(nil))
+                |> map { (name, $0) }
+            })
         }
-        let signals: [Signal<(String, EnginePeer?), NoError>] = names.map { name in
-            self.context.engine.peers.resolvePeerByName(name: name, referrer: nil, ageLimit: 10)
-            |> mapToSignal { result -> Signal<EnginePeer?, NoError> in
-                if case let .result(peer) = result { return .single(peer) }
-                return .complete()
-            }
-            |> take(1)
-            |> timeout(4.0, queue: .mainQueue(), alternate: .single(nil))
-            |> map { (name, $0) }
-        }
-        let resolved: Signal<[(String, EnginePeer?)], NoError> = signals.isEmpty ? .single([]) : combineLatest(signals)
-        self.disposable.set((resolved |> deliverOnMainQueue).start(next: { [self] values in
+        self.disposable.set((signal |> deliverOnMainQueue).start(next: { values in
+            guard RGSimpleSettings.shared.mentionAsUserIdLink, canApply() else { return }
             var peers: [String: EnginePeer] = [:]
             for (name, peer) in values {
-                if let peer, case .user = peer { peers[name] = peer }
+                guard let peer, case let .user(user) = peer else { continue }
+                let aliases = user.usernames.map { $0.username.lowercased() } + [user.username?.lowercased()].compactMap { $0 }
+                guard aliases.contains(name) else { continue }
+                peers[name] = peer
             }
-            let updated = messages.map { message -> EnqueueMessage in
-                guard case let .message(text, attributes, inlineStickers, mediaReference, threadId, replyToMessageId, replyToStoryId, localGroupingKey, correlationId, bubbleUpEmojiOrStickersets) = message else { return message }
-                let entities = attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap { $0.entities }
-                var replacements: [RGMentionReplacementPolicy.Replacement] = []
-                var mentions: [(Range<Int>, PeerId)] = []
-                var textLength = text.utf16.count
-                let isCaption = mediaReference?.media is TelegramMediaImage || mediaReference?.media is TelegramMediaFile
-                let limit = isCaption ? Int(self.context.userLimits.maxCaptionLength) : 4096
-                for candidate in rgMentionCandidates(text: text, entities: entities) {
-                    guard let peer = peers[candidate.username] else { continue }
-                    guard case let .user(user) = peer else { continue }
-                    let fullName = [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
-                    let title = (fullName.isEmpty ? peer.compactDisplayTitle : fullName).trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !title.isEmpty, !replacements.contains(where: { $0.range == candidate.range }) else { continue }
-                    let updatedLength = textLength + title.utf16.count - candidate.range.count
-                    guard updatedLength <= limit else { continue }
-                    textLength = updatedLength
-                    replacements.append(.init(range: candidate.range, text: title))
-                    mentions.append((candidate.range, peer.id))
+            var updated = state
+            var changes: [RGMentionReplacementPolicy.Replacement] = []
+            let original = state.inputText
+            for candidate in candidates.sorted(by: { $0.range.location > $1.range.location }) {
+                guard let peer = peers[candidate.username], let nickname = rgNicknameMentionText(peer: peer, suffix: "") else { continue }
+                let atEnd = NSMaxRange(candidate.range) == original.length && state.selectionRange.lowerBound == original.length
+                let replacement = NSMutableAttributedString(attributedString: nickname)
+                if atEnd { replacement.append(NSAttributedString(string: " ")) }
+                let inherited = original.attributes(at: candidate.range.location, effectiveRange: nil)
+                for key in [ChatTextInputAttributes.bold, ChatTextInputAttributes.italic, ChatTextInputAttributes.underline, ChatTextInputAttributes.strikethrough, ChatTextInputAttributes.spoiler] {
+                    if let value = inherited[key] { replacement.addAttribute(key, value: value, range: NSRange(location: 0, length: replacement.length)) }
                 }
-                guard !replacements.isEmpty else { return message }
-                var updatedEntities = entities.compactMap { entity -> MessageTextEntity? in
-                    if case .Mention = entity.type, mentions.contains(where: { $0.0 == entity.range }) { return nil }
-                    let range = RGMentionReplacementPolicy.remap(entity.range, replacements: replacements)
-                    guard !range.isEmpty else { return nil }
-                    return MessageTextEntity(range: range, type: entity.type)
-                }
-                for (range, id) in mentions {
-                    updatedEntities.append(MessageTextEntity(range: RGMentionReplacementPolicy.remap(range, replacements: replacements), type: .TextMention(peerId: id)))
-                }
-                var updatedAttributes = attributes.filter { !($0 is TextEntitiesMessageAttribute) }
-                updatedAttributes.append(TextEntitiesMessageAttribute(entities: updatedEntities))
-                return .message(text: RGMentionReplacementPolicy.replacing(text, replacements: replacements), attributes: updatedAttributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: threadId, replyToMessageId: replyToMessageId, replyToStoryId: replyToStoryId, localGroupingKey: localGroupingKey, correlationId: correlationId, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets)
+                updated = updated.replacingFlatRange(candidate.range, with: replacement)
+                changes.append(.init(range: candidate.range.location..<NSMaxRange(candidate.range), text: replacement.string))
             }
-            completion(updated)
-            // Starting the next signal asynchronously avoids replacing a subscription during its
-            // synchronous initial emission. The queued job keeps the send's snapshot intact.
-            Queue.mainQueue().async { [self] in
-                self.disposable.set(nil)
-                self.working = false
-                self.drain()
-            }
+            guard !changes.isEmpty else { return }
+            let caret = RGMentionReplacementPolicy.remap(state.selectionRange, replacements: changes)
+            // Rebuild from structural content, never the lossy attributed-string projection.
+            updated = ChatTextInputState(content: updated.content, selectionRange: caret)
+            apply(updated)
         }))
+    }
+}
+
+private func rgHasMarkedText(in view: UIView) -> Bool {
+    if let input = view as? UITextInput, input.markedTextRange != nil { return true }
+    return view.subviews.contains { rgHasMarkedText(in: $0) }
+}
+
+extension ChatControllerImpl {
+    func rgUpdateNicknameMentionInput() {
+        let snapshot = self.presentationInterfaceState.interfaceState.effectiveInputState
+        self.rgNicknameMentionInputResolver.update(state: snapshot, canApply: { [weak self] in
+            guard let self, self.isNodeLoaded, self.presentationInterfaceState.interfaceState.effectiveInputState == snapshot else { return false }
+            if let input = self.chatDisplayNode.textInputPanelNode?.richTextInputNode {
+                return !rgHasMarkedText(in: input.asNode.view)
+            }
+            return false
+        }, apply: { [weak self] updated in
+            self?.updateChatPresentationInterfaceState(animated: true, interactive: true, { state in
+                state.updatedInterfaceState { $0.withUpdatedEffectiveInputState(updated) }
+            })
+        })
     }
 }

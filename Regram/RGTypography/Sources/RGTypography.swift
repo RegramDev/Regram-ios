@@ -48,25 +48,44 @@ public enum RGTypography {
     }
 
     private static func importedFont(id: String, size: CGFloat, weight: UIFont.Weight, italic: Bool) -> UIFont? {
-        guard !id.isEmpty, let url = RGFontStore.importedURL(id: id) else { return nil }
+        guard !id.isEmpty, let url = RGFontStore.importedURL(id: id, italic: italic) else { return nil }
         registrationLock.lock()
-        let descriptor = importedDescriptors[id] ?? (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])?.first
-        if let descriptor, importedDescriptors[id] == nil {
+        let key = id + (italic ? ":italic" : ":regular")
+        let descriptor = importedDescriptors[key] ?? (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])?.first
+        if let descriptor, importedDescriptors[key] == nil {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
-            importedDescriptors[id] = descriptor
+            importedDescriptors[key] = descriptor
         }
         registrationLock.unlock()
         guard let descriptor else { return nil }
         let base = CTFontCreateWithFontDescriptor(descriptor, size, nil)
         var result = (base as UIFont).fontDescriptor
-        if let axes = CTFontCopyVariationAxes(base) as? [[String: Any]],
-           let axis = axes.first(where: { ($0[kCTFontVariationAxisIdentifierKey as String] as? NSNumber)?.uint32Value == 0x77676874 }) {
-            let desired: Double = weight >= .bold ? 700 : weight >= .semibold ? 600 : weight >= .medium ? 500 : weight <= .light ? 300 : 400
-            let minimum = (axis[kCTFontVariationAxisMinimumValueKey as String] as? NSNumber)?.doubleValue ?? desired
-            let maximum = (axis[kCTFontVariationAxisMaximumValueKey as String] as? NSNumber)?.doubleValue ?? desired
-            result = result.addingAttributes([UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [NSNumber(value: 0x77676874): NSNumber(value: max(minimum, min(maximum, desired)))]])
-        } else if weight >= .semibold, let bold = result.withSymbolicTraits(result.symbolicTraits.union(.traitBold)) { result = bold }
-        if italic {
+        var hasWeightAxis = false
+        var hasItalicAxis = false
+        var variations: [NSNumber: NSNumber] = [:]
+        if let axes = CTFontCopyVariationAxes(base) as? [[String: Any]] {
+            for axis in axes {
+                guard let id = axis[kCTFontVariationAxisIdentifierKey as String] as? NSNumber else { continue }
+                let desired: Double
+                switch id.uint32Value {
+                case 0x77676874: // wght
+                    hasWeightAxis = true
+                    desired = weight >= .bold ? 700 : weight >= .semibold ? 600 : weight >= .medium ? 500 : weight <= .thin ? 200 : weight <= .light ? 300 : 400
+                case 0x6f70737a: desired = Double(size) // opsz
+                case 0x736c6e74: // slnt: Google Sans Flex's genuine oblique axis
+                    hasItalicAxis = true
+                    desired = italic ? -10 : 0
+                case 0x6974616c: hasItalicAxis = true; desired = italic ? 1 : 0 // ital
+                default: continue
+                }
+                let minimum = (axis[kCTFontVariationAxisMinimumValueKey as String] as? NSNumber)?.doubleValue ?? desired
+                let maximum = (axis[kCTFontVariationAxisMaximumValueKey as String] as? NSNumber)?.doubleValue ?? desired
+                variations[id] = NSNumber(value: max(minimum, min(maximum, desired)))
+            }
+        }
+        if !variations.isEmpty { result = result.addingAttributes([UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): variations]) }
+        if !hasWeightAxis, weight >= .semibold, let bold = result.withSymbolicTraits(result.symbolicTraits.union(.traitBold)) { result = bold }
+        if italic && !hasItalicAxis {
             result = result.withSymbolicTraits(result.symbolicTraits.union(.traitItalic)) ?? result.addingAttributes([.matrix: NSValue(cgAffineTransform: CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0))])
         }
         return UIFont(descriptor: result, size: size)

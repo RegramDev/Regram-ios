@@ -497,7 +497,10 @@ func updateChatPresentationInterfaceStateImpl(
         }
     }
     
+    // MARK: Regram — transform the live draft after typing, pasting or picking a mention.
+    let rgInputChanged = selfController.presentationInterfaceState.interfaceState.effectiveInputState != updatedChatPresentationInterfaceState.interfaceState.effectiveInputState
     selfController.presentationInterfaceState = updatedChatPresentationInterfaceState
+    if rgInputChanged { selfController.rgUpdateNicknameMentionInput() }
     
     selfController.updateSlowmodeStatus()
     

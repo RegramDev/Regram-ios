@@ -14,7 +14,18 @@ private struct RGCloudFont: Decodable {
     let archive_member: String?
     let archive_sha256: String?
 }
-private struct RGCloudCatalog: Decodable { let files: [RGCloudFont] }
+public struct RGDownloadableFontFamily: Decodable, Identifiable {
+    public let id: String
+    public let title: String
+    public let group: String
+    public let regular: String
+    public let italic: String?
+    public let selectionId: String
+}
+private struct RGCloudCatalog: Decodable {
+    let files: [RGCloudFont]
+    let families: [RGDownloadableFontFamily]?
+}
 
 public struct RGImportedFont: Codable, Identifiable {
     public let id: String
@@ -49,6 +60,11 @@ public enum RGFontStoreError: Error {
               let data = try? Data(contentsOf: url), let value = try? JSONDecoder().decode(RGCloudCatalog.self, from: data) else { return [] }
         return value.files
     }()
+    nonisolated public static let additionalFamilies: [RGDownloadableFontFamily] = {
+        guard let url = getAppBundle().url(forResource: "RGFontCatalog", withExtension: "json"),
+              let data = try? Data(contentsOf: url), let value = try? JSONDecoder().decode(RGCloudCatalog.self, from: data) else { return [] }
+        return value.families ?? []
+    }()
     nonisolated private static func entries(prefix: String) -> [RGCloudFont] {
         return self.catalog.filter { $0.file.hasPrefix(prefix + "-") }
     }
@@ -59,8 +75,10 @@ public enum RGFontStoreError: Error {
         guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size == entry.bytes else { return nil }
         return url
     }
-    nonisolated public static func importedURL(id: String) -> URL? {
+    nonisolated public static func importedURL(id: String, italic: Bool = false) -> URL? {
         guard id.count == 64, id.allSatisfy({ $0.isHexDigit }) else { return nil }
+        if let family = self.additionalFamilies.first(where: { $0.selectionId == id }),
+           let url = self.cachedURL(filename: italic ? (family.italic ?? family.regular) : family.regular) { return url }
         let url = self.root.appendingPathComponent("Imported/\(id).font")
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }

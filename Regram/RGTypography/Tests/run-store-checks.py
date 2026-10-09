@@ -12,7 +12,8 @@ work=Path(temporary.name);task=work
 clang=subprocess.check_output(['xcrun','--find','clang'],text=True).strip()
 swift=subprocess.check_output(['xcrun','--find','swiftc'],text=True).strip()
 sdk=subprocess.check_output(['xcrun','--sdk','macosx','--show-sdk-path'],text=True).strip()
-files=json.loads((root/'Regram/RGTypography/RGFontCatalog.json').read_text())['files']
+catalog=json.loads((root/'Regram/RGTypography/RGFontCatalog.json').read_text())
+files=catalog['files']
 archive=work/'Inter-fixture.zip'
 with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
  for f in files:
@@ -42,14 +43,14 @@ server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);threading.Thread
 base='http://127.0.0.1:'+str(server.server_port)
 selected=[]
 for f in files:
- if f['file'].startswith(('JetBrainsMono-','Inter-')):
+ if f['file'].startswith(('JetBrainsMono-','Inter-','GoogleSansCode-')):
   f=dict(f);f['source']=base+('/inter' if f.get('archive_member') else '/'+f['file']);
   if f.get('archive_member'):f['archive_sha256']=archive_hash
   selected.append(f)
 original=selected[0]
 for prefix,path,hash in [('Bad','/'+original['file'],'0'*64),('Missing','/missing',original['sha256']),('Slow','/slow',original['sha256'])]:
  f=dict(original,file=prefix+'-Regular.ttf',source=base+path,sha256=hash);selected.append(f)
-bundle=work/'Fixtures.bundle';bundle.mkdir(exist_ok=True);(bundle/'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'app.regram.font-store-tests','CFBundlePackageType':'BNDL'}));(bundle/'RGFontCatalog.json').write_text(json.dumps({'files':selected}))
+bundle=work/'Fixtures.bundle';bundle.mkdir(exist_ok=True);(bundle/'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'app.regram.font-store-tests','CFBundlePackageType':'BNDL'}));(bundle/'RGFontCatalog.json').write_text(json.dumps({'files':selected,'families':[f for f in catalog.get('families',[]) if f['id']=='GoogleSansCode']}))
 s=(root/'Regram/RGTypography/Sources/RGFontStore.swift').read_text().replace('import AppBundle\n','').replace('import RGSimpleSettings\n','')
 a=s.index('        let base = FileManager.default.urls');b=s.index('    nonisolated private static let catalog',a)
 s=s[:a]+'        return URL(fileURLWithPath: '+json.dumps(str(work/'Cache'))+')\n    }\n'+s[b:]
@@ -72,6 +73,10 @@ final class RGSimpleSettings { static let shared = RGSimpleSettings(); var fontA
   guard case .failure = await download("Missing") else { fatalError("404 must fail") }
   guard case .success = await download("Inter") else { fatalError("Pinned archive extraction failed") }
   expect(store.isDownloaded(prefix: "Inter"), "All archive members must be validated")
+  guard case .success = await download("GoogleSansCode"), let family = RGFontStore.additionalFamilies.first else { fatalError("Additional catalog family failed") }
+  guard let roman = RGFontStore.importedURL(id: family.selectionId), let italic = RGFontStore.importedURL(id: family.selectionId, italic: true) else { fatalError("Selection ID must resolve downloaded faces") }
+  expect(roman != italic, "Real italic face must remain separate from the upright font")
+  expect(roman.lastPathComponent == family.regular && italic.lastPathComponent == family.italic, "Catalog metadata must select the correct face")
   var cancelledCallback = false
   store.download(prefix: "Slow") { _ in cancelledCallback = true }
   try await Task.sleep(nanoseconds: 100_000_000)

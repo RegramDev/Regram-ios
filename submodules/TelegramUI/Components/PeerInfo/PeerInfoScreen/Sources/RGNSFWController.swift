@@ -179,178 +179,158 @@ private func rgNSFWRecommendationsHTML(theme: PresentationTheme, lang: String) -
     """#
 }
 
+// MARK: Regram — choose a destination first; each destination owns its webpage history.
+private extension RGNSFWSource {
+    func title(lang: String) -> String {
+        switch self {
+        case .recommendations: return "NSFW.Tab.Recommend".i18n(lang)
+        case .novel: return "Nv"
+        case .missav: return "MissAV"
+        case .huangguo: return "黄果"
+        case .javranking: return "JAV Ranking"
+        }
+    }
+}
+
 private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate, WKUIDelegate {
-    private let context: AccountContext
-    private var presentationData: PresentationData
-
-    private let topPanelNode: ASDisplayNode
-    private let separatorNode: ASDisplayNode
-    private let segmentedControl: UISegmentedControl
-    // MARK: Regram — webpage history is separate from leaving the NSFW screen.
+    private let presentationData: PresentationData
+    private let source: RGNSFWSource?
+    private let openSource: (RGNSFWSource) -> Void
+    private let menuScrollView = UIScrollView()
+    private let menuStack = UIStackView()
+    private let topPanel = UIView()
     private let backButton = UIButton(type: .system)
-    private let sourceScrollView = UIScrollView()
-    private var backObservation: NSKeyValueObservation?
-    private let progressView: UIProgressView
+    private let forwardButton = UIButton(type: .system)
+    private let progressView = UIProgressView(progressViewStyle: .bar)
     private let webView: WKWebView
-
-    private var currentSource: RGNSFWSource = .recommendations
-    private var progressObservation: NSKeyValueObservation?
+    private var observations: [NSKeyValueObservation] = []
     private var contentRevealed = false
 
-    private var validLayout: (ContainerViewLayout, CGFloat)?
+    var canGoBack: Bool { self.webView.canGoBack }
 
-    init(context: AccountContext, presentationData: PresentationData) {
-        self.context = context
+    init(presentationData: PresentationData, source: RGNSFWSource?, openSource: @escaping (RGNSFWSource) -> Void) {
         self.presentationData = presentationData
-
-        self.topPanelNode = ASDisplayNode()
-        self.separatorNode = ASDisplayNode()
-
+        self.source = source
+        self.openSource = openSource
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
-        self.webView = WKWebView(frame: CGRect(), configuration: configuration)
+        self.webView = WKWebView(frame: .zero, configuration: configuration)
         self.webView.allowsBackForwardNavigationGestures = true
         self.webView.isOpaque = false
-
-        self.segmentedControl = UISegmentedControl(items: [
-            "NSFW.Tab.Recommend".i18n(presentationData.strings.baseLanguageCode),
-            "Nv",
-            "MissAV",
-            "黄果",
-            "JAV Ranking"
-        ])
-        self.segmentedControl.selectedSegmentIndex = 0
-
-        self.progressView = UIProgressView(progressViewStyle: .bar)
-
         super.init()
-
         self.backgroundColor = presentationData.theme.list.plainBackgroundColor
-        self.topPanelNode.backgroundColor = presentationData.theme.rootController.navigationBar.opaqueBackgroundColor
-        self.separatorNode.backgroundColor = presentationData.theme.rootController.navigationBar.separatorColor
-
-        self.addSubnode(self.topPanelNode)
-        self.addSubnode(self.separatorNode)
-    }
-
-    deinit {
-        self.progressObservation?.invalidate()
-        self.backObservation?.invalidate()
     }
 
     override func didLoad() {
         super.didLoad()
+        let theme = self.presentationData.theme
+        let lang = self.presentationData.strings.baseLanguageCode
+        self.menuStack.axis = .vertical
+        self.menuStack.spacing = 12
+        self.menuScrollView.addSubview(self.menuStack)
+        self.view.addSubview(self.menuScrollView)
+        for source in RGNSFWSource.allCases {
+            let button = UIButton(type: .system)
+            var configuration = UIButton.Configuration.plain()
+            configuration.title = source.title(lang: lang)
+            configuration.subtitle = source.externalURL?.host
+            configuration.image = UIImage(systemName: "chevron.right")
+            configuration.imagePlacement = .trailing
+            configuration.imagePadding = 12
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 16, bottom: 14, trailing: 16)
+            configuration.baseForegroundColor = theme.list.itemPrimaryTextColor
+            configuration.background.backgroundColor = theme.list.itemBlocksBackgroundColor
+            configuration.background.cornerRadius = 12
+            button.configuration = configuration
+            button.contentHorizontalAlignment = .leading
+            button.accessibilityIdentifier = "regram.nsfw.destination.\(source.rawValue)"
+            button.addAction(UIAction { [weak self] _ in self?.openSource(source) }, for: .touchUpInside)
+            self.menuStack.addArrangedSubview(button)
+        }
 
         self.webView.navigationDelegate = self
         self.webView.uiDelegate = self
-        self.webView.backgroundColor = self.presentationData.theme.list.plainBackgroundColor
-        self.webView.scrollView.backgroundColor = self.presentationData.theme.list.plainBackgroundColor
+        self.webView.backgroundColor = theme.list.plainBackgroundColor
+        self.webView.scrollView.backgroundColor = theme.list.plainBackgroundColor
         self.view.addSubview(self.webView)
-
-        self.segmentedControl.addTarget(self, action: #selector(self.segmentChanged), for: .valueChanged)
-        self.sourceScrollView.showsHorizontalScrollIndicator = false
-        self.topPanelNode.view.addSubview(self.sourceScrollView)
-        self.sourceScrollView.addSubview(self.segmentedControl)
+        self.topPanel.backgroundColor = theme.rootController.navigationBar.opaqueBackgroundColor
+        self.view.addSubview(self.topPanel)
         self.backButton.setImage(UIImage(systemName: "chevron.left"), for: .normal)
-        self.backButton.tintColor = self.presentationData.theme.rootController.navigationBar.accentTextColor
-        self.backButton.accessibilityLabel = "NSFW.Back".i18n(self.presentationData.strings.baseLanguageCode)
-        self.backButton.isEnabled = false
+        self.forwardButton.setImage(UIImage(systemName: "chevron.right"), for: .normal)
+        self.backButton.accessibilityLabel = "NSFW.Back".i18n(lang)
+        self.forwardButton.accessibilityLabel = lang.hasPrefix("zh") ? "网页前进" : "Forward"
+        self.backButton.accessibilityIdentifier = "regram.nsfw.web.back"
+        self.forwardButton.accessibilityIdentifier = "regram.nsfw.web.forward"
+        for button in [self.backButton, self.forwardButton] {
+            button.tintColor = theme.rootController.navigationBar.accentTextColor
+            button.isEnabled = false
+            self.topPanel.addSubview(button)
+        }
         self.backButton.addTarget(self, action: #selector(self.goBack), for: .touchUpInside)
-        self.topPanelNode.view.addSubview(self.backButton)
-        self.backObservation = self.webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] webView, _ in
-            self?.backButton.isEnabled = webView.canGoBack
-        }
-
-        self.progressView.progressTintColor = self.presentationData.theme.rootController.navigationBar.accentTextColor
+        self.forwardButton.addTarget(self, action: #selector(self.goForward), for: .touchUpInside)
+        self.progressView.progressTintColor = theme.rootController.navigationBar.accentTextColor
         self.progressView.trackTintColor = .clear
-        self.topPanelNode.view.addSubview(self.progressView)
-
-        self.progressObservation = self.webView.observe(\.estimatedProgress, options: [.new]) { [weak self] webView, _ in
-            guard let self else {
-                return
+        self.topPanel.addSubview(self.progressView)
+        self.observations = [
+            self.webView.observe(\.canGoBack, options: [.initial, .new]) { [weak self] web, _ in self?.backButton.isEnabled = web.canGoBack },
+            self.webView.observe(\.canGoForward, options: [.initial, .new]) { [weak self] web, _ in self?.forwardButton.isEnabled = web.canGoForward },
+            self.webView.observe(\.estimatedProgress, options: [.new]) { [weak self] web, _ in
+                guard let self else { return }
+                self.progressView.setProgress(Float(web.estimatedProgress), animated: true)
+                self.progressView.isHidden = web.estimatedProgress >= 1 || web.estimatedProgress <= 0
             }
-            let progress = Float(webView.estimatedProgress)
-            self.progressView.setProgress(progress, animated: true)
-            self.progressView.isHidden = progress >= 1.0 || progress <= 0.0
-        }
-
-        // The webview stays hidden until the 18+ gate is cleared.
+        ]
+        self.menuScrollView.isHidden = true
         self.webView.isHidden = true
+        self.topPanel.isHidden = true
+        if self.source != nil {
+            // Disable Telegram's parent pop recognizer even at the screen edge. WKWebView owns
+            // back/forward swipes, so a right swipe never exits to Settings or the directory.
+            self.view.disablesInteractiveTransitionGestureRecognizerNow = { true }
+        }
     }
 
-    /// Loads the initial content once the age gate has passed.
     func revealContentIfNeeded() {
-        if self.contentRevealed {
-            return
-        }
+        guard !self.contentRevealed else { return }
         self.contentRevealed = true
-        self.webView.isHidden = false
-        self.loadSource(self.currentSource)
-    }
-
-    @objc private func goBack() {
-        if self.webView.canGoBack { self.webView.goBack() }
-    }
-
-    @objc private func segmentChanged() {
-        if let source = RGNSFWSource(rawValue: self.segmentedControl.selectedSegmentIndex) {
-            self.loadSource(source)
-        }
-    }
-
-    func reload() {
-        if self.currentSource == .recommendations {
-            self.loadSource(.recommendations)
-        } else {
-            self.webView.reload()
-        }
-    }
-
-    private func loadSource(_ source: RGNSFWSource) {
-        self.currentSource = source
-        switch source {
-        case .recommendations:
-            let html = rgNSFWRecommendationsHTML(theme: self.presentationData.theme, lang: self.presentationData.strings.baseLanguageCode)
-            self.webView.loadHTMLString(html, baseURL: URL(string: "https://missav.ws/"))
-        default:
+        if let source = self.source {
+            self.webView.isHidden = false
+            self.topPanel.isHidden = false
             if let url = source.externalURL {
                 self.webView.load(URLRequest(url: url))
+            } else {
+                self.webView.loadHTMLString(rgNSFWRecommendationsHTML(theme: self.presentationData.theme, lang: self.presentationData.strings.baseLanguageCode), baseURL: URL(string: "https://missav.ws/"))
             }
+        } else {
+            self.menuScrollView.isHidden = false
         }
     }
 
+    @objc func goBack() { if self.webView.canGoBack { self.webView.goBack() } }
+    @objc private func goForward() { if self.webView.canGoForward { self.webView.goForward() } }
+    func reload() { self.webView.reload() }
+
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition: ContainedViewLayoutTransition) {
-        self.validLayout = (layout, navigationBarHeight)
-
-        let leftInset = layout.safeInsets.left
-        let rightInset = layout.safeInsets.right
-        let bottomInset = layout.intrinsicInsets.bottom
-
-        let panelHeight: CGFloat = 44.0
-        let topPanelFrame = CGRect(origin: CGPoint(x: 0.0, y: navigationBarHeight), size: CGSize(width: layout.size.width, height: panelHeight))
-        transition.updateFrame(node: self.topPanelNode, frame: topPanelFrame)
-        transition.updateFrame(node: self.separatorNode, frame: CGRect(origin: CGPoint(x: 0.0, y: topPanelFrame.maxY), size: CGSize(width: layout.size.width, height: UIScreenPixel)))
-
-        let controlInset: CGFloat = 8.0
-        self.backButton.frame = CGRect(x: leftInset, y: 0, width: 44, height: panelHeight)
-        let sourceWidth = max(1, layout.size.width - leftInset - rightInset - 44 - controlInset)
-        self.sourceScrollView.frame = CGRect(x: leftInset + 44, y: 0, width: sourceWidth, height: panelHeight)
-        let contentWidth = max(440, sourceWidth)
-        self.segmentedControl.frame = CGRect(x: 0, y: 6, width: contentWidth, height: panelHeight - 12)
-        self.sourceScrollView.contentSize = CGSize(width: contentWidth, height: panelHeight)
-        self.progressView.frame = CGRect(x: 0.0, y: panelHeight - 2.5, width: layout.size.width, height: 2.5)
-
-        let webViewFrame = CGRect(x: leftInset, y: topPanelFrame.maxY + UIScreenPixel, width: layout.size.width - leftInset - rightInset, height: max(1.0, layout.size.height - topPanelFrame.maxY - bottomInset))
-        transition.updateFrame(view: self.webView, frame: webViewFrame)
+        let left = layout.safeInsets.left
+        let right = layout.safeInsets.right
+        let width = max(1, layout.size.width - left - right)
+        let bottom = max(layout.intrinsicInsets.bottom, layout.safeInsets.bottom)
+        self.menuScrollView.frame = CGRect(x: left, y: navigationBarHeight, width: width, height: max(1, layout.size.height - navigationBarHeight - bottom))
+        let menuWidth = max(1, width - 32)
+        let menuSize = self.menuStack.systemLayoutSizeFitting(CGSize(width: menuWidth, height: 0), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
+        self.menuStack.frame = CGRect(x: 16, y: 20, width: menuWidth, height: menuSize.height)
+        self.menuScrollView.contentSize = CGSize(width: width, height: menuSize.height + 40)
+        self.topPanel.frame = CGRect(x: left, y: navigationBarHeight, width: width, height: 44)
+        self.backButton.frame = CGRect(x: 0, y: 0, width: 52, height: 44)
+        self.forwardButton.frame = CGRect(x: 52, y: 0, width: 52, height: 44)
+        self.progressView.frame = CGRect(x: 0, y: 41.5, width: width, height: 2.5)
+        transition.updateFrame(view: self.webView, frame: CGRect(x: left, y: navigationBarHeight + 44, width: width, height: max(1, layout.size.height - navigationBarHeight - 44 - bottom)))
     }
 
-    // MARK: Regram — open target=_blank links in the same browser so Back remains usable.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if navigationAction.targetFrame == nil { webView.load(navigationAction.request) }
         return nil
     }
-
-    // MARK: WKNavigationDelegate — keep every tap inside the in-app browser.
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         decisionHandler(.allow)
     }
@@ -358,83 +338,67 @@ private final class RGNSFWControllerNode: ASDisplayNode, WKNavigationDelegate, W
 
 private final class RGNSFWControllerImpl: ViewController {
     private let context: AccountContext
-    private var presentationData: PresentationData
+    private let presentationData: PresentationData
+    private let source: RGNSFWSource?
+    private var ageGatePresented = false
+    private var controllerNode: RGNSFWControllerNode { self.displayNode as! RGNSFWControllerNode }
 
-    private var controllerNode: RGNSFWControllerNode {
-        return self.displayNode as! RGNSFWControllerNode
-    }
-
-    init(context: AccountContext) {
+    init(context: AccountContext, source: RGNSFWSource? = nil) {
         self.context = context
+        self.source = source
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
-
-        self.title = "NSFW.Title".i18n(self.presentationData.strings.baseLanguageCode)
+        let lang = self.presentationData.strings.baseLanguageCode
+        self.title = source?.title(lang: lang) ?? "NSFW.Title".i18n(lang)
         self.navigationPresentation = .default
-
-        self.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(self.reloadPressed))
+        if source != nil {
+            let directory = UIBarButtonItem(image: UIImage(systemName: "list.bullet"), style: .plain, target: self, action: #selector(self.openDirectory))
+            directory.accessibilityLabel = lang.hasPrefix("zh") ? "返回网站列表" : "Website List"
+            self.navigationItem.rightBarButtonItems = [directory, UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(self.reloadPressed))]
+            // The navigation-bar back arrow follows webpage history first. The directory button
+            // explicitly exits this browser, while webpage swipes never pop the app controller.
+            self.attemptNavigation = { [weak self] _ in
+                guard let self, self.isNodeLoaded else { return true }
+                if self.controllerNode.canGoBack { self.controllerNode.goBack(); return false }
+                return true
+            }
+        }
     }
-
-    required init(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
+    required init(coder aDecoder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func loadDisplayNode() {
-        self.displayNode = RGNSFWControllerNode(context: self.context, presentationData: self.presentationData)
+        self.displayNode = RGNSFWControllerNode(presentationData: self.presentationData, source: self.source, openSource: { [weak self] source in
+            guard let self, RGSimpleSettings.shared.nsfwAgeConfirmed else { return }
+            self.navigationController?.pushViewController(RGNSFWControllerImpl(context: self.context, source: source), animated: true)
+        })
         self.displayNodeDidLoad()
     }
-
-    @objc private func reloadPressed() {
-        self.controllerNode.reload()
+    @objc private func reloadPressed() { self.controllerNode.reload() }
+    @objc private func openDirectory() {
+        if let navigation = self.navigationController as? NavigationController { navigation.filterController(self, animated: true) }
+        else { self.navigationController?.popViewController(animated: true) }
     }
-
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         self.presentAgeGateIfNeeded()
     }
-
     private func presentAgeGateIfNeeded() {
-        if RGSimpleSettings.shared.nsfwAgeConfirmed {
-            self.controllerNode.revealContentIfNeeded()
-            return
-        }
+        if RGSimpleSettings.shared.nsfwAgeConfirmed { self.controllerNode.revealContentIfNeeded(); return }
+        guard !self.ageGatePresented else { return }
+        self.ageGatePresented = true
         let lang = self.presentationData.strings.baseLanguageCode
-        let controller = textAlertController(
-            context: self.context,
-            title: "NSFW.AgeGate.Title".i18n(lang),
-            text: "NSFW.AgeGate.Text".i18n(lang),
-            actions: [
-                TextAlertAction(type: .genericAction, title: "NSFW.AgeGate.Leave".i18n(lang), action: { [weak self] in
-                    guard let self else {
-                        return
-                    }
-                    if let navigationController = self.navigationController as? NavigationController {
-                        let _ = navigationController.popViewController(animated: true)
-                    }
-                }),
-                TextAlertAction(type: .defaultAction, title: "NSFW.AgeGate.Confirm".i18n(lang), action: { [weak self] in
-                    guard let self else {
-                        return
-                    }
-                    RGSimpleSettings.shared.nsfwAgeConfirmed = true
-                    self.controllerNode.revealContentIfNeeded()
-                })
-            ],
-            actionLayout: .vertical,
-            dismissOnOutsideTap: false
-        )
+        let controller = textAlertController(context: self.context, title: "NSFW.AgeGate.Title".i18n(lang), text: "NSFW.AgeGate.Text".i18n(lang), actions: [
+            TextAlertAction(type: .genericAction, title: "NSFW.AgeGate.Leave".i18n(lang), action: { [weak self] in self?.openDirectory() }),
+            TextAlertAction(type: .defaultAction, title: "NSFW.AgeGate.Confirm".i18n(lang), action: { [weak self] in
+                RGSimpleSettings.shared.nsfwAgeConfirmed = true
+                self?.controllerNode.revealContentIfNeeded()
+            })
+        ], actionLayout: .vertical, dismissOnOutsideTap: false)
         self.present(controller, in: .window(.root))
     }
-
     override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
-
-        let navigationHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
-        self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: navigationHeight, transition: transition)
+        self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
     }
 }
 
-public func rgNSFWController(context: AccountContext) -> ViewController {
-    return RGNSFWControllerImpl(context: context)
-}
+public func rgNSFWController(context: AccountContext) -> ViewController { RGNSFWControllerImpl(context: context) }

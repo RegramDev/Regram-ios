@@ -437,8 +437,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     var chatThemeAndDarkAppearancePreviewPromise = Promise<(ChatTheme?, Bool?)>((nil, nil))
     // MARK: Regram — forced/per-chat themes also need a live typography refresh.
-    // MARK: Regram — resolve manual mentions in send order, without modifying the live composer.
-    private lazy var rgNicknameMentionQueue = RGNicknameMentionQueue(context: self.context)
+    // MARK: Regram — typing resolves nicknames in the live composer.
+    lazy var rgNicknameMentionInputResolver = RGNicknameMentionInputResolver(context: self.context)
     private var rgFontConfiguration = RGSimpleSettings.shared.fontConfiguration
     var didSetPresentationData = false
     var presentationData: PresentationData
@@ -9227,21 +9227,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         return .single(false)
     }
     
-    func sendMessages(_ messages: [EnqueueMessage], media: Bool = false, postpone: Bool = false, commit: Bool = false, rgMentionsResolved: Bool = false) {
+    func sendMessages(_ messages: [EnqueueMessage], media: Bool = false, postpone: Bool = false, commit: Bool = false) {
         if case let .customChatContents(customChatContents) = self.subject {
             customChatContents.enqueueMessages(messages: messages)
             return
         }
         
         guard let peerId = self.chatLocation.peerId else {
-            return
-        }
-
-        // MARK: Regram — preserve native entity ranges, captions and scheduling metadata.
-        if !rgMentionsResolved {
-            self.rgNicknameMentionQueue.resolve(messages) { [self] updated in
-                self.sendMessages(updated, media: media, postpone: postpone, commit: commit, rgMentionsResolved: true)
-            }
             return
         }
 

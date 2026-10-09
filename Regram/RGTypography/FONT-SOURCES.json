@@ -479,6 +479,99 @@
       "file": "Licenses/NotoSerifSC-OFL.txt",
       "source": "https://raw.githubusercontent.com/google/fonts/2eb0b48d5f760f62e286216f0859a8c540dbc1bd/ofl/notoserifsc/OFL.txt",
       "sha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6"
+    },
+    {
+      "file": "OnDemand/AnthropicSans-Variable.woff2",
+      "source": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/69971a00a3295036497e1a28_AnthropicSans-Roman-Web.woff2",
+      "sha256": "1b75c8ee81a05fa77331366e9602b82072bb5223593c928a6488dfe6fd023f1b",
+      "bytes": 118340,
+      "distribution": "Unmodified official web asset; downloaded from the original source only, never bundled or mirrored."
+    },
+    {
+      "file": "OnDemand/AnthropicSans-VariableItalic.woff2",
+      "source": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/69971a016067bf14b9b8f48d_AnthropicSans-Italic-Web.woff2",
+      "sha256": "ffcf21c4e9a729cbf4710401760434bb1d10bc7db244540e4af796d182c6817d",
+      "bytes": 129868,
+      "distribution": "Unmodified official web asset; downloaded from the original source only, never bundled or mirrored."
+    },
+    {
+      "file": "OnDemand/AnthropicSerif-Variable.woff2",
+      "source": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/69971a1551eb6cda0d656e8a_AnthropicSerif-Roman-Web.woff2",
+      "sha256": "e96fe97bb7ba2190a9a227d27380e0c79894408bfc6acea5a511774d93a16f69",
+      "bytes": 175356,
+      "distribution": "Unmodified official web asset; downloaded from the original source only, never bundled or mirrored."
+    },
+    {
+      "file": "OnDemand/AnthropicSerif-VariableItalic.woff2",
+      "source": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/69971a15a9fb8c1107a3570e_AnthropicSerif-Italic-Web.woff2",
+      "sha256": "7f61e32b5941ad6e5699aeb3e03390a43e5f04f3bff6a5853bed08c802596f83",
+      "bytes": 166724,
+      "distribution": "Unmodified official web asset; downloaded from the original source only, never bundled or mirrored."
+    },
+    {
+      "file": "Fonts/GoogleSans-Variable.ttf",
+      "source": "https://github.com/googlefonts/googlesans/releases/download/v14.000/GoogleSans-v14.000.zip",
+      "sha256": "d0a87d835a944b8b40d0e82a5651bb59ab97b936a2aeed5946eb57e7b2a3a90a",
+      "bytes": 4974940,
+      "archive_member": "build/GoogleSans/variable/GoogleSans[GRAD,opsz,wght].ttf",
+      "archive_sha256": "d338f0e74f5eabead86a85b87edf4cc50cd6561196dbe173d1db4139e95b3ca7"
+    },
+    {
+      "file": "Fonts/GoogleSans-VariableItalic.ttf",
+      "source": "https://github.com/googlefonts/googlesans/releases/download/v14.000/GoogleSans-v14.000.zip",
+      "sha256": "b6662abd2131cad1b248750149a7f2b644f871ebcc9af7fe4cd1135cd290b6d1",
+      "bytes": 5079424,
+      "archive_member": "build/GoogleSans/variable/GoogleSans-Italic[GRAD,opsz,wght].ttf",
+      "archive_sha256": "d338f0e74f5eabead86a85b87edf4cc50cd6561196dbe173d1db4139e95b3ca7"
+    },
+    {
+      "file": "Fonts/GoogleSansFlex-Variable.ttf",
+      "source": "https://github.com/googlefonts/googlesans-flex/releases/download/v4.007/GoogleSansFlex-v4.007.zip",
+      "sha256": "7551c307350329c6cf05de9cda1add37277b31e130d46c3532fd4914955df3bf",
+      "bytes": 4179956,
+      "archive_member": "GoogleSansFlex[GRAD,ROND,opsz,slnt,wdth,wght].ttf",
+      "archive_sha256": "b7375131bffc5eaaebeb65c69529ba10e7f7a9962b913488f6ef35c432ce19c9"
+    },
+    {
+      "file": "Fonts/GoogleSansCode-Variable.ttf",
+      "source": "https://github.com/googlefonts/googlesans-code/releases/download/v7.001/GoogleSansCode-v7.001.zip",
+      "sha256": "74642762fae66d5883077794a763e1086394b8cb72f2623e456e06359dc5c64b",
+      "bytes": 268264,
+      "archive_member": "GoogleSansCode[MONO,wght].ttf",
+      "archive_sha256": "eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9"
+    },
+    {
+      "file": "Fonts/GoogleSansCode-VariableItalic.ttf",
+      "source": "https://github.com/googlefonts/googlesans-code/releases/download/v7.001/GoogleSansCode-v7.001.zip",
+      "sha256": "57d0d5fb5868b33a5802fed8a36197197f95014dd775836e176045cf81e60dfe",
+      "bytes": 284556,
+      "archive_member": "GoogleSansCode-Italic[MONO,wght].ttf",
+      "archive_sha256": "eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9"
+    },
+    {
+      "file": "Licenses/GoogleSans-OFL.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/googlesans/v14.000/OFL.txt",
+      "sha256": "831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0"
+    },
+    {
+      "file": "Licenses/GoogleSans-TRADEMARKS.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/googlesans/v14.000/TRADEMARKS.txt",
+      "sha256": "9b75a5efcc2de1e1aa214a896c4d58a5544c1d88cb1e3fb7a42281404ff10708"
+    },
+    {
+      "file": "Licenses/GoogleSansFlex-OFL.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/googlesans-flex/v4.007/OFL.txt",
+      "sha256": "831b6e041705873c3e6efb18c4c96202bc41c8be42a456d3d26c47abf14816d0"
+    },
+    {
+      "file": "Licenses/GoogleSansFlex-TRADEMARKS.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/googlesans-flex/v4.007/TRADEMARKS.txt",
+      "sha256": "d69ab689ed65aa0400665dee5be1a5e18b20573b666dbec397092da959c83757"
+    },
+    {
+      "file": "Licenses/GoogleSansCode-OFL.txt",
+      "source": "https://raw.githubusercontent.com/googlefonts/googlesans-code/v7.001/OFL.txt",
+      "sha256": "ff8f4fbc4f1a71c7d4c6481c48dc2b21c43f8dc15872536667fee45c15d20928"
     }
   ],
   "inter_version": "4.1",
