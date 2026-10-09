@@ -41,12 +41,12 @@ def extract(archive, directory):
     return apps[0]
 
 
-def package(ipa, symbols, destination, build_number, configuration):
+def package(ipa, symbols, destination, build_number, configuration, report_path):
     root = Path.cwd()
     config = json.loads(configuration.read_text())
     destination.mkdir(parents=True, exist_ok=True)
     version = json.loads((root / 'versions.json').read_text())['app']
-    filename = f'Regram-{version}-b{build_number}-LCSign-reference.ipa'
+    filename = f'Regram-{version}-b{build_number}.ipa'
     final = destination / filename
     if final.exists():
         raise RuntimeError('Refusing to replace an existing reference IPA')
@@ -54,6 +54,8 @@ def package(ipa, symbols, destination, build_number, configuration):
         work = Path(temporary)
         staging = work / 'staging'
         app = extract(ipa, staging)
+        if str(info(app)['CFBundleShortVersionString']) != version:
+            raise RuntimeError('App version must match the IPA filename')
         bundles = [app] + sorted((app / 'PlugIns').glob('*.appex'))
         expected = {config['telegram_bundle_id'] + suffix for suffix in PROFILE_SUFFIXES.values()}
         if {info(b)['CFBundleIdentifier'] for b in bundles} != expected:
@@ -98,18 +100,13 @@ def package(ipa, symbols, destination, build_number, configuration):
                 raise RuntimeError('Unexpected Mach-O architecture')
             uuids[str(path.relative_to(verified))] = run(['xcrun', 'dwarfdump', '--uuid', str(path)]).decode().split()[1]
         dsym_sources = sorted(symbols.glob('*.dSYM'))
-        dsym_root = work / 'DSYMs'
-        dsym_root.mkdir()
         symbol_uuids = set()
         for source in dsym_sources:
-            shutil.copytree(source, dsym_root / source.name)
             for dwarf in (source / 'Contents/Resources/DWARF').iterdir():
                 for line in run(['xcrun', 'dwarfdump', '--uuid', str(dwarf)]).decode().splitlines():
                     symbol_uuids.add(line.split()[1])
         if len(uuids) != 12 or len(dsym_sources) != 12 or not set(uuids.values()) <= symbol_uuids:
             raise RuntimeError('All 12 binaries must have matching debug symbols')
-        symbol_archive = destination / f'Regram-{version}-b{build_number}.DSYMs.zip'
-        run(['zip', '-qry', str(symbol_archive.resolve()), 'DSYMs'], cwd=work)
         shutil.move(archive, final)
     manifest = {
         'source_commit': run(['git', 'rev-parse', 'HEAD']).decode().strip(),
@@ -117,9 +114,13 @@ def package(ipa, symbols, destination, build_number, configuration):
         'extension_count': 6, 'macho_count': 12, 'dsym_count': 12, 'profile_count': 0,
         'signatures_and_architectures_verified': True, 'matching_debug_symbols': True,
         'font_catalog_and_licenses_verified': True, 'device_tested': False,
-        'artifacts': {path.name: {'size_bytes': path.stat().st_size, 'sha256': checksum(path)} for path in [final, symbol_archive]},
+        'artifacts': {final.name: {'size_bytes': final.stat().st_size, 'sha256': checksum(final)}},
     }
-    (destination / 'BUILD-MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(json.dumps(manifest, indent=2) + '\n')
+    if summary := os.environ.get('GITHUB_STEP_SUMMARY'):
+        with open(summary, 'a') as stream:
+            stream.write(f"### {filename}\n\nSource: `{manifest['source_commit']}`\n\nSHA-256: `{checksum(final)}`\n\nMain app, six extensions, arm64 signatures and 12 dSYM UUIDs verified.\n")
     print(f'Packaged and validated {filename}: main app, six extensions and 12 matching dSYMs')
 
 
@@ -130,5 +131,6 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--build-number', required=True)
     parser.add_argument('--configuration', type=Path, default=Path('build-input/ci/configuration.json'))
+    parser.add_argument('--report', type=Path, default=Path('build-input/ci/BUILD-MANIFEST.json'))
     args = parser.parse_args()
-    package(args.ipa, args.symbols, args.output, args.build_number, args.configuration)
+    package(args.ipa, args.symbols, args.output, args.build_number, args.configuration, args.report)
