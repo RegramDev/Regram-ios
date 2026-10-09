@@ -20,6 +20,7 @@ swift_library(
         "//Regram/RGSwiftUI:RGSwiftUI",
         "//Regram/RGTypography:RGTypography",
         "//submodules/LegacyUI:LegacyUI",
+        "//submodules/LegacyMediaPickerUI:LegacyMediaPickerUI",
         #
         "//submodules/SettingsUI:SettingsUI",
         #

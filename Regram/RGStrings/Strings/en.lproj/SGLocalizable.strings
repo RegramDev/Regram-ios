@@ -397,7 +397,7 @@ Matching is case-insensitive.";
 "Fonts.Cloud.Notice" = "Fonts download on demand from official sources and remain available offline.";
 "Fonts.Import" = "Import Font from Files";
 "Fonts.Imported" = "Imported";
-"Fonts.Import.Notice" = "Supports TTF, OTF and TTC up to 64 MB. Select the imported font in the Latin or Chinese list. TTC uses its first face.";
+"Fonts.Import.Notice" = "Supports TTF, OTF and TTC up to 64 MB. Imported fonts are selected automatically for English or Chinese. TTC uses its first face.";
 "Fonts.Cancel" = "Cancel Download";
 "Fonts.Download.Error" = "Download failed. Check your connection and try again. Your current font is unchanged.";
 "Fonts.Import.Error" = "Could not import the font. Choose a valid TTF, OTF or TTC file up to 64 MB.";

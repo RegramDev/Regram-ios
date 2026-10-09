@@ -94,10 +94,27 @@ final class RGSimpleSettings { static let shared = RGSimpleSettings(); var fontA
   try Data("invalid font".utf8).write(to: invalid)
   guard case .failure = await importFile(invalid) else { fatalError("Invalid font must fail") }
   expect(store.imported.count == 2, "Invalid import must not modify font library")
-  print("Font store checks passed: direct/ZIP downloads, hashes, HTTP errors, cancellation, imports, duplicate detection and script coverage")
+  // Exercise the copied-file handoff used by the native import picker. System fonts stay local:
+  // no Apple font data is added to the repository or to the application bundle.
+  for source in [URL(fileURLWithPath: FONT_OTF_PATH), URL(fileURLWithPath: FONT_TTC_PATH)] {
+   let copied = invalid.deletingLastPathComponent().appendingPathComponent(source.lastPathComponent)
+   try FileManager.default.copyItem(at: source, to: copied)
+   guard case let .success(imported) = await importFile(copied) else { fatalError("OTF/TTC copied-file import failed") }
+   expect(imported.latin, "OTF/TTC first face must retain Latin coverage")
+   try FileManager.default.removeItem(at: copied)
+   guard let retained = RGFontStore.importedURL(id: imported.id), let faces = CTFontManagerCreateFontDescriptorsFromURL(retained as CFURL) as? [CTFontDescriptor], !faces.isEmpty else { fatalError("Font must survive picker-copy cleanup") }
+   expect(faces.count == (CTFontManagerCreateFontDescriptorsFromURL(source as CFURL) as? [CTFontDescriptor])?.count, "TTC collection faces must survive storage")
+  }
+  let oversized = invalid.deletingLastPathComponent().appendingPathComponent("oversized.ttf")
+  expect(FileManager.default.createFile(atPath: oversized.path, contents: Data()), "Size-limit fixture must be created")
+  let handle = try FileHandle(forWritingTo: oversized)
+  try handle.truncate(atOffset: 64 * 1024 * 1024 + 1)
+  try handle.close()
+  guard case let .failure(error) = await importFile(oversized), case RGFontStoreError.tooLarge = error else { fatalError("Oversized fonts must fail before parsing") }
+  print("Font store checks passed: downloads, hashes, HTTP errors, cancellation, TTF/OTF/TTC imports, copied-file cleanup, size limit, duplicates and script coverage")
  }
 }
-'''.replace('import Foundation','import Foundation\nimport CoreText',1).replace('BUNDLE',json.dumps(str(bundle))).replace('LATIN',json.dumps(str(root/'Regram/RGTypography/Fonts/JetBrainsMono-Regular.ttf'))).replace('CHINESE',json.dumps(str(root/'Regram/RGTypography/Fonts/IBMPlexSansSC-Regular.ttf'))).replace('INVALID',json.dumps(str(work/'invalid.ttf'))))
+'''.replace('import Foundation','import Foundation\nimport CoreText',1).replace('BUNDLE',json.dumps(str(bundle))).replace('LATIN',json.dumps(str(root/'Regram/RGTypography/Fonts/JetBrainsMono-Regular.ttf'))).replace('CHINESE',json.dumps(str(root/'Regram/RGTypography/Fonts/IBMPlexSansSC-Regular.ttf'))).replace('INVALID',json.dumps(str(work/'invalid.ttf'))).replace('FONT_OTF_PATH',json.dumps('/System/Library/Fonts/Supplemental/STIXGeneral.otf')).replace('FONT_TTC_PATH',json.dumps('/System/Library/Fonts/Helvetica.ttc')))
 args=[swift,'-swift-version','5','-sdk',sdk,'-Xcc','-fmodule-map-file='+str(work/'module.modulemap'),'-Xcc','-I'+str(root/'third-party/ZipArchive/PublicHeaders'),str(work/'Store.swift'),str(work/'Tests.swift')]+[str(o) for o in objects]+['-lz','-liconv','-framework','Foundation','-o',str(work/'tests')]
 with (task/'store-checks-build.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT)
 if result.returncode:

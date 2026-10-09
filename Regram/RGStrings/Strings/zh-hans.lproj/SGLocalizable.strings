@@ -363,7 +363,7 @@
 "Fonts.Cloud.Notice" = "字体按需从官方来源下载，下载完成后可离线使用。首次使用需要网络。";
 "Fonts.Import" = "从文件导入字体";
 "Fonts.Imported" = "已导入";
-"Fonts.Import.Notice" = "支持 TTF、OTF 和 TTC，最大 64 MB。导入后在英文或中文列表中选择；TTC 使用第一个字型。";
+"Fonts.Import.Notice" = "支持 TTF、OTF 和 TTC，最大 64 MB。导入后自动选中对应的英文或中文字体；TTC 使用第一个字型。";
 "Fonts.Cancel" = "取消下载";
 "Fonts.Download.Error" = "下载失败，请检查网络后重试。当前字体未更改。";
 "Fonts.Import.Error" = "无法导入该字体。请选择有效的 TTF、OTF 或 TTC 文件，大小不超过 64 MB。";

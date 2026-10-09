@@ -1,7 +1,7 @@
 import Foundation
 import UIKit
 import SwiftUI
-import UniformTypeIdentifiers
+import LegacyMediaPickerUI
 import RGSwiftUI
 import RGStrings
 import RGSimpleSettings
@@ -15,7 +15,7 @@ public struct RGFontSettingsView: SwiftUI.View {
     @ObservedObject private var store = RGFontStore.shared
     @State private var importedLatin = RGSimpleSettings.shared.fontImportedLatin
     @State private var importedChinese = RGSimpleSettings.shared.fontImportedChinese
-    @State private var importer = false
+    private let presentFontImporter: (@escaping (URL?) -> Void) -> Void
     @State private var importing = false
     @State private var errorPresented = false
     @State private var errorText = ""
@@ -26,7 +26,9 @@ public struct RGFontSettingsView: SwiftUI.View {
     @State private var messages = RGSimpleSettings.shared.fontApplyToMessages
     @State private var interface = RGSimpleSettings.shared.fontApplyToInterface
 
-    public init() {}
+    public init(presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void) {
+        self.presentFontImporter = presentFontImporter
+    }
 
     private func previewFont(weight: UIFont.Weight = .regular, italic: Bool = false) -> SwiftUI.Font {
         if let font = RGTypography.font(configuration: RGFontConfiguration(family: self.family.rawValue, messages: true, interface: true, chineseFamily: self.chineseFamily.rawValue, importedLatin: self.importedLatin, importedChinese: self.importedChinese, assetsRevision: self.store.revision), size: 19.0, weight: weight, italic: italic) { return SwiftUI.Font(font) }
@@ -47,6 +49,35 @@ public struct RGFontSettingsView: SwiftUI.View {
     private func showError(_ key: String) {
         self.errorText = key.i18n(self.lang)
         self.errorPresented = true
+    }
+    private func importFromFiles() {
+        guard !self.importing else { return }
+        let chinese = self.script == 1
+        self.importing = true
+        self.presentFontImporter { url in
+            guard let url else { self.importing = false; return }
+            self.store.importFont(url: url) { result in
+                // The native picker supplies a copy in our container; storage has retained its bytes.
+                try? FileManager.default.removeItem(at: url)
+                self.importing = false
+                switch result {
+                case let .success(font):
+                    if chinese && font.chinese {
+                        self.importedChinese = font.id
+                    } else if !chinese && font.latin {
+                        self.importedLatin = font.id
+                    } else if font.chinese {
+                        self.script = 1
+                        self.importedChinese = font.id
+                    } else {
+                        self.script = 0
+                        self.importedLatin = font.id
+                    }
+                case .failure:
+                    self.showError("Fonts.Import.Error")
+                }
+            }
+        }
     }
     private func importedRows(chinese: Bool) -> some SwiftUI.View {
         ForEach(self.store.imported.filter { chinese ? $0.chinese : $0.latin }) { option in
@@ -207,7 +238,7 @@ public struct RGFontSettingsView: SwiftUI.View {
                         self.importedRows(chinese: self.script == 1)
                     }.padding(16).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
                 }
-                Button { self.importer = true } label: {
+                Button { self.importFromFiles() } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "square.and.arrow.down").font(.system(size: 22))
                         VStack(alignment: .leading, spacing: 4) {
@@ -218,6 +249,7 @@ public struct RGFontSettingsView: SwiftUI.View {
                         if self.importing { ProgressView() } else { Image(systemName: "chevron.right").font(.caption.weight(.semibold)) }
                     }.padding(18).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
                 }.buttonStyle(.plain).disabled(self.importing || self.store.downloading != nil)
+                Text("Fonts.Import.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Cloud.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Scripts.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Button("Fonts.Reset".i18n(self.lang)) {
@@ -228,14 +260,6 @@ public struct RGFontSettingsView: SwiftUI.View {
             }.padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .fileImporter(isPresented: self.$importer, allowedContentTypes: [.data], allowsMultipleSelection: false) { result in
-            guard case let .success(urls) = result, let url = urls.first else { return }
-            self.importing = true
-            self.store.importFont(url: url) { result in
-                self.importing = false
-                if case .failure = result { self.showError("Fonts.Import.Error") }
-            }
-        }
         .alert("Fonts.Error.Title".i18n(self.lang), isPresented: self.$errorPresented) { Button("Fonts.OK".i18n(self.lang), role: .cancel) {} } message: { Text(self.errorText) }
         .onChange(of: self.importedLatin) { RGSimpleSettings.shared.fontImportedLatin = $0 }
         .onChange(of: self.importedChinese) { RGSimpleSettings.shared.fontImportedChinese = $0 }
@@ -250,7 +274,28 @@ public func rgFontSettingsController(context: AccountContext) -> ViewController 
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.title = "Fonts.Title".i18n(data.strings.baseLanguageCode)
-    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGFontSettingsView() })
+    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
+        RGFontSettingsView(presentFontImporter: { [weak controller] completion in
+            guard let controller else { completion(nil); return }
+            let data = context.sharedContext.currentPresentationData.with { $0 }
+            var completed = false
+            let finish: (URL?) -> Void = { url in
+                guard !completed else { return }
+                completed = true
+                completion(url)
+            }
+            // Copy mode avoids open-in-place provider permissions. Accept every item here because
+            // providers can mislabel TTF/OTF/TTC; CoreText validates the selected file's contents.
+            let picker = legacyICloudFilePicker(theme: data.theme, mode: .import, documentTypes: ["public.item"], dismissed: {
+                // The picker's wrapper reports dismissal before its selection callback. Defer the
+                // cancel fallback so a selected URL wins, while swipe dismissal also resets the UI.
+                DispatchQueue.main.async { finish(nil) }
+            }, completion: { urls in
+                finish(urls.first)
+            })
+            controller.present(picker, in: .window(.root))
+        })
+    })
     controller.bind(controller: UIHostingController(rootView: content.preferredColorScheme(data.theme.overallDarkAppearance ? .dark : .light).tint(Color(uiColor: data.theme.list.itemAccentColor)), ignoreSafeArea: true))
     return controller
 }

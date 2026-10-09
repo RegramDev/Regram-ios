@@ -206,10 +206,10 @@ public enum RGFontStoreError: Error {
                     let scoped = url.startAccessingSecurityScopedResource()
                     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                     let values = try url.resourceValues(forKeys: [.fileSizeKey])
-                    guard (values.fileSize ?? Int.max) <= 64 * 1024 * 1024 else { throw RGFontStoreError.tooLarge }
+                    if let size = values.fileSize, size > 64 * 1024 * 1024 { throw RGFontStoreError.tooLarge }
                     let data = try Data(contentsOf: url, options: .mappedIfSafe)
                     guard !data.isEmpty, data.count <= 64 * 1024 * 1024 else { throw RGFontStoreError.tooLarge }
-                    guard let descriptor = (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])?.first else { throw RGFontStoreError.invalidFont }
+                    guard let descriptor = (CTFontManagerCreateFontDescriptorsFromData(data as CFData) as? [CTFontDescriptor])?.first else { throw RGFontStoreError.invalidFont }
                     let font = CTFontCreateWithFontDescriptor(descriptor, 17, nil)
                     guard let charset = CTFontCopyCharacterSet(font) as CharacterSet? else { throw RGFontStoreError.invalidFont }
                     let latin = charset.contains("A".unicodeScalars.first!) && charset.contains("a".unicodeScalars.first!)
