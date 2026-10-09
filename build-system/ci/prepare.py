@@ -117,6 +117,7 @@ def prepare(configuration, destination, bazel):
             payload = {
                 'AppIDName': 'Regram CI reference', 'Name': 'Regram CI reference ' + name,
                 'UUID': str(uuid.uuid4()).upper(), 'Version': 1, 'Platform': ['iOS'],
+                'TimeToLive': 730,
                 'TeamIdentifier': [team], 'TeamName': 'CI reference metadata',
                 'ApplicationIdentifierPrefix': [team], 'CreationDate': now,
                 'ExpirationDate': now + datetime.timedelta(days=730),
