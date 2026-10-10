@@ -48,10 +48,15 @@ public enum RGTypography {
     }
 
     private static func importedFont(id: String, size: CGFloat, weight: UIFont.Weight, italic: Bool) -> UIFont? {
-        guard !id.isEmpty, let url = RGFontStore.importedURL(id: id, italic: italic) else { return nil }
+        guard let selection = RGFontSelection(id: id), let url = RGFontStore.importedURL(id: id, italic: italic) else { return nil }
         registrationLock.lock()
         let key = id + (italic ? ":italic" : ":regular")
-        let descriptor = importedDescriptors[key] ?? (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])?.first
+        let descriptor: CTFontDescriptor?
+        if let cached = importedDescriptors[key] { descriptor = cached }
+        else {
+            let faces = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor]
+            descriptor = faces.flatMap { $0.indices.contains(selection.faceIndex) ? $0[selection.faceIndex] : nil }
+        }
         if let descriptor, importedDescriptors[key] == nil {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
             importedDescriptors[key] = descriptor
@@ -89,6 +94,10 @@ public enum RGTypography {
             result = result.withSymbolicTraits(result.symbolicTraits.union(.traitItalic)) ?? result.addingAttributes([.matrix: NSValue(cgAffineTransform: CGAffineTransform(a: 1, b: 0, c: 0.2, d: 1, tx: 0, ty: 0))])
         }
         return UIFont(descriptor: result, size: size)
+    }
+
+    public static func font(importedId: String, size: CGFloat) -> UIFont? {
+        return self.importedFont(id: importedId, size: size, weight: .regular, italic: false)
     }
 
     private static func nativeFont(size: CGFloat, weight: UIFont.Weight, italic: Bool) -> UIFont {

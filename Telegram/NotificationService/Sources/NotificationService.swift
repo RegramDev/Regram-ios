@@ -549,6 +549,8 @@ private struct NotificationContent: CustomStringConvertible {
     var isEmpty: Bool
     // MARK: Regram — Nagram-style explicit control disposition survives polling.
     var dismissAfterDelivery = false
+    // MARK: Regram — set only after a message has been resolved from the local postbox.
+    var filteredByContentRule = false
     var shouldSuppressAsEmptyControlNotification: Bool {
         return RGNotificationPolicy.shouldSuppress(markedControl: self.isEmpty || self.dismissAfterDelivery || self.forceIsEmpty, hasText: !(self.title ?? "").isEmpty || !(self.subtitle ?? "").isEmpty || !(self.body ?? "").isEmpty, hasAttachments: !self.attachments.isEmpty, hasSender: self.sender != nil)
     }
@@ -2327,6 +2329,12 @@ private final class NotificationServiceHandler {
                                     |> mapToSignal { content, _ -> Signal<(NotificationContent, Media?), NoError> in
                                         return stateManager.postbox.transaction { transaction -> (NotificationContent, Media?) in
                                             var content = content
+                                            // MARK: Regram — opt-in notification filtering shares the same keyword
+                                            // and hidden-sender preferences, using original text rather than alert prefixes.
+                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, RGSimpleSettings.shared.filterNotifications {
+                                                let settings = RGSimpleSettings.shared
+                                                content.filteredByContentRule = RGNotificationFilterPolicy.shouldHide(text: message.text, senderId: message.author?.id.toInt64(), peerId: message.id.peerId.toInt64(), isIncoming: message.flags.contains(.Incoming), rules: settings.messageFilterRules, hiddenSenders: settings.blockedPeerIds, disabledChats: settings.messageFilterDisabledPeerIds)
+                                            }
                                             
                                             var parsedMedia: Media?
                                             if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, !message.containsSecretMedia, !message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
@@ -3521,6 +3529,7 @@ extension Customoji {
 
 extension NotificationContent {
     var forceIsEmpty: Bool {
+        if self.filteredByContentRule { return true }
         if self.rgStatus.status > 1 && !self.isEmpty {
             if self.isPinned {
                 var desiredAction = PINNED_MESSAGE_ACTION

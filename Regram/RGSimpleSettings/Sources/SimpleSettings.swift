@@ -254,6 +254,8 @@ public class RGSimpleSettings {
         case warnOnStoriesOpen
         case showProfileId
         case sendWithReturnKey
+        case chatPreferences
+        case filterNotifications
     }
     
     public enum DownloadSpeedBoostValues: String, CaseIterable {
@@ -438,7 +440,8 @@ public class RGSimpleSettings {
         Keys.allowDownloadingStories.rawValue: false,
         Keys.warnOnStoriesOpen.rawValue: false,
         Keys.showProfileId.rawValue: true,
-        Keys.sendWithReturnKey.rawValue: false
+        Keys.sendWithReturnKey.rawValue: false,
+        Keys.chatPreferences.rawValue: "{}"
     ]
     
     public static let groupDefaultValues: [String: Any] = [
@@ -458,6 +461,7 @@ public class RGSimpleSettings {
         Keys.ghostDontSendTyping.rawValue: false,
         // MARK: Regram — pangu spacing.
         Keys.panguSpacing.rawValue: false,
+        Keys.filterNotifications.rawValue: false,
     ]
     
     @UserDefault(key: Keys.hidePhoneInSettings.rawValue)
@@ -600,6 +604,107 @@ public class RGSimpleSettings {
     // MARK: Regram — pangu spacing for outgoing text.
     @UserDefault(key: Keys.panguSpacing.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var panguSpacing: Bool
+
+    @UserDefault(key: Keys.filterNotifications.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
+    public var filterNotifications: Bool
+    public var canSharePreferencesWithExtensions: Bool { rgResolvedAppGroupIdentifier() != nil }
+
+    @UserDefault(key: Keys.chatPreferences.rawValue)
+    public var chatPreferencesJSON: String
+    private let chatPreferencesLock = NSLock()
+    private var cachedChatPreferencesJSON: String?
+    private var cachedChatPreferences: [String: RGChatPreferences] = [:]
+    private let temporaryReveal = RGTemporaryRevealState()
+
+    public func temporarilyVisiblePeerIds(accountId: Int64) -> Set<Int64> {
+        self.temporaryReveal.visiblePeerIds(accountId: accountId, now: ProcessInfo.processInfo.systemUptime)
+    }
+    public func temporarilyReveal(accountId: Int64, peerId: Int64, seconds: TimeInterval = 300) {
+        guard seconds.isFinite else { return }
+        let duration = max(1, min(300, seconds))
+        let ticket = self.temporaryReveal.begin(accountId: accountId, peerId: peerId, seconds: duration, now: ProcessInfo.processInfo.systemUptime)
+        self.notifyContentFiltersChanged()
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            guard let self, self.temporaryReveal.end(accountId: accountId, peerId: peerId, ticket: ticket) else { return }
+            self.notifyContentFiltersChanged()
+        }
+    }
+    public func endTemporaryReveal(accountId: Int64, peerId: Int64) {
+        if self.temporaryReveal.end(accountId: accountId, peerId: peerId) { self.notifyContentFiltersChanged() }
+    }
+
+    public var chatPreferencesSnapshot: [String: RGChatPreferences] {
+        self.chatPreferencesLock.lock(); defer { self.chatPreferencesLock.unlock() }
+        let json = self.chatPreferencesJSON
+        if self.cachedChatPreferencesJSON != json {
+            self.cachedChatPreferences = (try? JSONDecoder().decode([String: RGChatPreferences].self, from: Data(json.utf8))) ?? [:]
+            self.cachedChatPreferencesJSON = json
+        }
+        return self.cachedChatPreferences
+    }
+
+    public func chatPreferences(accountId: Int64, peerId: Int64) -> RGChatPreferences {
+        let values = self.chatPreferencesSnapshot
+        return values[RGChatPreferences.key(accountId: accountId, peerId: peerId)] ?? RGChatPreferences()
+    }
+
+    public func setChatPreferences(_ value: RGChatPreferences, accountId: Int64, peerId: Int64) {
+        var values = self.chatPreferencesSnapshot
+        let key = RGChatPreferences.key(accountId: accountId, peerId: peerId)
+        if value.isEmpty { values.removeValue(forKey: key) } else { values[key] = value }
+        if let data = try? JSONEncoder().encode(values), let json = String(data: data, encoding: .utf8) { self.chatPreferencesJSON = json }
+    }
+
+    public func defaultOutgoingFormat(accountId: Int64, peerId: Int64) -> DefaultOutgoingFormat {
+        let value = self.chatPreferences(accountId: accountId, peerId: peerId).formatting
+        return value.flatMap(DefaultOutgoingFormat.init(rawValue:)) ?? self.defaultOutgoingFormat
+    }
+
+    public func panguSpacing(accountId: Int64, peerId: Int64) -> Bool {
+        return self.chatPreferences(accountId: accountId, peerId: peerId).panguSpacing ?? self.panguSpacing
+    }
+
+    public func exportPreferences(categories: Set<RGBackupCategory>) -> RGSettingsBackup {
+        let wrappers = Mirror(reflecting: self).children.compactMap { $0.value as? RGPreferenceCache }
+        var values: [String: RGBackupValue] = [:]
+        for (category, keys) in RGSettingsBackup.categoryKeys where categories.contains(category) {
+            for key in keys {
+                let storage = self.backupStorage(key: key, wrappers: wrappers)
+                var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
+                if raw == nil && key == "forceBuiltInMic" { raw = false }
+                if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
+            }
+        }
+        return RGSettingsBackup(values: values)
+    }
+
+    public func applyPreferences(_ values: [String: RGBackupValue], resetCategories: Set<RGBackupCategory> = []) {
+        let wrappers = Mirror(reflecting: self).children.compactMap { $0.value as? RGPreferenceCache }
+        let resetKeys = Set(resetCategories.flatMap { RGSettingsBackup.categoryKeys[$0] ?? [] })
+        for key in resetKeys where !key.hasPrefix("native.") {
+            let storage = self.backupStorage(key: key, wrappers: wrappers)
+            storage.removeObject(forKey: key)
+        }
+        for (key, value) in values where RGSettingsBackup.category(for: key) != nil && !key.hasPrefix("native.") {
+            let storage = self.backupStorage(key: key, wrappers: wrappers)
+            if key == Keys.downloadSpeedBoost.rawValue, value == .string("maximum") { storage.set("medium", forKey: key) }
+            else { storage.set(value.propertyList, forKey: key) }
+        }
+        for wrapper in wrappers { wrapper.invalidatePreferenceCache() }
+        self.notifyContentFiltersChanged()
+        self.antiRevokeCacheLock.lock(); self.cachedAntiRevokePeerIds = nil; self.antiRevokeCacheLock.unlock()
+        self.fontAssetsRevision += 1
+        NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil)
+        NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
+        NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
+        self.synchronizeShared()
+    }
+
+    private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
+        if let storage = wrappers.first(where: { $0.preferenceKey == key })?.preferenceStorage { return storage }
+        if key == "pinnedMessageNotificationsExceptions" || key == "mentionsAndRepliesNotificationsExceptions" { return APP_GROUP_USER_DEFAULTS ?? .standard }
+        return .standard
+    }
 
 
 

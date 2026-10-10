@@ -147,6 +147,7 @@ struct MessageFilterView: View {
     // LegacyController here; that never reaches the surface and instead tears this screen down back
     // to Regram Pro. `selectChats` above already pushes a native controller for the same reason.
     let editPatternExternally: (RGMessageFilterRule, @escaping (String) -> Void) -> Void
+    let testRulesExternally: ([RGMessageFilterRule]) -> Void
     @ObservedObject var editing: MessageFilterEditingState
     @Environment(\.lang) var lang: String
 
@@ -158,17 +159,20 @@ struct MessageFilterView: View {
         }
     }
 
-    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void) {
+    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void, testRulesExternally: @escaping ([RGMessageFilterRule]) -> Void) {
         self.wrapperController = wrapperController
         self.editing = editing
         self.selectChats = selectChats
         self.editPatternExternally = editPatternExternally
+        self.testRulesExternally = testRulesExternally
         _newKeyword = State(initialValue: initialKeyword)
         _rules = State(initialValue: RGSimpleSettings.shared.messageFilterRules)
     }
 
     private func subtitle(for rule: RGMessageFilterRule) -> String {
         var parts: [String] = []
+        if !rule.isEnabled { parts.append("MessageFilter.Rule.Disabled".i18n(lang)) }
+        if rule.isException { parts.append("MessageFilter.Rule.Keep".i18n(lang)) }
         if rule.isRegex {
             parts.append("MessageFilter.Rule.Regex".i18n(lang))
         }
@@ -194,6 +198,7 @@ struct MessageFilterView: View {
                 Menu {
                     Button("MessageFilter.Export".i18n(lang)) { exportRules() }
                     Button("MessageFilter.Import".i18n(lang)) { importRules() }
+                    Button("MessageFilter.Test.Title".i18n(lang)) { testRulesExternally(rules) }
                 } label: {
                     // The header's own font is a small caps caption, which would make the control
                     // both hard to see and hard to hit.
@@ -246,7 +251,7 @@ struct MessageFilterView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(rule.pattern)
-                                        .foregroundColor(.primary)
+                                        .foregroundColor(rule.isEnabled ? .primary : .secondary)
                                         .lineLimit(2)
                                     Text(subtitle(for: rule))
                                         .font(.caption)
@@ -259,6 +264,8 @@ struct MessageFilterView: View {
                             }
                         }
                         .contextMenu {
+                            Button(rule.isEnabled ? "MessageFilter.Rule.Disable".i18n(lang) : "MessageFilter.Rule.Enable".i18n(lang)) { toggleEnabled(of: rule) }
+                            Button(rule.isException ? "MessageFilter.Rule.Hide".i18n(lang) : "MessageFilter.Rule.Keep".i18n(lang)) { toggleException(of: rule) }
                             Button(action: {
                                 editScope(of: rule)
                             }) {
@@ -303,7 +310,7 @@ struct MessageFilterView: View {
         }
 
         let exists = rules.contains {
-            $0.pattern == trimmedKeyword && $0.isRegex == newIsRegex
+            $0.hasSameDefinition(as: RGMessageFilterRule(pattern: trimmedKeyword, isRegex: newIsRegex))
         }
 
         guard !exists else {
@@ -376,7 +383,9 @@ struct MessageFilterView: View {
         guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
         // Editing one rule into an exact duplicate of another would leave two rows that cannot be
         // told apart; drop the edit instead.
-        if rules.contains(where: { $0.id != rule.id && $0.pattern == pattern && $0.isRegex == rule.isRegex }) {
+        var candidate = rule
+        candidate.pattern = pattern
+        if rules.contains(where: { $0.id != rule.id && $0.hasSameDefinition(as: candidate) }) {
             return
         }
         var updated = rules
@@ -391,6 +400,20 @@ struct MessageFilterView: View {
         withAnimation {
             rules = updated
         }
+    }
+
+    private func toggleEnabled(of rule: RGMessageFilterRule) {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        var updated = rules
+        updated[index].isEnabled.toggle()
+        rules = updated
+    }
+
+    private func toggleException(of rule: RGMessageFilterRule) {
+        guard let index = rules.firstIndex(where: { $0.id == rule.id }) else { return }
+        var updated = rules
+        updated[index].isException.toggle()
+        rules = updated
     }
 
     private func delete(_ rule: RGMessageFilterRule) {
@@ -500,8 +523,12 @@ private enum RGMessageFilterPatternEntry: ItemListNodeEntry {
 }
 
 private func rgMessageFilterPatternEditorController(context: AccountContext, rule: RGMessageFilterRule, apply: @escaping (String) -> Void) -> ViewController {
-    let statePromise = ValuePromise(rule.pattern, ignoreRepeated: true)
-    let stateValue = Atomic(value: rule.pattern)
+    return rgProTextEditorController(context: context, value: rule.pattern, titleKey: "MessageFilter.Rule.EditTitle", placeholderKey: rule.isRegex ? "MessageFilter.InputPlaceholderRegex" : "MessageFilter.InputPlaceholder", noticeKey: rule.isRegex ? "MessageFilter.Rule.EditMessageRegex" : "MessageFilter.Rule.EditMessage", isRegex: rule.isRegex, apply: apply)
+}
+
+func rgProTextEditorController(context: AccountContext, value: String, titleKey: String, placeholderKey: String, noticeKey: String, isRegex: Bool = false, apply: @escaping (String) -> Void) -> ViewController {
+    let statePromise = ValuePromise(value, ignoreRepeated: true)
+    let stateValue = Atomic(value: value)
 
     var dismissImpl: (() -> Void)?
 
@@ -517,7 +544,7 @@ private func rgMessageFilterPatternEditorController(context: AccountContext, rul
         // An empty keyword matches nothing and an uncompilable expression is inert; either would
         // look like the filter had silently broken. Removing a rule is a separate, explicit action.
         var canSave = !trimmed.isEmpty
-        if canSave && rule.isRegex {
+        if canSave && isRegex {
             canSave = RGMessageFilter.compiledRegex(for: trimmed) != nil
         }
 
@@ -530,11 +557,11 @@ private func rgMessageFilterPatternEditorController(context: AccountContext, rul
         })
 
         let entries: [RGMessageFilterPatternEntry] = [
-            .pattern(text, rule.isRegex ? "MessageFilter.InputPlaceholderRegex".i18n(lang) : "MessageFilter.InputPlaceholder".i18n(lang)),
-            .info(rule.isRegex ? "MessageFilter.Rule.EditMessageRegex".i18n(lang) : "MessageFilter.Rule.EditMessage".i18n(lang))
+            .pattern(text, placeholderKey.i18n(lang)),
+            .info(noticeKey.i18n(lang))
         ]
 
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("MessageFilter.Rule.EditTitle".i18n(lang)), leftNavigationButton: leftNavigationButton, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(titleKey.i18n(lang)), leftNavigationButton: leftNavigationButton, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, focusItemTag: RGMessageFilterPatternEntryTag.pattern, animateChanges: false)
 
         return (controllerState, (listState, arguments))
@@ -559,7 +586,7 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
         theme: theme,
         strings: strings
     )
-    // Status bar color will break if theme changed
+    legacyController.bindAppearance(context.sharedContext.presentationData)
     legacyController.statusBar.statusBarStyle = theme.rootController
         .statusBarStyle.style
     let editingState = MessageFilterEditingState(controller: legacyController, strings: strings)
@@ -611,7 +638,9 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
         legacyController: legacyController,
         manageSafeArea: true,
         content: {
-            MessageFilterView(wrapperController: legacyController, editing: editingState, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern)
+            MessageFilterView(wrapperController: legacyController, editing: editingState, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern, testRulesExternally: { [weak legacyController] rules in
+                legacyController?.push(rgMessageFilterTestController(context: context, rules: rules))
+            })
         }
     )
     let controller = UIHostingController(rootView: swiftUIView, ignoreSafeArea: true)

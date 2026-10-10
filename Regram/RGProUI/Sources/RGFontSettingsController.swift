@@ -1,7 +1,6 @@
 import Foundation
 import UIKit
 import SwiftUI
-import LegacyMediaPickerUI
 import RGSwiftUI
 import RGStrings
 import RGSimpleSettings
@@ -16,6 +15,8 @@ public struct RGFontSettingsView: SwiftUI.View {
     @State private var importedLatin = RGSimpleSettings.shared.fontImportedLatin
     @State private var importedChinese = RGSimpleSettings.shared.fontImportedChinese
     private let presentFontImporter: (@escaping (URL?) -> Void) -> Void
+    private let renameFont: (RGImportedFont, @escaping (String) -> Void) -> Void
+    private let confirmRemoval: (String, @escaping () -> Void) -> Void
     @State private var importing = false
     @State private var errorPresented = false
     @State private var errorText = ""
@@ -26,8 +27,10 @@ public struct RGFontSettingsView: SwiftUI.View {
     @State private var messages = RGSimpleSettings.shared.fontApplyToMessages
     @State private var interface = RGSimpleSettings.shared.fontApplyToInterface
 
-    public init(presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void) {
+    public init(presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void, renameFont: @escaping (RGImportedFont, @escaping (String) -> Void) -> Void, confirmRemoval: @escaping (String, @escaping () -> Void) -> Void) {
         self.presentFontImporter = presentFontImporter
+        self.renameFont = renameFont
+        self.confirmRemoval = confirmRemoval
     }
 
     private func previewFont(weight: UIFont.Weight = .regular, italic: Bool = false) -> SwiftUI.Font {
@@ -56,12 +59,13 @@ public struct RGFontSettingsView: SwiftUI.View {
         self.importing = true
         self.presentFontImporter { url in
             guard let url else { self.importing = false; return }
-            self.store.importFont(url: url) { result in
+            self.store.importFonts(url: url) { result in
                 // The native picker supplies a copy in our container; storage has retained its bytes.
                 try? FileManager.default.removeItem(at: url)
                 self.importing = false
                 switch result {
-                case let .success(font):
+                case let .success(fonts):
+                    guard let font = fonts.first(where: { chinese ? $0.chinese : $0.latin }) ?? fonts.first else { return }
                     if chinese && font.chinese {
                         self.importedChinese = font.id
                     } else if !chinese && font.latin {
@@ -80,17 +84,38 @@ public struct RGFontSettingsView: SwiftUI.View {
         }
     }
     private func importedRows(chinese: Bool) -> some SwiftUI.View {
-        ForEach(self.store.imported.filter { chinese ? $0.chinese : $0.latin }) { option in
+        ForEach(self.store.imported.filter { (chinese ? $0.chinese : $0.latin) && self.matches($0.title) }) { option in
             Button {
                 if chinese { self.importedChinese = option.id } else { self.importedLatin = option.id }
             } label: {
                 HStack {
-                    Text(option.title).foregroundColor(.primary)
-                    Text("Fonts.Imported".i18n(self.lang)).font(.caption).foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(option.title).foregroundColor(.primary)
+                        Text(chinese ? "Fonts.Chinese.Sample".i18n(self.lang) : "The quick brown fox 0123")
+                            .font(SwiftUI.Font(RGTypography.font(importedId: option.id, size: 17) ?? UIFont.systemFont(ofSize: 17)))
+                            .foregroundColor(.secondary).lineLimit(1)
+                    }
                     Spacer()
                     if (chinese ? self.importedChinese : self.importedLatin) == option.id { Image(systemName: "checkmark") }
                 }.padding(.vertical, 10).contentShape(Rectangle())
-            }.buttonStyle(.plain).disabled(self.store.downloading != nil)
+            }.buttonStyle(.plain).disabled(self.store.downloading != nil || self.importing)
+                .contextMenu {
+                    Button("Fonts.Rename".i18n(self.lang)) {
+                        self.renameFont(option) { title in
+                            do { try self.store.rename(id: option.id, title: title) }
+                            catch { self.showError("Fonts.Management.Error") }
+                        }
+                    }
+                    Button("Fonts.Delete".i18n(self.lang), role: .destructive) {
+                        self.confirmRemoval("Fonts.Delete.Notice") {
+                            do {
+                                try self.store.remove(id: option.id)
+                                if self.importedLatin == option.id { self.importedLatin = ""; self.family = .system }
+                                if self.importedChinese == option.id { self.importedChinese = ""; self.chineseFamily = .system }
+                            } catch { self.showError("Fonts.Management.Error") }
+                        }
+                    }
+                }
         }
     }
 
@@ -121,7 +146,7 @@ public struct RGFontSettingsView: SwiftUI.View {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(title).font(.system(size: 15, weight: .semibold)).foregroundColor(.primary)
-                    Text(sample).font(font).foregroundColor(.secondary).lineLimit(1)
+                    Text(available ? sample : "Fonts.Preview.Download".i18n(self.lang)).font(available ? font : .system(size: 14)).foregroundColor(.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 8)
                 Image(systemName: selected ? "checkmark.circle.fill" : available ? "circle" : "icloud.and.arrow.down")
@@ -215,7 +240,7 @@ public struct RGFontSettingsView: SwiftUI.View {
                                 Text(group).font(.system(size: 13, weight: .semibold)).foregroundColor(.secondary)
                                     .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 14).padding(.bottom, 2)
                                 ForEach(options) { option in
-                                    self.fontRow(title: option.title, sample: "The quick brown fox 0123", selected: self.importedLatin == option.selectionId, available: self.store.isDownloaded(prefix: option.id), font: .system(size: 18)) {
+                                    self.fontRow(title: option.title, sample: "The quick brown fox 0123", selected: self.importedLatin == option.selectionId, available: self.store.isDownloaded(prefix: option.id), font: SwiftUI.Font(RGTypography.font(importedId: option.selectionId, size: 18) ?? UIFont.systemFont(ofSize: 18))) {
                                         self.download(option.id) { self.importedLatin = option.selectionId }
                                     }.accessibilityIdentifier("regram.font.additional.\(option.id)")
                                 }
@@ -252,6 +277,21 @@ public struct RGFontSettingsView: SwiftUI.View {
                 Text("Fonts.Import.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Cloud.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Scripts.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Fonts.Storage".i18n(self.lang)).font(.headline)
+                    Text("Fonts.Storage.Downloads".i18n(self.lang) + ": " + ByteCountFormatter.string(fromByteCount: self.store.storageBytes(downloads: true), countStyle: .file))
+                    Text("Fonts.Imported".i18n(self.lang) + ": " + ByteCountFormatter.string(fromByteCount: self.store.storageBytes(downloads: false), countStyle: .file))
+                    Button("Fonts.ClearDownloads".i18n(self.lang), role: .destructive) {
+                        self.confirmRemoval("Fonts.ClearDownloads.Notice") {
+                            do {
+                                try self.store.clearDownloads()
+                                self.family = .system; self.chineseFamily = .system
+                                self.importedLatin = RGSimpleSettings.shared.fontImportedLatin
+                            } catch { self.showError("Fonts.Management.Error") }
+                        }
+                    }.disabled(self.store.downloading != nil || self.importing)
+                }.font(.footnote).padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
                 Button("Fonts.Reset".i18n(self.lang)) {
                     self.store.cancel(); self.family = .system; self.chineseFamily = .system
                     self.importedLatin = ""; self.importedChinese = ""; self.messages = true; self.interface = true
@@ -273,29 +313,27 @@ public struct RGFontSettingsView: SwiftUI.View {
 public func rgFontSettingsController(context: AccountContext) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
+    controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "Fonts.Title".i18n(data.strings.baseLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGFontSettingsView(presentFontImporter: { [weak controller] completion in
             guard let controller else { completion(nil); return }
             let data = context.sharedContext.currentPresentationData.with { $0 }
-            var completed = false
-            let finish: (URL?) -> Void = { url in
-                guard !completed else { return }
-                completed = true
-                completion(url)
-            }
-            // Copy mode avoids open-in-place provider permissions. Accept every item here because
-            // providers can mislabel TTF/OTF/TTC; CoreText validates the selected file's contents.
-            let picker = legacyICloudFilePicker(theme: data.theme, mode: .import, documentTypes: ["public.item"], dismissed: {
-                // The picker's wrapper reports dismissal before its selection callback. Defer the
-                // cancel fallback so a selected URL wins, while swipe dismissal also resets the UI.
-                DispatchQueue.main.async { finish(nil) }
-            }, completion: { urls in
-                finish(urls.first)
-            })
+            // Accept fonts and broadly typed file-provider data; CoreText checks actual contents.
+            let picker = RGFontDocumentPickerController(theme: data.theme, completion: completion)
             controller.present(picker, in: .window(.root))
+        }, renameFont: { [weak controller] font, apply in
+            controller?.push(rgProTextEditorController(context: context, value: font.title, titleKey: "Fonts.Rename", placeholderKey: "Fonts.Rename", noticeKey: "Fonts.Rename.Notice", apply: apply))
+        }, confirmRemoval: { [weak controller] notice, apply in
+            let data = context.sharedContext.currentPresentationData.with { $0 }
+            let sheet = ActionSheetController(presentationData: data)
+            sheet.setItemGroups([ActionSheetItemGroup(items: [
+                ActionSheetTextItem(title: notice.i18n(data.strings.baseLanguageCode)),
+                ActionSheetButtonItem(title: data.strings.Common_Delete, color: .destructive, action: { [weak sheet] in sheet?.dismissAnimated(); apply() })
+            ]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: data.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
+            controller?.present(sheet, in: .window(.root))
         })
     })
-    controller.bind(controller: UIHostingController(rootView: content.preferredColorScheme(data.theme.overallDarkAppearance ? .dark : .light).tint(Color(uiColor: data.theme.list.itemAccentColor)), ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
     return controller
 }

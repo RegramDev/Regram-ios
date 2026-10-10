@@ -1427,6 +1427,8 @@ public protocol SharedAccountContext: AnyObject {
     var immediateRGStatus: RGStatus { get }
     var RGIAP: RGIAPManager? { get }
     func makeRGProController(context: AccountContext) -> ViewController
+    // MARK: Regram — preserve the query when jumping from the shared settings search.
+    func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController
     func makeRGPayWallController(context: AccountContext) -> ViewController?
     func makeRGUpdateIOSController() -> ViewController
 

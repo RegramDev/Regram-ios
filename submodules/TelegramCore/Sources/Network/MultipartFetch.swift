@@ -4,6 +4,7 @@ import SwiftSignalKit
 import TelegramApi
 import MtProtoKit
 import RangeSet
+import RGSimpleSettings // MARK: Regram — user-visible transfer diagnostics.
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
@@ -892,7 +893,8 @@ private final class MultipartFetchManager {
                 guard let strongSelf = self else {
                     return
                 }
-                
+                // MARK: Regram — account for accepted network payload, including CDN parts.
+                RGTransferStatistics.shared.recordReceived(byteCount: data.count)
                 strongSelf.networkStatsContext?.add(downloadEvents: [
                     NetworkStatsContext.DownloadEvent(
                         networkType: info.networkType,

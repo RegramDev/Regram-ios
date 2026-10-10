@@ -16,8 +16,10 @@ import SettingsUI
 // Optional
 import RGSimpleSettings
 import RGLogging
+import RGStrings
 
 private enum RGProControllerSection: Int32, RGItemListSection {
+    case search
     case base
     case antiFeatures
     case appearance
@@ -34,6 +36,10 @@ private enum RGProDisclosureLink: String {
     case appIcons
     case appBages
     case fonts
+    case backup
+    case chatPreferences
+    case revokedMessages
+    case diagnostics
 }
 
 private enum RGProToggles: String {
@@ -43,6 +49,7 @@ private enum RGProToggles: String {
     case localPremium
     case disableLinkPreview
     case panguSpacing
+    case filterNotifications
 }
 
 private enum RGProOneFromManySetting: String {
@@ -51,18 +58,19 @@ private enum RGProOneFromManySetting: String {
     case defaultOutgoingFormatting
 }
 
-private enum RGProAction {
+private enum RGProAction: String {
     case resetIAP
     case eraseAllData
 }
 
 private typealias RGProControllerEntry = RGItemListUIEntry<RGProControllerSection, RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>
 
-private func RGProControllerEntries(presentationData: PresentationData) -> [RGProControllerEntry] {
+private func RGProControllerEntries(presentationData: PresentationData, searchQuery: String?) -> [RGProControllerEntry] {
     var entries: [RGProControllerEntry] = []
     let lang = presentationData.strings.baseLanguageCode
     
     let id = RGItemListCounter()
+    entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: searchQuery ?? "", placeholder: presentationData.strings.Common_Search))
     
     entries.append(.disclosure(id: id.count, section: .base, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
@@ -81,9 +89,11 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     entries.append(.notice(id: id.count, section: .base, text: "Pangu.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .base, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "OutgoingFormatting.Notice".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .base, link: .chatPreferences, text: "ChatPreferences.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiFeatures, text: "AntiFeatures.Header".i18n(lang)))
     // MARK: Regram — chats anti-revoke is on for individually (toggled from their profile).
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiRevokeChats, text: "AntiRevoke.Chats.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .revokedMessages, text: "Revoked.Title".i18n(lang)))
     // MARK: Regram — ghost mode.
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .ghostMode, text: "Ghost.Header".i18n(lang)))
 
@@ -92,11 +102,15 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .mentionsAndRepliesNotifications, text: "Notifications.MentionsAndReplies.Title".i18n(lang), value: "Notifications.MentionsAndReplies.value.\(RGSimpleSettings.shared.mentionsAndRepliesNotifications)".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .filterNotifications, value: RGSimpleSettings.shared.filterNotifications, text: "Notifications.ContentFilter".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
+    entries.append(.notice(id: id.count, section: .notifications, text: (RGSimpleSettings.shared.canSharePreferencesWithExtensions ? "Notifications.ContentFilter.Notice" : "Notifications.ContentFilter.Unavailable").i18n(lang)))
     entries.append(.header(id: id.count, section: .appearance, text: presentationData.strings.Appearance_Title.uppercased(), badge: nil))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .fonts, text: "Fonts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
     entries.append(.notice(id: id.count, section: .appearance, text: "AppBadge.Notice".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .footer, link: .backup, text: "Backup.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .footer, link: .diagnostics, text: "Diagnostics.Title".i18n(lang)))
 
     entries.append(.action(id: id.count, section: .footer, actionType: .eraseAllData, text: "EraseData.Title".i18n(lang), kind: .destructive))
     entries.append(.notice(id: id.count, section: .footer, text: "EraseData.Notice".i18n(lang)))
@@ -105,19 +119,30 @@ private func RGProControllerEntries(presentationData: PresentationData) -> [RGPr
     entries.append(.action(id: id.count, section: .footer, actionType: .resetIAP, text: "Reset Pro", kind: .destructive))
     #endif
     
-    return entries
+    return filterRGItemListUIEntrires(entries: entries, by: searchQuery, matching: { entry, query in
+        let key: String
+        switch entry {
+        case let .disclosure(_, _, link, _): key = link.rawValue
+        case let .toggle(_, _, setting, _, _, _): key = setting.rawValue
+        case let .oneFromManySelector(_, _, setting, _, _, _): key = setting.rawValue
+        case let .action(_, _, action, _, _): key = action.rawValue
+        default: return false
+        }
+        return RGProSearchIndex.matches(query: query, id: key, lang: lang)
+    })
 }
 
 public func okUndoController(_ text: String, _ presentationData: PresentationData) -> UndoOverlayController {
     return UndoOverlayController(presentationData: presentationData, content: .succeed(text: text, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false })
 }
 
-public func rgProController(context: AccountContext) -> ViewController {
+public func rgProController(context: AccountContext, initialSearchQuery: String? = nil) -> ViewController {
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var askForRestart: (() -> Void)?
 
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    let searchPromise = ValuePromise(initialSearchQuery, ignoreRepeated: true)
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -136,6 +161,9 @@ public func rgProController(context: AccountContext) -> ViewController {
             case .panguSpacing:
                 // Read on each send, so no restart is needed.
                 RGSimpleSettings.shared.panguSpacing = value
+            case .filterNotifications:
+                RGSimpleSettings.shared.filterNotifications = value
+                RGSimpleSettings.shared.synchronizeShared()
         }
     }, setOneFromManyValue: { setting in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -201,6 +229,10 @@ public func rgProController(context: AccountContext) -> ViewController {
                 pushControllerImpl?(rgAntiRevokeChatsController(context: context))
             case .fonts:
                 pushControllerImpl?(rgFontSettingsController(context: context))
+            case .backup: pushControllerImpl?(rgSettingsBackupController(context: context))
+            case .chatPreferences: pushControllerImpl?(rgChatPreferencesController(context: context))
+            case .revokedMessages: pushControllerImpl?(rgRevokedMessagesController(context: context))
+            case .diagnostics: pushControllerImpl?(rgDiagnosticsController(context: context))
             case .appIcons:
                 pushControllerImpl?(themeSettingsController(context: context, focusOnItemTag: .icon))
             case .appBages:
@@ -253,12 +285,12 @@ public func rgProController(context: AccountContext) -> ViewController {
                     nil)
                 })
         }
-    })
+    }, searchInput: { query in searchPromise.set(query) })
     
-    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
-    |> map { presentationData, _ ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
+    |> map { presentationData, _, searchQuery ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
-        let entries = RGProControllerEntries(presentationData: presentationData)
+        let entries = RGProControllerEntries(presentationData: presentationData, searchQuery: searchQuery)
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Regram Pro"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         

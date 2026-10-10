@@ -2,6 +2,12 @@ import Foundation
 
 public protocol AllowedUserDefaultTypes {}
 
+public protocol RGPreferenceCache {
+    var preferenceKey: String { get }
+    var preferenceStorage: UserDefaults { get }
+    func invalidatePreferenceCache()
+}
+
 /* // This one is more painful than helpful
 extension Bool: AllowedUserDefaultTypes {}
 extension String: AllowedUserDefaultTypes {}
@@ -17,11 +23,14 @@ extension Array: AllowedUserDefaultTypes where Element: AllowedUserDefaultTypes 
 
 // Does not support Optional types due to caching
 @propertyWrapper
-public class UserDefault<T> /*where T: AllowedUserDefaultTypes*/ {
+public class UserDefault<T>: RGPreferenceCache /*where T: AllowedUserDefaultTypes*/ {
     public let key: String
     public let userDefaults: UserDefaults
     private var cachedValue: T?
     private let cacheLock = NSRecursiveLock()
+    public var preferenceKey: String { self.key }
+    public var preferenceStorage: UserDefaults { self.userDefaults }
+    public func invalidatePreferenceCache() { self.cacheLock.lock(); self.cachedValue = nil; self.cacheLock.unlock() }
     
     public init(key: String, userDefaults: UserDefaults = .standard) {
         self.key = key
@@ -120,13 +129,16 @@ public class UserDefault<T> /*where T: AllowedUserDefaultTypes*/ {
 /// Thread-safe UserDefaults dictionary wrapper
 /// - Important: Note that this is a `class`, i.e. reference (not value) type
 /// - Important: Key can only be String type
-public class UserDefaultsBackedDictionary<Key: Hashable, Value> {
+public class UserDefaultsBackedDictionary<Key: Hashable, Value>: RGPreferenceCache {
     public let userDefaultsKey: String
     public let userDefaults: UserDefaults
         
     private var container: [Key: Value]? = nil
     private let rwlock = RWLock()
     private let threadSafe: Bool
+    public var preferenceKey: String { self.userDefaultsKey }
+    public var preferenceStorage: UserDefaults { self.userDefaults }
+    public func invalidatePreferenceCache() { self.rwlock.writeLock(); self.container = nil; self.rwlock.unlock() }
 
     public var keys: [Key] {
         #if DEBUG

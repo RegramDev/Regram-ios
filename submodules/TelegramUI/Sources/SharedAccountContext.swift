@@ -4890,6 +4890,11 @@ extension SharedAccountContextImpl {
         return controller
     }
 
+    // MARK: Regram — cross-page settings search.
+    public func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController {
+        return rgProController(context: context, initialSearchQuery: searchQuery)
+    }
+
     public func makeRGPayWallController(context: AccountContext) -> ViewController? {
         guard #available(iOS 13.0, *) else {
             return nil

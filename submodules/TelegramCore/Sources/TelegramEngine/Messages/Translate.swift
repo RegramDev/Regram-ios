@@ -283,6 +283,12 @@ func _internal_translateRichMessages(account: Account, inputPeer: Api.InputPeer,
     }
 }
 
+// MARK: Regram — segment keys keep local/system translation aligned with the entity protection plan.
+private struct RGLocalTranslationSegmentKey: Hashable {
+    let messageId: MessageId
+    let index: Int
+}
+
 private func _internal_translateMessagesByPeerId(account: Account, peerId: EnginePeer.Id, messageIds: [EngineMessage.Id], fromLang: String?, toLang: String, enableLocalIfPossible: Bool, tone: TranslationTone = .neutral) -> Signal<Void, TranslationError> {
     return account.postbox.transaction { transaction -> (Api.InputPeer?, [Message]) in
         return (transaction.getPeer(peerId).flatMap(apiInputPeer), messageIds.compactMap({ transaction.getMessage($0) }))
@@ -349,11 +355,13 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
             msgs = .single(nil)
         } else {
             if enableLocalIfPossible, let engineExperimentalInternalTranslationService, let fromLang {
-                msgs = account.postbox.transaction { transaction -> [MessageId: String] in
-                    var texts: [MessageId: String] = [:]
+                // MARK: Regram — the system service translates prose only, retaining immutable
+                // labels/addresses/code and reconstructing original nested formatting afterwards.
+                msgs = account.postbox.transaction { transaction -> [MessageId: (String, [MessageTextEntity])] in
+                    var texts: [MessageId: (String, [MessageTextEntity])] = [:]
                     for messageId in plainMessageIds {
                         if let message = transaction.getMessage(messageId) {
-                            texts[message.id] = message.text
+                            texts[message.id] = (message.text, message.textEntitiesAttribute?.entities ?? [])
                         }
                     }
                     return texts
@@ -361,10 +369,16 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
                 |> castError(TranslationError.self)
                 |> mapToSignal { messageTexts -> Signal<Api.messages.TranslatedText?, TranslationError> in
                     var mappedTexts: [AnyHashable: String] = [:]
-                    for (id, text) in messageTexts {
-                        mappedTexts[AnyHashable(id)] = text
+                    var plans: [MessageId: (RGTranslationLinkPlan, [MessageTextEntity])] = [:]
+                    for (id, value) in messageTexts {
+                        let planned = rgTranslationPlan(value.0, entities: value.1)
+                        plans[id] = planned
+                        for (index, segment) in planned.0.segments.enumerated() where segment.id == nil && !segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            mappedTexts[AnyHashable(RGLocalTranslationSegmentKey(messageId: id, index: index))] = segment.text
+                        }
                     }
-                    return engineExperimentalInternalTranslationService.translate(texts: mappedTexts, fromLang: fromLang, toLang: toLang)
+                    let translated: Signal<[AnyHashable: String]?, NoError> = mappedTexts.isEmpty ? .single([:]) : engineExperimentalInternalTranslationService.translate(texts: mappedTexts, fromLang: fromLang, toLang: toLang)
+                    return translated
                     |> castError(TranslationError.self)
                     |> mapToSignal { resultTexts -> Signal<Api.messages.TranslatedText?, TranslationError> in
                         guard let resultTexts else {
@@ -372,10 +386,20 @@ private func _internal_translateMessagesByPeerId(account: Account, peerId: Engin
                         }
                         var result: [Api.TextWithEntities] = []
                         for messageId in plainMessageIds {
-                            if let text = resultTexts[AnyHashable(messageId)] {
-                                result.append(.textWithEntities(.init(text: text, entities: [])))
-                            } else if let text = messageTexts[messageId] {
-                                result.append(.textWithEntities(.init(text: text, entities: [])))
+                            if let (plan, entities) = plans[messageId] {
+                                let restored = plan.restore(translations: plan.segments.enumerated().map { index, segment in
+                                    resultTexts[AnyHashable(RGLocalTranslationSegmentKey(messageId: messageId, index: index))] ?? segment.text
+                                })
+                                let mapped = restored.ranges.map { MessageTextEntity(range: $0.range.location..<NSMaxRange($0.range), type: entities[$0.id].type) }
+                                var outputEntities: [Api.MessageEntity] = []
+                                for entity in mapped {
+                                    if case let .TextMention(peerId) = entity.type {
+                                        outputEntities.append(.messageEntityMentionName(.init(offset: Int32(entity.range.lowerBound), length: Int32(entity.range.count), userId: peerId.id._internalGetInt64Value())))
+                                    } else {
+                                        outputEntities.append(contentsOf: apiEntitiesFromMessageTextEntities([entity], associatedPeers: SimpleDictionary()))
+                                    }
+                                }
+                                result.append(.textWithEntities(.init(text: restored.text, entities: outputEntities)))
                             } else {
                                 result.append(.textWithEntities(.init(text: "", entities: [])))
                             }

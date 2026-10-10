@@ -230,10 +230,11 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
 
 public func filterRGItemListUIEntrires<Section: RGItemListSection & Hashable, BoolSetting: Hashable, SliderSetting: Hashable, OneFromManySetting: Hashable, DisclosureLink: Hashable, ActionType: Hashable>(
     entries: [RGItemListUIEntry<Section, BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>],
-    by searchQuery: String?
+    by searchQuery: String?,
+    matching: ((RGItemListUIEntry<Section, BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>, String) -> Bool)? = nil
 ) -> [RGItemListUIEntry<Section, BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>] {
     
-    guard let query = searchQuery?.lowercased(), !query.isEmpty else {
+    guard let query = searchQuery?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !query.isEmpty else {
         return entries
     }
     
@@ -242,6 +243,7 @@ public func filterRGItemListUIEntrires<Section: RGItemListSection & Hashable, Bo
     var filteredEntries: [RGItemListUIEntry<Section, BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>] = []
     
     func entryMatches(_ entry: RGItemListUIEntry<Section, BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>, query: String) -> Bool {
+        if matching?(entry, query) == true { return true }
         switch entry {
         case .header(_, _, let text, _):
             return text.lowercased().contains(query)

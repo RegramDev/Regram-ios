@@ -1,5 +1,25 @@
 import Foundation
 
+/// Stable file hash plus an optional face within a TTC. Existing 64-character selections still
+/// identify face zero; every face shares the same retained file rather than duplicating its bytes.
+public struct RGFontSelection {
+    public let fileId: String
+    public let faceIndex: Int
+    public init?(id: String) {
+        let parts = id.split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 1 || parts.count == 2,
+              parts[0].count == 64, parts[0].allSatisfy({ $0.isHexDigit }) else { return nil }
+        if parts.count == 2 {
+            guard let index = Int(parts[1]), index > 0, String(index) == parts[1] else { return nil }
+            self.faceIndex = index
+        } else { self.faceIndex = 0 }
+        self.fileId = String(parts[0])
+    }
+    public static func id(fileId: String, faceIndex: Int) -> String {
+        return faceIndex == 0 ? fileId : "\(fileId):\(faceIndex)"
+    }
+}
+
 public enum RGFontFamily: String, CaseIterable {
     case system, jetBrainsMono, jetBrainsMonoNL, inter, poppins, lora, ibmPlexSans, ibmPlexSerif, ibmPlexMono, ibmPlexSansSC, sourceSans3, sourceSerif4, rounded, serif
 

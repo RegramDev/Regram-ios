@@ -2124,18 +2124,29 @@ func rgExternalTranslate(_ text: String, _ toLang: String) -> Signal<String, Tra
     }
 }
 
-// MARK: Regram — external backends must preserve literal and formatted links exactly.
-func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity], toLang: String) -> Signal<(String, [MessageTextEntity]), TranslateFetchError> {
-    var links = entities.filter { entity in
-        switch entity.type { case .Url, .TextUrl, .Email: return true; default: return false }
-    }
+// MARK: Regram — preserve links, code and identifiers; remap nested formatting after translation.
+func rgTranslationPlan(_ text: String, entities: [MessageTextEntity]) -> (RGTranslationLinkPlan, [MessageTextEntity]) {
+    var preserved = entities
     for range in RGTranslationLinkPlan.literalLinkRanges(in: text) {
         let interval = range.location..<NSMaxRange(range)
-        if !links.contains(where: { $0.range.overlaps(interval) }) { links.append(MessageTextEntity(range: interval, type: .Url)) }
+        if !preserved.contains(where: { entity in
+            switch entity.type { case .Url, .TextUrl, .Email, .Code, .Pre: return entity.range.overlaps(interval); default: return false }
+        }) { preserved.append(MessageTextEntity(range: interval, type: .Url)) }
     }
-    let plan = RGTranslationLinkPlan(text: text, ranges: links.enumerated().map { index, entity in
-        RGTranslationLinkPlan.ProtectedRange(range: NSRange(location: entity.range.lowerBound, length: entity.range.count), id: index)
+    let protectedIds = Set(preserved.enumerated().compactMap { index, entity -> Int? in
+        switch entity.type {
+        case .Url, .TextUrl, .Email, .Code, .Pre, .Mention, .TextMention, .Hashtag, .BotCommand, .CustomEmoji, .PhoneNumber, .BankCard, .TonAddress, .FormattedDate: return index
+        default: return nil
+        }
     })
+    let plan = RGTranslationLinkPlan(text: text, ranges: preserved.enumerated().map { index, entity in
+        RGTranslationLinkPlan.ProtectedRange(range: NSRange(location: entity.range.lowerBound, length: entity.range.count), id: index)
+    }, protectedIds: protectedIds)
+    return (plan, preserved)
+}
+
+func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity], toLang: String) -> Signal<(String, [MessageTextEntity]), TranslateFetchError> {
+    let (plan, preserved) = rgTranslationPlan(text, entities: entities)
     let signals: [Signal<String, TranslateFetchError>] = plan.segments.map { segment in
         if segment.id != nil || segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .single(segment.text) }
         let leading = String(segment.text.prefix { $0.isWhitespace })
@@ -2147,7 +2158,7 @@ func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity],
     return combineLatest(signals) |> map { values in
         let restored = plan.restore(translations: values)
         return (restored.text, restored.ranges.map { protected in
-            MessageTextEntity(range: protected.range.location..<NSMaxRange(protected.range), type: links[protected.id].type)
+            MessageTextEntity(range: protected.range.location..<NSMaxRange(protected.range), type: preserved[protected.id].type)
         })
     }
 }

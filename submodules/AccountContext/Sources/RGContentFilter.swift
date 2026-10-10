@@ -144,6 +144,7 @@ public struct RGContentFilterState {
     /// it has to hold everywhere they post.
     public let filterDisabledPeerIds: Set<Int64>
     public let accountPeerId: EnginePeer.Id
+    public let temporarilyVisiblePeerIds: Set<Int64>
 
     /// Generation the verdict cache is keyed on, captured with the rules so that a rule change
     /// landing mid-pass cannot mix verdicts from two rule sets into one table.
@@ -162,6 +163,7 @@ public struct RGContentFilterState {
         self.hiddenSenderIds = isProUnlocked ? settings.blockedPeerIds : []
         self.filterDisabledPeerIds = settings.messageFilterDisabledPeerIds
         self.accountPeerId = accountPeerId
+        self.temporarilyVisiblePeerIds = settings.temporarilyVisiblePeerIds(accountId: accountPeerId.toInt64())
         self.generation = settings.contentFilterGeneration
     }
 
@@ -175,6 +177,8 @@ public struct RGContentFilterState {
     ///   - peerId: the conversation, used to apply rules scoped to specific chats.
     ///   - isIncoming: keyword rules only apply to messages you received.
     public func shouldHide(text: String, authorId: EnginePeer.Id?, peerId: EnginePeer.Id, isIncoming: Bool) -> Bool {
+        // MARK: Regram — explicit temporary recovery is local display only; notifications stay filtered.
+        if self.temporarilyVisiblePeerIds.contains(peerId.toInt64()) { return false }
         if !self.hiddenSenderIds.isEmpty, let authorId = authorId, authorId != self.accountPeerId, self.hiddenSenderIds.contains(authorId.toInt64()) {
             return true
         }

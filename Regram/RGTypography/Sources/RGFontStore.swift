@@ -29,7 +29,7 @@ private struct RGCloudCatalog: Decodable {
 
 public struct RGImportedFont: Codable, Identifiable {
     public let id: String
-    public let title: String
+    public var title: String
     public let latin: Bool
     public let chinese: Bool
 }
@@ -76,10 +76,10 @@ public enum RGFontStoreError: Error {
         return url
     }
     nonisolated public static func importedURL(id: String, italic: Bool = false) -> URL? {
-        guard id.count == 64, id.allSatisfy({ $0.isHexDigit }) else { return nil }
+        guard let selection = RGFontSelection(id: id) else { return nil }
         if let family = self.additionalFamilies.first(where: { $0.selectionId == id }),
            let url = self.cachedURL(filename: italic ? (family.italic ?? family.regular) : family.regular) { return url }
-        let url = self.root.appendingPathComponent("Imported/\(id).font")
+        let url = self.root.appendingPathComponent("Imported/\(selection.fileId).font")
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     public func isDownloaded(prefix: String?) -> Bool {
@@ -200,37 +200,100 @@ public enum RGFontStoreError: Error {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
     public func importFont(url: URL, completion: @escaping (Result<RGImportedFont, Error>) -> Void) {
+        self.importFonts(url: url) { result in completion(result.map { $0[0] }) }
+    }
+
+    public func importFonts(url: URL, completion: @escaping (Result<[RGImportedFont], Error>) -> Void) {
         Task {
             do {
-                let value = try await Task.detached { () -> RGImportedFont in
+                let imported = try await Task.detached { () -> [RGImportedFont] in
                     let scoped = url.startAccessingSecurityScopedResource()
                     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
                     let values = try url.resourceValues(forKeys: [.fileSizeKey])
                     if let size = values.fileSize, size > 64 * 1024 * 1024 { throw RGFontStoreError.tooLarge }
                     let data = try Data(contentsOf: url, options: .mappedIfSafe)
                     guard !data.isEmpty, data.count <= 64 * 1024 * 1024 else { throw RGFontStoreError.tooLarge }
-                    guard let descriptor = (CTFontManagerCreateFontDescriptorsFromData(data as CFData) as? [CTFontDescriptor])?.first else { throw RGFontStoreError.invalidFont }
-                    let font = CTFontCreateWithFontDescriptor(descriptor, 17, nil)
-                    guard let charset = CTFontCopyCharacterSet(font) as CharacterSet? else { throw RGFontStoreError.invalidFont }
-                    let latin = charset.contains("A".unicodeScalars.first!) && charset.contains("a".unicodeScalars.first!)
-                    let chinese = charset.contains("中".unicodeScalars.first!)
-                    guard latin || chinese else { throw RGFontStoreError.invalidFont }
+                    guard let descriptors = CTFontManagerCreateFontDescriptorsFromData(data as CFData) as? [CTFontDescriptor], !descriptors.isEmpty else { throw RGFontStoreError.invalidFont }
                     let id = Self.hash(data)
+                    let fonts: [RGImportedFont] = descriptors.enumerated().compactMap { index, descriptor in
+                        let font = CTFontCreateWithFontDescriptor(descriptor, 17, nil)
+                        let charset = CTFontCopyCharacterSet(font) as CharacterSet
+                        let latin = charset.contains("A".unicodeScalars.first!) && charset.contains("a".unicodeScalars.first!)
+                        let chinese = charset.contains("中".unicodeScalars.first!)
+                        guard latin || chinese else { return nil }
+                        let title = (CTFontDescriptorCopyAttribute(descriptor, kCTFontDisplayNameAttribute) as? String) ?? url.deletingPathExtension().lastPathComponent
+                        return RGImportedFont(id: RGFontSelection.id(fileId: id, faceIndex: index), title: title, latin: latin, chinese: chinese)
+                    }
+                    guard !fonts.isEmpty else { throw RGFontStoreError.invalidFont }
                     let directory = Self.root.appendingPathComponent("Imported", isDirectory: true)
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     let destination = directory.appendingPathComponent("\(id).font")
                     if !FileManager.default.fileExists(atPath: destination.path) { try data.write(to: destination, options: .atomic) }
-                    let title = (CTFontDescriptorCopyAttribute(descriptor, kCTFontDisplayNameAttribute) as? String) ?? url.deletingPathExtension().lastPathComponent
-                    return RGImportedFont(id: id, title: title, latin: latin, chinese: chinese)
+                    return fonts
                 }.value
-                if !self.imported.contains(where: { $0.id == value.id }) {
-                    let updated = self.imported + [value]
+                let additions = imported.filter { font in !self.imported.contains(where: { $0.id == font.id }) }
+                if !additions.isEmpty {
+                    let updated = self.imported + additions
                     try JSONEncoder().encode(updated).write(to: Self.root.appendingPathComponent("imported.json"), options: .atomic)
                     self.imported = updated
                 }
                 self.publishRevision()
-                completion(.success(value))
+                completion(.success(imported))
             } catch { completion(.failure(error)) }
         }
+    }
+
+    public func rename(id: String, title: String) throws {
+        let title = String(title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+        guard !title.isEmpty, let index = self.imported.firstIndex(where: { $0.id == id }) else { return }
+        var updated = self.imported
+        updated[index].title = title
+        try JSONEncoder().encode(updated).write(to: Self.root.appendingPathComponent("imported.json"), options: .atomic)
+        self.imported = updated
+    }
+
+    public func remove(id: String) throws {
+        guard let selection = RGFontSelection(id: id), self.imported.contains(where: { $0.id == id }) else { return }
+        let updated = self.imported.filter { $0.id != id }
+        let indexURL = Self.root.appendingPathComponent("imported.json")
+        try JSONEncoder().encode(updated).write(to: indexURL, options: .atomic)
+        do {
+            if !updated.contains(where: { RGFontSelection(id: $0.id)?.fileId == selection.fileId }), let url = Self.importedURL(id: id) {
+                try FileManager.default.removeItem(at: url)
+            }
+        } catch {
+            try? JSONEncoder().encode(self.imported).write(to: indexURL, options: .atomic)
+            throw error
+        }
+        self.imported = updated
+        if RGSimpleSettings.shared.fontImportedLatin == id {
+            RGSimpleSettings.shared.fontImportedLatin = ""
+            RGSimpleSettings.shared.fontFamily = RGFontFamily.system.rawValue
+        }
+        if RGSimpleSettings.shared.fontImportedChinese == id {
+            RGSimpleSettings.shared.fontImportedChinese = ""
+            RGSimpleSettings.shared.fontChineseFamily = RGChineseFontFamily.system.rawValue
+        }
+        self.publishRevision()
+    }
+
+    public func storageBytes(downloads: Bool) -> Int64 {
+        let directory = Self.root.appendingPathComponent(downloads ? "Cloud" : "Imported")
+        guard let files = FileManager.default.enumerator(at: directory, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else { return 0 }
+        var total: Int64 = 0
+        for case let url as URL in files {
+            if let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]), values.isRegularFile == true { total += Int64(values.fileSize ?? 0) }
+        }
+        return total
+    }
+
+    public func clearDownloads() throws {
+        self.cancel()
+        let directory = Self.root.appendingPathComponent("Cloud")
+        if FileManager.default.fileExists(atPath: directory.path) { try FileManager.default.removeItem(at: directory) }
+        RGSimpleSettings.shared.fontFamily = RGFontFamily.system.rawValue
+        RGSimpleSettings.shared.fontChineseFamily = RGChineseFontFamily.system.rawValue
+        if Self.additionalFamilies.contains(where: { $0.selectionId == RGSimpleSettings.shared.fontImportedLatin }) { RGSimpleSettings.shared.fontImportedLatin = "" }
+        self.publishRevision()
     }
 }

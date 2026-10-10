@@ -3,6 +3,9 @@ import Foundation
 import LegacyUI
 import SwiftUI
 import TelegramPresentationData
+import SwiftSignalKit
+import RGSimpleSettings
+import RGTypography
 
 
 @available(iOS 13.0, *)
@@ -68,7 +71,8 @@ public struct RGSwiftUIView<Content: View>: View {
     @ObservedObject var containerViewLayout: ObservedValue<ContainerViewLayout?>
 //    @ObservedObject var containerViewLayoutUpdateCount: ObservedValue<Int64>
 
-    private var lang: String
+    @ObservedObject private var languageModel: ObservedValue<String>
+    @ObservedObject private var themeModel: ObservedValue<PresentationTheme?>
     
     public init(
         legacyController: LegacySwiftUIController,
@@ -82,7 +86,8 @@ public struct RGSwiftUIView<Content: View>: View {
         #endif
         self.navigationBarHeight = legacyController.navigationBarHeightModel
         self.containerViewLayout = legacyController.containerViewLayoutModel
-        self.lang = legacyController.lang
+        self.languageModel = legacyController.languageModel
+        self.themeModel = legacyController.themeModel
 //        self.containerViewLayoutUpdateCount = legacyController.containerViewLayoutUpdateCountModel
         self.manageSafeArea = manageSafeArea
         self.content = content()
@@ -93,7 +98,10 @@ public struct RGSwiftUIView<Content: View>: View {
             .if(manageSafeArea) { $0.modifier(CustomSafeArea()) }
             .environment(\.navigationBarHeight, navigationBarHeight.value)
             .environment(\.containerViewLayout, containerViewLayout.value)
-            .environment(\.lang, lang)
+            .environment(\.lang, languageModel.value)
+            .preferredColorScheme(themeModel.value.map { $0.overallDarkAppearance ? .dark : .light })
+            .accentColor(Color(uiColor: themeModel.value?.list.itemAccentColor ?? .systemBlue))
+            .font(RGTypography.font(configuration: RGSimpleSettings.shared.fontConfiguration, area: .interface, size: UIFont.preferredFont(forTextStyle: .body).pointSize).map { SwiftUI.Font($0) })
 //            .environment(\.containerViewLayoutUpdateCount, containerViewLayoutUpdateCount)
 //            .onReceive(containerViewLayoutUpdateCount.$value) { _ in
 //                // Make sure View is updated when containerViewLayoutUpdateCount changes,
@@ -169,17 +177,32 @@ public final class LegacySwiftUIController: LegacyController {
     public var navigationBarHeightModel: ObservedValue<CGFloat>
     public var containerViewLayoutModel: ObservedValue<ContainerViewLayout?>
     public var inputHeightModel: ObservedValue<CGFloat?>
-    public let lang: String
+    public let languageModel: ObservedValue<String>
+    public let themeModel: ObservedValue<PresentationTheme?>
+    public var lang: String { self.languageModel.value }
+    private let appearanceDisposable = MetaDisposable()
 //    public var containerViewLayoutUpdateCountModel: ObservedValue<Int64>
 
     override public init(presentation: LegacyControllerPresentation, theme: PresentationTheme? = nil, strings: PresentationStrings? = nil, initialLayout: ContainerViewLayout? = nil) {
         navigationBarHeightModel = ObservedValue<CGFloat>(0.0)
         containerViewLayoutModel = ObservedValue<ContainerViewLayout?>(initialLayout)
         inputHeightModel = ObservedValue<CGFloat?>(nil)
-        lang = strings?.baseLanguageCode ?? "en"
+        languageModel = ObservedValue(strings?.baseLanguageCode ?? "en")
+        themeModel = ObservedValue(theme)
 //        containerViewLayoutUpdateCountModel = ObservedValue<Int64>(0)
         super.init(presentation: presentation, theme: theme, strings: strings, initialLayout: initialLayout)
     }
+
+    public func bindAppearance(_ signal: Signal<PresentationData, NoError>) {
+        self.appearanceDisposable.set((signal |> deliverOnMainQueue).start(next: { [weak self] data in
+            guard let self else { return }
+            self.themeModel.value = data.theme
+            self.languageModel.value = data.strings.baseLanguageCode
+            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data), transition: .immediate)
+            self.statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
+        }))
+    }
+    deinit { self.appearanceDisposable.dispose() }
 
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)

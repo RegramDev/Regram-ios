@@ -6,6 +6,13 @@ private enum AppearancePolicyTests {
         if !condition() { fatalError(message) }
     }
     static func main() {
+        let fileId = String(repeating: "a", count: 64)
+        expect(RGFontSelection(id: fileId)?.faceIndex == 0, "Legacy font hashes must keep selecting the first face")
+        expect(RGFontSelection(id: RGFontSelection.id(fileId: fileId, faceIndex: 3))?.faceIndex == 3, "TTC selections must retain their face index")
+        expect(RGFontSelection(id: fileId + ":3")?.fileId == fileId, "TTC faces must resolve one shared file")
+        for invalid in ["../font", fileId + ":-1", fileId + ":0", fileId + ":01", fileId + ":", fileId + ":1:2", String(repeating: "g", count: 64)] {
+            expect(RGFontSelection(id: invalid) == nil, "Invalid font selections must not resolve a file: \(invalid)")
+        }
         expect(RGTabBarLayoutPolicy.migratedPercent(legacyWide: true) == 100, "A saved wide bar must remain wide")
         expect(RGTabBarLayoutPolicy.migratedPercent(legacyWide: false) == 0, "A default bar keeps automatic sizing")
         expect(RGTabBarLayoutPolicy.normalizedPercent(-100) == 0, "Invalid old values must be safe")

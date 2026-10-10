@@ -57,7 +57,7 @@ s=s[:a]+'        return URL(fileURLWithPath: '+json.dumps(str(work/'Cache'))+')\
 (work/'Store.swift').write_text(s)
 (work/'Tests.swift').write_text('''import Foundation
 func getAppBundle() -> Bundle { Bundle(path: BUNDLE)! }
-final class RGSimpleSettings { static let shared = RGSimpleSettings(); var fontAssetsRevision = 0 }
+final class RGSimpleSettings { static let shared = RGSimpleSettings(); var fontAssetsRevision = 0; var fontImportedLatin = ""; var fontImportedChinese = ""; var fontFamily = "system"; var fontChineseFamily = "system" }
 @main @MainActor enum StoreChecks {
  static func expect(_ value: @autoclosure () -> Bool, _ message: String) { if !value() { fatalError(message) } }
  static func download(_ prefix: String) async -> Result<Void, Error> { await withCheckedContinuation { c in RGFontStore.shared.download(prefix: prefix) { c.resume(returning: $0) } } }
@@ -111,11 +111,35 @@ final class RGSimpleSettings { static let shared = RGSimpleSettings(); var fontA
   try handle.truncate(atOffset: 64 * 1024 * 1024 + 1)
   try handle.close()
   guard case let .failure(error) = await importFile(oversized), case RGFontStoreError.tooLarge = error else { fatalError("Oversized fonts must fail before parsing") }
-  print("Font store checks passed: downloads, hashes, HTTP errors, cancellation, TTF/OTF/TTC imports, copied-file cleanup, size limit, duplicates and script coverage")
+  let collection = store.imported.filter { RGFontSelection(id: $0.id)?.faceIndex ?? 0 > 0 }
+  expect(!collection.isEmpty, "TTC must expose multiple individually selectable faces")
+  let face = collection[0]
+  guard let selection = RGFontSelection(id: face.id), let retained = RGFontStore.importedURL(id: face.id) else { fatalError("Collection face must resolve shared file") }
+  guard let retainedFaces = CTFontManagerCreateFontDescriptorsFromURL(retained as CFURL) as? [CTFontDescriptor] else { fatalError("Retained collection must expose its faces") }
+  for entry in store.imported.filter({ RGFontSelection(id: $0.id)?.fileId == selection.fileId }) {
+   guard let index = RGFontSelection(id: entry.id)?.faceIndex, retainedFaces.indices.contains(index) else { fatalError("Stored face index must resolve a real descriptor") }
+   expect((CTFontDescriptorCopyAttribute(retainedFaces[index], kCTFontDisplayNameAttribute) as? String) == entry.title, "Data and retained-file descriptors must keep the same face ordering")
+  }
+  let countBefore = store.imported.count
+  try store.rename(id: face.id, title: "  My TTC face  ")
+  expect(store.imported.first(where: { $0.id == face.id })?.title == "My TTC face", "Rename must trim and update metadata")
+  RGSimpleSettings.shared.fontImportedLatin = face.id
+  try store.remove(id: face.id)
+  expect(store.imported.count == countBefore - 1 && FileManager.default.fileExists(atPath: retained.path), "Removing one face must retain the shared TTC for other faces")
+  expect(RGSimpleSettings.shared.fontImportedLatin.isEmpty, "Removing selected face must reset selection")
+  for font in store.imported.filter({ RGFontSelection(id: $0.id)?.fileId == selection.fileId }) { try store.remove(id: font.id) }
+  expect(!FileManager.default.fileExists(atPath: retained.path), "Removing final face must reclaim collection bytes")
+  expect(store.storageBytes(downloads: false) > 0 && store.storageBytes(downloads: true) > 0, "Storage totals must include retained files")
+  try store.clearDownloads()
+  expect(store.storageBytes(downloads: true) == 0 && !store.isDownloaded(prefix: "Inter"), "Clear downloads must reclaim cloud fonts")
+  expect(!store.imported.isEmpty && store.storageBytes(downloads: false) > 0, "Clear downloads must preserve user imports")
+  for font in store.imported { try store.remove(id: font.id) }
+  expect(store.imported.isEmpty && store.storageBytes(downloads: false) == 0, "Removing all imports must reclaim every file")
+  print("Font store checks passed: downloads, integrity, cancellation, TTF/OTF/TTC, every collection face, duplicates, rename, selection reset, shared-file deletion and storage reclamation")
  }
 }
 '''.replace('import Foundation','import Foundation\nimport CoreText',1).replace('BUNDLE',json.dumps(str(bundle))).replace('LATIN',json.dumps(str(root/'Regram/RGTypography/Fonts/JetBrainsMono-Regular.ttf'))).replace('CHINESE',json.dumps(str(root/'Regram/RGTypography/Fonts/IBMPlexSansSC-Regular.ttf'))).replace('INVALID',json.dumps(str(work/'invalid.ttf'))).replace('FONT_OTF_PATH',json.dumps('/System/Library/Fonts/Supplemental/STIXGeneral.otf')).replace('FONT_TTC_PATH',json.dumps('/System/Library/Fonts/Helvetica.ttc')))
-args=[swift,'-swift-version','5','-sdk',sdk,'-Xcc','-fmodule-map-file='+str(work/'module.modulemap'),'-Xcc','-I'+str(root/'third-party/ZipArchive/PublicHeaders'),str(work/'Store.swift'),str(work/'Tests.swift')]+[str(o) for o in objects]+['-lz','-liconv','-framework','Foundation','-o',str(work/'tests')]
+args=[swift,'-swift-version','5','-sdk',sdk,'-Xcc','-fmodule-map-file='+str(work/'module.modulemap'),'-Xcc','-I'+str(root/'third-party/ZipArchive/PublicHeaders'),str(root/'Regram/RGSimpleSettings/Sources/FontSettings.swift'),str(work/'Store.swift'),str(work/'Tests.swift')]+[str(o) for o in objects]+['-lz','-liconv','-framework','Foundation','-o',str(work/'tests')]
 with (task/'store-checks-build.log').open('w') as log:result=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT)
 if result.returncode:
  print((task/'store-checks-build.log').read_text());raise RuntimeError('Store harness compile failed')

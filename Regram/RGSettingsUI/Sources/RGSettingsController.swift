@@ -92,7 +92,6 @@ private enum RGBoolSetting: String {
     case showCreationDate
     case showRegDate
     case compactChatList
-    case compactMessagePreview
     case compactFolderNames
     case allChatsHidden
     case defaultEmojisFirst
@@ -116,6 +115,7 @@ private enum RGOneFromManySetting: String {
     case translationBackend
     case transcriptionBackend
     case recentStickerLimit
+    case chatListLines
 }
 
 private enum RGSliderSetting: String {
@@ -130,6 +130,7 @@ private enum RGDisclosureLink: String {
     // MARK: Regram
     case contextMenuOrder
     case tabBarWidth
+    case proSearch
 }
 
 private struct PeerNameColorScreenState: Equatable {
@@ -153,6 +154,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     let id = RGItemListCounter()
     
     entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: state.searchQuery ?? "", placeholder: strings.Common_Search))
+    let proSearchId = id.count
     
     
     if RGSimpleSettings.shared.canUseNY {
@@ -191,7 +193,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     entries.append(.header(id: id.count, section: .chatList, text: i18n("Settings.ChatList.Header", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .compactChatList, value: RGSimpleSettings.shared.compactChatList, text: i18n("Settings.CompactChatList", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .compactMessagePreview, value: RGSimpleSettings.shared.chatListLines != RGSimpleSettings.ChatListLines.three.rawValue, text: i18n("Settings.CompactMessagePreview", lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListLines, text: "Settings.ChatList.Lines".i18n(lang), value: "Settings.ChatList.Lines.\(RGSimpleSettings.shared.chatListLines)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableChatSwipeOptions, value: !RGSimpleSettings.shared.disableChatSwipeOptions, text: i18n("Settings.ChatSwipeOptions", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableDeleteChatSwipeOption, value: !RGSimpleSettings.shared.disableDeleteChatSwipeOption, text: i18n("Settings.DeleteChatSwipeOption", lang), enabled: !RGSimpleSettings.shared.disableChatSwipeOptions))
     
@@ -327,7 +329,11 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .other, settingName: .hidePhoneInSettings, value: RGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
     
-    return filterRGItemListUIEntrires(entries: entries, by: state.searchQuery)
+    var filtered = filterRGItemListUIEntrires(entries: entries, by: state.searchQuery)
+    if let query = state.searchQuery, RGProSearchIndex.hasMatches(query: query, lang: lang) {
+        filtered.append(.disclosure(id: proSearchId, section: .search, link: .proSearch, text: "Settings.Search.Pro".i18n(lang)))
+    }
+    return filtered.sorted { $0.stableId < $1.stableId }
 }
 
 public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int? = nil*/) -> ViewController {
@@ -485,9 +491,6 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         case .compactChatList:
             RGSimpleSettings.shared.compactChatList = value
             askForRestart?()
-        case .compactMessagePreview:
-            RGSimpleSettings.shared.chatListLines = value ? RGSimpleSettings.ChatListLines.one.rawValue : RGSimpleSettings.ChatListLines.three.rawValue
-            askForRestart?()
         case .compactFolderNames:
             RGSimpleSettings.shared.compactFolderNames = value
             askForRestart?()
@@ -551,6 +554,15 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         var items: [ActionSheetItem] = []
         
         switch (setting) {
+            case .chatListLines:
+                for count in RGSimpleSettings.ChatListLines.allCases.reversed() {
+                    items.append(ActionSheetButtonItem(title: "Settings.ChatList.Lines.\(count.rawValue)".i18n(presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.chatListLines = count.rawValue
+                        simplePromise.set(true)
+                        askForRestart?()
+                    }))
+                }
             case .recentStickerLimit:
                 for limit in RGSimpleSettings.recentStickerLimitOptions {
                     items.append(ActionSheetButtonItem(title: String(limit), color: .accent, action: { [weak actionSheet] in
@@ -680,6 +692,9 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             case .tabBarWidth:
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 pushControllerImpl?(rgTabBarWidthController(context: context))
+            case .proSearch:
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                pushControllerImpl?(context.sharedContext.makeRGProController(context: context, searchQuery: stateValue.with { $0.searchQuery }))
         }
     }, searchInput: { searchQuery in
         updateState { state in

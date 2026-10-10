@@ -168,10 +168,11 @@ private struct RGTabBarWidthSettingsView: SwiftUI.View {
 public func rgTabBarWidthController(context: AccountContext) -> ViewController {
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: presentationData.theme, strings: presentationData.strings)
+    controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "Settings.Tabs.Width".i18n(presentationData.strings.baseLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGTabBarWidthSettingsView(context: context, presentationData: presentationData)
     })
-    controller.bind(controller: UIHostingController(rootView: content.preferredColorScheme(presentationData.theme.overallDarkAppearance ? .dark : .light).tint(Color(uiColor: presentationData.theme.list.itemAccentColor)), ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
     return controller
 }

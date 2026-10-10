@@ -138,6 +138,7 @@ public func rgAppBadgeSettingsController(context: AccountContext, presentationDa
         theme: theme,
         strings: strings
     )
+    legacyController.bindAppearance(context.sharedContext.presentationData)
 
     legacyController.statusBar.statusBarStyle = theme.rootController
         .statusBarStyle.style

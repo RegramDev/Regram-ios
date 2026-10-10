@@ -12,7 +12,10 @@ swift_library(
     deps = [
         "//submodules/LegacyUI:LegacyUI",
         "//submodules/Display:Display",
-        "//submodules/TelegramPresentationData:TelegramPresentationData"
+        "//submodules/TelegramPresentationData:TelegramPresentationData",
+        "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Regram/RGTypography:RGTypography",
     ],
     visibility = [
         "//visibility:public",

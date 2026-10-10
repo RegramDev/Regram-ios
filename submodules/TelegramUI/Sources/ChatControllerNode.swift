@@ -5292,7 +5292,8 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                 // emoji has no CJK/Latin boundary, and routing it through here would only risk
                 // disturbing the exact-match check that selects it.
                 let spacedInputText: NSAttributedString
-                if RGSimpleSettings.shared.panguSpacing {
+                // MARK: Regram — an account/chat override takes precedence over the global option.
+                if RGSimpleSettings.shared.panguSpacing(accountId: self.context.account.peerId.toInt64(), peerId: self.chatLocation.peerId?.toInt64() ?? 0) {
                     spacedInputText = Pangu.spaced(
                         effectiveInputText,
                         skippingAttributes: [
@@ -5358,7 +5359,8 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                     messages.append(.message(text: "", attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: self.chatLocation.threadId, replyToMessageId: self.chatPresentationInterfaceState.interfaceState.replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: bubbleUpEmojiOrStickersets))
                 } else {
                 do {
-                    let defaultFormatting: RGSimpleSettings.DefaultOutgoingFormat = sendWithoutFormatting ? .none : RGSimpleSettings.shared.defaultOutgoingFormat
+                    // MARK: Regram — retain explicit send-without-formatting as the final override.
+                    let defaultFormatting: RGSimpleSettings.DefaultOutgoingFormat = sendWithoutFormatting ? .none : RGSimpleSettings.shared.defaultOutgoingFormat(accountId: self.context.account.peerId.toInt64(), peerId: self.chatLocation.peerId?.toInt64() ?? 0)
                     for text in breakChatInputText(trimChatInputText(inputText)) {
                         if text.length != 0 {
                             let formattedText = rgApplyDefaultOutgoingFormatting(text, format: defaultFormatting)
