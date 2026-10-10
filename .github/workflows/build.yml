@@ -2,6 +2,8 @@ name: Build Regram
 
 on:
   push:
+    branches:
+      - '**'
   workflow_dispatch:
 
 permissions:
@@ -23,6 +25,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Select repository build number
+        run: python3 build-system/ci/versioning.py --github-env "$GITHUB_ENV"
+
       - name: Prepare encrypted configuration
         env:
           REGRAM_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BUILD_CONFIGURATION }}
@@ -42,8 +47,6 @@ jobs:
           path = Path('build-input/ci/configuration.json')
           path.write_text(value)
           path.chmod(0o600)
-          with open(os.environ['GITHUB_ENV'], 'a') as environment:
-              environment.write(f"REGRAM_BUILD_NUMBER={40000 + int(os.environ['GITHUB_RUN_NUMBER'])}\n")
           PY
 
       - name: Reclaim simulator disk space

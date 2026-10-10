@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       ipa_filename:
-        description: Exact approved filename (Regram-13.0-b40001.ipa)
+        description: Exact approved filename (Regram-13.0-b34588.ipa)
         required: true
         type: string
       confirm_publish:

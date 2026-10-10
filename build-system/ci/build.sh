@@ -2,6 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# Use the same declared number for local/CI builds; never derive it from workflow runs or commits.
+build_number="$(python3 build-system/ci/versioning.py)"
+
 # Reference package builds intentionally use the same Xcode generation as local b34582.
 export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 xcode_details="$(xcodebuild -version)"
@@ -35,7 +38,6 @@ python3 build-system/ci/prepare.py --config build-input/ci/configuration.json \
 git -C build-system/bazel-rules/rules_apple apply --check ../../patches/rules_apple-local.patch
 git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-local.patch
 
-build_number="${REGRAM_BUILD_NUMBER:-$(($(git rev-list --count HEAD) + $(cat build_number_offset)))}"
 # Limit parallel compilation for the standard 7 GB arm64 runner; keep cached build configuration
 # and all six extensions. No simulator or personal signing identity is needed.
 "$bazel_path" --nohome_rc --host_jvm_args=-Xmx1536m build //Telegram:Regram \
