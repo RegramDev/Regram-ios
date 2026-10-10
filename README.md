@@ -11,6 +11,8 @@ Regram 是基于 [Telegram for iOS](https://github.com/TelegramMessenger/Telegra
 
 功能可用性受 Telegram 服务端权限、iOS 版本及所选翻译后端影响。部分界面和数据处理仍在上游模块中；Regram 自有模块位于 **Regram/**，对上游源码的改动标有 **MARK: Regram**。
 
+完整功能、入口与当前限制见[已加入功能清单](docs/features.md)。
+
 ## 构建准备
 
 需要 macOS、Xcode、Python 3、Git。项目要求的工具版本见 [versions.json](versions.json)。安装 Xcode 后，确认 xcode-select 指向完整的 Xcode，而非仅 Command Line Tools。构建系统由 **build-system/Make/Make.py** 驱动。

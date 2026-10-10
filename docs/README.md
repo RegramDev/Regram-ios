@@ -2,6 +2,7 @@
 
 从仓库根目录的 [README](../README.md) 开始：它介绍 Regram、构建要求和源码结构。此目录按用途分为：
 
+- [已加入功能清单](features.md)：按模块汇总当前功能、入口、可用条件、实验状态和已移除项目。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从已构建的 IPA 生成供后续签名的 ad-hoc 参考包，并检查包结构。
 - [上游同步方案](regram-upstream-sync.md)：迁移与版本升级的设计方案；其中的分支模型是建议，不代表当前仓库已全面实施。
 - [UI 测试](ui-testing.md)：测试环境、测试账号和 XCUITest 的使用方式。
