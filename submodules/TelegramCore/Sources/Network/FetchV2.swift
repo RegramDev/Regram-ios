@@ -911,6 +911,8 @@ private final class FetchImpl {
                     switch result {
                     case let .cdnFile(cdnFileData):
                         let bytes = cdnFileData.bytes
+                        // MARK: Regram — count network payload once, before verification or retries.
+                        RGTransferStatistics.shared.recordReceived(byteCount: bytes.size)
                         if bytes.size == 0 {
                             return .data(data: Data(), verifyPartHashData: nil)
                         } else {
@@ -976,6 +978,8 @@ private final class FetchImpl {
                             switch result {
                             case let .file(fileData):
                                 let bytes = fileData.bytes
+                                // MARK: Regram — V2 download responses must participate in diagnostics too.
+                                RGTransferStatistics.shared.recordReceived(byteCount: bytes.size)
                                 return .data(data: bytes.makeData(), verifyPartHashData: nil)
                             case let .fileCdnRedirect(fileCdnRedirectData):
                                 let (dcId, fileToken, encryptionKey, encryptionIv, fileHashes) = (fileCdnRedirectData.dcId, fileCdnRedirectData.fileToken, fileCdnRedirectData.encryptionKey.makeData(), fileCdnRedirectData.encryptionIv.makeData(), fileCdnRedirectData.fileHashes)

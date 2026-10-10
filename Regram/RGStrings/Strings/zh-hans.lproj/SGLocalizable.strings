@@ -435,14 +435,14 @@
 "Revoked.Clear.Notice" = "永久清除本机已加载的撤回消息？只删除仍带撤回标记的记录，不影响其他消息或其他用户。";
 "Diagnostics.Title" = "性能与传输";
 "Diagnostics.Download" = "Telegram 媒体下载";
-"Diagnostics.Download.Notice" = "估算本次启动以来各账户接收的媒体数据，不包含缓存读取、字体下载和协议开销。";
-"Diagnostics.Speed" = "近期传输速度";
+"Diagnostics.Download.Notice" = "统计本次启动以来各账户收到的媒体数据，包含重新下载。速度为最近 3 秒平均值，不包含缓存、本地文件、字体下载和协议开销。";
+"Diagnostics.Speed" = "传输速度（3 秒平均）";
 "Diagnostics.Received" = "本次已接收";
-"Diagnostics.Boost.On" = "下载加速：已开启（中等档位）";
+"Diagnostics.Boost.On" = "下载加速：已开启";
 "Diagnostics.Boost.Off" = "下载加速：已关闭";
 "Diagnostics.Filter" = "当前过滤规则";
-"Diagnostics.Filter.Notice" = "使用 10 条本地合成消息测试全部规则，不限定会话，显示平均匹配耗时。不会发送消息，也不代表滚动帧率；复杂正则仍受执行限制。";
-"Diagnostics.Filter.Run" = "测试规则匹配耗时";
+"Diagnostics.Filter.Notice" = "使用 100 条本地合成消息测试当前规则，不限定会话，显示每条消息的平均匹配耗时。不会发送消息，也不代表滚动帧率。";
+"Diagnostics.Filter.Run" = "测试 100 条消息";
 "Diagnostics.Rules" = "条已配置规则";
 "Diagnostics.Media.Notice" = "媒体加载遵循 Telegram 自动下载与网络限制，可切换实验设置对比实际传输表现。";
 "Diagnostics.Media.On" = "媒体加载实验：已开启";
@@ -450,3 +450,5 @@
 "Notifications.ContentFilter" = "按消息规则过滤通知";
 "Notifications.ContentFilter.Notice" = "通知消息在本机成功解析后应用关键词、白名单及隐藏发送者规则。需要可用的共享 App Group，未能解析的推送无法可靠匹配。";
 "Notifications.ContentFilter.Unavailable" = "当前签名没有可用的共享偏好容器。签名时启用有效 App Group 后才能使用通知过滤。";
+
+"Diagnostics.Filter.Average" = "平均每条耗时";

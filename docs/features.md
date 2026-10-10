@@ -141,11 +141,11 @@
 - 强制使用设备内置麦克风。
 - 通话 Force TCP 选项。
 - 上传加速：接入较大分块及并发上传选项。
-- 下载加速：开关形式，开启即采用中等档位；旧最大档位会归一为中等。
+- 下载加速：开关形式，开启时使用优化后的下载参数；界面只显示开启／关闭状态。
 - 默认视频画质：自动／最高可用／最低可用；与媒体加载试验独立，单个视频仍可手动选择。
 - 代理设置支持使用系统 DNS 解析代理域名。
 
-加速档位是传输参数调整，实际吞吐量取决于网络和服务器；不能据此承诺固定倍数。画质只能从播放器实际提供的版本中选择。
+加速开关用于调整传输参数，实际吞吐量取决于网络和服务器；不能据此承诺固定倍数。画质只能从播放器实际提供的版本中选择。
 
 依据：[设置与档位](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift)、[上传接入](../submodules/TelegramCore/Sources/Network/MultipartUpload.swift)、[下载接入](../submodules/TelegramCore/Sources/Network/FetchV2.swift)、[视频画质](../Regram/RGSimpleSettings/Sources/VideoQualityPolicy.swift)、[代理设置](<../submodules/SettingsUI/Sources/Data and Storage/ProxyListSettingsController.swift>)。
 
@@ -233,7 +233,8 @@
 
 - 按外观、消息、隐私、翻译、媒体和通知类别导出 JSON；导入前预览，可选择类别恢复或重置。
 - 仅导出允许的 Regram 设置，不包含账号、登录会话、凭据、聊天数据库或字体文件；恢复后更新相关设置缓存。
-- 诊断页显示本次运行收到的媒体负载字节、近期估算速率、下载加速状态和规则合成测试耗时。
+- 诊断页统计本次运行各账户的媒体响应数据，覆盖新旧下载器、直连、CDN、网页文件和 HTTP 媒体资源；重新下载也计入接收量，缓存、本地读取和字体下载不计入。
+- 显示最近 3 秒平均速率与下载加速开启／关闭状态；每次用 100 条合成消息测试规则，显示平均每条耗时。再次点击会重新测试，旧任务取消且结果不会覆盖新一轮；进度与结果使用固定布局。
 - 数据量不包含所有协议流量；速率与测试耗时不是固定加速倍数或手机帧率测量。
 
 依据：[备份格式](../Regram/RGSimpleSettings/Sources/SettingsBackup.swift)、[备份界面](../Regram/RGProUI/Sources/RGSettingsBackupController.swift)、[聊天设置](../Regram/RGProUI/Sources/RGChatPreferencesController.swift)、[诊断](../Regram/RGProUI/Sources/RGDiagnosticsController.swift)。
@@ -255,5 +256,7 @@
 **验证记录**
 
 b34587 已通过 24 项本地检查、41 个过滤器场景和 `//Telegram:Regram` arm64 Release 完整构建；主 App、六个扩展、签名、调试符号及升级权限已验收。统一入口：[本地检查脚本](../build-system/check-regram-features.py)。
+
+“性能与传输”的后续修正通过统计窗口、并发计数、100 条消息测试与重启／旧回调检查；RGSimpleSettings、TelegramCore、RGSwiftUI 和 RGProUI 的 iOS 模块编译检查通过。新安装包由推送后的 Actions 构建。
 
 按要求未使用模拟器，没有连接真机。文件提供器实际点选、代理服务连通与系统网络切换、真实推送、翻译后端、界面手势和覆盖安装仍需设备验证。主机上的性能数值不等同于手机表现。

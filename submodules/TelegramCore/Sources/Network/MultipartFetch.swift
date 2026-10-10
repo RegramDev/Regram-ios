@@ -365,6 +365,8 @@ private enum MultipartFetchSource {
                                     switch result {
                                         case let .file(fileData):
                                             let bytes = fileData.bytes
+                                            // MARK: Regram — count the received response, before slicing it.
+                                            RGTransferStatistics.shared.recordReceived(byteCount: bytes.size)
                                             var resultData = bytes.makeData()
                                             if resultData.count > Int(limit) {
                                                 resultData.count = Int(limit)
@@ -406,6 +408,8 @@ private enum MultipartFetchSource {
                         |> mapToSignal { result, info -> Signal<(Data, NetworkResponseInfo), MultipartFetchDownloadError> in
                             switch result {
                                 case let .webFile(webFileData):
+                                    // MARK: Regram — media fetched through Telegram's web-file API.
+                                    RGTransferStatistics.shared.recordReceived(byteCount: webFileData.bytes.size)
                                     let bytes = webFileData.bytes
                                     var resultData = bytes.makeData()
                                     if resultData.count > Int(limit) {
@@ -433,6 +437,8 @@ private enum MultipartFetchSource {
                             let token = cdnFileReuploadNeededData.requestToken
                             return .fail(.reuploadToCdn(masterDatacenterId: masterDatacenterId, token: token.makeData()))
                         case let .cdnFile(cdnFileData):
+                            // MARK: Regram — include received CDN payload even if verification retries it.
+                            RGTransferStatistics.shared.recordReceived(byteCount: cdnFileData.bytes.size)
                             let bytes = cdnFileData.bytes
                             if bytes.size == 0 {
                                 return .single((bytes.makeData(), info))
@@ -893,8 +899,6 @@ private final class MultipartFetchManager {
                 guard let strongSelf = self else {
                     return
                 }
-                // MARK: Regram — account for accepted network payload, including CDN parts.
-                RGTransferStatistics.shared.recordReceived(byteCount: data.count)
                 strongSelf.networkStatsContext?.add(downloadEvents: [
                     NetworkStatsContext.DownloadEvent(
                         networkType: info.networkType,

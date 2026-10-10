@@ -39,6 +39,7 @@ def main():
     content_source.write_text(content_filter)
     suites = [
         ('filter', [simple+'Sources/MessageFilter.swift', simple+'Tests/MessageFilterTests.swift'], []),
+        ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
         ('content-filter-cache', [simple+'Sources/MessageFilter.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
         ('translation', ['Regram/RGGTranslate/Sources/RGTranslationLinkPlan.swift', 'Regram/RGGTranslate/Tests/LinkPlanTests.swift'], []),
         ('appearance', [simple+'Sources/TabBarLayoutPolicy.swift', simple+'Sources/FontSettings.swift', simple+'Tests/AppearancePolicyTests.swift'], []),

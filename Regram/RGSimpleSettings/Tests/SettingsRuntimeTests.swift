@@ -53,7 +53,7 @@ extension UserDefaults {
         let stats = RGTransferStatistics()
         stats.recordReceived(byteCount: 1000, now: 10)
         stats.recordReceived(byteCount: 1000, now: 11)
-        expect(stats.snapshot(now: 12).receivedBytes == 2000 && stats.snapshot(now: 12).bytesPerSecond == 1000, "Transfer rate must reflect payload within the moving window")
+        expect(stats.snapshot(now: 12).receivedBytes == 2000 && abs(stats.snapshot(now: 12).bytesPerSecond - 2000.0 / 3.0) < 0.001, "Transfer rate must use the fixed three-second window")
         expect(stats.snapshot(now: 20).bytesPerSecond == 0 && stats.snapshot(now: 20).receivedBytes == 2000, "Idle rate must fall to zero while cumulative bytes remain")
         let reveal = RGTemporaryRevealState()
         let first = reveal.begin(accountId: 1, peerId: 5, seconds: 10, now: 100)

@@ -138,7 +138,8 @@ func fetchResource(
         |> castError(MediaResourceDataFetchError.self)
     } else if let httpReference = resource as? HttpReferenceMediaResource {
         return .single(.dataPart(resourceOffset: 0, data: Data(), range: 0 ..< 0, complete: false))
-        |> then(fetchHttpResource(url: httpReference.url))
+        // MARK: Regram — include HTTP media responses in transfer diagnostics.
+        |> then(fetchHttpResource(url: httpReference.url, trackMediaTransfer: true))
     } else if let wallpaperResource = resource as? WallpaperDataResource {
         return getWallpaper(network: network, slug: wallpaperResource.slug)
         |> mapError { _ -> MediaResourceDataFetchError in

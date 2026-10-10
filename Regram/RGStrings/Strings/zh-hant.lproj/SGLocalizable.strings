@@ -413,14 +413,14 @@
 "Revoked.Clear.Notice" = "永久清除本機已載入的撤回訊息？只刪除仍帶撤回標記的記錄，不影響其他訊息或其他使用者。";
 "Diagnostics.Title" = "效能與傳輸";
 "Diagnostics.Download" = "Telegram 媒體下載";
-"Diagnostics.Download.Notice" = "估算本次啟動以來各帳號接收的媒體資料，不包含快取讀取、字型下載和通訊協定開銷。";
-"Diagnostics.Speed" = "近期傳輸速度";
+"Diagnostics.Download.Notice" = "統計本次啟動以來各帳號收到的媒體資料，包含重新下載。速度為最近 3 秒平均值，不包含快取、本機檔案、字型下載和通訊協定開銷。";
+"Diagnostics.Speed" = "傳輸速度（3 秒平均）";
 "Diagnostics.Received" = "本次已接收";
-"Diagnostics.Boost.On" = "下載加速：已開啟（中等檔位）";
+"Diagnostics.Boost.On" = "下載加速：已開啟";
 "Diagnostics.Boost.Off" = "下載加速：已關閉";
 "Diagnostics.Filter" = "目前過濾規則";
-"Diagnostics.Filter.Notice" = "使用 10 則本機合成訊息測試全部規則，不限定對話，顯示平均比對耗時。不會傳送訊息，也不代表捲動影格率；複雜正則仍受執行限制。";
-"Diagnostics.Filter.Run" = "測試規則比對耗時";
+"Diagnostics.Filter.Notice" = "使用 100 則本機合成訊息測試目前規則，不限定對話，顯示每則訊息的平均比對耗時。不會傳送訊息，也不代表捲動影格率。";
+"Diagnostics.Filter.Run" = "測試 100 則訊息";
 "Diagnostics.Rules" = "條已設定規則";
 "Diagnostics.Media.Notice" = "媒體載入依照 Telegram 自動下載與網路限制，可切換實驗設定比較實際傳輸表現。";
 "Diagnostics.Media.On" = "媒體載入實驗：已開啟";
@@ -428,3 +428,5 @@
 "Notifications.ContentFilter" = "依訊息規則過濾通知";
 "Notifications.ContentFilter.Notice" = "通知訊息在本機成功解析後套用關鍵字、白名單及隱藏傳送者規則。需要可用的共享 App Group，未能解析的推播無法可靠比對。";
 "Notifications.ContentFilter.Unavailable" = "目前簽名沒有可用的共享偏好容器。簽名時啟用有效 App Group 後才能使用通知過濾。";
+
+"Diagnostics.Filter.Average" = "平均每則耗時";
