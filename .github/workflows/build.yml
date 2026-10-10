@@ -70,6 +70,7 @@ jobs:
           key: regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-${{ github.sha }}
           restore-keys: |
             regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-
+            regram-xcode27-arm64-
 
       - name: Build and package Regram arm64 reference IPA
         run: bash build-system/ci/build.sh
