@@ -6,6 +6,7 @@ import TelegramStringFormatting
 import TextFormat
 import LocalizedPeerData
 import AccountContext
+import RGSimpleSettings
 
 public enum MessageTimestampStatusFormat {
     case full
@@ -256,6 +257,14 @@ public func stringForMessageTimestampStatus(
     // recognisable as deleted.
     if message.rgIsRevoked {
         dateText = "🗑 \(dateText)"
+    }
+
+    // MARK: Regram — message id, for group and channel messages (RGSimpleSettings.showMessageId).
+    if RGSimpleSettings.shared.showMessageId, message.id.namespace == Namespaces.Message.Cloud, !associatedData.isForwardOptionsPreview {
+        let peerNamespace = message.id.peerId.namespace
+        if peerNamespace == Namespaces.Peer.CloudGroup || peerNamespace == Namespaces.Peer.CloudChannel {
+            dateText = "\(dateText) | \(message.id.id)"
+        }
     }
 
     return dateText

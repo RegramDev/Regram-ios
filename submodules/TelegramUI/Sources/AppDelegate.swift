@@ -12,6 +12,7 @@ import RGLogging
 import RGStrings
 import RGSimpleSettings
 import RGAppGroupIdentifier
+import RGAppUpdate // MARK: Regram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -365,6 +366,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         precondition(!testIsLaunched)
         testIsLaunched = true
+        // MARK: Regram — checks on launch/foreground for certificate installations.
+        RGAppUpdater.shared.start()
         
         let _ = voipTokenPromise.get().start(next: { token in
             self.voipDeviceToken.set(.single(token))
@@ -1558,7 +1561,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             Logger.shared.log("App \(self.episodeId)", "received auth context \(String(describing: context)) account \(String(describing: context?.account.id)) network \(String(describing: network))")
             
             if let authContextValue = self.authContextValue {
-                authContextValue.account.shouldBeServiceTaskMaster.set(.single(.never))
+                // MARK: Regram — another phone-number emission can replace the
+                // UI context while retaining the same pending account/network.
+                // Its new foreground binding must not be overwritten with never.
+                if authContextValue.account !== context?.account {
+                    authContextValue.account.shouldBeServiceTaskMaster.set(.single(.never))
+                }
                 if authContextValue.authorizationCompleted {
                     let accountId = authContextValue.account.id
                     let _ = (self.context.get()

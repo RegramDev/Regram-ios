@@ -17,6 +17,8 @@ import AccountContext
 import ContextUI
 import LegacyUI
 import AppBundle
+// MARK: Regram
+import RGStickerSave
 import SaveToCameraRoll
 import PresentationDataUtils
 import TelegramPresentationData
@@ -979,6 +981,32 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         var actions: [ContextMenuItem] = []
 
+        // MARK: Regram — items the user can toggle and reorder are collected here instead of being
+        // appended in place, then emitted together further down in `RGSimpleSettings.shared
+        // .contextMenuOrder`. Disabled items are omitted entirely.
+        var rgManaged: [RGContextMenuItemId: ContextMenuItem] = [:]
+        // Where the managed block goes back in: the position the *first* managed item would have
+        // occupied. Anchoring there keeps the group roughly where the menu used to start rather than
+        // dumping it at the end.
+        var rgManagedAnchor: Int? = nil
+        func rgCollect(_ id: RGContextMenuItemId, _ item: ContextMenuItem) {
+            if rgManagedAnchor == nil {
+                rgManagedAnchor = actions.count
+            }
+            rgManaged[id] = item
+        }
+        /// For upstream items: takes back the one just appended to `actions`.
+        func rgCollectLast(_ id: RGContextMenuItemId) {
+            guard !actions.isEmpty else {
+                return
+            }
+            let item = actions.removeLast()
+            if rgManagedAnchor == nil {
+                rgManagedAnchor = actions.count
+            }
+            rgManaged[id] = item
+        }
+
         if isSharedMediaPolls && messages.count == 1 {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.SharedMedia_ViewInChat, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/GoToMessage"), color: theme.actionSheet.primaryTextColor)
@@ -1004,37 +1032,9 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     }
                 })
             })))
+            // MARK: Regram
+            rgCollectLast(.viewInChat)
         }
-        var rgActions: [ContextMenuItem] = []
-
-        // MARK: Regram — items the user can toggle and reorder are collected here instead of being
-        // appended in place, then emitted together further down in `RGSimpleSettings.shared
-        // .contextMenuOrder`. Collecting is what makes ordering possible at all: upstream builds the
-        // menu by appending in source order, so an item's position is otherwise a property of where
-        // its code happens to sit.
-        var rgManaged: [RGContextMenuItemId: ContextMenuItem] = [:]
-        // Where the managed block goes back in: the position the *first* managed item would have
-        // occupied. Anchoring there keeps the group roughly where the menu used to start rather than
-        // dumping it at the end.
-        var rgManagedAnchor: Int? = nil
-        func rgCollect(_ id: RGContextMenuItemId, _ item: ContextMenuItem) {
-            if rgManagedAnchor == nil {
-                rgManagedAnchor = actions.count
-            }
-            rgManaged[id] = item
-        }
-        /// For upstream items: takes back the one just appended to `actions`.
-        func rgCollectLast(_ id: RGContextMenuItemId) {
-            guard !actions.isEmpty else {
-                return
-            }
-            let item = actions.removeLast()
-            if rgManagedAnchor == nil {
-                rgManagedAnchor = actions.count
-            }
-            rgManaged[id] = item
-        }
-
         // MARK: Regram — whether the server refuses to forward these messages. "Allow saving
         // protected content" clears isCopyProtected on the client, which is what surfaces the forward
         // actions in restricted chats at all, but every forward out of such a chat still fails with
@@ -1063,6 +1063,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.toggleMessageStickerStarred(messages[0].id)
                     f(.default)
                 })))
+                // MARK: Regram
+                rgCollectLast(.favoriteSticker)
             }
         }
         
@@ -1109,6 +1111,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                 }
                                 controllerInteraction.navigationController()?.pushViewController(controller)
                             })))
+                            // MARK: Regram
+                            rgCollectLast(.shareCallStats)
                         }
                     }
                     break
@@ -1121,6 +1125,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     let _ = controllerInteraction.rateCall(message, callId, isVideo)
                     f(.dismissWithoutContent)
                 })))
+                // MARK: Regram
+                rgCollectLast(.rateCall)
             }
         }
         
@@ -1184,6 +1190,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                 })
                             }
                         })))
+                        // MARK: Regram
+                        rgCollectLast(.saveNotificationSound)
                         actions.append(.separator)
                     }
                 }
@@ -1231,6 +1239,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     controllerInteraction.navigationController()?.pushViewController(controller)
                     f(.dismissWithoutContent)
                 })))
+                // MARK: Regram
+                rgCollectLast(.increaseSpeed)
                 actions.append(.separator)
             }
         }
@@ -1250,6 +1260,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     })
                 })
             })))
+            // MARK: Regram
+            rgCollectLast(.reply)
         }
         
         if data.messageActions.options.contains(.sendGift), !message.id.peerId.isTelegramNotifications {
@@ -1276,6 +1288,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 let _ = controllerInteraction.sendGift(message.id.peerId)
                 f(.dismissWithoutContent)
             })))
+            // MARK: Regram
+            rgCollectLast(.sendGift)
         }
         
         if WalletConfiguration.with(appConfiguration: context.currentAppConfiguration.with { $0 }).isAvailable,
@@ -1292,7 +1306,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 f(.dismissWithoutContent)
                 (interfaceInteraction.chatController() as? ChatControllerImpl)?.openResolved(result: .sendGrams(transfer: WalletSendRequest(recipient: .peer(peer), amountNanograms: nil)), sourceMessageId: message.id)
             })))
-            rgCollectLast(.reply)
+            // MARK: Regram
+            rgCollectLast(.sendMoney)
         }
         
         if data.messageActions.options.contains(.sendScheduledNow) {
@@ -1321,6 +1336,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     controllerInteraction.sendScheduledMessagesNow(selectAll ? messages.map { $0.id } : [message.id])
                 }
             })))
+            // MARK: Regram
+            rgCollectLast(.sendScheduledNow)
         }
         
         if data.messageActions.options.contains(.editScheduledTime) {
@@ -1330,6 +1347,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 controllerInteraction.editScheduledMessagesTime(selectAll ? messages.map { $0.id } : [message.id])
                 f(.dismissWithoutContent)
             })))
+            // MARK: Regram
+            rgCollectLast(.editScheduledTime)
         }
         
         var messageText: String = ""
@@ -1503,6 +1522,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             }
                             f(.default)
                         })))
+                        // MARK: Regram
+                        rgCollectLast(.copy)
                     }
                 }
                 
@@ -1531,6 +1552,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         controllerInteraction.performTextSelectionAction(message, !isCopyProtected, NSAttributedString(string: messageText), messageEntities, .translate)
                         f(.default)
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.translate)
                 }
                 
                 if isSpeakSelectionEnabled() && !messageText.isEmpty {
@@ -1552,6 +1575,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         controllerInteraction.performTextSelectionAction(message, !isCopyProtected, NSAttributedString(string: text), nil, .speak)
                         f(.default)
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.speak)
                 }
             }
         }
@@ -1582,6 +1607,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     })
                     f(.default)
                 })))
+                // MARK: Regram
                 rgCollectLast(.saveMedia)
             }
         }
@@ -1611,6 +1637,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             controllerInteraction.saveMediaToFiles(message.id)
                             f(.default)
                         })))
+                        // MARK: Regram
+                        rgCollectLast(.saveToFiles)
                     }
                     break
                 }
@@ -1626,6 +1654,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 })
                 f(.default)
             })))
+            // MARK: Regram
+            rgCollectLast(.sendLogs)
         }
         
         let showJsonAction: ContextMenuItem = .action(ContextMenuActionItem(text: "JSON", icon: { theme in
@@ -1636,11 +1666,23 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }))
         rgCollect(.json, showJsonAction)
 
+        // MARK: Regram — earlier versions of this message kept on this device (RGEditHistoryController).
+        if messages.count == 1, message.rgEditHistory != nil {
+            rgCollect(.editHistory, .action(ContextMenuActionItem(text: "EditHistory.Title".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Time"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.default)
+                if let controller = rgEditHistoryController(context: context, message: message) {
+                    controllerInteraction.navigationController()?.pushViewController(controller)
+                }
+            })))
+        }
+
         // MARK: Regram — a rule export shared into a chat (the filter screen's Export writes it) is
         // imported in one step, merged exactly like the filter screen's own Import. It stands in
         // for the keyword action below, which would otherwise offer the file's caption.
         if let rgFilterExport = rgMessageFilterExportFile(in: messages) {
-            rgActions.append(.action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+            rgCollect(.addFilter, .action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 f(.default)
@@ -1651,7 +1693,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         // body is rarely the keyword you want, so the user trims it and taps add.
         } else if !message.text.isEmpty, message.effectivelyIncoming(context.account.peerId) {
             let prefill = String(message.text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
-            rgActions.append(.action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+            rgCollect(.addFilter, .action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -1673,72 +1715,14 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 rgThreadId = replyThreadMessage.threadId
             }
 
-            // Media that can be re-sent as a brand-new message. Cloud photos and files are sent by
-            // their existing id/access_hash, so nothing is re-uploaded, while maps and contacts are
-            // plain values. `nil` means the message holds something that only exists as a forward
-            // (poll, game, invoice, story, service action) — then only the forward action is offered.
-            // A webpage is skipped rather than rejected: it is the preview of a link in the text and
-            // the server regenerates it.
-            func rgRepeatableMedia(of sourceMessage: Message) -> [Media]? {
-                var result: [Media] = []
-                for media in sourceMessage.media {
-                    if media is TelegramMediaWebpage {
-                        continue
-                    }
-                    if media is TelegramMediaImage || media is TelegramMediaFile || media is TelegramMediaMap || media is TelegramMediaContact {
-                        result.append(media)
-                    } else {
-                        return nil
-                    }
-                }
-                return result
-            }
-
             // The context menu is handed the whole album when one of its items is long-pressed, so
-            // repeating rebuilds the album rather than picking one photo out of it.
-            var rgRepeatItems: [(message: Message, media: Media?)] = []
-            var rgCanRepeat = !messages.isEmpty
-            for sourceMessage in messages {
-                guard sourceMessage.id.namespace == Namespaces.Message.Cloud, let media = rgRepeatableMedia(of: sourceMessage) else {
-                    rgCanRepeat = false
-                    break
-                }
-                if media.isEmpty && sourceMessage.text.isEmpty {
-                    rgCanRepeat = false
-                    break
-                }
-                rgRepeatItems.append((sourceMessage, media.first))
-            }
-
-            /// Re-sends the message's own content into this chat under your name. Unlike a forward
-            /// this produces an ordinary message with no link back to the original, which is the
-            /// point of 无引用复读.
+            // repeating rebuilds the album rather than picking one photo out of it (RGRepeatMessages).
+            let rgRepeatItems = rgRepeatCopyItems(messages)
+            let rgCanRepeat = rgRepeatItems != nil
             let rgSendCopy: () -> Void = {
-                var enqueued: [EnqueueMessage] = []
-                let groupingKey: Int64? = rgRepeatItems.count > 1 ? Int64.random(in: Int64.min ... Int64.max) : nil
-                for item in rgRepeatItems {
-                    var attributes: [MessageAttribute] = []
-                    if let entities = (item.message.attributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities, !entities.isEmpty {
-                        attributes.append(TextEntitiesMessageAttribute(entities: entities))
-                    }
-                    // Custom emoji in the text are entities pointing at files carried alongside the
-                    // message; without them the copy would render as plain fallback characters.
-                    var inlineStickers: [MediaId: Media] = [:]
-                    for (mediaId, media) in item.message.associatedMedia {
-                        if media is TelegramMediaFile {
-                            inlineStickers[mediaId] = media
-                        }
-                    }
-                    // A `.message` reference (rather than `.standalone`) records where the media came
-                    // from, which is what lets an expired file reference be revalidated instead of
-                    // failing the send — and it is what makes sending into *another* chat work at all.
-                    let mediaReference: AnyMediaReference? = item.media.flatMap { AnyMediaReference.message(message: MessageReference(item.message), media: $0) }
-                    enqueued.append(.message(text: item.message.text, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: rgThreadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: []))
+                if let rgRepeatItems {
+                    rgSendRepeatCopy(context: context, peerId: message.id.peerId, threadId: rgThreadId, items: rgRepeatItems)
                 }
-                if enqueued.isEmpty {
-                    return
-                }
-                let _ = enqueueMessages(account: context.account, peerId: message.id.peerId, messages: enqueued).startStandalone()
             }
 
             let rgForwardSources = messages.filter({ $0.id.namespace == Namespaces.Message.Cloud }).map({ $0.id })
@@ -1754,10 +1738,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 rgCollect(.repeatForward, .action(ContextMenuActionItem(text: "Repeat.WithReply".i18n(rgLang), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
-                    let enqueued: [EnqueueMessage] = rgForwardSources.map { id in
-                        return .forward(source: id, threadId: rgThreadId, grouping: .auto, attributes: [], correlationId: nil)
-                    }
-                    let _ = enqueueMessages(account: context.account, peerId: message.id.peerId, messages: enqueued).startStandalone()
+                    rgSendRepeatForward(context: context, peerId: message.id.peerId, threadId: rgThreadId, messageIds: rgForwardSources)
                     f(.dismissWithoutContent)
                 })))
             }
@@ -1810,6 +1791,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     controllerInteraction.openMessageReplies(messages[0].id, true, true)
                 })
             })))
+            // MARK: Regram
             rgCollectLast(.messageReplies)
         }
         
@@ -1845,6 +1827,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     })
                 }
             })))
+            // MARK: Regram
+            rgCollectLast(.edit)
         }
         
         if let message = messages.first, message.id.namespace == Namespaces.Message.Cloud, let channel = message.peers[message.id.peerId] as? TelegramChannel, channel.isMonoForum {
@@ -1864,6 +1848,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             interfaceInteraction.openSuggestPost(message, .editMessage)
                         })
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.editSuggestedPostMessage)
                     actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditTime, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Calendar"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
@@ -1871,6 +1857,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             interfaceInteraction.openSuggestPost(message, .editTime)
                         })
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.editSuggestedPostTime)
                     actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_EditPrice, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/PriceTag"), color: theme.actionSheet.primaryTextColor)
                     }, action: { c, _ in
@@ -1878,6 +1866,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             interfaceInteraction.openSuggestPost(message, .editPrice)
                         })
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.editSuggestedPostPrice)
                 } else {
                     actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Chat_ContextMenu_SuggestedPost_Create, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Customize"), color: theme.actionSheet.primaryTextColor)
@@ -1886,6 +1876,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             interfaceInteraction.openSuggestPost(message, .default)
                         })
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.createSuggestedPost)
                 }
             }
         }
@@ -1904,6 +1896,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.requestUnvoteInMessage(messages[0].id)
                     f(.default)
                 })))
+                // MARK: Regram
+                rgCollectLast(.unvotePoll)
             }
         }
         
@@ -1926,6 +1920,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.editTodoMessage(messages[0].id, nil, true)
                     f(.dismissWithoutContent)
                 })))
+                // MARK: Regram
+                rgCollectLast(.addTodoTask)
             }
         }
         
@@ -1954,14 +1950,17 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 }, action: { c, _ in
                     interfaceInteraction.unpinMessage(pinnedSelectedMessageId, false, c)
                 })))
+                // MARK: Regram
+                rgCollectLast(.unpin)
             } else {
                 actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_Pin, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Pin"), color: theme.actionSheet.primaryTextColor)
                 }, action: { c, _ in
                     interfaceInteraction.pinMessage(messages[0].id, c)
                 })))
+                // MARK: Regram
+                rgCollectLast(.pin)
             }
-            rgCollectLast(.pin)
         }
         
         if let activePoll, messages[0].forwardInfo == nil {
@@ -2003,6 +2002,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.requestStopPollInMessage(messages[0].id)
                     f(.dismissWithoutContent)
                 })))
+                // MARK: Regram
+                rgCollectLast(.stopPoll)
             }
         }
         
@@ -2041,6 +2042,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 })
                 f(.default)
             })))
+            // MARK: Regram
+            rgCollectLast(.copyLink)
         }
         
         var isUnremovableAction = false
@@ -2112,6 +2115,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
                                     f(.default)
                                 })))
+                                // MARK: Regram
+                                rgCollectLast(.saveGif)
                             }
                             break
                         }
@@ -2127,6 +2132,26 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 break
             }
         }
+        // MARK: Regram — save the original static/animated sticker as PNG/GIF.
+        if !isCopyProtected && !message.containsSecretMedia,
+           let sticker = message.media.compactMap({ $0 as? TelegramMediaFile }).first(where: { $0.isSticker }) {
+            rgCollect(.saveStickerToCameraRoll, .action(ContextMenuActionItem(text: "ContextMenu.saveStickerToCameraRoll".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.actionSheet.primaryTextColor)
+            }, action: { _, f in
+                f(.default)
+                let lang = chatPresentationInterfaceState.strings.baseLanguageCode
+                controllerInteraction.displayUndo(.info(title: nil, text: "StickerSave.Saving".i18n(lang), timeout: nil, customUndoText: nil))
+                let _ = (rgSaveStickerToPhotos(context: context, fileReference: .message(message: MessageReference(message), media: sticker), userLocation: .peer(message.id.peerId))
+                |> deliverOnMainQueue).startStandalone(next: { success in
+                    if success {
+                        controllerInteraction.displayUndo(.mediaSaved(text: "StickerSave.Success".i18n(lang)))
+                    } else {
+                        controllerInteraction.displayUndo(.info(title: nil, text: "StickerSave.Failed".i18n(lang), timeout: nil, customUndoText: nil))
+                    }
+                })
+            })))
+        }
+
         if let editStickerFile {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Stickers_EditSticker, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Draw"), color: theme.actionSheet.primaryTextColor)
@@ -2134,6 +2159,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 f(.dismissWithoutContent)
                 interfaceInteraction.editSticker(editStickerFile)
             })))
+            // MARK: Regram
+            rgCollectLast(.editSticker)
         }
         
         if data.messageActions.options.contains(.viewStickerPack) {
@@ -2143,6 +2170,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 let _ = controllerInteraction.openMessage(message, OpenMessageParams(mode: .default))
                 f(.dismissWithoutContent)
             })))
+            // MARK: Regram
+            rgCollectLast(.viewStickerPack)
         }
 
         if data.messageActions.options.contains(.forward) {
@@ -2154,6 +2183,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], nil)
                     f(.dismissWithoutContent)
                 })))
+                // MARK: Regram
+                rgCollectLast(.forward)
                 if message.id.peerId != context.account.peerId {
                     let action: ContextMenuItem = .action(ContextMenuActionItem(text: i18n("ContextMenu.SaveToCloud", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Fave"), color: theme.actionSheet.primaryTextColor)
@@ -2177,12 +2208,12 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         if canReveal {
-            actions.insert(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Username_ActivateAlertShow, icon: { theme in
+            rgCollect(.activateLink, .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Username_ActivateAlertShow, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Premium/Stories/Views" /*"Chat/Context Menu/Eye"*/ ), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 interfaceInteraction.forwardMessages(selectAll || isImage ? messages : [message], "forwardMessagesToCloudWithNoNamesAndOpen")
                 f(.dismissWithoutContent)
-            })), at: 0)
+            })))
         }
         
         if data.messageActions.options.contains(.report) || context.account.testingEnvironment {
@@ -2191,6 +2222,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }, action: { controller, f in
                 interfaceInteraction.reportMessages(messages, controller)
             })))
+            // MARK: Regram
             rgCollectLast(.report)
         } else if message.id.peerId.isReplies {
             actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBlock, textColor: .destructive, icon: { theme in
@@ -2198,6 +2230,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }, action: { controller, f in
                 interfaceInteraction.blockMessageAuthor(message, controller)
             })))
+            // MARK: Regram
+            rgCollectLast(.block)
         }
         
         if let peer = chatPresentationInterfaceState.renderedPeer?.peer ?? message.peers[message.id.peerId] {
@@ -2266,6 +2300,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         controllerInteraction.openMessageStats(messages[0].id)
                     })
                 })))
+                // MARK: Regram
+                rgCollectLast(.viewStats)
                 hasViewStats = true
             }
             
@@ -2283,6 +2319,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                             controllerInteraction.navigationController()?.pushViewController(controller)
                         })
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.viewPollStats)
                     break
                 }
             }
@@ -2310,6 +2348,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         controllerInteraction.editMessageFactCheck(sortedMessages[0].id)
                     })
                 })))
+                // MARK: Regram
+                rgCollectLast(.factCheck)
             }
         }
         
@@ -2327,6 +2367,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(EnginePeer(peer)), subject: .message(id: .id(messages[0].id), highlight: ChatControllerSubject.MessageHighlight(quote: nil), timecode: nil, setupReply: false), useExisting: true))
                 })
             })))
+            // MARK: Regram
+            rgCollectLast(.viewInChannel)
         }
 
         if !isReplyThreadHead, (!data.messageActions.options.intersection([.deleteLocally, .deleteGlobally]).isEmpty || clearCacheAsDelete) {
@@ -2383,6 +2425,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         interfaceInteraction.deleteMessages(selectAll ? messages : [message], controller, f)
                     }
                 })))
+                // MARK: Regram
+                rgCollectLast(.delete)
             }
         }
 
@@ -2395,9 +2439,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 return nil
             }, action: noAction)))
         }
-        var rgActionsIndex: Int? = nil
         if !isPinnedMessages, !isReplyThreadHead, data.canSelect {
-            rgActionsIndex = actions.count
             var didAddSeparator = false
             // MARK: Regram
             if let authorId = message.author?.id {
@@ -2480,6 +2522,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         f(.custom(transition))
                     })
                 })))
+                // MARK: Regram
+                rgCollectLast(.select)
             }
 
             if messages.count > 1 {
@@ -2495,6 +2539,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         f(.custom(transition))
                     })
                 })))
+                // MARK: Regram
+                rgCollectLast(.selectAll)
             }
         }
         
@@ -2513,78 +2559,26 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             canViewStats = canViewReadStats(message: message, participantCount: infoSummaryData.participantCount, isMessageRead: isMessageRead, isPremium: isPremium, appConfig: appConfig)
         }
 
-        // MARK: Regram — emit the managed items in the user's order.
-        //
-        // Enabled ones go back into the main menu as one contiguous block at the position the first
-        // of them originally held; disabled ones go to the "Regram" submenu, in the same order. This
-        // runs before the submenu is assembled below, which is what lets a disabled item still be
-        // reachable rather than lost.
-        //
-        // Consequence worth knowing: a managed item no longer sits wherever upstream put it — the
-        // whole set is grouped. That is inherent to letting the user order them.
-        if !rgManaged.isEmpty {
-            var orderedMain: [ContextMenuItem] = []
-            for id in RGSimpleSettings.shared.contextMenuOrder {
-                guard let item = rgManaged[id] else {
-                    continue
-                }
-                if RGSimpleSettings.shared.contextMenuItemIsEnabled(id) {
-                    orderedMain.append(item)
-                } else {
-                    rgActions.append(item)
-                }
-            }
-            if !orderedMain.isEmpty {
-                let anchor = min(rgManagedAnchor ?? actions.count, actions.count)
-                actions.insert(contentsOf: orderedMain, at: anchor)
-                // Items were pulled out after `rgActionsIndex` was captured, so it can now point past
-                // the end; re-anchor it so the submenu still lands in a valid slot.
-                if let index = rgActionsIndex, index >= anchor {
-                    rgActionsIndex = index + orderedMain.count
-                }
-            }
+        // MARK: Regram — apply visibility and order to every managed native/Regram action.
+        let orderedActions = RGSimpleSettings.shared.contextMenuOrder.compactMap { id -> ContextMenuItem? in
+            return RGSimpleSettings.shared.contextMenuItemIsEnabled(id) ? rgManaged[id] : nil
         }
-        if let index = rgActionsIndex, index > actions.count {
-            rgActionsIndex = actions.count
-        }
-
-        // MARK: Regram
-        if !rgActions.isEmpty {
-            if !actions.isEmpty {
-                if let rgActionsIndex = rgActionsIndex {
-                    actions.insert(.separator, at: rgActionsIndex)
-                } else {
-                    actions.append(.separator)
-                }
-            }
-            
-            var popRGItems: (() -> Void)? = nil
-            rgActions.insert(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Common_Back, icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
-            }, iconPosition: .left, action: { _, _ in
-                popRGItems?()
-            })), at: 0)
-            rgActions.insert(.separator, at: 1)
-            
-            let regramSubMenu: ContextMenuItem = .action(ContextMenuActionItem(text: "Regram", icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: "RegramContextMenu"), color: theme.actionSheet.primaryTextColor)
-            }, action: { c, f in
-                popRGItems = { [weak c] in
-                    c?.popItems()
-                }
-                c?.pushItems(items: .single(ContextController.Items(content: .list(rgActions))))
-            }))
-            
-            if let rgActionsIndex = rgActionsIndex {
-                // MARK: Regram — clamped: the `+ 1` assumes the separator above was inserted, but that
-                // is skipped when `actions` is empty, which pulling every managed item out of the main
-                // menu can now cause. Unclamped this traps on an out-of-range insert.
-                actions.insert(regramSubMenu, at: min(rgActionsIndex + 1, actions.count))
+        actions.insert(contentsOf: orderedActions, at: min(rgManagedAnchor ?? actions.count, actions.count))
+        // Removed actions must not leave empty separator rows.
+        var cleanedActions: [ContextMenuItem] = []
+        var previousWasSeparator = true
+        for item in actions {
+            if case .separator = item {
+                if !previousWasSeparator { cleanedActions.append(item) }
+                previousWasSeparator = true
             } else {
-                actions.append(regramSubMenu)
+                cleanedActions.append(item)
+                previousWasSeparator = false
             }
         }
-        
+        if let last = cleanedActions.last, case .separator = last { cleanedActions.removeLast() }
+        actions = cleanedActions
+
         var reactionCount = 0
         for reaction in mergedMessageReactionsAndPeers(accountPeerId: context.account.peerId, accountPeer: nil, message: message).reactions {
             reactionCount += Int(reaction.count)
@@ -2756,6 +2750,9 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 break
             case .quickReplyMessageInput, .welcomeMessages:
                 actions.removeAll()
+                // MARK: Regram
+                rgManaged.removeAll()
+                rgManagedAnchor = nil
                 if message.id.namespace == Namespaces.Message.WelcomeMessageLocal, message.attributes.contains(where: { ($0 as? EphemeralOutgoingMessageAttribute)?.state == .failed }) {
                     actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_MessageDialogRetry, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Resend"), color: theme.actionSheet.primaryTextColor)
@@ -2763,6 +2760,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         let _ = context.engine.messages.retryEphemeralOutgoingMessage(messageId: message.id).startStandalone()
                         f(.dismissWithoutContent)
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.retry)
                 }
                 if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {
                     actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy, icon: { theme in
@@ -2811,6 +2810,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         
                         f(.default)
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.copy)
                 }
                 
                 if message.id.namespace == Namespaces.Message.QuickReplyCloud || message.id.namespace == Namespaces.Message.WelcomeMessageCloud {
@@ -2822,6 +2823,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                                 f(.custom(transition))
                             })
                         })))
+                        // MARK: Regram
+                        rgCollectLast(.edit)
                     }
                 }
                 
@@ -2839,12 +2842,22 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                         }
                         customChatContents.deleteMessages(ids: messages.map(\.id))
                     })))
+                    // MARK: Regram
+                    rgCollectLast(.delete)
+                }
+                // MARK: Regram
+                actions = RGSimpleSettings.shared.contextMenuOrder.compactMap { id in
+                    RGSimpleSettings.shared.contextMenuItemIsEnabled(id) ? rgManaged[id] : nil
                 }
             case .businessLinkSetup:
                 actions.removeAll()
+                rgManaged.removeAll()
             }
         }
         
+        // MARK: Regram — account inventory follows the final subject-specific actions.
+        RGSimpleSettings.shared.recordAvailableContextMenuItems(Set(rgManaged.keys), accountPeerId: context.account.peerId.toInt64())
+
         for media in message.media {
             if let poll = media as? TelegramMediaPoll, message.id.namespace == Namespaces.Message.Cloud, poll.pollId.namespace == Namespaces.Media.CloudPoll {
                 var restrictionText: String = ""

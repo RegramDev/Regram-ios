@@ -11,6 +11,18 @@ public struct AuthTransferExportedToken {
 public enum ExportAuthTransferTokenError {
     case generic
     case limitExceeded
+    // MARK: Regram — distinguish connection timeouts from a rejected token request.
+    case timedOut
+    case rpc(String)
+
+    static func requestError(_ description: String) -> ExportAuthTransferTokenError {
+        if description.hasPrefix("FLOOD_WAIT") { return .limitExceeded }
+        // Only expose a bounded RPC name, never payloads, credentials or login tokens.
+        if !description.isEmpty, description.count <= 96, description.utf8.allSatisfy({ (65...90).contains($0) || (48...57).contains($0) || $0 == 95 }) {
+            return .rpc(description)
+        }
+        return .generic
+    }
 }
 
 public enum ExportAuthTransferTokenResult {
@@ -20,18 +32,53 @@ public enum ExportAuthTransferTokenResult {
     case passwordRequested(UnauthorizedAccount)
 }
 
+// MARK: Regram — a second account must not bootstrap exclusively from the
+// bundled DC2 addresses. Reuse the connected account's current routing and DC,
+// while keeping the pending account's own keychain and authorization.
+func _internal_prepareAuthTransferAccount(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, routingAccount: Account) -> Signal<UnauthorizedAccount, NoError> {
+    guard account.testingEnvironment == routingAccount.testingEnvironment else { return .single(account) }
+    return account.postbox.transaction { transaction -> Bool in
+        guard let state = transaction.getState() as? UnauthorizedAccountState else { return false }
+        switch state.contents {
+        case .empty, .phoneEntry: return true
+        default: return false
+        }
+    }
+    |> mapToSignal { allowed in
+        guard allowed else { return .single(account) }
+        return account.changedMasterDatacenterId(accountManager: accountManager, masterDatacenterId: Int32(routingAccount.network.datacenterId), forceRestart: true, routingSource: routingAccount.network)
+    }
+}
+
+// MARK: Regram — reset only an unfinished, pre-token login. Signed-in accounts
+// use separate records, and password/code entry must keep its existing session.
+func _internal_restartAuthTransferAccount(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount) -> Signal<UnauthorizedAccount, NoError> {
+    return account.postbox.transaction { transaction -> Bool in
+        guard let state = transaction.getState() as? UnauthorizedAccountState else { return false }
+        switch state.contents {
+        case .empty, .phoneEntry:
+            guard let emptyAuthInfo = try? NSKeyedArchiver.archivedData(withRootObject: NSDictionary(), requiringSecureCoding: false) else { return false }
+            transaction.setKeychainEntry(emptyAuthInfo, forKey: "persistent:datacenterAuthInfoById")
+            return true
+        default:
+            return false
+        }
+    }
+    |> mapToSignal { reset in
+        guard reset else { return .single(account) }
+        return account.changedMasterDatacenterId(accountManager: accountManager, masterDatacenterId: account.masterDatacenterId, forceRestart: true)
+    }
+}
+
 func _internal_exportAuthTransferToken(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, otherAccountUserIds: [PeerId.Id], syncContacts: Bool) -> Signal<ExportAuthTransferTokenResult, ExportAuthTransferTokenError> {
-    return account.network.request(Api.functions.auth.exportLoginToken(apiId: account.networkArguments.apiId, apiHash: account.networkArguments.apiHash, exceptIds: otherAccountUserIds.map({ $0._internalGetInt64Value() })))
+    // MARK: Regram — let the QR screen display flood-wait/retry state instead of waiting silently.
+    return account.network.request(Api.functions.auth.exportLoginToken(apiId: account.networkArguments.apiId, apiHash: account.networkArguments.apiHash, exceptIds: otherAccountUserIds.map({ $0._internalGetInt64Value() })), automaticFloodWait: false)
     |> map(Optional.init)
     |> `catch` { error -> Signal<Api.auth.LoginToken?, ExportAuthTransferTokenError> in
         if error.errorDescription == "SESSION_PASSWORD_NEEDED" {
             return account.network.request(Api.functions.account.getPassword(), automaticFloodWait: false)
             |> mapError { error -> ExportAuthTransferTokenError in
-                if error.errorDescription.hasPrefix("FLOOD_WAIT") {
-                    return .limitExceeded
-                } else {
-                    return .generic
-                }
+                return .requestError(error.errorDescription)
             }
             |> mapToSignal { result -> Signal<Api.auth.LoginToken?, ExportAuthTransferTokenError> in
                 switch result {
@@ -44,8 +91,10 @@ func _internal_exportAuthTransferToken(accountManager: AccountManager<TelegramAc
                     |> castError(ExportAuthTransferTokenError.self)
                 }
             }
+        } else if error.errorDescription.hasPrefix("FLOOD_WAIT") {
+            return .fail(.limitExceeded)
         } else {
-            return .fail(.generic)
+            return .fail(.requestError(error.errorDescription))
         }
     }
     |> mapToSignal { result -> Signal<ExportAuthTransferTokenResult, ExportAuthTransferTokenError> in
@@ -62,17 +111,13 @@ func _internal_exportAuthTransferToken(accountManager: AccountManager<TelegramAc
             return updatedAccount
             |> castError(ExportAuthTransferTokenError.self)
             |> mapToSignal { updatedAccount -> Signal<ExportAuthTransferTokenResult, ExportAuthTransferTokenError> in
-                return updatedAccount.network.request(Api.functions.auth.importLoginToken(token: token))
+                return updatedAccount.network.request(Api.functions.auth.importLoginToken(token: token), automaticFloodWait: false)
                 |> map(Optional.init)
                 |> `catch` { error -> Signal<Api.auth.LoginToken?, ExportAuthTransferTokenError> in
                     if error.errorDescription == "SESSION_PASSWORD_NEEDED" {
                         return updatedAccount.network.request(Api.functions.account.getPassword(), automaticFloodWait: false)
                         |> mapError { error -> ExportAuthTransferTokenError in
-                            if error.errorDescription.hasPrefix("FLOOD_WAIT") {
-                                return .limitExceeded
-                            } else {
-                                return .generic
-                            }
+                            return .requestError(error.errorDescription)
                         }
                         |> mapToSignal { result -> Signal<Api.auth.LoginToken?, ExportAuthTransferTokenError> in
                             switch result {
@@ -86,7 +131,7 @@ func _internal_exportAuthTransferToken(accountManager: AccountManager<TelegramAc
                             }
                         }
                     } else {
-                        return .fail(.generic)
+                        return .fail(.requestError(error.errorDescription))
                     }
                 }
                 |> mapToSignal { result -> Signal<ExportAuthTransferTokenResult, ExportAuthTransferTokenError> in

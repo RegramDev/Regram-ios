@@ -225,8 +225,9 @@ public class UnauthorizedAccount {
         self.proxySettingsDisposable.dispose()
     }
     
-    public func changedMasterDatacenterId(accountManager: AccountManager<TelegramAccountManagerTypes>, masterDatacenterId: Int32) -> Signal<UnauthorizedAccount, NoError> {
-        if masterDatacenterId == Int32(self.network.datacenterId) {
+    // MARK: Regram — allow a stalled pending login to rebuild its network on the same DC.
+    public func changedMasterDatacenterId(accountManager: AccountManager<TelegramAccountManagerTypes>, masterDatacenterId: Int32, forceRestart: Bool = false, routingSource: Network? = nil) -> Signal<UnauthorizedAccount, NoError> {
+        if masterDatacenterId == Int32(self.network.datacenterId) && !forceRestart {
             return .single(self)
         } else {
             let keychain = makeExclusiveKeychain(id: self.id, postbox: self.postbox)
@@ -242,6 +243,17 @@ public class UnauthorizedAccount {
             |> mapToSignal { localizationSettings, proxySettings, networkSettings, appConfiguration, networkEngineSettings -> Signal<UnauthorizedAccount, NoError> in
                 return initializedNetwork(accountId: self.id, arguments: self.networkArguments, supplementary: false, datacenterId: Int(masterDatacenterId), keychain: keychain, basePath: self.basePath, testingEnvironment: self.testingEnvironment, languageCode: localizationSettings?.primaryComponent.languageCode, proxySettings: proxySettings, networkSettings: networkSettings, networkEngineSettings: networkEngineSettings, phoneNumber: nil, useRequestTimeoutTimers: false, appConfiguration: appConfiguration)
                 |> map { network in
+                    // MARK: Regram — copy server-discovered addresses before
+                    // starting pending-account key exchange. No auth keys or
+                    // login tokens are copied from the routing source.
+                    if let routingSource {
+                        for id in self.testingEnvironment ? [1, 2, 3] : [1, 2, 3, 4, 5] {
+                            let addresses = routingSource.context.addressSetForDatacenter(withId: id)
+                            if !addresses.addressList.isEmpty {
+                                network.context.updateAddressSetForDatacenter(withId: id, addressSet: addresses, forceUpdateSchemes: true)
+                            }
+                        }
+                    }
                     let updated = UnauthorizedAccount(accountManager: accountManager, networkArguments: self.networkArguments, id: self.id, rootPath: self.rootPath, basePath: self.basePath, testingEnvironment: self.testingEnvironment, postbox: self.postbox, network: network)
                     updated.shouldBeServiceTaskMaster.set(self.shouldBeServiceTaskMaster.get())
                     return updated

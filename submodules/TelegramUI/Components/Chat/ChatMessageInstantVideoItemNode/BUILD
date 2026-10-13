@@ -3,13 +3,16 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 swift_library(
     name = "ChatMessageInstantVideoItemNode",
     module_name = "ChatMessageInstantVideoItemNode",
-    srcs = glob([
+    # MARK: Regram
+    srcs = ["//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction"] + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
+        "//submodules/Postbox:Postbox", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",

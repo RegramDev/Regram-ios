@@ -1,5 +1,8 @@
 // MARK: Regram
 import RGSimpleSettings
+import RGAppUpdate // MARK: Regram
+import RGSettingsUI // MARK: Regram
+import RGStrings // MARK: Regram
 import Foundation
 import UIKit
 import Intents
@@ -152,6 +155,7 @@ final class AuthorizedApplicationContext {
     private var removeNotificationsDisposable: Disposable?
     
     private var applicationInForegroundDisposable: Disposable?
+    private let rgAppUpdateDisposable = MetaDisposable() // MARK: Regram
     
     private var showContactsTab: Bool
     private var showCallsTab: Bool
@@ -600,6 +604,25 @@ final class AuthorizedApplicationContext {
                 strongSelf.mainWindow.present(controller, on: .update)
             }
         }))
+
+        // MARK: Regram — foreground-only update prompt, shared across account contexts.
+        self.rgAppUpdateDisposable.set((combineLatest(rgAvailableAppUpdate.get(), context.sharedContext.applicationBindings.applicationIsActive)
+        |> deliverOnMainQueue).start(next: { [weak self] release, active in
+            guard let self, let release, active else { return }
+            Task { @MainActor [weak self] in
+                guard let self, RGAppUpdater.shared.claimPrompt(for: release), let source = self.rootController.viewControllers.last as? ViewController else { return }
+                let data = self.context.sharedContext.currentPresentationData.with { $0 }
+                let lang = data.strings.baseLanguageCode
+                let alert = textAlertController(context: self.context, title: "AppUpdate.Available".i18n(lang), text: "Regram \(release.version) (\(release.build))", actions: [
+                    TextAlertAction(type: .defaultAction, title: "AppUpdate.Later".i18n(lang), action: {}),
+                    TextAlertAction(type: .defaultAction, title: "AppUpdate.Title".i18n(lang), action: { [weak self] in
+                        guard let self else { return }
+                        self.rootController.pushViewController(rgAppUpdateController(context: self.context))
+                    })
+                ])
+                source.present(alert, in: .window(.root))
+            }
+        }))
         
         if #available(iOS 10.0, *) {
             let permissionsPosition = ValuePromise(0, ignoreRepeated: true)
@@ -875,6 +898,7 @@ final class AuthorizedApplicationContext {
         self.watchNavigateToMessageDisposable.dispose()
         self.permissionsDisposable.dispose()
         self.scheduledCallPeerDisposable.dispose()
+        self.rgAppUpdateDisposable.dispose() // MARK: Regram
     }
     
     func openNotificationSettings() {

@@ -106,7 +106,7 @@
 
 "Settings.ContextMenu" = "內容選單";
 "Settings.ContextMenu.Customize" = "自訂選單";
-"Settings.ContextMenu.Notice" = "停用的選項可在 Regram 選單中使用";
+"Settings.ContextMenu.Notice" = "關閉後隱藏，長按拖動排序。這裡只列出 Regram 的常用操作，以及目前帳號實際出現過的其他選單項目，不包含診斷項目或空白佔位。";
 
 
 "Settings.ChatSwipeOptions" = "對話列表滑動選項";
@@ -430,3 +430,172 @@
 "Notifications.ContentFilter.Unavailable" = "目前簽名沒有可用的共享偏好容器。簽名時啟用有效 App Group 後才能使用通知過濾。";
 
 "Diagnostics.Filter.Average" = "平均每則耗時";
+
+"Settings.UnlimitedPinnedChats" = "不限置頂數量";
+"Settings.UnlimitedPinnedChats.Notice" = "Telegram 只同步帳戶上限內的置頂（一般帳戶 5 個，Premium 10 個）。排在最前的置頂會同步，超出部分只保存在本機。";
+"AntiFeatures.EditHistory" = "保存訊息編輯紀錄";
+"EditHistory.Title" = "編輯紀錄";
+"EditHistory.Notice" = "本機收到編輯時記錄的舊版本。開啟前的編輯，或本機紀錄被整段重新載入取代時的編輯，無法找回。長按某個版本可複製。";
+"EditHistory.Current" = "目前版本";
+"EditHistory.Original" = "原始版本";
+"EditHistory.Copy" = "複製";
+"EditHistory.EmptyText" = "（無文字）";
+"RecentChats.Title" = "最近對話";
+"RecentChats.Notice" = "本機最近開啟過的對話，最新的在前。在聊天中長按返回按鈕也可以快速跳轉。左滑可移除。";
+"RecentChats.Empty" = "暫無最近對話。";
+"RecentChats.Clear" = "清空";
+
+/* MARK: Regram — media information in the photo/video viewer */
+"MediaMetadata.Setting" = "顯示媒體資訊";
+"MediaMetadata.Setting.Notice" = "在圖片和影片檢視器的選單中加入「媒體資訊」，顯示從已下載檔案中讀取的解析度、大小、時長、影格率、位元率和編碼。";
+"MediaMetadata.MenuItem" = "媒體資訊";
+"MediaMetadata.Title" = "媒體資訊";
+"MediaMetadata.Type" = "類型";
+"MediaMetadata.Format" = "格式";
+"MediaMetadata.Resolution" = "解析度";
+"MediaMetadata.FileSize" = "檔案大小";
+"MediaMetadata.Duration" = "時長";
+"MediaMetadata.FrameRate" = "影格率";
+"MediaMetadata.Bitrate" = "位元率";
+"MediaMetadata.Codec" = "編碼";
+"MediaMetadata.AudioCodec" = "音訊編碼";
+"MediaMetadata.Image" = "圖片";
+"MediaMetadata.Video" = "影片";
+"MediaMetadata.Audio" = "音訊";
+"MediaMetadata.Animation" = "動圖";
+"MediaMetadata.File" = "檔案";
+"MediaMetadata.Unknown" = "未知";
+"MediaMetadata.NotDownloaded" = "媒體完整下載後才能顯示部分資訊。";
+
+"JoinFolder.Setting" = "加入群組或頻道後選擇對話盒";
+"JoinFolder.Setting.Notice" = "加入群組或頻道後，Regram 會提示你將其加入某個對話盒。";
+"JoinFolder.Picker.Title" = "將「%@」加入對話盒";
+"JoinFolder.Unavailable" = "無法加入此聊天，對話盒可能已被刪除或已達聊天數量上限。請整理對話盒後再試。";
+"DoubleTap.Action" = "點兩下訊息動作";
+"DoubleTap.WithoutEditPermission" = "無編輯權限的訊息";
+"DoubleTap.Action.sameAsUnified" = "跟隨上一項";
+"DoubleTap.Action.disabled" = "無";
+"DoubleTap.Action.sendReaction" = "傳送回應";
+"DoubleTap.Action.showReactions" = "顯示回應選單";
+"DoubleTap.Action.reply" = "回覆";
+"DoubleTap.Action.repeatMessage" = "複讀";
+"DoubleTap.Action.repeatWithoutQuote" = "無引用複讀";
+"DoubleTap.Action.translate" = "翻譯";
+"DoubleTap.Action.edit" = "編輯";
+"Settings.ShowMessageId" = "顯示訊息 ID";
+"Settings.ShowForwardedMessageDate" = "顯示轉寄訊息的原始時間";
+"QrLogin.Button" = "掃碼登入";
+"QrLogin.Title" = "掃碼登入";
+"QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 前往 設定 → 裝置 → 連結桌面裝置。\n3. 掃描此 QR 碼即可登入。";
+"QrLogin.Accepted.Title" = "正在登入";
+"QrLogin.Accepted.Text" = "QR 碼已被接受，正在完成登入…";
+"QrLogin.TooManyAttempts" = "嘗試次數過多，稍後將自動重試…";
+
+// Message menu management
+"ContextMenu.saveStickerToCameraRoll" = "儲存貼紙到相簿（PNG/GIF）";
+"ContextMenu.viewAuthorMessages" = "查看此人的所有訊息";
+"ContextMenu.sendMoney" = "傳送資金";
+"ContextMenu.sendLogs" = "傳送日誌";
+"ContextMenu.stopPoll" = "停止投票";
+"ContextMenu.factCheck" = "事實查核";
+"ContextMenu.selectAll" = "選擇全部";
+
+"StickerSave.Saving" = "正在儲存貼紙…";
+"StickerSave.Success" = "貼紙已儲存到相簿";
+"StickerSave.Failed" = "儲存失敗，請檢查相簿權限後重試。";
+"ProfileBadge.developer" = "開發者";
+"ProfileBadge.coreTester" = "核心測試";
+"ProfileBadge.sponsor" = "贊助者";
+"ProfileBadge.developer.Info" = "Regram 開發者。";
+"ProfileBadge.coreTester.Info" = "參與 Regram 核心功能測試。";
+"ProfileBadge.sponsor.Info" = "支持 Regram 開發的贊助者。";
+
+"LLMTranslation.Title" = "LLM 翻譯";
+"LLMTranslation.Format" = "API 格式";
+"LLMTranslation.BaseURL" = "基礎位址";
+"LLMTranslation.Endpoint" = "請求路徑";
+"LLMTranslation.Model" = "模型";
+"LLMTranslation.SelectModel" = "選擇模型";
+"LLMTranslation.FetchModels" = "取得模型清單";
+"LLMTranslation.TestModel" = "測試模型";
+"LLMTranslation.Prompt" = "提示詞";
+"LLMTranslation.UseContext" = "使用聊天上下文";
+"LLMTranslation.Temperature" = "溫度";
+"LLMTranslation.TestSucceeded" = "模型測試成功。";
+"LLMTranslation.KeySaveFailed" = "API Key 無法儲存到鑰匙圈。";
+"LLMTranslation.ConnectionNotice" = "請求傳送到你設定的服務。API Key 只儲存在本機鑰匙圈，不包含在設定備份中。位址留空時使用所選 API 格式的預設位址。";
+"LLMTranslation.PromptNotice" = "@text 表示訊息，@toLang 表示目標語言。開啟上下文後，會傳送同一對話或話題中之前最多 5 條訊息，每條最多 800 字。";
+"Settings.Translation.Backend.googleCN" = "Google CN";
+"Settings.Translation.Backend.microsoft" = "Microsoft";
+"Settings.Translation.Backend.yandex" = "Yandex";
+"Settings.Translation.Backend.transmart" = "騰訊 TranSmart";
+"Settings.Translation.Backend.llm" = "LLM";
+
+"AuthorMessages.Title" = "%1$@ 的訊息";
+"AuthorMessages.Count" = "%1$@ · %2$@ 條訊息";
+"AuthorMessages.Empty" = "此人在目前對話中沒有可查看的訊息。";
+"AuthorMessages.LoadFailed" = "訊息載入失敗，請重試。";
+"AuthorMessages.Retry" = "重試";
+
+"QrLogin.RetryButton" = "重試";
+"QrLogin.LoadFailed" = "無法取得登入 QR 碼，請檢查網路或代理後重試。";
+"QrLogin.RenderFailed" = "QR 碼繪製失敗，請重試。";
+
+// MARK: Regram — QR request diagnostics and certificate updates.
+"QrLogin.RequestTimedOut" = "登入權杖請求逾時，請檢查 Telegram 網路連線或代理後重試。";
+"QrLogin.RequestError" = "Telegram 拒絕了登入權杖請求：%1$@";
+"AppUpdate.Title" = "Regram 更新";
+"AppUpdate.CurrentVersion" = "目前版本";
+"AppUpdate.Check" = "檢查更新";
+"AppUpdate.Checking" = "正在檢查更新…";
+"AppUpdate.Available" = "發現 Regram 新版本";
+"AppUpdate.UpToDate" = "目前已是最新版本";
+"AppUpdate.Downloading" = "正在下載更新…";
+"AppUpdate.Signing" = "正在使用你的憑證簽名…";
+"AppUpdate.PreparingInstall" = "正在準備安裝…";
+"AppUpdate.Ready" = "更新已準備好，可以安裝";
+"AppUpdate.InstallRequested" = "已請求安裝，請確認 iOS 提示，完成後重新開啟 Regram。";
+"AppUpdate.Prepare" = "下載並簽名更新";
+"AppUpdate.Install" = "安裝更新";
+"AppUpdate.Cancel" = "取消";
+"AppUpdate.Later" = "稍後";
+"AppUpdate.AutomaticCheck" = "自動檢查更新";
+"AppUpdate.AutomaticPrepare" = "自動下載並簽名";
+"AppUpdate.AutomaticNotice" = "開啟 Regram 時檢查 GitHub Releases，每六小時最多一次。自動準備會在手機上下載並簽名，LCSign 提供安裝清單，安裝時仍需確認 iOS 提示。";
+"AppUpdate.CertificatePassword" = "P12 憑證密碼";
+"AppUpdate.ImportCertificate" = "匯入 P12 憑證";
+"AppUpdate.ImportProfiles" = "匯入描述檔";
+"AppUpdate.RemoveCertificate" = "移除憑證";
+"AppUpdate.CertificateNotice" = "匯入在 LCSign 中安裝 Regram 時使用的同一份 P12 憑證。私鑰和密碼儲存在本機鑰匙圈中。已有描述檔會自動重用，過期時可匯入匹配的新檔案。保留已安裝的全部擴充功能及其權限。";
+"AppUpdate.ServiceNotice" = "使用 LCSign 的 HTTPS 安裝清單服務，簽好的 IPA 透過手機本機連線交給 iOS。憑證、密碼和 IPA 不上傳；節點無法使用時自動切換。";
+"AppUpdate.CertificateImported" = "憑證已儲存在本機，並與目前安裝的應用程式匹配。重新啟動或更新 Regram 後仍可使用，直到你主動移除。";
+"AppUpdate.ProfilesImported" = "已匯入 %1$@ 份描述檔。";
+"AppUpdate.InvalidRelease" = "更新資訊不完整或缺少 SHA-256 校驗值。";
+"AppUpdate.InvalidManifest" = "安裝服務傳回了無效的安裝清單。";
+"AppUpdate.NetworkError" = "連線失敗，請檢查網路和安裝服務後重試。";
+"AppUpdate.HashMismatch" = "下載套件校驗失敗，請重新下載。";
+"AppUpdate.NotConfigured" = "請先匯入安裝目前 Regram 時使用的同一份憑證。";
+"AppUpdate.KeychainError" = "無法將憑證資料儲存到本機鑰匙圈。";
+"AppUpdate.InvalidCertificate" = "P12 憑證、密碼或有效期限不正確。";
+"AppUpdate.CertificateMismatch" = "請使用簽名目前 Regram 安裝版本的同一份憑證。";
+"AppUpdate.InvalidProfile" = "主應用程式和每個擴充功能都需要匹配且未過期的描述檔。";
+"AppUpdate.InvalidArchive" = "無法解壓縮或打包此次更新。";
+"AppUpdate.IdentityMismatch" = "更新版本或擴充功能結構與目前安裝版本不匹配。";
+"AppUpdate.SigningFailed" = "簽名失敗，請檢查憑證和描述檔。";
+"AppUpdate.Cancelled" = "更新已取消";
+
+"AppUpdate.InstallationNode" = "LCSign 安裝節點";
+
+"AppUpdate.AutomaticNode" = "自動";
+
+// MARK: Regram — native certificate import results.
+"AppUpdate.Importing" = "正在匯入並檢查…";
+"AppUpdate.ImportWrongType" = "請選擇對應的 P12／PFX 憑證或 .mobileprovision 描述檔。";
+"AppUpdate.ImportTooLarge" = "選擇的檔案超過 256 KB 匯入限制。";
+"AppUpdate.ImportEmpty" = "選擇的檔案為空。";
+"AppUpdate.ImportUnreadable" = "無法讀取這個檔案，請先將它下載到「檔案」中，再重新選擇。";
+"QrLogin.Retrying" = "正在初始化連線並重試…";
+"QrLogin.Reconnecting" = "正在重新建立待登入連線…";
+"QrLogin.NetworkUnavailable" = "目前沒有可用的網路連線，請恢復網路後重試。";
+"QrLogin.ConnectionTimedOut" = "連線至 Telegram 逾時，請檢查網路或代理後重試。";
+"QrLogin.InitializationTimedOut" = "已連線至 Telegram，但登入連線初始化逾時，正在重試…";

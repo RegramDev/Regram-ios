@@ -297,7 +297,9 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                // MARK: Regram — keeps the local-only attributes and records the edit history.
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
                                     case .updateNewMessage(let data):
@@ -323,7 +325,9 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                // MARK: Regram — keeps the local-only attributes and records the edit history.
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
                                     case .updateEditChannelMessage(let data):
@@ -349,7 +353,9 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                // MARK: Regram — keeps the local-only attributes and records the edit history.
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
                                     case .updateNewChannelMessage(let data):
@@ -375,7 +381,9 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                     updatedMedia = previousMessage.media
                                                 }
                                                 
-                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia))
+                                                // MARK: Regram — keeps the local-only attributes and records the edit history.
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
                                     default:

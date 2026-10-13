@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGProfileBadge
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -125,6 +127,13 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     var standardTitle: ComponentView<Empty>?
     
     let titleCredibilityIconView: ComponentHostView<Empty>
+    // MARK: Regram
+    private let titleRGBadgeView = RGProfileBadgeView()
+    private let titleExpandedRGBadgeView = RGProfileBadgeView()
+    private var rgBadgeSize: CGSize?
+    private var titleExpandedRGBadgeSize: CGSize?
+    private var currentRGProfileBadge: RGProfileBadge?
+    var displayRGProfileBadgeInfo: ((UIView, RGProfileBadge) -> Void)?
     var credibilityIconSize: CGSize?
     let titleExpandedCredibilityIconView: ComponentHostView<Empty>
     var titleExpandedCredibilityIconSize: CGSize?
@@ -237,6 +246,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         self.titleCredibilityIconView = ComponentHostView<Empty>()
         self.titleNode.stateNode(forKey: TitleNodeStateRegular)?.view.addSubview(self.titleCredibilityIconView)
         
+        // MARK: Regram
+        self.titleNode.stateNode(forKey: TitleNodeStateRegular)?.view.addSubview(self.titleRGBadgeView)
+        self.titleNode.stateNode(forKey: TitleNodeStateExpanded)?.view.addSubview(self.titleExpandedRGBadgeView)
         self.titleExpandedCredibilityIconView = ComponentHostView<Empty>()
         self.titleNode.stateNode(forKey: TitleNodeStateExpanded)?.view.addSubview(self.titleExpandedCredibilityIconView)
         
@@ -318,6 +330,9 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         self.usernameNodeContainer.addSubnode(self.usernameNode)
 
         self.regularContentNode.addSubnode(self.avatarClippingNode)
+        // MARK: Regram
+        self.titleRGBadgeView.addTarget(self, action: #selector(self.rgProfileBadgePressed(_:)), for: .touchUpInside)
+        self.titleExpandedRGBadgeView.addTarget(self, action: #selector(self.rgProfileBadgePressed(_:)), for: .touchUpInside)
         self.avatarClippingNode.addSubnode(self.avatarListNode)
         
         self.regularContentNode.addSubnode(self.avatarListNode.listContainerNode.controlsClippingOffsetNode)
@@ -490,6 +505,12 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         case emojiStatus(PeerEmojiStatus)
     }
     
+    // MARK: Regram
+    @objc private func rgProfileBadgePressed(_ sender: UIControl) {
+        guard let badge = self.currentRGProfileBadge else { return }
+        self.displayRGProfileBadgeInfo?(sender, badge)
+    }
+
     private var currentCredibilityIcon: CredibilityIcon?
     private var currentVerifiedIcon: CredibilityIcon?
     private var currentStatusIcon: CredibilityIcon?
@@ -893,6 +914,15 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             }
         }
         
+        // MARK: Regram — badge ids apply only to Telegram users, never channels/groups.
+        self.currentRGProfileBadge = peer.flatMap { peer -> RGProfileBadge? in
+            guard peer.id.namespace == Namespaces.Peer.CloudUser else { return nil }
+            return rgProfileBadge(userId: peer.id.id._internalGetInt64Value())
+        }
+        let rgBadgeTitle = self.currentRGProfileBadge?.title(language: presentationData.strings.baseLanguageCode)
+        self.rgBadgeSize = self.titleRGBadgeView.update(title: rgBadgeTitle, fillColor: presentationData.theme.list.itemAccentColor, foregroundColor: .white)
+        self.titleExpandedRGBadgeSize = self.titleExpandedRGBadgeView.update(title: rgBadgeTitle, fillColor: presentationData.theme.list.itemAccentColor, foregroundColor: .white)
+
         do {
             self.currentCredibilityIcon = credibilityIcon
             
@@ -1367,6 +1397,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         let expandedAvatarHeight: CGFloat = expandedAvatarListSize.height
         
         var titleConstrainedSize = CGSize(width: width - textSideInset * 2.0 - (isPremium || isVerified || isFake ? 20.0 : 0.0), height: .greatestFiniteMagnitude)
+        // MARK: Regram
+        if let badgeWidth = self.rgBadgeSize?.width, badgeWidth > 0.0 { titleConstrainedSize.width = max(0.0, titleConstrainedSize.width - badgeWidth - 4.0) }
         if self.navigationButtonContainer.rightButtonNodes.count > 1 {
             titleConstrainedSize.width -= 60.0
         }
@@ -1672,6 +1704,26 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             nextExpandedIconX += 4.0 + titleExpandedCredibilityIconSize.width
         }
                 
+        // MARK: Regram — Profile role badge sits after the premium/credibility icon.
+        if let rgBadgeSize = self.rgBadgeSize, let titleExpandedRGBadgeSize = self.titleExpandedRGBadgeSize, rgBadgeSize.width > 0.0 {
+            let offset = (rgBadgeSize.width + 4.0) / 2.0
+
+            let leftOffset: CGFloat = nextIconX + 4.0
+            let leftExpandedOffset: CGFloat = nextExpandedIconX + 4.0
+            titleHorizontalOffset -= offset
+
+            var collapsedTransitionOffset: CGFloat = 0.0
+            if let navigationTransition = self.navigationTransition {
+                collapsedTransitionOffset = -10.0 * navigationTransition.fraction
+            }
+
+            transition.updateFrame(view: self.titleRGBadgeView, frame: CGRect(origin: CGPoint(x: leftOffset + collapsedTransitionOffset, y: floor((titleSize.height - rgBadgeSize.height) / 2.0)), size: rgBadgeSize))
+            transition.updateFrame(view: self.titleExpandedRGBadgeView, frame: CGRect(origin: CGPoint(x: leftExpandedOffset, y: floor((titleExpandedSize.height - titleExpandedRGBadgeSize.height) / 2.0) + 1.0), size: titleExpandedRGBadgeSize))
+
+            nextIconX += 4.0 + rgBadgeSize.width
+            nextExpandedIconX += 4.0 + titleExpandedRGBadgeSize.width
+        }
+
         if let verifiedIconSize = self.verifiedIconSize, let titleExpandedVerifiedIconSize = self.titleExpandedVerifiedIconSize, verifiedIconSize.width > 0.0 {
             let leftOffset: CGFloat
             let leftExpandedOffset: CGFloat
@@ -2824,6 +2876,17 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             default:
                 break
             }
+            // MARK: Regram
+            if self.currentRGProfileBadge != nil {
+                let badgeFrame = self.titleRGBadgeView.convert(self.titleRGBadgeView.bounds, to: self.view)
+                let expandedBadgeFrame = self.titleExpandedRGBadgeView.convert(self.titleExpandedRGBadgeView.bounds, to: self.view)
+                if expandedBadgeFrame.contains(point) && self.isAvatarExpanded {
+                    return self.titleExpandedRGBadgeView.hitTest(self.view.convert(point, to: self.titleExpandedRGBadgeView), with: event)
+                } else if badgeFrame.contains(point) {
+                    return self.titleRGBadgeView.hitTest(self.view.convert(point, to: self.titleRGBadgeView), with: event)
+                }
+            }
+
             switch self.currentStatusIcon {
             case .emojiStatus:
                 let iconFrame = self.titleStatusIconView.convert(self.titleStatusIconView.bounds, to: self.view)

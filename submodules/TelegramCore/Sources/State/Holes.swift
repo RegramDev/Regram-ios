@@ -1266,7 +1266,8 @@ func fetchChatListHole(postbox: Postbox, network: Network, accountPeerId: PeerId
             }
             
             if let replacePinnedItemIds = fetchedChats.pinnedItemIds {
-                transaction.setPinnedItemIds(groupId: groupId, itemIds: replacePinnedItemIds.map(PinnedItemId.peer))
+                // MARK: Regram — keeps this device's overflow pins (RGLocalPinnedChats).
+                rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId, itemIds: replacePinnedItemIds.map(PinnedItemId.peer))
             }
             
             for (peerId, summary) in fetchedChats.mentionTagSummaries {

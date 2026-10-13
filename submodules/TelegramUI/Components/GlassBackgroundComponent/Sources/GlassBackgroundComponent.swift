@@ -403,7 +403,8 @@ public class GlassBackgroundView: UIView {
     }
     
     private final class ClippingShapeContext {
-        let view: UIView
+        // MARK: Regram — the owning view retains its clipping context; avoid retaining it back.
+        unowned let view: UIView
         private var maskLayer: CAShapeLayer?
         
         private(set) var shape: Shape?
@@ -475,6 +476,26 @@ public class GlassBackgroundView: UIView {
     
     private let foregroundView: UIImageView?
     private let shadowView: UIImageView?
+
+    // MARK: Regram — individual controls can omit the glass drop shadow.
+    private var shadowClippingContext: ClippingShapeContext?
+    public var displaysShadow: Bool = true {
+        didSet {
+            guard self.displaysShadow != oldValue else { return }
+            self.shadowView?.isHidden = !self.displaysShadow
+            self.clipsToBounds = !self.displaysShadow
+            if self.displaysShadow {
+                self.shadowClippingContext = nil
+                self.layer.mask = nil
+                self.layer.cornerRadius = 0.0
+            } else {
+                self.shadowClippingContext = ClippingShapeContext(view: self)
+                if let params = self.params {
+                    self.shadowClippingContext?.update(shape: params.shape, size: self.bounds.size, transition: .immediate)
+                }
+            }
+        }
+    }
     
     private let maskContainerView: UIView
     public let maskContentView: UIView
@@ -611,7 +632,9 @@ public class GlassBackgroundView: UIView {
     }
 
     func update(size: CGSize, shape: Shape, isDark: Bool, tintColor: TintColor, isInteractive: Bool = false, isVisible: Bool = true, transition: ComponentTransition) {
-        
+        // MARK: Regram — clip native/legacy shadows to the same capsule as the glass.
+        self.shadowClippingContext?.update(shape: shape, size: size, transition: transition)
+
         if let glassHighlightRecognizer = self.glassHighlightRecognizer {
             glassHighlightRecognizer.isEnabled = isInteractive
         }

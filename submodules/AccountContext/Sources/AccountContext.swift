@@ -1431,6 +1431,8 @@ public protocol SharedAccountContext: AnyObject {
     func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController
     func makeRGPayWallController(context: AccountContext) -> ViewController?
     func makeRGUpdateIOSController() -> ViewController
+    // MARK: Regram — recently opened chats (RGProUI's rgRecentChatsController).
+    func makeRGRecentChatsController(context: AccountContext) -> ViewController
 
     var currentInAppNotificationSettings: Atomic<InAppNotificationSettings> { get }
     var currentMediaInputSettings: Atomic<MediaInputSettings> { get }
@@ -2151,6 +2153,16 @@ public struct TranslationConfiguration {
     }
     
     public static func with(appConfiguration: AppConfiguration) -> TranslationConfiguration {
+        // MARK: Regram — an explicitly selected local/external backend overrides Telegram's availability flags.
+        switch RGSimpleSettings.shared.translationBackendEnum {
+        case .google, .googleCN, .microsoft, .yandex, .transmart, .llm:
+            return TranslationConfiguration(manual: .enabled, auto: .enabled)
+        case .system:
+            return TranslationConfiguration(manual: .system, auto: .system)
+        case .default:
+            break
+        }
+
         if let data = appConfiguration.data {
             let manualValue = data["translations_manual_enabled"] as? String ?? "disabled"
             var autoValue = data["translations_auto_enabled"] as? String ?? "disabled"

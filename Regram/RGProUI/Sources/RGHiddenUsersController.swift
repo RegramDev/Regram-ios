@@ -129,7 +129,7 @@ private func rgPlaceholderPeer(id: EnginePeer.Id, title: String) -> EnginePeer {
 
 public func rgHiddenUsersController(context: AccountContext) -> ViewController {
     return rgPeerSettingListController(context: context, titleKey: "HiddenUsers.Title", emptyKey: "HiddenUsers.Empty", noticeKey: "HiddenUsers.Notice", peerIds: {
-        return RGSimpleSettings.shared.blockedPeerIds
+        return Array(RGSimpleSettings.shared.blockedPeerIds)
     }, removePeerId: { peerId in
         RGSimpleSettings.shared.setPeerBlocked(peerId, blocked: false)
     })
@@ -138,19 +138,39 @@ public func rgHiddenUsersController(context: AccountContext) -> ViewController {
 /// Chats anti-revoke is switched on for from their profile.
 public func rgAntiRevokeChatsController(context: AccountContext) -> ViewController {
     return rgPeerSettingListController(context: context, titleKey: "AntiRevoke.Chats.Title", emptyKey: "AntiRevoke.Chats.Empty", noticeKey: "AntiRevoke.Chats.Notice", peerIds: {
-        return RGSimpleSettings.shared.antiRevokePeerIds
+        return Array(RGSimpleSettings.shared.antiRevokePeerIds)
     }, removePeerId: { peerId in
         RGSimpleSettings.shared.setAntiRevokeEnabled(false, forPeer: peerId)
     })
 }
 
-private func rgPeerSettingListController(context: AccountContext, titleKey: String, emptyKey: String, noticeKey: String, peerIds: @escaping () -> Set<Int64>, removePeerId: @escaping (Int64) -> Void) -> ViewController {
-    let statePromise = ValuePromise<Set<Int64>>(peerIds(), ignoreRepeated: true)
+// MARK: Regram — recently opened chats (RGSimpleSettings.recentChatPeerIds), newest first. A tap opens
+// the chat rather than the profile; swipe removes one, the navigation button clears the list.
+public func rgRecentChatsController(context: AccountContext) -> ViewController {
+    let accountPeerId = context.account.peerId.toInt64()
+    return rgPeerSettingListController(context: context, titleKey: "RecentChats.Title", emptyKey: "RecentChats.Empty", noticeKey: "RecentChats.Notice", peerIds: {
+        return RGSimpleSettings.shared.recentChatPeerIds(accountPeerId: accountPeerId)
+    }, removePeerId: { peerId in
+        RGSimpleSettings.shared.removeRecentChat(peerId, accountPeerId: accountPeerId)
+    }, keepsOrder: true, opensChat: true, clearAll: {
+        RGSimpleSettings.shared.clearRecentChats(accountPeerId: accountPeerId)
+    })
+}
+
+private func rgPeerSettingListController(context: AccountContext, titleKey: String, emptyKey: String, noticeKey: String, peerIds: @escaping () -> [Int64], removePeerId: @escaping (Int64) -> Void, keepsOrder: Bool = false, opensChat: Bool = false, clearAll: (() -> Void)? = nil) -> ViewController {
+    let statePromise = ValuePromise<[Int64]>(peerIds(), ignoreRepeated: true)
     let revealedPeerId = ValuePromise<EnginePeer.Id?>(nil, ignoreRepeated: true)
 
     var pushControllerImpl: ((ViewController) -> Void)?
+    var navigationControllerImpl: (() -> NavigationController?)?
 
     let arguments = RGHiddenUsersArguments(context: context, openPeer: { peer in
+        if opensChat {
+            if let navigationController = navigationControllerImpl?() {
+                context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer)))
+            }
+            return
+        }
         if let controller = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
             pushControllerImpl?(controller)
         }
@@ -183,6 +203,9 @@ private func rgPeerSettingListController(context: AccountContext, titleKey: Stri
                     result.append(rgPlaceholderPeer(id: id, title: "ID \(id.id._internalGetInt64Value())"))
                 }
             }
+            if keepsOrder {
+                return result
+            }
             // Stable, readable order: by display name.
             return result.sorted { $0.compactDisplayTitle.localizedCaseInsensitiveCompare($1.compactDisplayTitle) == .orderedAscending }
         }
@@ -201,7 +224,14 @@ private func rgPeerSettingListController(context: AccountContext, titleKey: Stri
             }
         }
 
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(titleKey.i18n(lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        var rightNavigationButton: ItemListNavigationButton?
+        if let clearAll, !peers.isEmpty {
+            rightNavigationButton = ItemListNavigationButton(content: .text("RecentChats.Clear".i18n(lang)), style: .regular, enabled: true, action: {
+                clearAll()
+                statePromise.set(peerIds())
+            })
+        }
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(titleKey.i18n(lang)), leftNavigationButton: nil, rightNavigationButton: rightNavigationButton, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, emptyStateItem: nil, animateChanges: true)
         return (controllerState, (listState, arguments))
     }
@@ -209,6 +239,9 @@ private func rgPeerSettingListController(context: AccountContext, titleKey: Stri
     let controller = ItemListController(context: context, state: signal)
     pushControllerImpl = { [weak controller] c in
         (controller?.navigationController as? NavigationController)?.pushViewController(c)
+    }
+    navigationControllerImpl = { [weak controller] in
+        return controller?.navigationController as? NavigationController
     }
     // Reflect toggles made from profile screens while this list is open.
     controller.didAppear = { _ in

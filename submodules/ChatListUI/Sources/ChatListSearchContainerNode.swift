@@ -1054,7 +1054,8 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
         let edgeEffectFrame = CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - edgeEffectHeight), size: CGSize(width: layout.size.width, height: edgeEffectHeight))
         transition.updateFrame(view: self.edgeEffectView, frame: edgeEffectFrame)
         self.edgeEffectView.update(content: self.presentationData.theme.list.plainBackgroundColor, rect: edgeEffectFrame, edge: .bottom, edgeSize: min(edgeEffectHeight, 50.0), transition: ComponentTransition(transition))
-        transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: edgeEffectHeight > 21.0 ? 1.0 : 0.0)
+        // MARK: Regram — keep the bottom safe area clear, as on the chat-list tab.
+        transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
 
         self.paneContainerNode.update(size: CGSize(width: layout.size.width, height: layout.size.height), sideInset: layout.safeInsets.left, topInset: topInset, bottomInset: bottomInset, visibleHeight: layout.size.height, presentationData: self.presentationData, availablePanes: availablePanes, transition: transition)
     }

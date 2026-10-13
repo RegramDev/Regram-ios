@@ -3,13 +3,17 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 swift_library(
     name = "ChatMessageStickerItemNode",
     module_name = "ChatMessageStickerItemNode",
-    srcs = glob([
+    srcs = [
+        "//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction", # MARK: Regram
+    ] + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
     deps = [
+        "//submodules/Postbox",
+        "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",

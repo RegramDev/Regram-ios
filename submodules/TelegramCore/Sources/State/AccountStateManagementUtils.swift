@@ -4728,6 +4728,9 @@ func replayFinalState(
                         }
                     }
                     
+                    // MARK: Regram — keeps the local-only attributes and records the edit history.
+                    updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: updatedAttributes)
+
                     if let previousFactCheckAttribute = previousMessage.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute, let updatedFactCheckAttribute = message.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute {
                         if case .Pending = updatedFactCheckAttribute.content, updatedFactCheckAttribute.hash == previousFactCheckAttribute.hash {
                             updatedAttributes.removeAll(where: { $0 is FactCheckMessageAttribute })
@@ -5228,6 +5231,8 @@ func replayFinalState(
                                 }
                         }
                     case let .unpin(itemId):
+                        // MARK: Regram — the server cannot remove a pin kept only on this device.
+                        if rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId).contains(itemId) { break }
                         switch itemId {
                             case let .peer(peerId):
                                 var currentItemIds = transaction.getPinnedItemIds(groupId: groupId)
@@ -5239,9 +5244,11 @@ func replayFinalState(
                                 }
                         }
                     case let .reorder(itemIds):
+                        // MARK: Regram — this device's overflow pins are not in the server's order.
                         let currentItemIds = transaction.getPinnedItemIds(groupId: groupId)
-                        if Set(itemIds) == Set(currentItemIds) {
-                            transaction.setPinnedItemIds(groupId: groupId, itemIds: itemIds)
+                        let localOverflow = rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId)
+                        if Set(itemIds) == Set(currentItemIds).subtracting(localOverflow) {
+                            rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId, itemIds: itemIds)
                         } else {
                             addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
                         }

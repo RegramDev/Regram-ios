@@ -39,6 +39,7 @@ import BundleIconComponent
 import VideoPlaybackControlsComponent
 import PhotoResources
 import GlassBackgroundComponent
+import RGMediaMetadata // MARK: Regram
 
 public enum UniversalVideoGalleryItemContentInfo {
     case message(Message, GalleryMediaSubject?)
@@ -3928,6 +3929,28 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     })))
                 }
                 
+                // MARK: Regram — "Media Info": resolution, codec, frame rate and bitrate of the original
+                // file, read only from what is already stored on this device.
+                var rgMediaInfoFileReference: FileMediaReference?
+                if let content = item.content as? NativeVideoContent {
+                    rgMediaInfoFileReference = content.fileReference
+                } else if let content = item.content as? HLSVideoContent {
+                    rgMediaInfoFileReference = content.fileReference
+                }
+                if RGMediaMetadata.isEnabled, let rgMediaInfoFileReference {
+                    let mediaReference = rgMediaInfoFileReference.abstract
+                    let context = strongSelf.context
+                    items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: strongSelf.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                        f(.default)
+                        guard let self, let controller = self.galleryController() else {
+                            return
+                        }
+                        RGMediaMetadata.present(context: context, mediaReference: mediaReference, presentationData: self.presentationData, present: { [weak controller] alert in
+                            controller?.present(alert, in: .window(.root))
+                        })
+                    })))
+                }
+
                 if strongSelf.canDelete() {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Common_Delete, textColor: .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor) }, action: { _, f in
                         f(.default)

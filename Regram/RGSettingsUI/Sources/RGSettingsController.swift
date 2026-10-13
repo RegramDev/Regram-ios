@@ -55,10 +55,12 @@ private enum RGBoolSetting: String {
     case uploadSpeedBoost
     case downloadSpeedBoost
     case mediaLoadingExperiment
+    case showMediaMetadata // MARK: Regram
     case showProfileId
     case warnOnStoriesOpen
     case sendWithReturnKey
     case rememberLastFolder
+    case chooseFolderAfterJoining
     case sendLargePhotos
     case storyStealthMode
     case disableSwipeToRecordStory
@@ -92,6 +94,9 @@ private enum RGBoolSetting: String {
     case showCreationDate
     case showRegDate
     case compactChatList
+    case unlimitedPinnedChats
+    case showMessageId
+    case showForwardedMessageDate
     case compactFolderNames
     case allChatsHidden
     case defaultEmojisFirst
@@ -116,6 +121,8 @@ private enum RGOneFromManySetting: String {
     case transcriptionBackend
     case recentStickerLimit
     case chatListLines
+    case messageDoubleTapAction
+    case messageDoubleTapActionWithoutEditPermission
 }
 
 private enum RGSliderSetting: String {
@@ -127,6 +134,8 @@ private enum RGSliderSetting: String {
 private enum RGDisclosureLink: String {
     case contentSettings
     case languageSettings
+    case llmTranslationSettings
+    case appUpdate // MARK: Regram
     // MARK: Regram
     case contextMenuOrder
     case tabBarWidth
@@ -190,12 +199,16 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .allChatsTitleLengthOverride, text: i18n("Settings.Folders.AllChatsTitle", lang), value: i18n("Settings.Folders.AllChatsTitle.\(RGSimpleSettings.shared.allChatsTitleLengthOverride)", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .rememberLastFolder, value: RGSimpleSettings.shared.rememberLastFolder, text: i18n("Settings.Folders.RememberLast", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .folders, text: i18n("Settings.Folders.RememberLast.Notice", lang)))
+    entries.append(.toggle(id: id.count, section: .folders, settingName: .chooseFolderAfterJoining, value: RGSimpleSettings.shared.chooseFolderAfterJoining, text: i18n("JoinFolder.Setting", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .folders, text: i18n("JoinFolder.Setting.Notice", lang)))
     
     entries.append(.header(id: id.count, section: .chatList, text: i18n("Settings.ChatList.Header", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .compactChatList, value: RGSimpleSettings.shared.compactChatList, text: i18n("Settings.CompactChatList", lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListLines, text: "Settings.ChatList.Lines".i18n(lang), value: "Settings.ChatList.Lines.\(RGSimpleSettings.shared.chatListLines)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableChatSwipeOptions, value: !RGSimpleSettings.shared.disableChatSwipeOptions, text: i18n("Settings.ChatSwipeOptions", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableDeleteChatSwipeOption, value: !RGSimpleSettings.shared.disableDeleteChatSwipeOption, text: i18n("Settings.DeleteChatSwipeOption", lang), enabled: !RGSimpleSettings.shared.disableChatSwipeOptions))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .unlimitedPinnedChats, value: RGSimpleSettings.shared.unlimitedPinnedChats, text: i18n("Settings.UnlimitedPinnedChats", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .chatList, text: i18n("Settings.UnlimitedPinnedChats.Notice", lang)))
     
     entries.append(.header(id: id.count, section: .profiles, text: i18n("Settings.Profiles.Header", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .profiles, settingName: .showProfileId, value: RGSimpleSettings.shared.showProfileId, text: i18n("Settings.ShowProfileID", lang), enabled: true))
@@ -223,12 +236,13 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
 
     
     entries.append(.header(id: id.count, section: .translation, text: strings.Localization_TranslateMessages.uppercased(), badge: nil))
-    entries.append(.oneFromManySelector(id: id.count, section: .translation, settingName: .translationBackend, text: i18n("Settings.Translation.Backend", lang), value: i18n("Settings.Translation.Backend.\(RGSimpleSettings.shared.translationBackend)", lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .translation, settingName: .translationBackend, text: i18n("Settings.Translation.Backend", lang), value: i18n("Settings.Translation.Backend.\(RGSimpleSettings.shared.translationBackendEnum.rawValue)", lang), enabled: true))
     if !RGSimpleSettings.shared.translationBackendIsExternal {
-        entries.append(.notice(id: id.count, section: .translation, text: i18n("Settings.Translation.Backend.Notice", lang, "Settings.Translation.Backend.\(RGSimpleSettings.TranslationBackend.gtranslate.rawValue)".i18n(lang))))
+        entries.append(.notice(id: id.count, section: .translation, text: i18n("Settings.Translation.Backend.Notice", lang, "Settings.Translation.Backend.\(RGSimpleSettings.TranslationBackend.google.rawValue)".i18n(lang))))
     } else {
         id.increment(1)
     }
+    entries.append(.disclosure(id: id.count, section: .translation, link: .llmTranslationSettings, text: "LLMTranslation.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .translation, settingName: .quickTranslateButton, value: RGSimpleSettings.shared.quickTranslateButton, text: i18n("Settings.Translation.QuickTranslateButton", lang), enabled: true))
     entries.append(.disclosure(id: id.count, section: .translation, link: .languageSettings, text: strings.Localization_TranslateEntireChat))
     entries.append(.notice(id: id.count, section: .translation, text: i18n("Common.NoTelegramPremiumNeeded", lang, strings.Settings_Premium)))
@@ -304,10 +318,15 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     id.increment(10000)
     entries.append(.header(id: id.count, section: .other, text: strings.Appearance_Other.uppercased(), badge: nil))
+    entries.append(.disclosure(id: id.count, section: .other, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hideChannelBottomButton, value: !RGSimpleSettings.shared.hideChannelBottomButton, text: i18n("Settings.showChannelBottomButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .wideChannelPosts, value: RGSimpleSettings.shared.wideChannelPosts, text: i18n("Settings.wideChannelPosts", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .secondsInMessages, value: RGSimpleSettings.shared.secondsInMessages, text: i18n("Settings.secondsInMessages", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .other, settingName: .messageDoubleTapActionOutgoingEdit, value: RGSimpleSettings.shared.messageDoubleTapActionOutgoing == RGSimpleSettings.MessageDoubleTapAction.edit.rawValue, text: i18n("Settings.messageDoubleTapActionOutgoingEdit", lang), enabled: true))
+    // MARK: Regram — double tap v2 replaces the old "double tap to edit your messages" switch.
+    entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .messageDoubleTapAction, text: "DoubleTap.Action".i18n(lang), value: "DoubleTap.Action.\(RGSimpleSettings.shared.messageDoubleTapAction)".i18n(lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .messageDoubleTapActionWithoutEditPermission, text: "DoubleTap.WithoutEditPermission".i18n(lang), value: "DoubleTap.Action.\(RGSimpleSettings.shared.messageDoubleTapActionWithoutEditPermission)".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .other, settingName: .showMessageId, value: RGSimpleSettings.shared.showMessageId, text: "Settings.ShowMessageId".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .other, settingName: .showForwardedMessageDate, value: RGSimpleSettings.shared.showForwardedMessageDate, text: "Settings.ShowForwardedMessageDate".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hideRecordingButton, value: !RGSimpleSettings.shared.hideRecordingButton, text: i18n("Settings.RecordingButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .disableSnapDeletionEffect, value: !RGSimpleSettings.shared.disableSnapDeletionEffect, text: i18n("Settings.SnapDeletionEffect", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .disableSendAsButton, value: !RGSimpleSettings.shared.disableSendAsButton, text: i18n("Settings.SendAsButton", lang, strings.Conversation_SendMesageAs), enabled: true))
@@ -322,6 +341,9 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .other, settingName: .mediaLoadingExperiment, value: RGSimpleSettings.shared.mediaLoadingExperiment, text: i18n("Settings.MediaLoadingExperiment", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.MediaLoadingExperiment.Notice", lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .other, settingName: .defaultVideoQuality, text: i18n("Settings.DefaultVideoQuality", lang), value: i18n("Settings.DefaultVideoQuality.\(RGSimpleSettings.shared.defaultVideoQuality)", lang), enabled: true))
+    // MARK: Regram — "Media Info" in the photo/video viewer's menu.
+    entries.append(.toggle(id: id.count, section: .other, settingName: .showMediaMetadata, value: RGSimpleSettings.shared.showMediaMetadata, text: i18n("MediaMetadata.Setting", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .other, text: i18n("MediaMetadata.Setting.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .sendWithReturnKey, value: RGSimpleSettings.shared.sendWithReturnKey, text: i18n("Settings.SendWithReturnKey", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .forceEmojiTab, value: RGSimpleSettings.shared.forceEmojiTab, text: i18n("Settings.ForceEmojiTab", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .other, settingName: .defaultEmojisFirst, value: RGSimpleSettings.shared.defaultEmojisFirst, text: i18n("Settings.DefaultEmojisFirst", lang), enabled: true))
@@ -406,6 +428,8 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.sendWithReturnKey = value
         case .rememberLastFolder:
             RGSimpleSettings.shared.rememberLastFolder = value
+        case .chooseFolderAfterJoining:
+            RGSimpleSettings.shared.chooseFolderAfterJoining = value
         case .sendLargePhotos:
             RGSimpleSettings.shared.sendLargePhotos = value
         case .storyStealthMode:
@@ -425,6 +449,8 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
             RGSimpleSettings.shared.uploadSpeedBoost = value
         case .mediaLoadingExperiment:
             RGSimpleSettings.shared.mediaLoadingExperiment = value
+        case .showMediaMetadata:
+            RGSimpleSettings.shared.showMediaMetadata = value
         case .hideReactions:
             RGSimpleSettings.shared.hideReactions = value
         case .showRepostToStory:
@@ -491,6 +517,12 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         case .compactChatList:
             RGSimpleSettings.shared.compactChatList = value
             askForRestart?()
+        case .unlimitedPinnedChats:
+            RGSimpleSettings.shared.unlimitedPinnedChats = value
+        case .showMessageId:
+            RGSimpleSettings.shared.showMessageId = value
+        case .showForwardedMessageDate:
+            RGSimpleSettings.shared.showForwardedMessageDate = value
         case .compactFolderNames:
             RGSimpleSettings.shared.compactFolderNames = value
             askForRestart?()
@@ -561,6 +593,23 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
                         RGSimpleSettings.shared.chatListLines = count.rawValue
                         simplePromise.set(true)
                         askForRestart?()
+                    }))
+                }
+            case .messageDoubleTapAction, .messageDoubleTapActionWithoutEditPermission:
+                let isOverride = setting == .messageDoubleTapActionWithoutEditPermission
+                var values = RGSimpleSettings.MessageDoubleTapActionV2.allCases.map(\.rawValue)
+                if isOverride {
+                    values.insert(RGSimpleSettings.messageDoubleTapSameAsUnified, at: 0)
+                }
+                for value in values {
+                    items.append(ActionSheetButtonItem(title: "DoubleTap.Action.\(value)".i18n(presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        if isOverride {
+                            RGSimpleSettings.shared.messageDoubleTapActionWithoutEditPermission = value
+                        } else {
+                            RGSimpleSettings.shared.messageDoubleTapAction = value
+                        }
+                        simplePromise.set(true)
                     }))
                 }
             case .recentStickerLimit:
@@ -677,6 +726,10 @@ public func rgSettingsController(context: AccountContext/*, focusOnItemTag: Int?
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, openDisclosureLink: { [context] link in
         switch (link) {
+            case .appUpdate:
+                pushControllerImpl?(rgAppUpdateController(context: context))
+            case .llmTranslationSettings:
+                pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
             case .languageSettings:
                 pushControllerImpl?(context.sharedContext.makeLocalizationListController(context: context))
             case .contentSettings:

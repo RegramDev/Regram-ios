@@ -1,0 +1,144 @@
+// MARK: Regram
+import Foundation
+import UIKit
+import SwiftUI
+import SwiftSignalKit
+import RGSwiftUI
+import RGStrings
+import RGSimpleSettings
+import RGGTranslate
+import TelegramCore
+import AccountContext
+import Display
+
+private struct RGLLMTranslationSettingsView: View {
+    let okTitle: String
+    @Environment(\.lang) private var lang
+    @State private var format = RGSimpleSettings.shared.translationLLMAPIFormat
+    @State private var baseURL = RGSimpleSettings.shared.translationLLMBaseURL
+    @State private var endpoint = RGSimpleSettings.shared.translationLLMEndpoint
+    @State private var apiKey = RGSimpleSettings.shared.translationLLMAPIKey
+    @State private var model = RGSimpleSettings.shared.translationLLMModel
+    @State private var prompt = RGSimpleSettings.shared.translationLLMPrompt
+    @State private var useContext = RGSimpleSettings.shared.translationLLMUseContext
+    @State private var temperature = Double(RGSimpleSettings.shared.translationLLMTemperatureTenthsValue) / 10.0
+    @State private var models: [String] = []
+    @State private var busy = false
+    @State private var result = ""
+    @State private var showsResult = false
+    @State private var request = MetaDisposable()
+
+    private var apiFormat: RGLLMAPIFormat { return RGLLMAPIFormat(rawValue: format) ?? .openai }
+    private var configuration: RGLLMTranslationConfiguration {
+        return RGLLMTranslationConfiguration(format: apiFormat, baseURL: baseURL, endpoint: endpoint, apiKey: apiKey, model: model, prompt: prompt, temperature: temperature)
+    }
+
+    var body: some View {
+        Form {
+            connectionSection
+            modelSection
+            promptSection
+        }
+        .alert("LLMTranslation.Title".i18n(lang), isPresented: $showsResult) {
+            Button(okTitle, role: .cancel) {}
+        } message: { Text(result) }
+        .onDisappear { request.set(nil); busy = false }
+    }
+
+    private var connectionSection: some View {
+        Section(footer: Text("LLMTranslation.ConnectionNotice".i18n(lang))) {
+            Picker("LLMTranslation.Format".i18n(lang), selection: $format) {
+                Text("OpenAI").tag(RGLLMAPIFormat.openai.rawValue)
+                Text("Anthropic").tag(RGLLMAPIFormat.anthropic.rawValue)
+            }
+            .onChange(of: format) { newValue in
+                RGSimpleSettings.shared.translationLLMAPIFormat = newValue
+                // Empty fields use the selected format's defaults; explicit custom URLs stay intact.
+                models = []
+                request.set(nil)
+                busy = false
+            }
+            TextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, prompt: Text(apiFormat.defaultBaseURL))
+                .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                .onChange(of: baseURL) { RGSimpleSettings.shared.translationLLMBaseURL = $0 }
+            TextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, prompt: Text(apiFormat.defaultTranslationEndpoint))
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .onChange(of: endpoint) { RGSimpleSettings.shared.translationLLMEndpoint = $0 }
+            SecureField("API Key", text: $apiKey)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .onChange(of: apiKey) { value in
+                    if !RGSimpleSettings.shared.setTranslationLLMAPIKey(value) {
+                        show("LLMTranslation.KeySaveFailed".i18n(lang))
+                    }
+                }
+        }
+    }
+
+    private var modelSection: some View {
+        Section {
+            TextField("LLMTranslation.Model".i18n(lang), text: $model)
+                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                .onChange(of: model) { RGSimpleSettings.shared.translationLLMModel = $0 }
+            if !models.isEmpty {
+                Picker("LLMTranslation.SelectModel".i18n(lang), selection: $model) {
+                    if !models.contains(model) { Text(model.isEmpty ? "LLMTranslation.SelectModel".i18n(lang) : model).tag(model) }
+                    ForEach(models, id: \.self) { Text($0).tag($0) }
+                }
+            }
+            Button("LLMTranslation.FetchModels".i18n(lang)) { fetchModels() }.disabled(busy)
+            Button("LLMTranslation.TestModel".i18n(lang)) { testModel() }.disabled(busy || model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if busy { ProgressView() }
+        }
+    }
+
+    private var promptSection: some View {
+        Section(footer: Text("LLMTranslation.PromptNotice".i18n(lang))) {
+            Text("LLMTranslation.Prompt".i18n(lang))
+            TextEditor(text: $prompt).frame(minHeight: 110)
+                .onChange(of: prompt) { RGSimpleSettings.shared.translationLLMPrompt = $0 }
+            Toggle("LLMTranslation.UseContext".i18n(lang), isOn: $useContext)
+                .onChange(of: useContext) { RGSimpleSettings.shared.translationLLMUseContext = $0 }
+            HStack {
+                Text("LLMTranslation.Temperature".i18n(lang))
+                Spacer()
+                Text(String(format: "%.1f", temperature)).foregroundColor(.secondary)
+            }
+            Slider(value: $temperature, in: 0...1, step: 0.1)
+                .onChange(of: temperature) { RGSimpleSettings.shared.translationLLMTemperatureTenths = Int32(($0 * 10).rounded()) }
+        }
+    }
+
+    private func show(_ message: String) { result = message; showsResult = true }
+
+    private func fetchModels() {
+        busy = true
+        request.set((llmFetchModels(configuration: configuration) |> deliverOnMainQueue).start(next: { values in
+            models = values
+            busy = false
+        }, error: { error in
+            busy = false
+            show(error.message)
+        }))
+    }
+
+    private func testModel() {
+        busy = true
+        request.set((llmTestModel(configuration: configuration) |> deliverOnMainQueue).start(next: { _ in
+            busy = false
+            show("LLMTranslation.TestSucceeded".i18n(lang))
+        }, error: { error in
+            busy = false
+            show(error.message)
+        }))
+    }
+}
+
+public func rgLLMTranslationSettingsController(context: AccountContext) -> ViewController {
+    let data = context.sharedContext.currentPresentationData.with { $0 }
+    let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
+    controller.bindAppearance(context.sharedContext.presentationData)
+    controller.title = "LLMTranslation.Title".i18n(data.strings.baseLanguageCode)
+    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGLLMTranslationSettingsView(okTitle: data.strings.Common_OK) })
+    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    return controller
+}

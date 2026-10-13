@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGJoinedChatFolderPicker
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -270,6 +272,10 @@ public final class ChatChannelSubscriberInputPanelNode: ChatInputPanelNode {
                 if !didJoin {
                     return
                 }
+                // MARK: Regram
+                rgPresentFolderPickerAfterJoining(context: context, peerId: peer.id, present: { [weak self] controller in
+                    self?.interfaceInteraction?.presentController(controller, nil)
+                })
                 Queue.mainQueue().after(0.5) {
                     if let presentationInterfaceState = self.presentationInterfaceState, let peer = presentationInterfaceState.renderedPeer?.peer {
                         var canEditRank = false

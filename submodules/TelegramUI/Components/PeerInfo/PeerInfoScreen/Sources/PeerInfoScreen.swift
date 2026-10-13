@@ -1,4 +1,7 @@
 // MARK: Regram
+import RGProfileBadge
+import RGJoinedChatFolderPicker
+// MARK: Regram
 import RGDebugUI
 import RGSimpleSettings
 import RGSettingsUI
@@ -2069,6 +2072,33 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
         }
         
+        // MARK: Regram
+        self.headerNode.displayRGProfileBadgeInfo = { [weak self] sourceView, badge in
+            guard let self, let controller = self.controller else { return }
+            let language = self.presentationData.strings.baseLanguageCode
+            let text = NSMutableAttributedString(string: badge.title(language: language), attributes: [
+                .font: Font.semibold(13.0),
+                .foregroundColor: UIColor.white
+            ])
+            text.append(NSAttributedString(string: "\n\(badge.info(language: language))", attributes: [
+                .font: Font.regular(13.0),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.86)
+            ]))
+            let sourceRect = sourceView.convert(sourceView.bounds, to: controller.view)
+            controller.present(TooltipScreen(
+                context: self.context,
+                account: self.context.account,
+                sharedContext: self.context.sharedContext,
+                text: .attributedString(text: text),
+                style: .customBlur(UIColor(rgb: 0x000000, alpha: 0.65), -4.0),
+                arrowStyle: .small,
+                location: .point(sourceRect, .bottom),
+                isShimmering: true,
+                cornerRadius: 10.0,
+                shouldDismissOnTouch: { _, _ in .dismiss(consume: false) }
+            ), in: .current)
+        }
+
         let screenData: Signal<PeerInfoScreenData, NoError>
         if self.isSettings {
             self.notificationExceptions.set(.single(NotificationExceptionsList(peers: [:], settings: [:]))
@@ -5437,6 +5467,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             let edgeEffectFrame = CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - edgeEffectHeight), size: CGSize(width: layout.size.width, height: edgeEffectHeight))
             transition.updateFrame(view: self.edgeEffectView, frame: edgeEffectFrame)
             self.edgeEffectView.update(content: self.presentationData.theme.list.blocksBackgroundColor, rect: edgeEffectFrame, edge: .bottom, edgeSize: edgeEffectFrame.height, transition: ComponentTransition(transition))
+            // MARK: Regram — omit the bottom gradient on the settings tab.
+            transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
         }
         
         let sectionSpacing: CGFloat = 24.0
@@ -6215,6 +6247,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
             switch result {
             case .joined:
+                // MARK: Regram
+                rgPresentFolderPickerAfterJoining(context: self.context, peerId: peer.id, present: { [weak self] controller in
+                    self?.controller?.present(controller, in: .window(.root))
+                })
                 self.controller?.present(UndoOverlayController(presentationData: presentationData, content: .succeed(text: presentationData.strings.Chat_SimilarChannels_JoinedChannel(peer.compactDisplayTitle).string, timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .window(.root))
             case let .webView(webView):
                 if let controller = self.controller {
@@ -7013,9 +7049,29 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         })
     }
     
-    public static func displayChatNavigationMenu(context: AccountContext, chatNavigationStack: [ChatNavigationStackItem], nextFolderId: Int32?, parentController: ViewController, backButtonView: UIView, navigationController: NavigationController, gesture: ContextGesture) {
+    // MARK: Regram — whether the back button's long-press menu has recent chats to offer even when
+    // the navigation stack is empty.
+    public static func rgHasRecentChats(context: AccountContext, excludingPeerId: EnginePeer.Id?) -> Bool {
+        return !rgRecentChatPeerIds(context: context, excludingPeerIds: Set(excludingPeerId.flatMap { [$0] } ?? [])).isEmpty
+    }
+
+    private static func rgRecentChatPeerIds(context: AccountContext, excludingPeerIds: Set<EnginePeer.Id>) -> [EnginePeer.Id] {
+        guard RGSimpleSettings.shared.recentChatsEnabled else {
+            return []
+        }
+        let peerIds = RGSimpleSettings.shared.recentChatPeerIds(accountPeerId: context.account.peerId.toInt64()).map(EnginePeer.Id.init)
+        return Array(peerIds.filter { !excludingPeerIds.contains($0) }.prefix(10))
+    }
+
+    public static func displayChatNavigationMenu(context: AccountContext, chatNavigationStack: [ChatNavigationStackItem], nextFolderId: Int32?, parentController: ViewController, backButtonView: UIView, navigationController: NavigationController, gesture: ContextGesture, rgCurrentPeerId: EnginePeer.Id? = nil) {
+        // MARK: Regram — recent chats follow the navigation stack, minus the chats already in it.
+        var rgExcludedPeerIds = Set(chatNavigationStack.map(\.peerId))
+        if let rgCurrentPeerId {
+            rgExcludedPeerIds.insert(rgCurrentPeerId)
+        }
+        let rgRecentPeerIds = rgRecentChatPeerIds(context: context, excludingPeerIds: rgExcludedPeerIds)
         let peerMap = EngineDataMap(
-            Set(chatNavigationStack.map(\.peerId)).map(TelegramEngine.EngineData.Item.Peer.Peer.init)
+            Set(chatNavigationStack.map(\.peerId)).union(rgRecentPeerIds).map(TelegramEngine.EngineData.Item.Peer.Peer.init)
         )
         let threadDataMap = EngineDataMap(
             Set(chatNavigationStack.filter { $0.threadId != nil }).map { TelegramEngine.EngineData.Item.Peer.ThreadData(id: $0.peerId, threadId: $0.threadId!) }
@@ -7101,6 +7157,35 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                     }))
                 })))
             }
+
+            // MARK: Regram — recently opened chats.
+            var rgRecentItems: [ContextMenuItem] = []
+            for peerId in rgRecentPeerIds {
+                guard let maybePeer = peerMap[peerId], let peer = maybePeer else {
+                    continue
+                }
+                let isSavedMessages = peer.id == context.account.peerId
+                let title = isSavedMessages ? presentationData.strings.DialogList_SavedMessages : peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
+                let iconSource = isSavedMessages ? nil : ContextMenuActionItemIconSource(size: avatarSize, signal: peerAvatarCompleteImage(account: context.account, peer: peer, size: avatarSize))
+                rgRecentItems.append(.action(ContextMenuActionItem(text: title, icon: { _ in
+                    if isSavedMessages {
+                        return generateAvatarImage(size: avatarSize, icon: savedMessagesIcon, iconScale: 0.5, color: .blue)
+                    }
+                    return nil
+                }, iconSource: iconSource, action: { _, f in
+                    f(.default)
+                    guard let navigationController else {
+                        return
+                    }
+                    context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), animated: true))
+                })))
+            }
+            if !rgRecentItems.isEmpty {
+                items.append(.separator)
+                let noAction: ((ContextMenuActionItem.Action) -> Void)? = nil
+                items.append(.action(ContextMenuActionItem(text: "RecentChats.Title".i18n(presentationData.strings.baseLanguageCode), textColor: .disabled, textLayout: .singleLine, icon: { _ in nil }, action: noAction)))
+                items.append(contentsOf: rgRecentItems)
+            }
             let contextController = makeContextController(presentationData: presentationData, source: .reference(PeerInfoControllerContextReferenceContentSource(controller: parentController, sourceView: backButtonView, insets: UIEdgeInsets(), contentInsets: UIEdgeInsets(top: 0.0, left: -15.0, bottom: 0.0, right: -15.0))), items: .single(ContextController.Items(content: .list(items))), gesture: gesture)
             parentController.presentInGlobalOverlay(contextController)
         })
@@ -7119,7 +7204,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             chatNavigationStack = summary.peerNavigationItems.filter({ $0 != ChatNavigationStackItem(peerId: self.peerId, threadId: self.chatLocation.threadId) })
         }
         
-        if !chatNavigationStack.isEmpty, let backButtonNode = self.navigationBar?.backButtonNode as? ContextControllerSourceNode {
+        if !chatNavigationStack.isEmpty || (!self.isSettings && PeerInfoScreenImpl.rgHasRecentChats(context: self.context, excludingPeerId: self.peerId)), let backButtonNode = self.navigationBar?.backButtonNode as? ContextControllerSourceNode {
             backButtonNode.isGestureEnabled = true
             backButtonNode.activated = { [weak self] gesture, _ in
                 guard let strongSelf = self, let backButtonNode = strongSelf.navigationBar?.backButtonNode, let navigationController = strongSelf.navigationController as? NavigationController else {
@@ -7134,7 +7219,8 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                     parentController: strongSelf,
                     backButtonView: backButtonNode.view,
                     navigationController: navigationController,
-                    gesture: gesture
+                    gesture: gesture,
+                    rgCurrentPeerId: strongSelf.peerId
                 )
             }
         }

@@ -50,6 +50,8 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     private var stateDisposable: Disposable?
     private let actionDisposable = MetaDisposable()
     private var applicationStateDisposable: Disposable?
+    // MARK: Regram — independent of the stack rebuilt by authorization state updates.
+    private weak var rgQrLoginController: RGQrLoginController?
     
     private var didPlayPresentationAnimation = false
     
@@ -195,6 +197,18 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
                 }
                 strongSelf.account = updatedAccount
                 strongSelf.inAppPurchaseManager = InAppPurchaseManager(engine: .unauthorized(strongSelf.engine))
+            }
+            // MARK: Regram — match Nagram's modal QR flow, retaining ownership in the sequence.
+            controller.presentQrLogin = { [weak self, weak controller] syncContacts in
+                guard let self, let controller, self.rgQrLoginController == nil else { return }
+                let qrController = RGQrLoginController(sharedContext: self.sharedContext, account: self.account, presentationData: self.presentationData, syncContacts: syncContacts, accountUpdated: { [weak self, weak controller] account in
+                    guard let self else { return }
+                    self.account = account
+                    controller?.rgUpdateAccount(account)
+                    self.inAppPurchaseManager = InAppPurchaseManager(engine: .unauthorized(self.engine))
+                })
+                self.rgQrLoginController = qrController
+                controller.present(qrController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
             }
             controller.loginWithNumber = { [weak self, weak controller] number, syncContacts in
                 guard let self else {
@@ -1248,6 +1262,16 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
     }
     
     private func updateState(state: InnerState) {
+        // MARK: Regram — let the normal sequence show 2FA or complete authorization.
+        let qrAccepted: Bool
+        switch state {
+        case .authorized, .state(.passwordEntry): qrAccepted = true
+        default: qrAccepted = self.rgQrLoginController?.hasBeenAccepted == true
+        }
+        if qrAccepted, let qrController = self.rgQrLoginController {
+            self.rgQrLoginController = nil
+            qrController.dismiss()
+        }
         switch state {
         case .authorized:
             self.authorizationCompleted()

@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGSimpleSettings
 import Foundation
 import LottieSettings
 import UIKit
@@ -47,6 +49,8 @@ final class TextProcessingContentComponent: Component {
 
     let externalState: ExternalState
     let context: AccountContext
+    // MARK: Regram
+    let sourceMessageId: EngineMessage.Id?
     let mode: TextProcessingScreen.Mode
     let previewIconFile: TelegramMediaFile?
     let styles: [TextProcessingScreen.Style]
@@ -67,6 +71,7 @@ final class TextProcessingContentComponent: Component {
     init(
         externalState: ExternalState,
         context: AccountContext,
+        sourceMessageId: EngineMessage.Id? = nil, // MARK: Regram
         mode: TextProcessingScreen.Mode,
         previewIconFile: TelegramMediaFile?,
         styles: [TextProcessingScreen.Style],
@@ -87,6 +92,7 @@ final class TextProcessingContentComponent: Component {
         self.externalState = externalState
         self.styles = styles
         self.context = context
+        self.sourceMessageId = sourceMessageId
         self.mode = mode
         self.previewIconFile = previewIconFile
         self.inputText = inputText
@@ -105,6 +111,8 @@ final class TextProcessingContentComponent: Component {
     }
 
     static func ==(lhs: TextProcessingContentComponent, rhs: TextProcessingContentComponent) -> Bool {
+        // MARK: Regram
+        if lhs.sourceMessageId != rhs.sourceMessageId { return false }
         if lhs.styles != rhs.styles {
             return false
         }
@@ -828,6 +836,7 @@ final class TextProcessingContentComponent: Component {
                 contentExternalState = self.translateState
                 contentComponent = AnyComponent(TextProcessingTranslateContentComponent(
                     context: component.context,
+                    sourceMessageId: component.sourceMessageId, // MARK: Regram
                     theme: theme,
                     strings: environment.strings,
                     styles: component.styles,
@@ -888,6 +897,7 @@ final class TextProcessingContentComponent: Component {
                 contentExternalState = self.stylizeState
                 contentComponent = AnyComponent(TextProcessingTranslateContentComponent(
                     context: component.context,
+                    sourceMessageId: component.sourceMessageId, // MARK: Regram
                     theme: theme,
                     strings: environment.strings,
                     styles: component.styles,
@@ -1010,6 +1020,7 @@ final class TextProcessingContentComponent: Component {
                 contentExternalState = self.fixState
                 contentComponent = AnyComponent(TextProcessingTranslateContentComponent(
                     context: component.context,
+                    sourceMessageId: component.sourceMessageId, // MARK: Regram
                     theme: theme,
                     strings: environment.strings,
                     styles: component.styles,
@@ -1306,6 +1317,8 @@ private final class TextProcessingSheetComponent: Component {
     typealias EnvironmentType = ViewControllerComponentContainer.Environment
 
     let context: AccountContext
+    // MARK: Regram
+    let sourceMessageId: EngineMessage.Id?
     let mode: TextProcessingScreen.Mode
     let ignoredTranslationLanguages: [String]
     let initialStyles: [TextProcessingScreen.Style]
@@ -1318,6 +1331,7 @@ private final class TextProcessingSheetComponent: Component {
 
     init(
         context: AccountContext,
+        sourceMessageId: EngineMessage.Id? = nil, // MARK: Regram
         mode: TextProcessingScreen.Mode,
         ignoredTranslationLanguages: [String],
         initialStyles: [TextProcessingScreen.Style],
@@ -1329,6 +1343,7 @@ private final class TextProcessingSheetComponent: Component {
         translateChat: ((String) -> Void)?
     ) {
         self.context = context
+        self.sourceMessageId = sourceMessageId
         self.mode = mode
         self.ignoredTranslationLanguages = ignoredTranslationLanguages
         self.initialStyles = initialStyles
@@ -1341,7 +1356,8 @@ private final class TextProcessingSheetComponent: Component {
     }
 
     static func ==(lhs: TextProcessingSheetComponent, rhs: TextProcessingSheetComponent) -> Bool {
-        return true
+        // MARK: Regram
+        return lhs.sourceMessageId == rhs.sourceMessageId
     }
 
     final class View: UIView {
@@ -1746,6 +1762,7 @@ private final class TextProcessingSheetComponent: Component {
                     content: AnyComponent<ViewControllerComponentContainer.Environment>(TextProcessingContentComponent(
                         externalState: self.contentExternalState,
                         context: component.context,
+                        sourceMessageId: component.sourceMessageId, // MARK: Regram
                         mode: component.mode,
                         previewIconFile: component.previewIconFile,
                         styles: self.styles,
@@ -2289,6 +2306,7 @@ public class TextProcessingScreen: ViewControllerComponentContainer {
 
     public init(
         context: AccountContext,
+        sourceMessageId: EngineMessage.Id? = nil, // MARK: Regram
         theme: PresentationTheme? = nil,
         mode: Mode,
         inputText: ComposedRichMessage,
@@ -2297,7 +2315,13 @@ public class TextProcessingScreen: ViewControllerComponentContainer {
     ) async {
         self.context = context
         
-        let rawStyles = await context.engine.messages.composeAIMessageStyles().get()
+        // MARK: Regram — external plain-text translation does not need Telegram AI styles.
+        let rawStyles: [TelegramComposeAIMessageMode.CloudStyle]
+        if case .translate = mode, RGSimpleSettings.shared.translationBackendIsExternal {
+            rawStyles = []
+        } else {
+            rawStyles = await context.engine.messages.composeAIMessageStyles().get()
+        }
         var styles: [Style] = []
         let resolvedEmojiFiles: [Int64: TelegramMediaFile] = await context.engine.stickers.resolveInlineStickersLocal(fileIds: Array(Set(rawStyles.compactMap({ style in
             switch style.content {
@@ -2369,6 +2393,7 @@ public class TextProcessingScreen: ViewControllerComponentContainer {
             context: context,
             component: TextProcessingSheetComponent(
                 context: context,
+                sourceMessageId: sourceMessageId, // MARK: Regram
                 mode: mode,
                 ignoredTranslationLanguages: translationSettings.ignoredLanguages ?? [],
                 initialStyles: styles,

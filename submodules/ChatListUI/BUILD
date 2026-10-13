@@ -5,7 +5,9 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 sgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
-    "//Regram/RGAPIToken:RGAPIToken"
+    "//Regram/RGAPIToken:RGAPIToken",
+    "//Regram/RGStrings:RGStrings",
+    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
 ]
 sgsrcs = [
     "//Regram/RGChatListSimpleSettingsSignal:RGChatListSimpleSettingsSignal",

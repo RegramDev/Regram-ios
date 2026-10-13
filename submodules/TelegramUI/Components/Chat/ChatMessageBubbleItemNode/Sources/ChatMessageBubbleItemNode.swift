@@ -1648,7 +1648,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         ephemeralBadgeLayout: (TextNodeLayoutArguments) -> (TextNodeLayout, () -> TextNode),
         boostBadgeLayout: (TextNodeLayoutArguments) -> (TextNodeLayout, () -> TextNode),
         threadInfoLayout: (ChatMessageThreadInfoNode.Arguments) -> (CGSize, (Bool) -> ChatMessageThreadInfoNode),
-        forwardInfoLayout: (AccountContext, ChatPresentationData, PresentationStrings, ChatMessageForwardInfoType, EnginePeer?, String?, String?, String?, ChatMessageForwardInfoNode.StoryData?, CGSize) -> (CGSize, (CGFloat) -> ChatMessageForwardInfoNode),
+        forwardInfoLayout: (AccountContext, ChatPresentationData, PresentationStrings, ChatMessageForwardInfoType, EnginePeer?, String?, String?, String?, ChatMessageForwardInfoNode.StoryData?, Int32?, CGSize) -> (CGSize, (CGFloat) -> ChatMessageForwardInfoNode),
         replyInfoLayout: (ChatMessageReplyInfoNode.Arguments) -> (CGSize, (CGSize, Bool, ListViewItemUpdateAnimation) -> ChatMessageReplyInfoNode),
         actionButtonsLayout: (AccountContext, ChatPresentationThemeData, PresentationChatBubbleCorners, PresentationStrings, WallpaperBackgroundNode?, ReplyMarkupMessageAttribute, [EngineMemoryBuffer: ChatMessageActionButtonsNode.CustomInfo], EngineMessage, CGFloat) -> (minWidth: CGFloat, layout: (CGFloat) -> (CGSize, (ListViewItemUpdateAnimation) -> ChatMessageActionButtonsNode)),
         reactionButtonsLayout: (ChatMessageReactionButtonsNode.Arguments) -> (minWidth: CGFloat, layout: (CGFloat) -> (size: CGSize, apply: (ListViewItemUpdateAnimation) -> ChatMessageReactionButtonsNode)),
@@ -3034,7 +3034,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 })
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
-                let sizeAndApply = forwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .bubble(incoming: incoming), forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardInlineBotNameString, forwardPsaType, nil, CGSize(width: maximumNodeWidth - layoutConstants.text.bubbleInsets.left - layoutConstants.text.bubbleInsets.right, height: CGFloat.greatestFiniteMagnitude))
+                let sizeAndApply = forwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .bubble(incoming: incoming), forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardInlineBotNameString, forwardPsaType, nil, firstMessage.forwardInfo?.date, CGSize(width: maximumNodeWidth - layoutConstants.text.bubbleInsets.left - layoutConstants.text.bubbleInsets.right, height: CGFloat.greatestFiniteMagnitude))
                 forwardInfoSizeApply = (sizeAndApply.0, { width in sizeAndApply.1(width) })
                 
                 headerSize.height += 2.0
@@ -3065,7 +3065,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     }
                 }
                 
-                let sizeAndApply = forwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .bubble(incoming: incoming), forwardSource.flatMap(EnginePeer.init), nil, nil, nil, ChatMessageForwardInfoNode.StoryData(storyType: storyType), CGSize(width: maximumNodeWidth - layoutConstants.text.bubbleInsets.left - layoutConstants.text.bubbleInsets.right, height: CGFloat.greatestFiniteMagnitude))
+                let sizeAndApply = forwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .bubble(incoming: incoming), forwardSource.flatMap(EnginePeer.init), nil, nil, nil, ChatMessageForwardInfoNode.StoryData(storyType: storyType), nil, CGSize(width: maximumNodeWidth - layoutConstants.text.bubbleInsets.left - layoutConstants.text.bubbleInsets.right, height: CGFloat.greatestFiniteMagnitude))
                 forwardInfoSizeApply = (sizeAndApply.0, { width in sizeAndApply.1(width) })
                 
                 if storyType != .regular {
@@ -5975,30 +5975,42 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
-                        // MARK: Regram
-                        rgHandleDoubleTapMessageAction(incoming: openContextMenu.tapMessage.effectivelyIncoming(item.context.account.peerId), message: openContextMenu.tapMessage, editAction: {
-                            item.controllerInteraction.rgStartMessageEdit(openContextMenu.tapMessage)
-                        }, defaultAction: {
+                        // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
+                        let showMenu = {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                        }
+                        if case .doubleTap = gesture {
+                            if item.controllerInteraction.selectionState != nil { break }
+                        } else {
+                            showMenu()
+                            break
+                        }
+                        rgHandleDoubleTapMessageAction(message: openContextMenu.tapMessage, canEditMessage: item.controllerInteraction.rgCanEditMessage(openContextMenu.tapMessage), sendReaction: {
                             if canAddMessageReactions(message: EngineMessage(openContextMenu.tapMessage)) {
                                 item.controllerInteraction.updateMessageReaction(openContextMenu.tapMessage, .default, false, nil)
                             } else {
-                                item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                                showMenu()
                             }
+                        }, showReactions: showMenu, perform: { action in
+                            item.controllerInteraction.rgPerformMessageDoubleTapAction(openContextMenu.tapMessage, action.rawValue)
                         })
-                        //
                     }
                 } else if case .tap = gesture {
                     item.controllerInteraction.clickThroughMessage(self.view, location)
                 } else if case .doubleTap = gesture {
-                    // MARK: Regram
-                    rgHandleDoubleTapMessageAction(incoming: item.message.effectivelyIncoming(item.context.account.peerId), message: item.message, editAction: {
-                        item.controllerInteraction.rgStartMessageEdit(item.message)
-                    }, defaultAction: {
-                        if canAddMessageReactions(message: EngineMessage(item.message)) {
-                            item.controllerInteraction.updateMessageReaction(item.message, .default, false, nil)
-                        }
-                    })
-                    //
+                    // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
+                    if item.controllerInteraction.selectionState == nil {
+                        let subFrame = self.backgroundNode.frame
+                        rgHandleDoubleTapMessageAction(message: item.message, canEditMessage: item.controllerInteraction.rgCanEditMessage(item.message), sendReaction: {
+                            if canAddMessageReactions(message: EngineMessage(item.message)) {
+                                item.controllerInteraction.updateMessageReaction(item.message, .default, false, nil)
+                            }
+                        }, showReactions: {
+                            item.controllerInteraction.openMessageContextMenu(item.message, false, self, subFrame, nil, nil)
+                        }, perform: { action in
+                            item.controllerInteraction.rgPerformMessageDoubleTapAction(item.message, action.rawValue)
+                        })
+                    }
                 }
             }
         default:

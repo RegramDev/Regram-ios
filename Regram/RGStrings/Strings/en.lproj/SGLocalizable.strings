@@ -486,3 +486,172 @@ Matching is case-insensitive.";
 "Notifications.ContentFilter.Unavailable" = "Shared preferences are unavailable with this signature. Enable a working App Group when signing to use notification filtering.";
 
 "Diagnostics.Filter.Average" = "Average per Message";
+
+"Settings.UnlimitedPinnedChats" = "Unlimited Pinned Chats";
+"Settings.UnlimitedPinnedChats.Notice" = "Telegram syncs only as many pins as your account allows (5, or 10 with Premium). The topmost ones are synced; pins beyond that stay on this device only.";
+"AntiFeatures.EditHistory" = "Save Edit History";
+"EditHistory.Title" = "Edit History";
+"EditHistory.Notice" = "Earlier versions recorded on this device when an edit arrived. Edits made before this was on, or while this device's copy was replaced by a full reload, cannot be recovered. Long-press a version to copy it.";
+"EditHistory.Current" = "Current";
+"EditHistory.Original" = "Original";
+"EditHistory.Copy" = "Copy";
+"EditHistory.EmptyText" = "(no text)";
+"RecentChats.Title" = "Recent Chats";
+"RecentChats.Notice" = "Chats you opened on this device, newest first. Long-press a chat's back button to jump to one. Swipe to remove.";
+"RecentChats.Empty" = "No recent chats yet.";
+"RecentChats.Clear" = "Clear";
+
+/* MARK: Regram — media information in the photo/video viewer */
+"MediaMetadata.Setting" = "Show Media Info";
+"MediaMetadata.Setting.Notice" = "Adds \"Media Info\" to the photo and video viewer menu: resolution, file size, duration, frame rate, bitrate and codec, read from the downloaded file.";
+"MediaMetadata.MenuItem" = "Media Info";
+"MediaMetadata.Title" = "Media Info";
+"MediaMetadata.Type" = "Type";
+"MediaMetadata.Format" = "Format";
+"MediaMetadata.Resolution" = "Resolution";
+"MediaMetadata.FileSize" = "File Size";
+"MediaMetadata.Duration" = "Duration";
+"MediaMetadata.FrameRate" = "Frame Rate";
+"MediaMetadata.Bitrate" = "Bitrate";
+"MediaMetadata.Codec" = "Codec";
+"MediaMetadata.AudioCodec" = "Audio Codec";
+"MediaMetadata.Image" = "Image";
+"MediaMetadata.Video" = "Video";
+"MediaMetadata.Audio" = "Audio";
+"MediaMetadata.Animation" = "Animation";
+"MediaMetadata.File" = "File";
+"MediaMetadata.Unknown" = "Unknown";
+"MediaMetadata.NotDownloaded" = "Some details are unavailable until the media is fully downloaded.";
+
+"JoinFolder.Setting" = "Choose Folder After Joining";
+"JoinFolder.Setting.Notice" = "After you join a group or channel, Regram offers to add it to one of your chat folders.";
+"JoinFolder.Picker.Title" = "Add “%@” to a folder";
+"JoinFolder.Unavailable" = "This chat could not be added. The folder may have been deleted or reached its chat limit. Tidy up your folders and try again.";
+"DoubleTap.Action" = "Double-Tap on Message";
+"DoubleTap.WithoutEditPermission" = "Messages You Can't Edit";
+"DoubleTap.Action.sameAsUnified" = "Same as Above";
+"DoubleTap.Action.disabled" = "Nothing";
+"DoubleTap.Action.sendReaction" = "Send Reaction";
+"DoubleTap.Action.showReactions" = "Show Reactions";
+"DoubleTap.Action.reply" = "Reply";
+"DoubleTap.Action.repeatMessage" = "Repeat";
+"DoubleTap.Action.repeatWithoutQuote" = "Repeat Without Quote";
+"DoubleTap.Action.translate" = "Translate";
+"DoubleTap.Action.edit" = "Edit";
+"Settings.ShowMessageId" = "Show Message ID";
+"Settings.ShowForwardedMessageDate" = "Show Original Date of Forwards";
+"QrLogin.Button" = "Log in by QR Code";
+"QrLogin.Title" = "Log in by QR Code";
+"QrLogin.Text" = "1. Open Telegram on a device where you are already logged in.\n2. Go to Settings → Devices → Link Desktop Device.\n3. Scan this code to log in.";
+"QrLogin.Accepted.Title" = "Logging In";
+"QrLogin.Accepted.Text" = "The QR code was accepted. Finishing login…";
+"QrLogin.TooManyAttempts" = "Too many attempts. Trying again shortly…";
+
+// Message menu management
+"ContextMenu.saveStickerToCameraRoll" = "Save Sticker to Photos (PNG/GIF)";
+"ContextMenu.viewAuthorMessages" = "View All Messages from This User";
+"ContextMenu.sendMoney" = "Send Money";
+"ContextMenu.sendLogs" = "Send Logs";
+"ContextMenu.stopPoll" = "Stop Poll";
+"ContextMenu.factCheck" = "Fact Check";
+"ContextMenu.selectAll" = "Select All";
+
+"StickerSave.Saving" = "Saving sticker…";
+"StickerSave.Success" = "Sticker saved to Photos";
+"StickerSave.Failed" = "Unable to save sticker. Check Photos permission and try again.";
+"ProfileBadge.developer" = "Developer";
+"ProfileBadge.coreTester" = "Core Tester";
+"ProfileBadge.sponsor" = "Sponsor";
+"ProfileBadge.developer.Info" = "A developer of Regram.";
+"ProfileBadge.coreTester.Info" = "A core tester helping verify Regram.";
+"ProfileBadge.sponsor.Info" = "A supporter of Regram.";
+
+"LLMTranslation.Title" = "LLM Translation";
+"LLMTranslation.Format" = "API Format";
+"LLMTranslation.BaseURL" = "Base URL";
+"LLMTranslation.Endpoint" = "Endpoint";
+"LLMTranslation.Model" = "Model";
+"LLMTranslation.SelectModel" = "Select Model";
+"LLMTranslation.FetchModels" = "Fetch Models";
+"LLMTranslation.TestModel" = "Test Model";
+"LLMTranslation.Prompt" = "Prompt";
+"LLMTranslation.UseContext" = "Use Chat Context";
+"LLMTranslation.Temperature" = "Temperature";
+"LLMTranslation.TestSucceeded" = "Model test succeeded.";
+"LLMTranslation.KeySaveFailed" = "Unable to save the API key in Keychain.";
+"LLMTranslation.ConnectionNotice" = "Requests go to the configured service. The API key is stored only in this device’s Keychain and is excluded from settings backups. Leave URLs empty to use the selected API format’s defaults.";
+"LLMTranslation.PromptNotice" = "Use @text for the message and @toLang for the target language. Chat context includes up to five earlier messages from the same chat/topic (800 characters each), sent only when this option is enabled.";
+"Settings.Translation.Backend.googleCN" = "Google CN";
+"Settings.Translation.Backend.microsoft" = "Microsoft";
+"Settings.Translation.Backend.yandex" = "Yandex";
+"Settings.Translation.Backend.transmart" = "Tencent TranSmart";
+"Settings.Translation.Backend.llm" = "LLM";
+
+"AuthorMessages.Title" = "Messages from %1$@";
+"AuthorMessages.Count" = "%1$@ · %2$@ messages";
+"AuthorMessages.Empty" = "This user has no visible messages in this chat.";
+"AuthorMessages.LoadFailed" = "Messages could not be loaded. Please try again.";
+"AuthorMessages.Retry" = "Retry";
+
+"QrLogin.RetryButton" = "Retry";
+"QrLogin.LoadFailed" = "Unable to load the QR code. Check your network or proxy and retry.";
+"QrLogin.RenderFailed" = "Unable to render the QR code. Please retry.";
+
+// MARK: Regram — QR request diagnostics and certificate updates.
+"QrLogin.RequestTimedOut" = "The login token request timed out. Check your Telegram connection or proxy and retry.";
+"QrLogin.RequestError" = "Telegram rejected the login token request: %1$@";
+"AppUpdate.Title" = "Regram Updates";
+"AppUpdate.CurrentVersion" = "Installed version";
+"AppUpdate.Check" = "Check for Updates";
+"AppUpdate.Checking" = "Checking for updates…";
+"AppUpdate.Available" = "A Regram update is available";
+"AppUpdate.UpToDate" = "You are using the latest version";
+"AppUpdate.Downloading" = "Downloading update…";
+"AppUpdate.Signing" = "Signing with your certificate…";
+"AppUpdate.PreparingInstall" = "Preparing installation…";
+"AppUpdate.Ready" = "The update is ready to install";
+"AppUpdate.InstallRequested" = "Installation requested. Confirm in the iOS prompt, then reopen Regram.";
+"AppUpdate.Prepare" = "Download and Sign Update";
+"AppUpdate.Install" = "Install Update";
+"AppUpdate.Cancel" = "Cancel";
+"AppUpdate.Later" = "Later";
+"AppUpdate.AutomaticCheck" = "Automatically check for updates";
+"AppUpdate.AutomaticPrepare" = "Automatically download and sign";
+"AppUpdate.AutomaticNotice" = "Check GitHub Releases when Regram opens, at most once every six hours. Automatic preparation downloads and signs on this device. LCSign provides the installation manifest; iOS asks you to confirm installation.";
+"AppUpdate.CertificatePassword" = "P12 password";
+"AppUpdate.ImportCertificate" = "Import P12 Certificate";
+"AppUpdate.ImportProfiles" = "Import Provisioning Profiles";
+"AppUpdate.RemoveCertificate" = "Remove Certificate";
+"AppUpdate.CertificateNotice" = "Import the same P12 certificate used to install Regram in LCSign. The private key and password stay in this device’s Keychain. Existing profiles are reused; import matching profiles when they expire. All installed extensions and their permissions are retained.";
+"AppUpdate.ServiceNotice" = "LCSign provides the HTTPS installation manifest. The signed IPA is delivered through this device’s local loopback connection. Your certificate, password and IPA are not uploaded. If a node fails, Regram tries the next one.";
+"AppUpdate.CertificateImported" = "Certificate saved on this device and matched to the installed app. It remains available after restarting or updating Regram, until you remove it.";
+"AppUpdate.ProfilesImported" = "Imported %1$@ provisioning profiles.";
+"AppUpdate.InvalidRelease" = "The release metadata is invalid or missing its SHA-256 checksum.";
+"AppUpdate.InvalidManifest" = "The installation service returned an invalid installation manifest.";
+"AppUpdate.NetworkError" = "Unable to connect. Check your network and installation service, then retry.";
+"AppUpdate.HashMismatch" = "The downloaded package failed verification. Please retry.";
+"AppUpdate.NotConfigured" = "Import the same certificate used to install Regram first.";
+"AppUpdate.KeychainError" = "Unable to save credentials to the device Keychain.";
+"AppUpdate.InvalidCertificate" = "The P12 certificate, password or validity period is incorrect.";
+"AppUpdate.CertificateMismatch" = "Use the same certificate that signed the currently installed Regram.";
+"AppUpdate.InvalidProfile" = "A matching, unexpired profile is required for the app and every extension.";
+"AppUpdate.InvalidArchive" = "Unable to unpack or package this update.";
+"AppUpdate.IdentityMismatch" = "The update’s version or extension layout does not match this installation.";
+"AppUpdate.SigningFailed" = "Signing failed. Check your certificate and provisioning profiles.";
+"AppUpdate.Cancelled" = "Update cancelled";
+
+"AppUpdate.InstallationNode" = "LCSign installation node";
+
+"AppUpdate.AutomaticNode" = "Automatic";
+
+// MARK: Regram — native certificate import results.
+"AppUpdate.Importing" = "Importing and checking…";
+"AppUpdate.ImportWrongType" = "Choose a P12/PFX certificate or a .mobileprovision file for the matching import action.";
+"AppUpdate.ImportTooLarge" = "The selected file exceeds the 256 KB import limit.";
+"AppUpdate.ImportEmpty" = "The selected file is empty.";
+"AppUpdate.ImportUnreadable" = "Unable to read this file. Download it to Files first, then select it again.";
+"QrLogin.Retrying" = "Initializing the connection and retrying…";
+"QrLogin.Reconnecting" = "Reconnecting the pending login session…";
+"QrLogin.NetworkUnavailable" = "No network connection is available. Reconnect to the network and retry.";
+"QrLogin.ConnectionTimedOut" = "Connecting to Telegram timed out. Check your connection or proxy and retry.";
+"QrLogin.InitializationTimedOut" = "Connected to Telegram, but initializing the login connection timed out. Retrying…";

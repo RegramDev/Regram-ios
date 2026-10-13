@@ -566,7 +566,7 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableWidth = max(60.0, availableContentWidth - normalDisplaySize.width + 6.0)
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             if replyInfoApply != nil || viaBotApply != nil || forwardInfoSizeApply != nil {
@@ -957,8 +957,18 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                         f.action()
                     case let .optionalAction(f):
                         f()
-                    case .openContextMenu:
-                        break
+                    case let .openContextMenu(openContextMenu):
+                        // MARK: Regram — configurable double tap on round video messages.
+                        guard case .doubleTap = gesture, let item = self.item, item.controllerInteraction.selectionState == nil else { break }
+                        rgHandleDoubleTapMessageAction(message: openContextMenu.tapMessage, canEditMessage: item.controllerInteraction.rgCanEditMessage(openContextMenu.tapMessage), sendReaction: {
+                            if canAddMessageReactions(message: EngineMessage(openContextMenu.tapMessage)) {
+                                item.controllerInteraction.updateMessageReaction(openContextMenu.tapMessage, .default, false, nil)
+                            }
+                        }, showReactions: {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, false, self, openContextMenu.subFrame, nil, nil)
+                        }, perform: { action in
+                            item.controllerInteraction.rgPerformMessageDoubleTapAction(openContextMenu.tapMessage, action.rawValue)
+                        })
                     }
                 } else if case .tap = gesture {
                     self.item?.controllerInteraction.clickThroughMessage(self.view, location)

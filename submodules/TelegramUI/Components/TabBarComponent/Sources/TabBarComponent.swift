@@ -446,7 +446,10 @@ public final class TabBarComponent: Component {
             self.contextGestureContainerView.isGestureEnabled = true
             
             super.init(frame: frame)
-            
+
+            // MARK: Regram — omit the extra shadow around the bottom tab capsule.
+            self.liquidLensView.displaysShadow = false
+
             if #available(iOS 17.0, *) {
                 self.traitOverrides.verticalSizeClass = .compact
                 self.traitOverrides.horizontalSizeClass = .compact

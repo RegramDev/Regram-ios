@@ -3,6 +3,8 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 sgdeps = [
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
+    "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram
+    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",
 
     "//Regram/RGRegDate:RGRegDate",

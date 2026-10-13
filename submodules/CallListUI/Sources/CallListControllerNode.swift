@@ -983,6 +983,8 @@ final class CallListControllerNode: ASDisplayNode {
         let edgeEffectFrame = CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - edgeEffectHeight), size: CGSize(width: layout.size.width, height: edgeEffectHeight))
         transition.updateFrame(view: self.edgeEffectView, frame: edgeEffectFrame)
         self.edgeEffectView.update(content: self.presentationData.theme.list.plainBackgroundColor, rect: edgeEffectFrame, edge: .bottom, edgeSize: edgeEffectFrame.height, transition: ComponentTransition(transition))
+        // MARK: Regram — keep the calls tab's bottom safe area free of the gradient.
+        transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
         
         self.controller?.updateNavigationEdgeEffectExtension(transition: transition)
     }

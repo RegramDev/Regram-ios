@@ -7,6 +7,7 @@ load(
 
 sgdeps = [
     "//Regram/RGSettingsUI:RGSettingsUI",
+    "//Regram/RGAppUpdate:RGAppUpdate", # MARK: Regram
     "//Regram/RGConfig:RGConfig",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
@@ -22,12 +23,15 @@ sgdeps = [
     "//Regram/RGIAP:RGIAP",
     "//Regram/RGPayWall:RGPayWall",
     "//Regram/RGProUI:RGProUI",
+    "//Regram/RGStickerSave:RGStickerSave", # MARK: Regram
+    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
     "//Regram/RGGHSettings:RGGHSettings",
     "//Regram/RGPangu:RGPangu",
     # "//Regram/RGContentAnalysis:RGContentAnalysis"
 ]
 
 sgsrcs = [
+    "//Regram/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
     "//Regram/RGDBReset:RGDBReset",
     "//Regram/RGShowMessageJson:RGShowMessageJson",
     "//Regram/ChatControllerImplExtension:ChatControllerImplExtension",
@@ -41,7 +45,7 @@ filegroup(
     srcs = glob([
         "Sounds/**/*",
         "Resources/**/*",
-    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]),
+    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]) + ["//Regram/RGUpdateSigner:Licenses"], # MARK: Regram
     visibility = ["//visibility:public"],
 )
 

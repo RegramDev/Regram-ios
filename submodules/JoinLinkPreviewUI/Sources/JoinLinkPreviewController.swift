@@ -10,6 +10,7 @@ import AlertUI
 import PresentationDataUtils
 import UndoUI
 import OldChannelsController
+import RGJoinedChatFolderPicker
 
 public final class LegacyJoinLinkPreviewController: ViewController {
     private var controllerNode: JoinLinkPreviewControllerNode {
@@ -150,7 +151,17 @@ public final class LegacyJoinLinkPreviewController: ViewController {
                             strongSelf.navigateToPeer(peer, nil)
                         }
                     }
-                    strongSelf.dismiss()
+                    // MARK: Regram — offer a chat folder once the invite sheet is gone (not for join requests).
+                    let context = strongSelf.context
+                    let navigationController = strongSelf.parentNavigationController
+                    let joinedPeerId = strongSelf.isRequest ? nil : peer?.id
+                    strongSelf.dismiss(completion: { [weak navigationController] in
+                        if let joinedPeerId {
+                            rgPresentFolderPickerAfterJoining(context: context, peerId: joinedPeerId, present: { [weak navigationController] controller in
+                                (navigationController?.viewControllers.last as? ViewController)?.present(controller, in: .window(.root))
+                            })
+                        }
+                    })
                 case let .webView(webView):
                     let chatTitle: String
                     if case let .invite(invite)? = strongSelf.resolvedState {

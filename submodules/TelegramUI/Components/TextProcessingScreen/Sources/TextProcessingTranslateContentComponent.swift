@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGSimpleSettings
 import Foundation
 import NaturalLanguage
 import UIKit
@@ -104,6 +106,8 @@ final class TextProcessingTranslateContentComponent: Component {
     }
 
     let context: AccountContext
+    // MARK: Regram
+    let sourceMessageId: EngineMessage.Id?
     let theme: PresentationTheme
     let strings: PresentationStrings
     let styles: [TextProcessingScreen.Style]
@@ -122,6 +126,7 @@ final class TextProcessingTranslateContentComponent: Component {
 
     init(
         context: AccountContext,
+        sourceMessageId: EngineMessage.Id? = nil, // MARK: Regram
         theme: PresentationTheme,
         strings: PresentationStrings,
         styles: [TextProcessingScreen.Style],
@@ -139,6 +144,7 @@ final class TextProcessingTranslateContentComponent: Component {
         requestAnotherPreviewExample: @escaping () -> Void
     ) {
         self.context = context
+        self.sourceMessageId = sourceMessageId
         self.theme = theme
         self.strings = strings
         self.styles = styles
@@ -157,6 +163,8 @@ final class TextProcessingTranslateContentComponent: Component {
     }
 
     static func ==(lhs: TextProcessingTranslateContentComponent, rhs: TextProcessingTranslateContentComponent) -> Bool {
+        // MARK: Regram
+        if lhs.sourceMessageId != rhs.sourceMessageId { return false }
         if lhs.context !== rhs.context {
             return false
         }
@@ -239,7 +247,9 @@ final class TextProcessingTranslateContentComponent: Component {
                 
                 switch component.mode {
                 case .translate:
-                    mappedMode = .translate(toLanguage: result.language, emojify: component.externalState.emojify, style: component.externalState.style)
+                    // MARK: Regram — external providers perform translation, with the configured LLM prompt.
+                    let external = RGSimpleSettings.shared.translationBackendIsExternal
+                    mappedMode = .translate(toLanguage: result.language, emojify: external ? false : component.externalState.emojify, style: external ? .neutral : component.externalState.style)
                 case .stylize:
                     if case let .stylize(isComposeWithAI) = component.mode, isComposeWithAI {
                         if let appliedPrompt = component.appliedPrompt, !appliedPrompt.isEmpty {
@@ -281,7 +291,8 @@ final class TextProcessingTranslateContentComponent: Component {
                     component.externalState.isProcessing = true
                     self.processDisposable = (component.context.engine.messages.composeAIMessage(
                         text: component.inputText,
-                        mode: mappedMode
+                        mode: mappedMode,
+                        sourceMessageId: component.sourceMessageId // MARK: Regram
                     ) |> deliverOnMainQueue).startStrict(next: { [weak self] processedText in
                         guard let self, let component = self.component else {
                             return
@@ -721,7 +732,8 @@ final class TextProcessingTranslateContentComponent: Component {
             
             var displayEmojify = false
             if isTranslate {
-                displayEmojify = true
+                // MARK: Regram
+                displayEmojify = !RGSimpleSettings.shared.translationBackendIsExternal
             } else if case let .stylize(isComposeWithAI) = component.mode, !isComposeWithAI {
                 displayEmojify = true
             }

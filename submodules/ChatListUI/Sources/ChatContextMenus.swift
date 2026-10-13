@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGJoinedChatFolderPicker
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -529,6 +531,11 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                             if !didJoin {
                                                 return
                                             }
+                                            // MARK: Regram
+                                            rgPresentFolderPickerAfterJoining(context: context, peerId: peerId, present: { [weak chatListController] controller in
+                                                let destination = (chatListController?.navigationController as? NavigationController)?.viewControllers.last as? ViewController
+                                                (destination ?? chatListController)?.present(controller, in: .window(.root))
+                                            })
                                             let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
                                                      |> deliverOnMainQueue).startStandalone(next: { peer in
                                                 guard let peer = peer else {

@@ -187,6 +187,14 @@ public let telegramPostboxSeedConfiguration: SeedConfiguration = {
             if let previousEphemeralReplacement, !updated.contains(where: { $0 is EphemeralReplacementMessageAttribute }) {
                 updated.append(previousEphemeralReplacement)
             }
+            // MARK: Regram — attributes only this device adds; the server's copy never has them, so
+            // a refetch or an edit would otherwise drop the anti-revoke marker and the edit history.
+            for attribute in previous where attribute is RGRevokedMessageAttribute || attribute is RGEditHistoryMessageAttribute {
+                let type = Swift.type(of: attribute)
+                if !updated.contains(where: { Swift.type(of: $0) == type }) {
+                    updated.append(attribute)
+                }
+            }
         },
         decodeMessageThreadInfo: { entry in
             guard let data = entry.get(MessageHistoryThreadData.self) else {

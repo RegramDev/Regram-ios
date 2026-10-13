@@ -517,11 +517,15 @@ func _internal_translateMessagesViaText(account: Account, messagesDict: [EngineM
             //                guard let translatedText = result else {
             //                    return .complete()
             //                }
-            account.postbox.transaction { transaction -> [MessageTextEntity] in
-                transaction.getMessage(messageId)?.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.first?.entities ?? []
+            // MARK: Regram — the current text's entities and earlier local chat/topic messages.
+            account.postbox.transaction { transaction -> ([MessageTextEntity], [String]) in
+                let entities = transaction.getMessage(messageId)?.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.first?.entities ?? []
+                return (entities, rgTranslationContext(transaction: transaction, messageId: messageId))
             }
             |> castError(TranslateFetchError.self)
-            |> mapToSignal { entities in rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang) }
+            |> mapToSignal { entities, context in
+                return rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang, fromLang: fromLang, context: context)
+            }
             |> mapError { _ -> TranslationError in
                 return .generic
             }

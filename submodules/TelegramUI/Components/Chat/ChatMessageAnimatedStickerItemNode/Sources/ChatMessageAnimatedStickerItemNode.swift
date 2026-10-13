@@ -1326,7 +1326,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableWidth = max(60.0, availableContentWidth + 6.0)
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             var needsReplyBackground = false
@@ -2038,6 +2038,23 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
+                        if case .doubleTap = gesture {
+                            if item.controllerInteraction.selectionState == nil {
+                                rgHandleDoubleTapMessageAction(message: openContextMenu.tapMessage, canEditMessage: item.controllerInteraction.rgCanEditMessage(openContextMenu.tapMessage), sendReaction: {
+                                    if canAddMessageReactions(message: EngineMessage(item.message)) {
+                                        item.controllerInteraction.updateMessageReaction(openContextMenu.tapMessage, .default, false, nil)
+                                    } else {
+                                        item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                                    }
+                                }, showReactions: {
+                                    item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                                }, perform: { action in
+                                    item.controllerInteraction.rgPerformMessageDoubleTapAction(openContextMenu.tapMessage, action.rawValue)
+                                })
+                            }
+                            break
+                        }
                         if canAddMessageReactions(message: EngineMessage(item.message)) {
                             item.controllerInteraction.updateMessageReaction(item.message, .default, false, nil)
                         } else {
@@ -2047,8 +2064,17 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 } else if case .tap = gesture {
                     item.controllerInteraction.clickThroughMessage(self.view, location)
                 } else if case .doubleTap = gesture {
-                    if canAddMessageReactions(message: EngineMessage(item.message)) {
-                        item.controllerInteraction.updateMessageReaction(item.message, .default, false, nil)
+                    // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
+                    if item.controllerInteraction.selectionState == nil {
+                        rgHandleDoubleTapMessageAction(message: item.message, canEditMessage: item.controllerInteraction.rgCanEditMessage(item.message), sendReaction: {
+                            if canAddMessageReactions(message: EngineMessage(item.message)) {
+                                item.controllerInteraction.updateMessageReaction(item.message, .default, false, nil)
+                            }
+                        }, showReactions: {
+                            item.controllerInteraction.openMessageContextMenu(item.message, false, self, self.imageNode.frame, nil, nil)
+                        }, perform: { action in
+                            item.controllerInteraction.rgPerformMessageDoubleTapAction(item.message, action.rawValue)
+                        })
                     }
                 }
             }

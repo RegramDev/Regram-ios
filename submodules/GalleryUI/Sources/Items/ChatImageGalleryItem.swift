@@ -28,6 +28,7 @@ import AdsReportScreen
 import GlassBackgroundComponent
 import ComponentFlow
 import ComponentDisplayAdapters
+import RGMediaMetadata // MARK: Regram
 
 /// Upper bound on the pixel dimensions a full-screen photo is decoded and rasterized at.
 /// Photos larger than this are downscaled to fit; smaller ones are left untouched.
@@ -832,6 +833,19 @@ final class ChatImageGalleryItemNode: ZoomableContentGalleryItemNode {
                 })))
             }
             
+            // MARK: Regram — "Media Info": resolution, size and format, read from the stored file only.
+            if RGMediaMetadata.isEnabled, let media = self.contextAndMedia?.1 {
+                items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: self.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    f(.default)
+                    guard let self, let controller = self.galleryController() else {
+                        return
+                    }
+                    RGMediaMetadata.present(context: context, mediaReference: media, presentationData: self.presentationData, present: { [weak controller] alert in
+                        controller?.present(alert, in: .window(.root))
+                    })
+                })))
+            }
+
             if self.canDelete() {
                 items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Delete, textColor: .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor) }, action: { [weak self] _, f in
                     f(.default)

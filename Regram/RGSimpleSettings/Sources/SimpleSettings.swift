@@ -24,6 +24,8 @@ public class RGSimpleSettings {
     }
     
     private func migrate() {
+        // MARK: Regram — Google/GTranslate now share one backend, including imported old settings.
+        if self.translationBackend == "gtranslate" { self.translationBackend = TranslationBackend.google.rawValue }
         // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
         if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
         UserDefaults.standard.removeObject(forKey: "nsfwEnabled")
@@ -48,6 +50,23 @@ public class RGSimpleSettings {
                 RGLogger.shared.log("SGSimpleSettings", "Migrated \(legacyKeywords.count) messageFilterKeywords -> messageFilterRules")
             }
             UserDefaults.standard.set(true, forKey: messageFilterRulesMigrationKey)
+        }
+
+        // MARK: Regram — double tap v2. The old switch only chose between the reaction and editing
+        // your own messages; editable messages keep that choice and every other one reacts.
+        let messageDoubleTapMigrationKey = "migrated_\(Keys.messageDoubleTapAction.rawValue)"
+        if !UserDefaults.standard.bool(forKey: messageDoubleTapMigrationKey) {
+            switch self.messageDoubleTapActionOutgoing {
+            case MessageDoubleTapAction.edit.rawValue:
+                self.messageDoubleTapAction = MessageDoubleTapActionV2.edit.rawValue
+                self.messageDoubleTapActionWithoutEditPermission = MessageDoubleTapActionV2.sendReaction.rawValue
+            case MessageDoubleTapAction.none.rawValue:
+                self.messageDoubleTapAction = MessageDoubleTapActionV2.disabled.rawValue
+                self.messageDoubleTapActionWithoutEditPermission = MessageDoubleTapActionV2.sendReaction.rawValue
+            default:
+                break
+            }
+            UserDefaults.standard.set(true, forKey: messageDoubleTapMigrationKey)
         }
 
         let chatListLinesMigrationKey = "migrated_\(Keys.chatListLines.rawValue)"
@@ -148,6 +167,7 @@ public class RGSimpleSettings {
         case uploadSpeedBoost
         case downloadSpeedBoost
         case mediaLoadingExperiment
+        case showMediaMetadata // MARK: Regram — "Media Info" in the photo/video viewer menu
         case defaultVideoQuality // MARK: Regram
         case bottomTabStyle
         case rememberLastFolder
@@ -177,7 +197,9 @@ public class RGSimpleSettings {
         // MARK: Regram
         case contextShowRepeatForward
         case contextShowRepeatCopy
+        case contextShowEditHistory
         case contextMenuOrder
+        case contextMenuDisabledItems
         case profileDefaultTabGroupsInCommon
         case mentionAsUserIdLink
         case localPremium
@@ -231,6 +253,13 @@ public class RGSimpleSettings {
         case duckyAppIconAvailable
         case transcriptionBackend
         case translationBackend
+        case translationLLMAPIFormat
+        case translationLLMBaseURL
+        case translationLLMEndpoint
+        case translationLLMModel
+        case translationLLMPrompt
+        case translationLLMUseContext
+        case translationLLMTemperatureTenths
         case customAppBadge
         case canUseNY
         case nyStyle
@@ -256,6 +285,16 @@ public class RGSimpleSettings {
         case sendWithReturnKey
         case chatPreferences
         case filterNotifications
+        // MARK: Regram — pins beyond the account's server limit, and prior versions of edited messages
+        case unlimitedPinnedChats
+        case saveEditHistory
+        case recentChatsEnabled
+        // MARK: Regram — offer a chat folder picker after joining a group or channel
+        case chooseFolderAfterJoining
+        case messageDoubleTapAction
+        case messageDoubleTapActionWithoutEditPermission
+        case showMessageId
+        case showForwardedMessageDate
     }
     
     public enum DownloadSpeedBoostValues: String, CaseIterable {
@@ -293,6 +332,22 @@ public class RGSimpleSettings {
         case none
         case edit
     }
+
+    // MARK: Regram — what a double tap on a message does. `messageDoubleTapAction` applies to every
+    // message; `messageDoubleTapActionWithoutEditPermission` overrides it for messages this account
+    // cannot edit, unless it is `sameAsUnified`. Raw values are persisted.
+    public enum MessageDoubleTapActionV2: String, CaseIterable {
+        case disabled
+        case sendReaction
+        case showReactions
+        case reply
+        case repeatMessage
+        case repeatWithoutQuote
+        case translate
+        case edit
+    }
+
+    public static let messageDoubleTapSameAsUnified = "sameAsUnified"
     
     public enum TranscriptionBackend: String, CaseIterable {
         case `default`
@@ -301,8 +356,12 @@ public class RGSimpleSettings {
 
     public enum TranslationBackend: String, CaseIterable {
         case `default`
-        case gtranslate
         case google
+        case googleCN
+        case microsoft
+        case yandex
+        case transmart
+        case llm
         case system
         // Make sure to update TranslationConfiguration
     }
@@ -351,6 +410,7 @@ public class RGSimpleSettings {
         Keys.uploadSpeedBoost.rawValue: false,
         Keys.downloadSpeedBoost.rawValue: DownloadSpeedBoostValues.none.rawValue,
         Keys.mediaLoadingExperiment.rawValue: RGMediaLoadingPolicy.enabledByDefault,
+        Keys.showMediaMetadata.rawValue: true,
         Keys.defaultVideoQuality.rawValue: RGVideoQualityPreference.automatic.rawValue,
         Keys.rememberLastFolder.rawValue: false,
         Keys.bottomTabStyle.rawValue: BottomTabStyleValues.telegram.rawValue,
@@ -376,9 +436,11 @@ public class RGSimpleSettings {
         Keys.contextShowSaveMedia.rawValue: true,
         Keys.contextShowMessageReplies.rawValue: true,
         Keys.contextShowJson.rawValue: false,
+        Keys.contextShowEditHistory.rawValue: true,
         // MARK: Regram
         Keys.contextShowRepeatForward.rawValue: true,
         Keys.contextShowRepeatCopy.rawValue: true,
+        Keys.contextMenuDisabledItems.rawValue: [String](),
         Keys.contextMenuOrder.rawValue: RGContextMenuItemId.allCases.map { $0.rawValue },
         Keys.profileDefaultTabGroupsInCommon.rawValue: false,
         Keys.mentionAsUserIdLink.rawValue: false,
@@ -423,6 +485,13 @@ public class RGSimpleSettings {
         Keys.dismissedSGSuggestions.rawValue: [],
         Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
+        Keys.translationLLMAPIFormat.rawValue: "openai",
+        Keys.translationLLMBaseURL.rawValue: "",
+        Keys.translationLLMEndpoint.rawValue: "",
+        Keys.translationLLMModel.rawValue: "",
+        Keys.translationLLMPrompt.rawValue: "Translate to @toLang:\n\n@text",
+        Keys.translationLLMUseContext.rawValue: false,
+        Keys.translationLLMTemperatureTenths.rawValue: Int32(2),
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
         Keys.customAppBadge.rawValue: "",
         Keys.canUseNY.rawValue: false,
@@ -441,6 +510,14 @@ public class RGSimpleSettings {
         Keys.warnOnStoriesOpen.rawValue: false,
         Keys.showProfileId.rawValue: true,
         Keys.sendWithReturnKey.rawValue: false,
+        Keys.unlimitedPinnedChats.rawValue: true,
+        Keys.saveEditHistory.rawValue: true,
+        Keys.recentChatsEnabled.rawValue: true,
+        Keys.chooseFolderAfterJoining.rawValue: false,
+        Keys.messageDoubleTapAction.rawValue: MessageDoubleTapActionV2.sendReaction.rawValue,
+        Keys.messageDoubleTapActionWithoutEditPermission.rawValue: RGSimpleSettings.messageDoubleTapSameAsUnified,
+        Keys.showMessageId.rawValue: false,
+        Keys.showForwardedMessageDate.rawValue: false,
         Keys.chatPreferences.rawValue: "{}"
     ]
     
@@ -532,6 +609,10 @@ public class RGSimpleSettings {
             NotificationCenter.default.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil)
         }
     }
+
+    // MARK: Regram — offer "Media Info" (resolution, codec, bitrate…) in the photo/video viewer menu.
+    @UserDefault(key: Keys.showMediaMetadata.rawValue)
+    public var showMediaMetadata: Bool
 
     @UserDefault(key: Keys.defaultVideoQuality.rawValue)
     public var defaultVideoQuality: String {
@@ -781,6 +862,9 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.contextShowJson.rawValue)
     public var contextShowJson: Bool
 
+    @UserDefault(key: Keys.contextShowEditHistory.rawValue)
+    public var contextShowEditHistory: Bool
+
     // MARK: Regram
     @UserDefault(key: Keys.contextShowRepeatForward.rawValue)
     public var contextShowRepeatForward: Bool
@@ -849,8 +933,32 @@ public class RGSimpleSettings {
         }
     }
 
-    /// Whether `id` is shown in the main message menu. Off means it is still reachable, but from the
-    /// "Regram" submenu — nothing is ever removed outright.
+    // MARK: Regram — account-scoped inventory of real, generated message actions.
+    public func availableContextMenuItems(accountPeerId: Int64) -> Set<RGContextMenuItemId> {
+        let stored = UserDefaults.standard.stringArray(forKey: "rg_contextMenuObserved_\(accountPeerId)") ?? []
+        return RGContextMenuItemId.standardItems.union(stored.compactMap(RGContextMenuItemId.init(rawValue:))).filter { $0.canBeCustomized }
+    }
+
+    public func recordAvailableContextMenuItems(_ items: Set<RGContextMenuItemId>, accountPeerId: Int64) {
+        let key = "rg_contextMenuObserved_\(accountPeerId)"
+        let old = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        let updated = old.union(items.filter { $0.canBeCustomized }.map(\.rawValue))
+        if updated != old { UserDefaults.standard.set(updated.sorted(), forKey: key) }
+    }
+
+    /// Reordering the visible subset preserves the slots/order of conditional, hidden actions.
+    public func reorderVisibleContextMenuItems(_ items: [RGContextMenuItemId]) {
+        let visible = Set(items)
+        var iterator = items.makeIterator()
+        self.contextMenuOrder = self.contextMenuOrder.map { item in
+            return visible.contains(item) ? (iterator.next() ?? item) : item
+        }
+    }
+
+    @UserDefault(key: Keys.contextMenuDisabledItems.rawValue)
+    public var contextMenuDisabledItems: [String]
+
+    /// Disabled actions are omitted from the message menu.
     public func contextMenuItemIsEnabled(_ id: RGContextMenuItemId) -> Bool {
         switch id {
         case .repeatForward: return self.contextShowRepeatForward
@@ -865,6 +973,8 @@ public class RGSimpleSettings {
         case .saveMedia: return self.contextShowSaveMedia
         case .messageReplies: return self.contextShowMessageReplies
         case .json: return self.contextShowJson
+        case .editHistory: return self.contextShowEditHistory
+        default: return !self.contextMenuDisabledItems.contains(id.rawValue)
         }
     }
 
@@ -882,6 +992,11 @@ public class RGSimpleSettings {
         case .saveMedia: self.contextShowSaveMedia = value
         case .messageReplies: self.contextShowMessageReplies = value
         case .json: self.contextShowJson = value
+        case .editHistory: self.contextShowEditHistory = value
+        default:
+            var disabled = Set(self.contextMenuDisabledItems)
+            if value { disabled.remove(id.rawValue) } else { disabled.insert(id.rawValue) }
+            self.contextMenuDisabledItems = disabled.sorted()
         }
     }
     
@@ -1210,6 +1325,117 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.sendWithReturnKey.rawValue)
     public var sendWithReturnKey: Bool
+
+    // MARK: Regram — pin chats past the server's limit. The server keeps the first N pins (N is the
+    // account's real limit); the rest are local to this device. See RGLocalPinnedChats in TelegramCore.
+    @UserDefault(key: Keys.unlimitedPinnedChats.rawValue)
+    public var unlimitedPinnedChats: Bool
+
+    /// Pins that exist only on this device, per account and chat-list group, in display order.
+    /// Written by the pin synchronizer, so a server update can tell them apart from pins it removed.
+    public func localOverflowPinnedPeerIds(accountPeerId: Int64, groupId: Int32) -> [Int64] {
+        return (UserDefaults.standard.stringArray(forKey: self.localOverflowPinnedKey(accountPeerId: accountPeerId, groupId: groupId)) ?? []).compactMap { Int64($0) }
+    }
+
+    public func setLocalOverflowPinnedPeerIds(_ peerIds: [Int64], accountPeerId: Int64, groupId: Int32) {
+        let key = self.localOverflowPinnedKey(accountPeerId: accountPeerId, groupId: groupId)
+        if peerIds.isEmpty {
+            UserDefaults.standard.removeObject(forKey: key)
+        } else {
+            UserDefaults.standard.set(peerIds.map { String($0) }, forKey: key)
+        }
+    }
+
+    private func localOverflowPinnedKey(accountPeerId: Int64, groupId: Int32) -> String {
+        return "rg_localOverflowPinned_\(accountPeerId)_\(groupId)"
+    }
+
+    // MARK: Regram — keep the text a message had before each edit, see RGEditHistoryMessageAttribute.
+    @UserDefault(key: Keys.saveEditHistory.rawValue)
+    public var saveEditHistory: Bool
+
+    // MARK: Regram — after joining a group or channel, offer to add it to a chat folder
+    // (RGJoinedChatFolderPicker).
+    @UserDefault(key: Keys.chooseFolderAfterJoining.rawValue)
+    public var chooseFolderAfterJoining: Bool
+
+    // MARK: Regram — recently opened chats, newest first, per account. Shown under the back button's
+    // long-press menu and on the Recent Chats page (Chats tab long-press).
+    @UserDefault(key: Keys.recentChatsEnabled.rawValue)
+    public var recentChatsEnabled: Bool
+
+    public static let recentChatsLimit = 50
+
+    public func recentChatPeerIds(accountPeerId: Int64) -> [Int64] {
+        return (UserDefaults.standard.stringArray(forKey: self.recentChatsKey(accountPeerId: accountPeerId)) ?? []).compactMap { Int64($0) }
+    }
+
+    public func addRecentChat(_ peerId: Int64, accountPeerId: Int64) {
+        guard self.recentChatsEnabled else {
+            return
+        }
+        var peerIds = self.recentChatPeerIds(accountPeerId: accountPeerId)
+        if peerIds.first == peerId {
+            return
+        }
+        peerIds.removeAll(where: { $0 == peerId })
+        peerIds.insert(peerId, at: 0)
+        if peerIds.count > RGSimpleSettings.recentChatsLimit {
+            peerIds.removeSubrange(RGSimpleSettings.recentChatsLimit...)
+        }
+        self.setRecentChatPeerIds(peerIds, accountPeerId: accountPeerId)
+    }
+
+    public func removeRecentChat(_ peerId: Int64, accountPeerId: Int64) {
+        var peerIds = self.recentChatPeerIds(accountPeerId: accountPeerId)
+        peerIds.removeAll(where: { $0 == peerId })
+        self.setRecentChatPeerIds(peerIds, accountPeerId: accountPeerId)
+    }
+
+    public func clearRecentChats(accountPeerId: Int64) {
+        self.setRecentChatPeerIds([], accountPeerId: accountPeerId)
+    }
+
+    private func setRecentChatPeerIds(_ peerIds: [Int64], accountPeerId: Int64) {
+        let key = self.recentChatsKey(accountPeerId: accountPeerId)
+        if peerIds.isEmpty {
+            UserDefaults.standard.removeObject(forKey: key)
+        } else {
+            UserDefaults.standard.set(peerIds.map { String($0) }, forKey: key)
+        }
+    }
+
+    private func recentChatsKey(accountPeerId: Int64) -> String {
+        return "rg_recentChats_\(accountPeerId)"
+    }
+
+    // MARK: Regram — double tap on a message, see `MessageDoubleTapActionV2`.
+    @UserDefault(key: Keys.messageDoubleTapAction.rawValue)
+    public var messageDoubleTapAction: String
+
+    @UserDefault(key: Keys.messageDoubleTapActionWithoutEditPermission.rawValue)
+    public var messageDoubleTapActionWithoutEditPermission: String
+
+    /// The action for a message, given whether this account may edit it. Editing a message that
+    /// cannot be edited falls back to the default reaction.
+    public func resolvedMessageDoubleTapAction(canEditMessage: Bool) -> MessageDoubleTapActionV2 {
+        var action = MessageDoubleTapActionV2(rawValue: self.messageDoubleTapAction) ?? .sendReaction
+        if !canEditMessage, let override = MessageDoubleTapActionV2(rawValue: self.messageDoubleTapActionWithoutEditPermission) {
+            action = override
+        }
+        if action == .edit && !canEditMessage {
+            return .sendReaction
+        }
+        return action
+    }
+
+    // MARK: Regram — append the message id to the timestamp of group and channel messages.
+    @UserDefault(key: Keys.showMessageId.rawValue)
+    public var showMessageId: Bool
+
+    // MARK: Regram — show when a forwarded message was originally sent, next to its source.
+    @UserDefault(key: Keys.showForwardedMessageDate.rawValue)
+    public var showForwardedMessageDate: Bool
     
     @UserDefault(key: Keys.pinnedMessageNotifications.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var pinnedMessageNotifications: String
@@ -1228,6 +1454,22 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.transcriptionBackend.rawValue)
     public var transcriptionBackend: String
+
+    @UserDefault(key: Keys.translationLLMAPIFormat.rawValue)
+    public var translationLLMAPIFormat: String
+    @UserDefault(key: Keys.translationLLMBaseURL.rawValue)
+    public var translationLLMBaseURL: String
+    @UserDefault(key: Keys.translationLLMEndpoint.rawValue)
+    public var translationLLMEndpoint: String
+    @UserDefault(key: Keys.translationLLMModel.rawValue)
+    public var translationLLMModel: String
+    @UserDefault(key: Keys.translationLLMPrompt.rawValue)
+    public var translationLLMPrompt: String
+    @UserDefault(key: Keys.translationLLMUseContext.rawValue)
+    public var translationLLMUseContext: Bool
+    @UserDefault(key: Keys.translationLLMTemperatureTenths.rawValue)
+    public var translationLLMTemperatureTenths: Int32
+    public var translationLLMTemperatureTenthsValue: Int32 { return max(0, min(10, self.translationLLMTemperatureTenths)) }
 
     @UserDefault(key: Keys.translationBackend.rawValue)
     public var translationBackend: String
@@ -1267,14 +1509,14 @@ extension RGSimpleSettings {
 
 extension RGSimpleSettings {
     public var translationBackendEnum: RGSimpleSettings.TranslationBackend {
-        return TranslationBackend(rawValue: translationBackend) ?? .default
+        return translationBackend == "gtranslate" ? .google : (TranslationBackend(rawValue: translationBackend) ?? .default)
     }
 
     /// Backends served by a third-party web endpoint rather than by Telegram or by the OS. Those
     /// translate a plain string, so messages have to be routed through the via-text path.
     public var translationBackendIsExternal: Bool {
         switch translationBackendEnum {
-        case .gtranslate, .google:
+        case .google, .googleCN, .microsoft, .yandex, .transmart, .llm:
             return true
         case .default, .system:
             return false

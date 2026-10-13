@@ -450,6 +450,8 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         let edgeEffectFrame = CGRect(origin: CGPoint(x: 0.0, y: layout.size.height - edgeEffectHeight), size: CGSize(width: layout.size.width, height: edgeEffectHeight))
         transition.updateFrame(view: self.edgeEffectView, frame: edgeEffectFrame)
         self.edgeEffectView.update(content: self.presentationData.theme.list.plainBackgroundColor, rect: edgeEffectFrame, edge: .bottom, edgeSize: edgeEffectFrame.height, transition: ComponentTransition(transition))
+        // MARK: Regram — match the clear bottom safe area of the other tab screens.
+        transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
         
         self.updateNavigationScrolling(transition: transition)
         

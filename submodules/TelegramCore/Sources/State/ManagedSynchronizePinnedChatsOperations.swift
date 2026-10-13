@@ -113,14 +113,20 @@ func managedSynchronizePinnedChatsOperations(postbox: Postbox, network: Network,
 }
 
 private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, network: Network, accountPeerId: PeerId, stateManager: AccountStateManager, groupId: PeerGroupId, operation: SynchronizePinnedChatsOperation) -> Signal<Void, NoError> {
-    let initialRemoteItemIds = operation.previousItemIds
+    // MARK: Regram — only the first N cloud pins are synchronized; the rest stay on this device
+    // (RGLocalPinnedChats). Both snapshots are cut the same way, so a local pin past N is never read
+    // as one the server removed.
+    let serverPinnedLimit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+    let fullLocalItemIds = transaction.getPinnedItemIds(groupId: groupId)
+    let localSplit = rgSplitPinnedItemIds(fullLocalItemIds, limit: serverPinnedLimit)
+    let initialRemoteItemIds = rgSplitPinnedItemIds(operation.previousItemIds, limit: serverPinnedLimit).server
     let initialRemoteItemIdsWithoutSecretChats = initialRemoteItemIds.filter { item in
         switch item {
             case let .peer(peerId):
                 return peerId.namespace != Namespaces.Peer.SecretChat
         }
     }
-    let localItemIds = transaction.getPinnedItemIds(groupId: groupId)
+    let localItemIds = localSplit.server
     let localItemIdsWithoutSecretChats = localItemIds.filter { item in
         switch item {
             case let .peer(peerId):
@@ -224,9 +230,17 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
             
             return postbox.transaction { transaction -> Signal<Void, NoError> in
                 updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
-                
-                transaction.setPinnedItemIds(groupId: groupId, itemIds: resultingItemIds)
-                
+
+                // MARK: Regram — merge with the latest local order on the Postbox queue. A new
+                // local pin may have been made while the remote pinned list was being fetched.
+                let latestLocalOrder = transaction.getPinnedItemIds(groupId: groupId)
+                let localOverflow = rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId).intersection(latestLocalOrder).subtracting(resultingItemIds)
+                let mergedItemIds = rgMergeLocalPinnedItemIds(resultingItemIds, previousOrder: latestLocalOrder, keep: localOverflow)
+                let resultingSplit = rgSplitPinnedItemIds(mergedItemIds, limit: serverPinnedLimit)
+                rgSetLocalOverflowPinnedItemIds(resultingSplit.overflow, accountPeerId: accountPeerId, groupId: groupId)
+                resultingItemIds = resultingSplit.server
+                transaction.setPinnedItemIds(groupId: groupId, itemIds: mergedItemIds)
+
                 transaction.updateCurrentPeerNotificationSettings(notificationSettings)
                 
                 for (peerId, autoremoveValue) in ttlPeriods {
@@ -264,7 +278,12 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
                     }
                 }
                 
-                if remoteItemIds == resultingItemIds {
+                if remoteItemIds == resultingItemIds.filter({ item in
+                    switch item {
+                    case let .peer(peerId):
+                        return peerId.namespace != Namespaces.Peer.SecretChat
+                    }
+                }) {
                     return .complete()
                 } else {
                     var inputDialogPeers: [Api.InputDialogPeer] = []

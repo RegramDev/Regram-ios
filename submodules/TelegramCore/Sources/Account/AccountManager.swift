@@ -151,6 +151,7 @@ private var declaredEncodables: Void = {
     // The second line can be removed once no install can still hold pre-rename rows.
     declareEncodable(RGRevokedMessageAttribute.self, f: { RGRevokedMessageAttribute(decoder: $0) })
     declareEncodable(typeHash: persistentHash32("SGRevokedMessageAttribute"), { RGRevokedMessageAttribute(decoder: $0) })
+    declareEncodable(RGEditHistoryMessageAttribute.self, f: { RGEditHistoryMessageAttribute(decoder: $0) })
     declareEncodable(ReplyMarkupMessageAttribute.self, f: { ReplyMarkupMessageAttribute(decoder: $0) })
     declareEncodable(OutgoingChatContextResultMessageAttribute.self, f: { OutgoingChatContextResultMessageAttribute(decoder: $0) })
     declareEncodable(HttpReferenceMediaResource.self, f: { HttpReferenceMediaResource(decoder: $0) })

@@ -889,7 +889,8 @@ public extension TelegramEngine {
 
         public func reorderPinnedItemIds(location: TogglePeerChatPinnedLocation, itemIds: [PinnedItemId]) -> Signal<Bool, NoError> {
             return self.account.postbox.transaction { transaction -> Bool in
-                return _internal_reorderPinnedItemIds(transaction: transaction, location: location, itemIds: itemIds)
+                // MARK: Regram
+                return _internal_reorderPinnedItemIds(transaction: transaction, accountPeerId: self.account.peerId, location: location, itemIds: itemIds)
             }
         }
 

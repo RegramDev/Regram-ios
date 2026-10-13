@@ -61,6 +61,17 @@ extension UserDefaults {
         let replacement = reveal.begin(accountId: 1, peerId: 5, seconds: 10, now: 105)
         expect(!reveal.end(accountId: 1, peerId: 5, ticket: first) && reveal.visiblePeerIds(accountId: 1, now: 111) == [5], "An old expiration callback must not end a newer reveal")
         expect(reveal.visiblePeerIds(accountId: 1, now: 116).isEmpty && reveal.end(accountId: 1, peerId: 5, ticket: replacement), "Recovery must expire and retain safe ticket cleanup")
-        print("Settings runtime checks passed: real wrappers/derived cache restore, allowlist, categories, malformed limits, chat/account overrides, notification predicates and transfer estimates")
+        let originalMenuOrder = settings.contextMenuOrder
+        let initialMenu = settings.availableContextMenuItems(accountPeerId: 111)
+        expect(initialMenu.contains(.copy) && !initialMenu.contains(.editSuggestedPostPrice) && !initialMenu.contains(.sendLogs), "Customization must start with implemented regular actions, not rare/diagnostic placeholders")
+        settings.recordAvailableContextMenuItems([.editSuggestedPostPrice, .sendLogs, .sendMoney], accountPeerId: 111)
+        expect(settings.availableContextMenuItems(accountPeerId: 111).contains(.editSuggestedPostPrice), "A conditional menu item must appear after it is actually generated")
+        expect(!settings.availableContextMenuItems(accountPeerId: 111).contains(.sendLogs) && !settings.availableContextMenuItems(accountPeerId: 111).contains(.sendMoney), "Diagnostics and wallet actions must stay out of customization")
+        expect(!settings.availableContextMenuItems(accountPeerId: 222).contains(.editSuggestedPostPrice), "Another account must not inherit unavailable conditional menu items")
+        settings.contextMenuOrder = [.copy, .viewStats, .reply]
+        settings.reorderVisibleContextMenuItems([.reply, .copy])
+        expect(Array(settings.contextMenuOrder.prefix(3)) == [.reply, .viewStats, .copy], "Reordering visible items must preserve the position of hidden actions")
+        settings.contextMenuOrder = originalMenuOrder
+        print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
     }
 }

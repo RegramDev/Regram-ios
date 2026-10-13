@@ -27,6 +27,7 @@ private struct RGPrivacyToggle {
 
 private enum RGPrivacyToolsToggle: String {
     case antiRevoke
+    case saveEditHistory
     case antiAutoDelete
     case antiSelfDestruct
     case antiScreenshotNotification
@@ -45,6 +46,7 @@ private func antiFeatureToggles() -> [RGPrivacyToggle] {
     let settings = RGSimpleSettings.shared
     return [
         RGPrivacyToggle(setting: .antiRevoke, localizationKey: "AntiFeatures.Revoke", get: { settings.antiRevoke }, set: { settings.antiRevoke = $0 }),
+        RGPrivacyToggle(setting: .saveEditHistory, localizationKey: "AntiFeatures.EditHistory", get: { settings.saveEditHistory }, set: { settings.saveEditHistory = $0 }),
         RGPrivacyToggle(setting: .antiAutoDelete, localizationKey: "AntiFeatures.AutoDelete", get: { settings.antiAutoDelete }, set: { settings.antiAutoDelete = $0 }),
         RGPrivacyToggle(setting: .antiSelfDestruct, localizationKey: "AntiFeatures.SelfDestruct", get: { settings.antiSelfDestruct }, set: { settings.antiSelfDestruct = $0 }),
         RGPrivacyToggle(setting: .antiScreenshotNotification, localizationKey: "AntiFeatures.Screenshot", get: { settings.antiScreenshotNotification }, set: { settings.antiScreenshotNotification = $0 }),

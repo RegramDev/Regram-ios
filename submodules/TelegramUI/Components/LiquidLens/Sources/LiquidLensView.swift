@@ -128,6 +128,12 @@ public final class LiquidLensView: UIView {
         return self.liftedContainerView
     }
 
+    // MARK: Regram — scoped to this lens, retaining the glass and selection effects.
+    public var displaysShadow: Bool {
+        get { return self.backgroundView?.displaysShadow ?? false }
+        set { self.backgroundView?.displaysShadow = newValue }
+    }
+
     private var params: Params?
     private var appliedLensParams: LensParams?
     private var isApplyingLensParams: Bool = false

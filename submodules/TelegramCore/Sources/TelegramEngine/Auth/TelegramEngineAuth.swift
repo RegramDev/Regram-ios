@@ -20,6 +20,15 @@ public extension TelegramEngineUnauthorized {
             return _internal_exportAuthTransferToken(accountManager: accountManager, account: self.account, otherAccountUserIds: otherAccountUserIds, syncContacts: syncContacts)
         }
 
+        // MARK: Regram — rebuild a stalled pending QR login without replacing its record.
+        public func prepareAuthTransferAccount(accountManager: AccountManager<TelegramAccountManagerTypes>, routingAccount: Account) -> Signal<UnauthorizedAccount, NoError> {
+            return _internal_prepareAuthTransferAccount(accountManager: accountManager, account: self.account, routingAccount: routingAccount)
+        }
+
+        public func restartAuthTransferAccount(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<UnauthorizedAccount, NoError> {
+            return _internal_restartAuthTransferAccount(accountManager: accountManager, account: self.account)
+        }
+
         public func twoStepAuthData() -> Signal<TwoStepAuthData, MTRpcError> {
             return _internal_twoStepAuthData(self.account.network)
         }

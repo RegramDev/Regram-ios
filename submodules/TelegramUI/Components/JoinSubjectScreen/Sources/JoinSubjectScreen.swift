@@ -23,6 +23,7 @@ import PresentationDataUtils
 import CheckComponent
 import PlainButtonComponent
 import EmojiStatusComponent
+import RGJoinedChatFolderPicker
 
 private final class JoinSubjectSheetContentComponent: Component {
     typealias EnvironmentType = ViewControllerComponentContainer.Environment
@@ -125,6 +126,14 @@ private final class JoinSubjectSheetContentComponent: Component {
             }
             navigationController.setViewControllers(viewControllers, animated: true)
             component.dismiss()
+            // MARK: Regram — only called after a successful join; offer a chat folder from the
+            // destination, since this sheet is going away.
+            if case .user = peer {
+            } else if let destination = viewControllers[index] as? ViewController {
+                rgPresentFolderPickerAfterJoining(context: context, peerId: peer.id, present: { [weak destination] controller in
+                    destination?.present(controller, in: .window(.root))
+                })
+            }
         }
 
         private func performJoinAction() {

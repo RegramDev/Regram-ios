@@ -307,6 +307,10 @@ private final class ContactSyncNode: ASDisplayNode {
 final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
     private let sharedContext: SharedAccountContext
     private var account: UnauthorizedAccount?
+    // MARK: Regram — QR retries/migrations replace the pending account's network.
+    func rgUpdateAccount(_ account: UnauthorizedAccount) {
+        self.account = account
+    }
     private let strings: PresentationStrings
     private let theme: PresentationTheme
     private let hasOtherAccounts: Bool
@@ -714,6 +718,13 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
     
     private func refreshQrToken() {
         guard let account = self.account else {
+            return
+        }
+        // MARK: Regram — this subscription runs even though the debug QR is
+        // compiled out, so an `updateLoginToken` meant for RGQrLoginController
+        // would start a second, competing token export here. Only the debug QR
+        // may drive it.
+        guard self.qrNode != nil else {
             return
         }
         let sharedContext = self.sharedContext

@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGJoinedChatFolderPicker
 import RGSimpleSettings
 import RGStrings
 import Foundation
@@ -1784,6 +1786,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     strongSelf.interfaceInteraction?.setupEditMessage(message.id, { _ in })
                 }
             }
+        }, rgCanEditMessage: { [weak self] message in
+            guard let self else {
+                return false
+            }
+            return self.rgCanEditMessage(message)
+        }, rgPerformMessageDoubleTapAction: { [weak self] message, actionRawValue in
+            self?.rgPerformMessageDoubleTapAction(message: message, actionRawValue: actionRawValue)
         }, openPeer: { [weak self] peer, navigation, fromMessage, source in
             var expandAvatar = false
             if case let .groupParticipant(storyStats, avatarHeaderNode) = source {
@@ -4579,6 +4588,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         } else {
                             self.push(await TextProcessingScreen(
                                 context: self.context,
+                                sourceMessageId: message?.id, // MARK: Regram
                                 mode: .translate(fromLanguage: language, applyResult: nil),
                                 inputText: .plain(text: text.string, entities: entities ?? []),
                                 copyResult: canCopy ? { [weak self] text in
@@ -4823,7 +4833,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     })))
                 }
                 if !isChannel {
-                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Conversation_ContextMenuSearchMessages, icon: { theme in
+                    items.append(.action(ContextMenuActionItem(text: "ContextMenu.viewAuthorMessages".i18n(strongSelf.presentationData.strings.baseLanguageCode), icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Search"), color: theme.actionSheet.primaryTextColor)
                     }, action: { _, f in
                         f(.dismissWithoutContent)
@@ -4831,7 +4841,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         guard let strongSelf = self else {
                             return
                         }
-                        strongSelf.activateSearch(domain: .member(peer._asPeer()))
+                        strongSelf.rgOpenAuthorMessages(peer)
                     })))
                 }
                 
@@ -5483,6 +5493,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     }
                     switch result {
                     case .joined:
+                        // MARK: Regram
+                        rgPresentFolderPickerAfterJoining(context: self.context, peerId: peer.id, present: { [weak self] controller in
+                            self?.present(controller, in: .window(.root))
+                        })
                         self.present(UndoOverlayController(presentationData: presentationData, content: .succeed(text: presentationData.strings.Chat_SimilarChannels_JoinedChannel(peer.compactDisplayTitle).string, timeout: nil, customUndoText: nil), elevatedLayout: false, position: .top, animateInAsReplacement: false, action: { _ in return false }), in: .current)
                     case let .webView(webView):
                         self.context.sharedContext.openJoinChatWebView(context: self.context, parentController: self, updatedPresentationData: self.updatedPresentationData, webView: webView, chatTitle: peer.compactDisplayTitle)
@@ -6141,6 +6155,17 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                             self?.navigationButtonAction(.openChatInfo(expandAvatar: true, section: nil))
                         })))
                         
+                        // MARK: Regram — the user avatar in a private chat uses the same independent page.
+                        let author = EnginePeer(peer)
+                        if case .user = author {
+                            items.append(.action(ContextMenuActionItem(text: "ContextMenu.viewAuthorMessages".i18n(strongSelf.presentationData.strings.baseLanguageCode), icon: { theme in
+                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Search"), color: theme.actionSheet.primaryTextColor)
+                            }, action: { [weak self] _, f in
+                                f(.dismissWithoutContent)
+                                self?.rgOpenAuthorMessages(author)
+                            })))
+                        }
+
                         if canViewStats {
                             items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.ChannelInfo_Stats, icon: { theme in
                                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Statistics"), color: theme.actionSheet.primaryTextColor)
@@ -7852,7 +7877,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
         }
         
-        if !chatNavigationStack.isEmpty, let backButtonNode = self.chatDisplayNode.navigationBar?.backButtonNode as? ContextControllerSourceNode {
+        // MARK: Regram — also offered when only recent chats are available.
+        if !chatNavigationStack.isEmpty || PeerInfoScreenImpl.rgHasRecentChats(context: self.context, excludingPeerId: self.chatLocation.peerId), let backButtonNode = self.chatDisplayNode.navigationBar?.backButtonNode as? ContextControllerSourceNode {
             backButtonNode.isGestureEnabled = true
             backButtonNode.activated = { [weak self] gesture, _ in
                 guard let strongSelf = self, let backButtonNode = strongSelf.chatDisplayNode.navigationBar?.backButtonNode, let navigationController = strongSelf.effectiveNavigationController else {
@@ -7867,7 +7893,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     parentController: strongSelf,
                     backButtonView: backButtonNode.view,
                     navigationController: navigationController,
-                    gesture: gesture
+                    gesture: gesture,
+                    rgCurrentPeerId: strongSelf.chatLocation.peerId
                 )
             }
         }
@@ -8204,7 +8231,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                                     }
                                     switch result {
                                     case let .joined(peer):
-                                        if peer == nil {
+                                        if let peer {
+                                            // MARK: Regram
+                                            rgPresentFolderPickerAfterJoining(context: strongSelf.context, peerId: peer.id, present: { [weak strongSelf] controller in
+                                                strongSelf?.present(controller, in: .window(.root))
+                                            })
+                                        } else {
                                             strongSelf.dismiss()
                                         }
                                     case let .webView(webView):

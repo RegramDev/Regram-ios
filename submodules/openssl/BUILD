@@ -1,6 +1,12 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 
+# MARK: Regram — reuse pinned sources for the signer's isolated crypto build.
+exports_files(
+    ["openssl-1.1.1d.tar.gz", "build-openssl-bazel.sh", "patch-conf.patch", "patch-include.patch"],
+    visibility = ["//Regram/RGUpdateOpenSSL:__pkg__"],
+)
+
 openssl_headers = [
     "aes.h",
     "asn1.h",

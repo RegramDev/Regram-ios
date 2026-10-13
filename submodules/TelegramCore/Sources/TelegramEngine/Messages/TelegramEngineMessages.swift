@@ -733,12 +733,13 @@ public extension TelegramEngine {
         
         public func translate(text: String, toLang: String, entities: [MessageTextEntity] = [], tone: TranslationTone = .neutral, messageId: EngineMessage.Id? = nil) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
             if let messageId = messageId {
-                return self.account.postbox.transaction { transaction -> Api.InputPeer? in
-                    return transaction.getPeer(messageId.peerId).flatMap(apiInputPeer)
+                // MARK: Regram — pass the selected message's local context to LLM translation.
+                return self.account.postbox.transaction { transaction -> (Api.InputPeer?, [String]) in
+                    return (transaction.getPeer(messageId.peerId).flatMap(apiInputPeer), rgTranslationContext(transaction: transaction, messageId: messageId))
                 }
                 |> castError(TranslationError.self)
-                |> mapToSignal { inputPeer in
-                    return rgWrappedTranslateSingle(text: text, entities: entities, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id))
+                |> mapToSignal { inputPeer, context in
+                    return rgWrappedTranslateSingle(text: text, entities: entities, toLang: toLang, context: context, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone, peer: inputPeer, messageId: messageId.id))
                 }
             } else {
                 return rgWrappedTranslateSingle(text: text, entities: entities, toLang: toLang, default: _internal_translate(network: self.account.network, text: text, toLang: toLang, entities: entities, tone: tone))
@@ -1949,7 +1950,29 @@ public extension TelegramEngine {
             return _internal_installAIMessageStyle(account: self.account, style: style)
         }
         
-        public func composeAIMessage(text: ComposedRichMessage, mode: TelegramComposeAIMessageMode) -> Signal<TelegramAIComposeMessageResult, TelegramAIComposeMessageError> {
+        // MARK: Regram — route plain-text translation in the new processing sheet to the chosen backend.
+        public func composeAIMessage(text: ComposedRichMessage, mode: TelegramComposeAIMessageMode, sourceMessageId: EngineMessage.Id? = nil) -> Signal<TelegramAIComposeMessageResult, TelegramAIComposeMessageError> {
+            if case let .translate(toLanguage, _, _) = mode,
+               case let .plain(value, entities) = text,
+               RGSimpleSettings.shared.translationBackendIsExternal {
+                let contextSignal: Signal<[String], NoError>
+                if let sourceMessageId {
+                    contextSignal = self.account.postbox.transaction { transaction in
+                        rgTranslationContext(transaction: transaction, messageId: sourceMessageId)
+                    }
+                } else {
+                    contextSignal = .single([])
+                }
+                return contextSignal
+                |> castError(TelegramAIComposeMessageError.self)
+                |> mapToSignal { context in
+                    rgExternalTranslateWithLinks(value, entities: entities, toLang: toLanguage, context: context)
+                    |> mapError { _ in TelegramAIComposeMessageError.generic }
+                    |> map { translated in
+                        TelegramAIComposeMessageResult(text: .plain(text: translated.0, entities: translated.1), diffRanges: [])
+                    }
+                }
+            }
             return _internal_composeAIMessage(account: self.account, text: text, mode: mode)
         }
         
@@ -2115,13 +2138,38 @@ func _internal_monoforumPerformSuggestedPostAction(account: Account, id: EngineM
 // MARK: Regram
 /// Routes a plain string to the third-party service the user picked in Settings. Also used as the
 /// fallback when Telegram's own translation API fails.
-func rgExternalTranslate(_ text: String, _ toLang: String) -> Signal<String, TranslateFetchError> {
+/// `fromLang` and `context` (earlier messages of the chat) are optional hints; only some services
+/// use them.
+func rgExternalTranslate(_ text: String, _ toLang: String, fromLang: String? = nil, context: [String] = []) -> Signal<String, TranslateFetchError> {
     switch RGSimpleSettings.shared.translationBackendEnum {
-    case .google:
+    case .google, .default, .system:
+        // Telegram's own and the system backends fall back to Google.
         return googleTranslate(text, toLang)
-    default:
-        return gtranslate(text, toLang)
+    case .googleCN:
+        return googleCNTranslate(text, toLang)
+    case .microsoft:
+        return microsoftTranslate(text, toLang)
+    case .yandex:
+        return yandexTranslate(text, toLang, fromLang: fromLang)
+    case .transmart:
+        return tranSmartTranslate(text, toLang, fromLang: fromLang)
+    case .llm:
+        return llmTranslate(text, toLang, fromLang: fromLang, context: RGSimpleSettings.shared.translationLLMUseContext ? context : [], configuration: rgLLMTranslationConfiguration())
     }
+}
+
+// MARK: Regram — the LLM backend's settings; the API key comes from the Keychain.
+public func rgLLMTranslationConfiguration() -> RGLLMTranslationConfiguration {
+    let settings = RGSimpleSettings.shared
+    return RGLLMTranslationConfiguration(
+        format: RGLLMAPIFormat(rawValue: settings.translationLLMAPIFormat) ?? .openai,
+        baseURL: settings.translationLLMBaseURL,
+        endpoint: settings.translationLLMEndpoint,
+        apiKey: settings.translationLLMAPIKey,
+        model: settings.translationLLMModel,
+        prompt: settings.translationLLMPrompt,
+        temperature: Double(settings.translationLLMTemperatureTenthsValue) / 10.0
+    )
 }
 
 // MARK: Regram — preserve links, code and identifiers; remap nested formatting after translation.
@@ -2145,14 +2193,14 @@ func rgTranslationPlan(_ text: String, entities: [MessageTextEntity]) -> (RGTran
     return (plan, preserved)
 }
 
-func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity], toLang: String) -> Signal<(String, [MessageTextEntity]), TranslateFetchError> {
+func rgExternalTranslateWithLinks(_ text: String, entities: [MessageTextEntity], toLang: String, fromLang: String? = nil, context: [String] = []) -> Signal<(String, [MessageTextEntity]), TranslateFetchError> {
     let (plan, preserved) = rgTranslationPlan(text, entities: entities)
     let signals: [Signal<String, TranslateFetchError>] = plan.segments.map { segment in
         if segment.id != nil || segment.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return .single(segment.text) }
         let leading = String(segment.text.prefix { $0.isWhitespace })
         let trailing = String(segment.text.reversed().prefix { $0.isWhitespace }.reversed())
         let core = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return rgExternalTranslate(core, toLang) |> map { leading + $0 + trailing }
+        return rgExternalTranslate(core, toLang, fromLang: fromLang, context: context) |> map { leading + $0 + trailing }
     }
     if signals.isEmpty { return .single((text, [])) }
     return combineLatest(signals) |> map { values in
@@ -2167,17 +2215,18 @@ private func rgWrappedTranslateSingle(
     text: String,
     entities: [MessageTextEntity],
     toLang: String,
+    context: [String] = [],
     `default`: Signal<(String, [MessageTextEntity])?, TranslationError>
 ) -> Signal<(String, [MessageTextEntity])?, TranslationError> {
     if RGSimpleSettings.shared.translationBackendIsExternal {
-        return rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
+        return rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang, context: context)
             |> map(Optional.init)
             |> mapError { _ in .generic }
     }
 
     return `default`
         |> `catch` { originalError in
-            rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang)
+            rgExternalTranslateWithLinks(text, entities: entities, toLang: toLang, context: context)
                 |> map(Optional.init)
                 |> mapError { _ in originalError }
         }

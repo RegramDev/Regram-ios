@@ -10,6 +10,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/Display",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/TelegramPresentationData",

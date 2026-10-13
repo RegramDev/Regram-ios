@@ -123,7 +123,8 @@ func _internal_resetAccountState(postbox: Postbox, network: Network, accountPeer
                 }
                 
                 if let replacePinnedItemIds = fetchedChats.pinnedItemIds {
-                    transaction.setPinnedItemIds(groupId: .root, itemIds: replacePinnedItemIds.map(PinnedItemId.peer))
+                    // MARK: Regram — keeps this device's overflow pins (RGLocalPinnedChats).
+                    rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: .root, itemIds: replacePinnedItemIds.map(PinnedItemId.peer))
                 }
                 
                 for (peerId, summary) in fetchedChats.mentionTagSummaries {

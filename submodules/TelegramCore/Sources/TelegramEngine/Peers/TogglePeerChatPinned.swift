@@ -1,6 +1,7 @@
 import Foundation
 import Postbox
 import SwiftSignalKit
+import RGSimpleSettings
 
 public enum TogglePeerChatPinnedLocation {
     case group(PeerGroupId)
@@ -57,7 +58,8 @@ func _internal_toggleItemPinned(postbox: Postbox, accountPeerId: PeerId, locatio
             }
             
             let count = sameKind.count + additionalCount
-            if count > limitCount, itemIds.firstIndex(of: itemId) == nil {
+            // MARK: Regram — past the limit the pin is kept on this device only (RGLocalPinnedChats).
+            if count > limitCount, itemIds.firstIndex(of: itemId) == nil, !RGSimpleSettings.shared.unlimitedPinnedChats {
                 return .limitExceeded(count: sameKind.count, limit: limitCount)
             } else {
                 if let index = itemIds.firstIndex(of: itemId) {
@@ -67,6 +69,9 @@ func _internal_toggleItemPinned(postbox: Postbox, accountPeerId: PeerId, locatio
                 }
                 addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
                 transaction.setPinnedItemIds(groupId: groupId, itemIds: itemIds)
+                // MARK: Regram — remember overflow before a competing server update can arrive.
+                let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+                rgSetLocalOverflowPinnedItemIds(rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
                 return .done
             }
         case let .filter(filterId):
@@ -114,11 +119,14 @@ func _internal_getPinnedItemIds(transaction: Transaction, location: TogglePeerCh
     }
 }
 
-func _internal_reorderPinnedItemIds(transaction: Transaction, location: TogglePeerChatPinnedLocation, itemIds: [PinnedItemId]) -> Bool {
+func _internal_reorderPinnedItemIds(transaction: Transaction, accountPeerId: PeerId, location: TogglePeerChatPinnedLocation, itemIds: [PinnedItemId]) -> Bool {
     switch location {
     case let .group(groupId):
         if transaction.getPinnedItemIds(groupId: groupId) != itemIds {
             transaction.setPinnedItemIds(groupId: groupId, itemIds: itemIds)
+            // MARK: Regram — reordering can promote a local pin into the synchronized prefix.
+            let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+            rgSetLocalOverflowPinnedItemIds(rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
             addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
             return true
         } else {

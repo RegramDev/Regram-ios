@@ -13,6 +13,7 @@ import PhoneNumberFormat
 import DebugSettingsUI
 import MessageUI
 import AuthenticationServices
+import RGStrings
 
 public final class AuthorizationSequencePhoneEntryController: ViewController, MFMailComposeViewControllerDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     private var controllerNode: AuthorizationSequencePhoneEntryControllerNode {
@@ -27,7 +28,7 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     private let apiHash: String
     private let isTestingEnvironment: Bool
     private let otherAccountPhoneNumbers: ((String, AccountRecordId, Bool)?, [(String, AccountRecordId, Bool)])
-    private let network: Network
+    private var network: Network // MARK: Regram — follow a rebuilt QR login account.
     private let presentationData: PresentationData
     private let openUrl: (String) -> Void
     
@@ -52,11 +53,20 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
             self.updateNavigationItems()
             self.controllerNode.inProgress = self.inProgress
             self.confirmationController?.inProgress = self.inProgress
+            // MARK: Regram — no QR login while a phone number login is in flight.
+            self.rgQrLoginButton?.isEnabled = !self.inProgress
         }
     }
     public var loginWithNumber: ((String, Bool) -> Void)?
     public var loginWithPasskey: ((AuthorizationPasskeyData, Bool) -> Void)?
     var accountUpdated: ((UnauthorizedAccount) -> Void)?
+    // MARK: Regram — the authorization sequence owns the QR modal and account transitions.
+    var presentQrLogin: ((Bool) -> Void)?
+    func rgUpdateAccount(_ account: UnauthorizedAccount) {
+        self.account = account
+        self.network = account.network
+        if self.isNodeLoaded { self.controllerNode.rgUpdateAccount(account) }
+    }
     
     weak var confirmationController: PhoneConfirmationController?
     
@@ -111,6 +121,53 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         self.back()
     }
     
+    // MARK: Regram — "Log in by QR Code" entry.
+    //
+    // A floating button rather than a bar item: this screen's navigation bar is
+    // transparent and usually carries no items, and touching navigationItem at
+    // construction would load the view early and stall the transition from the
+    // splash screen. It is mounted and placed in the layout pass instead.
+    private var rgQrLoginButton: UIButton?
+
+    private func rgLayoutQrLoginButton(_ layout: ContainerViewLayout) {
+        // Without an unauthorized account there is nothing to export a token on.
+        guard self.account != nil, self.isNodeLoaded else {
+            return
+        }
+        let button: UIButton
+        if let current = self.rgQrLoginButton {
+            button = current
+        } else {
+            button = UIButton(type: .custom)
+            button.setImage(generateTintedImage(image: UIImage(bundleImageName: "Settings/QrButtonIcon"), color: self.presentationData.theme.list.itemAccentColor), for: .normal)
+            button.accessibilityLabel = "QrLogin.Button".i18n(self.presentationData.strings.baseLanguageCode)
+            button.accessibilityIdentifier = "Auth.PhoneEntry.QrLoginButton"
+            button.addTarget(self, action: #selector(self.rgQrLoginPressed), for: .touchUpInside)
+            button.isEnabled = !self.inProgress
+            self.rgQrLoginButton = button
+            self.displayNode.view.addSubview(button)
+        }
+        let size = CGSize(width: 44.0, height: 44.0)
+        let topInset: CGFloat
+        if layout.size.width < 360.0 {
+            // updateNavigationItems puts "Next" in the right bar slot here.
+            topInset = self.navigationLayout(layout: layout).navigationFrame.maxY + 4.0
+        } else {
+            topInset = (layout.statusBarHeight ?? 20.0) + 4.0
+        }
+        let rightInset = max(layout.safeInsets.right, 8.0)
+        button.frame = CGRect(origin: CGPoint(x: layout.size.width - rightInset - size.width, y: topInset), size: size)
+        self.displayNode.view.bringSubviewToFront(button)
+    }
+
+    @objc private func rgQrLoginPressed() {
+        guard self.account != nil, !self.inProgress, self.confirmationController == nil else {
+            return
+        }
+        self.view.endEditing(true)
+        self.presentQrLogin?(self.controllerNode.syncContacts)
+    }
+
     func updateNavigationItems() {
         guard let layout = self.validLayout, layout.size.width < 360.0 else {
             return
@@ -366,6 +423,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         if !hadLayout {
             self.updateNavigationItems()
         }
+
+        // MARK: Regram
+        self.rgLayoutQrLoginButton(layout)
     
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: self.navigationLayout(layout: layout).navigationFrame.maxY, transition: transition)
         

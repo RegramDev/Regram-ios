@@ -1,5 +1,8 @@
 // MARK: Regram
+import RGJoinedChatFolderPicker
+// MARK: Regram
 import RGSimpleSettings
+import RGStrings
 
 import Foundation
 import UIKit
@@ -5392,6 +5395,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     if !didJoin {
                         return
                     }
+                    // MARK: Regram
+                    rgPresentFolderPickerAfterJoining(context: self.context, peerId: peerId, present: { [weak self] controller in
+                        self?.present(controller, in: .window(.root))
+                    })
                     Queue.mainQueue().after(0.5) { [weak self] in
                         guard let self else {
                             return
@@ -6386,6 +6393,20 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 })
             })))
             
+            // MARK: Regram — recently opened chats.
+            if RGSimpleSettings.shared.recentChatsEnabled {
+                items.append(.action(ContextMenuActionItem(text: "RecentChats.Title".i18n(strongSelf.presentationData.strings.baseLanguageCode), icon: { theme in
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Time"), color: theme.contextMenu.primaryColor)
+                }, action: { c, f in
+                    c?.dismiss(completion: {
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        strongSelf.push(strongSelf.context.sharedContext.makeRGRecentChatsController(context: strongSelf.context))
+                    })
+                })))
+            }
+
             if strongSelf.chatListDisplayNode.effectiveContainerNode.currentItemNode.chatListFilter != nil {
                 items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.ChatList_FolderAllChats, icon: { theme in
                     return nil

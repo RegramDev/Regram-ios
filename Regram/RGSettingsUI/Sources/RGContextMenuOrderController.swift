@@ -98,18 +98,102 @@ private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: Presenta
     case .pin:
         return strings.Conversation_Pin
     case .saveMedia:
-        return strings.Conversation_SaveToFiles
+        return strings.Gallery_SaveImage
     case .messageReplies:
         return strings.Conversation_ContextViewThread
+    case .viewInChat:
+        return strings.SharedMedia_ViewInChat
+    case .favoriteSticker:
+        return strings.Stickers_AddToFavorites
+    case .shareCallStats:
+        return strings.Call_ShareStats
+    case .rateCall:
+        return strings.Call_RateCall
+    case .saveNotificationSound:
+        return strings.Chat_SaveForNotifications
+    case .increaseSpeed:
+        return strings.Conversation_IncreaseSpeed
+    case .sendGift:
+        return strings.Conversation_ContextMenuSendAnotherGift
+    case .sendScheduledNow:
+        return strings.ScheduledMessages_SendNow
+    case .editScheduledTime:
+        return strings.ScheduledMessages_EditTime
+    case .copy:
+        return strings.Conversation_ContextMenuCopy
+    case .translate:
+        return strings.Conversation_ContextMenuTranslate
+    case .speak:
+        return strings.Conversation_ContextMenuSpeak
+    case .saveToFiles:
+        return strings.Conversation_SaveToFiles
+    case .edit:
+        return strings.Conversation_MessageDialogEdit
+    case .editSuggestedPostMessage:
+        return strings.Chat_ContextMenu_SuggestedPost_EditMessage
+    case .editSuggestedPostTime:
+        return strings.Chat_ContextMenu_SuggestedPost_EditTime
+    case .editSuggestedPostPrice:
+        return strings.Chat_ContextMenu_SuggestedPost_EditPrice
+    case .createSuggestedPost:
+        return strings.Chat_ContextMenu_SuggestedPost_Create
+    case .unvotePoll:
+        return strings.Conversation_UnvotePoll
+    case .addTodoTask:
+        return strings.Chat_Todo_ContextMenu_AddTask
+    case .unpin:
+        return strings.Conversation_Unpin
+    case .copyLink:
+        return strings.Conversation_ContextMenuCopyLink
+    case .saveGif:
+        return strings.Conversation_SaveGif
+    case .editSticker:
+        return strings.Stickers_EditSticker
+    case .viewStickerPack:
+        return strings.StickerPack_ViewPack
+    case .forward:
+        return strings.Conversation_ContextMenuForward
+    case .activateLink:
+        return strings.Username_ActivateAlertShow
+    case .block:
+        return strings.Conversation_ContextMenuBlock
+    case .viewStats:
+        return strings.Conversation_ContextViewStats
+    case .viewPollStats:
+        return strings.Conversation_ViewPollStats
+    case .viewInChannel:
+        return strings.Conversation_ViewInChannel
+    case .select:
+        return strings.Conversation_ContextMenuSelect
+    case .delete:
+        return strings.Conversation_ContextMenuDelete
+    case .saveStickerToCameraRoll:
+        return "ContextMenu.saveStickerToCameraRoll".i18n(lang)
+    case .sendMoney:
+        return "ContextMenu.sendMoney".i18n(lang)
+    case .sendLogs:
+        return "ContextMenu.sendLogs".i18n(lang)
+    case .stopPoll:
+        return "ContextMenu.stopPoll".i18n(lang)
+    case .factCheck:
+        return "ContextMenu.factCheck".i18n(lang)
+    case .selectAll:
+        return "ContextMenu.selectAll".i18n(lang)
+    case .addFilter:
+        return "MessageFilter.AddToFilter".i18n(lang)
+    case .retry:
+        return strings.Conversation_MessageDialogRetry
     case .json:
         return "JSON"
+    case .editHistory:
+        return "EditHistory.Title".i18n(lang)
     }
 }
 
-private func rgContextMenuOrderEntries(presentationData: PresentationData, order: [RGContextMenuItemId]) -> [RGContextMenuOrderEntry] {
+private func rgContextMenuOrderEntries(presentationData: PresentationData, order: [RGContextMenuItemId], available: Set<RGContextMenuItemId>) -> [RGContextMenuOrderEntry] {
     var entries: [RGContextMenuOrderEntry] = []
     var index = 0
-    for id in order {
+    for id in order where available.contains(id) {
         entries.append(.item(sortIndex: index, id: id, title: rgContextMenuItemTitle(id, strings: presentationData.strings), value: RGSimpleSettings.shared.contextMenuItemIsEnabled(id)))
         index += 1
     }
@@ -118,6 +202,7 @@ private func rgContextMenuOrderEntries(presentationData: PresentationData, order
 }
 
 public func rgContextMenuOrderController(context: AccountContext) -> ViewController {
+    let availableItems = RGSimpleSettings.shared.availableContextMenuItems(accountPeerId: context.account.peerId.toInt64())
     // Drives a rebuild after a toggle or a drag. The order lives in UserDefaults rather than in
     // controller state so that the context menu — built in a completely different module — reads the
     // same value without any plumbing.
@@ -134,7 +219,7 @@ public func rgContextMenuOrderController(context: AccountContext) -> ViewControl
     )
     |> map { presentationData, order -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.ContextMenu", presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: rgContextMenuOrderEntries(presentationData: presentationData, order: order), style: .blocks)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: rgContextMenuOrderEntries(presentationData: presentationData, order: order, available: availableItems), style: .blocks)
         return (controllerState, (listState, arguments))
     }
 
@@ -155,7 +240,7 @@ public func rgContextMenuOrderController(context: AccountContext) -> ViewControl
         }
         let id = ids.remove(at: fromIndex)
         ids.insert(id, at: toIndex)
-        RGSimpleSettings.shared.contextMenuOrder = ids
+        RGSimpleSettings.shared.reorderVisibleContextMenuItems(ids)
         statePromise.set(RGSimpleSettings.shared.contextMenuOrder)
         return .single(true)
     })

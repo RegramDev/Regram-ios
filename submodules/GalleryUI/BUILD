@@ -78,6 +78,8 @@ swift_library(
         "//submodules/TelegramUI/Components/GlassControls",
         "//submodules/TelegramUI/Components/VideoPlaybackControlsComponent",
         "//submodules/UIKitRuntimeUtils",
+        # MARK: Regram — "Media Info" in the photo/video viewer menu.
+        "//Regram/RGMediaMetadata:RGMediaMetadata",
     ],
     visibility = [
         "//visibility:public",

@@ -9,6 +9,28 @@ import AccountContext
 import AvatarNode
 import TextLoadingEffect
 import SwiftSignalKit
+import TelegramStringFormatting
+import TextFormat
+import RGSimpleSettings
+
+// MARK: Regram — compact original date for a forward: the time today, "Yesterday" and the time, the
+// day and month this year, the full date otherwise.
+private func rgStringForForwardedMessageDate(timestamp: Int32, presentationData: ChatPresentationData) -> String {
+    let date = Date(timeIntervalSince1970: TimeInterval(timestamp))
+    let now = Date()
+    let calendar = Calendar.current
+    let components = calendar.dateComponents([.day, .month, .hour, .minute], from: date)
+    let time = stringForShortTimestamp(hours: Int32(components.hour ?? 0), minutes: Int32(components.minute ?? 0), dateTimeFormat: presentationData.dateTimeFormat)
+    if calendar.isDate(date, inSameDayAs: now) {
+        return time
+    } else if calendar.isDateInYesterday(date) {
+        return "\(presentationData.strings.Weekday_Yesterday) \(time)"
+    } else if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
+        return "\(stringForTimestamp(day: Int32(components.day ?? 1), month: Int32(components.month ?? 1), dateTimeFormat: presentationData.dateTimeFormat)) \(time)"
+    } else {
+        return stringForFullDate(timestamp: timestamp, strings: presentationData.strings, dateTimeFormat: presentationData.dateTimeFormat)
+    }
+}
 
 public enum ChatMessageForwardInfoType: Equatable {
     case bubble(incoming: Bool)
@@ -281,17 +303,17 @@ public class ChatMessageForwardInfoNode: ASDisplayNode {
         }
     }
     
-    public static func asyncLayout(_ maybeNode: ChatMessageForwardInfoNode?) -> (_ context: AccountContext, _ presentationData: ChatPresentationData, _ strings: PresentationStrings, _ type: ChatMessageForwardInfoType, _ peer: EnginePeer?, _ authorName: String?, _ inlineBotName: String?, _ psaType: String?, _ storyData: StoryData?, _ constrainedSize: CGSize) -> (CGSize, (CGFloat) -> ChatMessageForwardInfoNode) {
+    public static func asyncLayout(_ maybeNode: ChatMessageForwardInfoNode?) -> (_ context: AccountContext, _ presentationData: ChatPresentationData, _ strings: PresentationStrings, _ type: ChatMessageForwardInfoType, _ peer: EnginePeer?, _ authorName: String?, _ inlineBotName: String?, _ psaType: String?, _ storyData: StoryData?, _ forwardDate: Int32?, _ constrainedSize: CGSize) -> (CGSize, (CGFloat) -> ChatMessageForwardInfoNode) {
         let titleNodeLayout = TextNode.asyncLayout(maybeNode?.titleNode)
         let nameNodeLayout = TextNode.asyncLayout(maybeNode?.nameNode)
         let viaBotNodeLayout = TextNode.asyncLayout(maybeNode?.viaBotNode)
         
-        return { context, presentationData, strings, type, peer, authorName, inlineBotName, psaType, storyData, constrainedSize in
+        return { context, presentationData, strings, type, peer, authorName, inlineBotName, psaType, storyData, forwardDate, constrainedSize in
             let fontSize = floor(presentationData.fontSize.baseDisplaySize * 14.0 / 17.0)
             let prefixFont = Font.regular(fontSize)
             let peerFont = Font.medium(fontSize)
             
-            let peerString: String
+            var peerString: String
             if let peer = peer {
                 if let authorName = authorName {
                     peerString = "\(peer.displayTitle(strings: strings, displayOrder: presentationData.nameDisplayOrder)) (\(authorName))"
@@ -302,6 +324,10 @@ public class ChatMessageForwardInfoNode: ASDisplayNode {
                 peerString = authorName
             } else {
                 peerString = ""
+            }
+            // MARK: Regram — when the forwarded message was originally sent (showForwardedMessageDate).
+            if !peerString.isEmpty, let forwardDate, forwardDate != 0, RGSimpleSettings.shared.showForwardedMessageDate {
+                peerString += " · \(rgStringForForwardedMessageDate(timestamp: forwardDate, presentationData: presentationData))"
             }
             
             var hasPsaInfo = false

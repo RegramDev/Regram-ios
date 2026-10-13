@@ -20,11 +20,14 @@ import SavedMessagesScreen
 import WallpaperGalleryScreen
 import ChatMessageNotificationItem
 import FaceScanScreen
+import RGSimpleSettings
 
 public func navigateToChatControllerImpl(_ params: NavigateToChatControllerParams) {
     if case let .peer(peer) = params.chatLocation {
         let _ = params.context.engine.peers.ensurePeerIsLocallyAvailable(peer: peer).startStandalone()
     }
+    // MARK: Regram — remembered for the recent-chats list (RGRecentChats).
+    RGSimpleSettings.shared.addRecentChat(params.chatLocation.peerId.toInt64(), accountPeerId: params.context.account.peerId.toInt64())
     
     var requiresAgeVerification: Signal<Bool, NoError> = .single(false)
     if !params.skipAgeVerification, case let .peer(peer) = params.chatLocation {
