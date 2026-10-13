@@ -45,6 +45,9 @@ public protocol TabBarContainedController {
 }
 
 open class TabBarControllerImpl: ViewController, TabBarController {
+    // MARK: Regram — the configurable search button always opens chat search.
+    public var rgActivateSearch: (() -> Void)?
+
     private var validLayout: ContainerViewLayout?
     
     private var tabBarControllerNode: TabBarControllerNode {
@@ -256,7 +259,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             guard let self else {
                 return
             }
-            self.currentController?.tabBarActivateSearch()
+            if let activate = self.rgActivateSearch { activate() } else { self.currentController?.tabBarActivateSearch() }
         }, deactivateSearch: { [weak self] in
             guard let self else {
                 return

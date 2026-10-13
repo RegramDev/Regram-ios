@@ -539,7 +539,7 @@ func rgProTextEditorController(context: AccountContext, value: String, titleKey:
     let signal = combineLatest(context.sharedContext.presentationData, statePromise.get())
     |> deliverOnMainQueue
     |> map { presentationData, text -> (ItemListControllerState, (ItemListNodeState, RGMessageFilterPatternArguments)) in
-        let lang = presentationData.strings.baseLanguageCode
+        let lang = presentationData.strings.rgLanguageCode
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // An empty keyword matches nothing and an uncompilable expression is inert; either would
         // look like the filter had silently broken. Removing a rule is a separate, explicit action.
@@ -595,7 +595,7 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
     // presented from SwiftUI.
     let selectChats: (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void = { [weak legacyController] selected, completion in
         let pickerPresentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let lang = pickerPresentationData.strings.baseLanguageCode
+        let lang = pickerPresentationData.strings.rgLanguageCode
         let picker = context.sharedContext.makeContactMultiselectionController(ContactMultiselectionControllerParams(
             context: context,
             mode: .chatSelection(ContactMultiselectionControllerMode.ChatSelection(

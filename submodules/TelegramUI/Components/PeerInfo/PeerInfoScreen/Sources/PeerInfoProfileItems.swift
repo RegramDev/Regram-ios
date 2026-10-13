@@ -956,7 +956,6 @@ func infoItems(
     
     if RGSimpleSettings.shared.showDC {
         var dcId: Int? = nil
-//        var dcLocation: String = ""
         var phoneCountryText = ""
         
         var dcLabel = ""
@@ -977,31 +976,13 @@ func infoItems(
         if let peer = data.peer, let smallProfileImage = peer.smallProfileImage, let cloudResource = smallProfileImage.resource as? CloudPeerPhotoSizeMediaResource {
             dcId = cloudResource.datacenterId
             
-//            switch (dcId) {
-//                case 1:
-//                    dcLocation = "Miami"
-//                case 2:
-//                    dcLocation = "Amsterdam"
-//                case 3:
-//                    dcLocation = "Miami"
-//                case 4:
-//                    dcLocation = "Amsterdam"
-//                case 5:
-//                    dcLocation = "Singapore"
-//                default:
-//                    break
-//            }
+
         }
         
         if let dcId = dcId {
-            dcLabel = "dc: \(dcId)"
-            if phoneCountryText.isEmpty {
-//                if !dcLocation.isEmpty {
-//                    dcLabel += " \(dcLocation)"
-//                }
-            } else {
-                dcText = "\(phoneCountryText)"
-            }
+            // MARK: Regram — add the DC region beside its number.
+            dcLabel = RGDatacenterLocation.title(dcId)
+            dcText = phoneCountryText
         } else if !phoneCountryText.isEmpty {
             dcLabel = "dc: ?"
             dcText = phoneCountryText

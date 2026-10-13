@@ -1,3 +1,4 @@
+import RGSwiftUI
 // MARK: Regram
 import RGLogging
 import RGSimpleSettings
@@ -102,6 +103,7 @@ private enum RGBoolSetting: String {
     case showCreationDate
     case showRegDate
     case compactChatList
+    case hideChatListSeparators
     case unlimitedPinnedChats
     case showMessageId
     case showForwardedMessageDate
@@ -145,7 +147,7 @@ private enum RGDisclosureLink: String {
     case llmTranslationSettings
     // MARK: Regram
     case contextMenuOrder
-    case tabBarWidth
+    case bottomBarLayout
 }
 
 private struct PeerNameColorScreenState: Equatable {
@@ -160,7 +162,7 @@ private typealias RGControllerEntry = RGItemListUIEntry<RGControllerSection, RGB
 
 private func RGControllerEntries(presentationData: PresentationData, callListSettings: CallListSettings, experimentalUISettings: ExperimentalUISettings, appConfiguration: AppConfiguration, nameColors: PeerNameColors, state: RGSettingsControllerState, page: RGSettingsPage) -> [RGControllerEntry] {
     
-    let lang = presentationData.strings.baseLanguageCode
+    let lang = presentationData.strings.rgLanguageCode
     let strings = presentationData.strings
     let newStr = strings.Settings_New
     var entries: [RGControllerEntry] = []
@@ -186,11 +188,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     }
     
     entries.append(.header(id: id.count, section: .tabs, text: i18n("Settings.Tabs.Header", lang), badge: nil))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .hideTabBar, value: RGSimpleSettings.shared.hideTabBar, text: i18n("Settings.Tabs.HideTabBar", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .showContactsTab, value: callListSettings.showContactsTab, text: i18n("Settings.Tabs.ShowContacts", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .showCallsTab, value: callListSettings.showTab, text: strings.CallSettings_TabIcon, enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.toggle(id: id.count, section: .tabs, settingName: .showTabNames, value: RGSimpleSettings.shared.showTabNames, text: i18n("Settings.Tabs.ShowNames", lang), enabled: !RGSimpleSettings.shared.hideTabBar))
-    entries.append(.disclosure(id: id.count, section: .tabs, link: .tabBarWidth, text: i18n("Settings.Tabs.Width", lang)))
+    entries.append(.disclosure(id: id.count, section: .tabs, link: .bottomBarLayout, text: i18n("Settings.Tabs.Customize", lang)))
     
     entries.append(.header(id: id.count, section: .folders, text: strings.Settings_ChatFolders.uppercased(), badge: nil))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .foldersAtBottom, value: experimentalUISettings.foldersTabAtBottom, text: i18n("Settings.Folders.BottomTab", lang), enabled: true))
@@ -210,6 +208,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListLines, text: "Settings.ChatList.Lines".i18n(lang), value: "Settings.ChatList.Lines.\(RGSimpleSettings.shared.chatListLines)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableChatSwipeOptions, value: !RGSimpleSettings.shared.disableChatSwipeOptions, text: i18n("Settings.ChatSwipeOptions", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableDeleteChatSwipeOption, value: !RGSimpleSettings.shared.disableDeleteChatSwipeOption, text: i18n("Settings.DeleteChatSwipeOption", lang), enabled: !RGSimpleSettings.shared.disableChatSwipeOptions))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .hideChatListSeparators, value: RGSimpleSettings.shared.hideChatListSeparators, text: "Settings.ChatList.HideSeparators".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .unlimitedPinnedChats, value: RGSimpleSettings.shared.unlimitedPinnedChats, text: i18n("Settings.UnlimitedPinnedChats", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .chatList, text: i18n("Settings.UnlimitedPinnedChats.Notice", lang)))
     
@@ -255,7 +254,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.notice(id: id.count, section: .recording, text: i18n("Settings.forceBuiltInMic.Notice", lang)))
 
     entries.append(.header(id: id.count, section: .calls, text: strings.Calls_TabTitle.uppercased(), badge: nil))
-    entries.append(.toggle(id: id.count, section: .calls, settingName: .enableVoipTcp, value: experimentalUISettings.enableVoipTcp, text: "Force TCP", enabled: true))
+    entries.append(.toggle(id: id.count, section: .calls, settingName: .enableVoipTcp, value: experimentalUISettings.enableVoipTcp, text: "Settings.Calls.ForceTCP".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .calls, text: "Common.KnowWhatYouDo".i18n(lang)))
     
     entries.append(.header(id: id.count, section: .photo, text: strings.NetworkUsageSettings_MediaImageDataSection, badge: nil))
@@ -399,6 +398,9 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
           }
         },*/ setBoolValue: { setting, value in
         switch setting {
+        case .hideChatListSeparators:
+            RGSimpleSettings.shared.hideChatListSeparators = value
+            NotificationCenter.default.post(name: RGSimpleSettings.chatListSeparatorSettingsDidChange, object: nil)
         case .hidePhoneInSettings:
             RGSimpleSettings.shared.hidePhoneInSettings = value
             askForRestart?()
@@ -597,7 +599,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         switch (setting) {
             case .chatListLines:
                 for count in RGSimpleSettings.ChatListLines.allCases.reversed() {
-                    items.append(ActionSheetButtonItem(title: "Settings.ChatList.Lines.\(count.rawValue)".i18n(presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                    items.append(ActionSheetButtonItem(title: "Settings.ChatList.Lines.\(count.rawValue)".i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
                         actionSheet?.dismissAnimated()
                         RGSimpleSettings.shared.chatListLines = count.rawValue
                         simplePromise.set(true)
@@ -611,7 +613,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                     values.insert(RGSimpleSettings.messageDoubleTapSameAsUnified, at: 0)
                 }
                 for value in values {
-                    items.append(ActionSheetButtonItem(title: "DoubleTap.Action.\(value)".i18n(presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                    items.append(ActionSheetButtonItem(title: "DoubleTap.Action.\(value)".i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
                         actionSheet?.dismissAnimated()
                         if isOverride {
                             RGSimpleSettings.shared.messageDoubleTapActionWithoutEditPermission = value
@@ -658,7 +660,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                         case RGSimpleSettings.AllChatsTitleLengthOverride.long:
                             title = "\"\(presentationData.strings.ChatList_Tabs_AllChats)\""
                         default:
-                            title = i18n("Settings.Folders.AllChatsTitle.none", presentationData.strings.baseLanguageCode)
+                            title = i18n("Settings.Folders.AllChatsTitle.none", presentationData.strings.rgLanguageCode)
                     }
                     items.append(ActionSheetButtonItem(title: title, color: .accent, action: { [weak actionSheet] in
                         actionSheet?.dismissAnimated()
@@ -672,7 +674,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
 //            }
 //
 //            for value in RGSimpleSettings.AllChatsFolderPositionOverride.allCases {
-//                items.append(ActionSheetButtonItem(title: i18n("Settings.Folders.AllChatsTitle.\(value)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+//                items.append(ActionSheetButtonItem(title: i18n("Settings.Folders.AllChatsTitle.\(value)", presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
 //                    actionSheet?.dismissAnimated()
 //                    setAction(value.rawValue)
 //                }))
@@ -690,7 +692,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                             continue // System translation is not available on iOS 17 and below
                         }
                     }
-                    items.append(ActionSheetButtonItem(title: i18n("Settings.Translation.Backend.\(value.rawValue)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                    items.append(ActionSheetButtonItem(title: i18n("Settings.Translation.Backend.\(value.rawValue)", presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
                         actionSheet?.dismissAnimated()
                         setAction(value.rawValue)
                     }))
@@ -702,7 +704,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                 }
 
                 for value in RGSimpleSettings.NYStyle.allCases {
-                    items.append(ActionSheetButtonItem(title: i18n("Settings.NY.Style.\(value.rawValue)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
+                    items.append(ActionSheetButtonItem(title: i18n("Settings.NY.Style.\(value.rawValue)", presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
                         actionSheet?.dismissAnimated()
                         setAction(value.rawValue)
                     }))
@@ -732,9 +734,9 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             // MARK: Regram
             case .contextMenuOrder:
                 pushControllerImpl?(rgContextMenuOrderController(context: context))
-            case .tabBarWidth:
+            case .bottomBarLayout:
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                pushControllerImpl?(rgTabBarWidthController(context: context))
+                pushControllerImpl?(rgBottomBarSettingsController(context: context))
         }
     })
     
@@ -758,7 +760,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         
         let entries = RGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, page: page)
         
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram" : page.titleKey.i18n(presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram" : page.titleKey.i18n(presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
         // TODO(regram): focusOnItemTag support
         /* var index = 0
@@ -798,10 +800,10 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         presentControllerImpl?(
             UndoOverlayController(
                 presentationData: presentationData, 
-                content: .info(title: nil, // i18n("Common.RestartRequired", presentationData.strings.baseLanguageCode),
-                    text: i18n("Common.RestartRequired", presentationData.strings.baseLanguageCode),
+                content: .info(title: nil, // i18n("Common.RestartRequired", presentationData.strings.rgLanguageCode),
+                    text: i18n("Common.RestartRequired", presentationData.strings.rgLanguageCode),
                     timeout: nil,
-                    customUndoText: i18n("Common.RestartNow", presentationData.strings.baseLanguageCode) //presentationData.strings.Common_Yes
+                    customUndoText: i18n("Common.RestartNow", presentationData.strings.rgLanguageCode) //presentationData.strings.Common_Yes
                 ),
                 elevatedLayout: false,
                 action: { action in if action == .undo { exit(0) }; return true }

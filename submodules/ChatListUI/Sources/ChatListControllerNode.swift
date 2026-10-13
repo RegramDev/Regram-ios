@@ -1059,6 +1059,11 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     public func update(layout: ContainerViewLayout, navigationBarHeight: CGFloat, visualNavigationHeight: CGFloat, originalNavigationHeight: CGFloat, cleanNavigationBarHeight: CGFloat, insets: UIEdgeInsets, isReorderingFilters: Bool, isEditing: Bool, inlineNavigationLocation: ChatListControllerLocation?, inlineNavigationTransitionFraction: CGFloat, storiesInset: CGFloat, transition: ContainedViewLayoutTransition) {
         self.validLayout = (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset)
         
+        // MARK: Regram — apply top-search visibility to existing and pending lists.
+        let rgSearchHeight: CGFloat = self.location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? 0.0 : ChatListNavigationBar.searchScrollHeight
+        for itemNode in self.itemNodes.values { itemNode.listNode.scrollHeightTopInset = rgSearchHeight }
+        self.pendingItemNode?.1.listNode.scrollHeightTopInset = rgSearchHeight
+
         self._validLayoutReady.set(.single(true))
         
         transition.updateAlpha(node: self, alpha: isReorderingFilters ? 0.5 : 1.0)
@@ -1158,6 +1163,11 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
 }
 
 final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
+    // MARK: Regram — hidden home search reserves no scroll offset.
+    private var rgSearchScrollHeight: CGFloat {
+        self.location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? 0.0 : ChatListNavigationBar.searchScrollHeight
+    }
+
     private let context: AccountContext
     private let location: ChatListControllerLocation
     private var presentationData: PresentationData
@@ -1721,7 +1731,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 statusBarHeight: layout.statusBarHeight ?? 0.0,
                 leftInset: layout.safeInsets.left,
                 rightInset: layout.safeInsets.right,
-                search: ChatListNavigationBar.Search(isEnabled: true),
+                // MARK: Regram — home search visibility is part of the bottom-bar layout.
+                search: self.location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? nil : ChatListNavigationBar.Search(isEnabled: true),
                 activeSearch: self.isSearchDisplayControllerActive,
                 primaryContent: headerContent?.primaryContent,
                 secondaryContent: headerContent?.secondaryContent,
@@ -1795,7 +1806,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         
         self.mainContainerNode.updateScrollingOffset(navigationHeight: navigationHeight, offset: mainOffset, transition: transition)
         
-        mainOffset = min(mainOffset, ChatListNavigationBar.searchScrollHeight)
+        mainOffset = min(mainOffset, self.rgSearchScrollHeight)
         if abs(mainOffset) < 0.1 {
             mainOffset = 0.0
         }
@@ -1808,7 +1819,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             } else {
                 inlineOffset = navigationHeight
             }
-            inlineOffset = min(inlineOffset, ChatListNavigationBar.searchScrollHeight)
+            inlineOffset = min(inlineOffset, self.rgSearchScrollHeight)
             if abs(inlineOffset) < 0.1 {
                 inlineOffset = 0.0
             }
@@ -1880,7 +1891,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         var storiesInset = storiesInset
         
         let navigationBarLayout = self.updateNavigationBar(layout: layout, deferScrollApplication: true, transition: ComponentTransition(transition))
-        self.mainContainerNode.initialScrollingOffset = ChatListNavigationBar.searchScrollHeight + navigationBarLayout.storiesInset
+        self.mainContainerNode.initialScrollingOffset = self.rgSearchScrollHeight + navigationBarLayout.storiesInset
         
         navigationBarHeight = navigationBarLayout.navigationHeight
         visualNavigationHeight = navigationBarLayout.navigationHeight
@@ -2348,7 +2359,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         
         if let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
             let searchScrollOffset = clippedScrollOffset
-            if searchScrollOffset > 0.0 && searchScrollOffset < ChatListNavigationBar.searchScrollHeight {
+            if searchScrollOffset > 0.0 && searchScrollOffset < self.rgSearchScrollHeight {
                 return true
             } else if clippedScrollOffset < 0.0 && clippedScrollOffset > -listView.tempTopInset {
                 return true
@@ -2390,11 +2401,11 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         
         if let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
             let searchScrollOffset = clippedScrollOffset
-            if searchScrollOffset > 0.0 && searchScrollOffset < ChatListNavigationBar.searchScrollHeight {
-                if searchScrollOffset < ChatListNavigationBar.searchScrollHeight * 0.5 {
+            if searchScrollOffset > 0.0 && searchScrollOffset < self.rgSearchScrollHeight {
+                if searchScrollOffset < self.rgSearchScrollHeight * 0.5 {
                     let _ = listView.scrollToOffsetFromTop(0.0, animated: true)
                 } else {
-                    let _ = listView.scrollToOffsetFromTop(ChatListNavigationBar.searchScrollHeight, animated: true)
+                    let _ = listView.scrollToOffsetFromTop(self.rgSearchScrollHeight, animated: true)
                 }
                 return true
             } else if clippedScrollOffset < 0.0 && clippedScrollOffset > -listView.tempTopInset {

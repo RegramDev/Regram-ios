@@ -12,7 +12,7 @@ import AccountContext
 import Display
 
 private struct RGLLMTranslationSettingsView: View {
-    let okTitle: String
+    let presentMessage: (String) -> Void
     @Environment(\.lang) private var lang
     @State private var format = RGSimpleSettings.shared.translationLLMAPIFormat
     @State private var baseURL = RGSimpleSettings.shared.translationLLMBaseURL
@@ -24,8 +24,6 @@ private struct RGLLMTranslationSettingsView: View {
     @State private var temperature = Double(RGSimpleSettings.shared.translationLLMTemperatureTenthsValue) / 10.0
     @State private var models: [String] = []
     @State private var busy = false
-    @State private var result = ""
-    @State private var showsResult = false
     @State private var request = MetaDisposable()
 
     private var apiFormat: RGLLMAPIFormat { return RGLLMAPIFormat(rawValue: format) ?? .openai }
@@ -39,9 +37,6 @@ private struct RGLLMTranslationSettingsView: View {
             modelSection
             promptSection
         }
-        .alert("LLMTranslation.Title".i18n(lang), isPresented: $showsResult) {
-            Button(okTitle, role: .cancel) {}
-        } message: { Text(result) }
         .onDisappear { request.set(nil); busy = false }
     }
 
@@ -51,6 +46,7 @@ private struct RGLLMTranslationSettingsView: View {
                 Text("OpenAI").tag(RGLLMAPIFormat.openai.rawValue)
                 Text("Anthropic").tag(RGLLMAPIFormat.anthropic.rawValue)
             }
+            .pickerStyle(.menu)
             .onChange(of: format) { newValue in
                 RGSimpleSettings.shared.translationLLMAPIFormat = newValue
                 // Empty fields use the selected format's defaults; explicit custom URLs stay intact.
@@ -64,7 +60,7 @@ private struct RGLLMTranslationSettingsView: View {
             TextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, prompt: Text(apiFormat.defaultTranslationEndpoint))
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: endpoint) { RGSimpleSettings.shared.translationLLMEndpoint = $0 }
-            SecureField("API Key", text: $apiKey)
+            SecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: apiKey) { value in
                     if !RGSimpleSettings.shared.setTranslationLLMAPIKey(value) {
@@ -83,7 +79,7 @@ private struct RGLLMTranslationSettingsView: View {
                 Picker("LLMTranslation.SelectModel".i18n(lang), selection: $model) {
                     if !models.contains(model) { Text(model.isEmpty ? "LLMTranslation.SelectModel".i18n(lang) : model).tag(model) }
                     ForEach(models, id: \.self) { Text($0).tag($0) }
-                }
+                }.pickerStyle(.menu)
             }
             Button("LLMTranslation.FetchModels".i18n(lang)) { fetchModels() }.disabled(busy)
             Button("LLMTranslation.TestModel".i18n(lang)) { testModel() }.disabled(busy || model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -108,7 +104,7 @@ private struct RGLLMTranslationSettingsView: View {
         }
     }
 
-    private func show(_ message: String) { result = message; showsResult = true }
+    private func show(_ message: String) { presentMessage(message) }
 
     private func fetchModels() {
         busy = true
@@ -137,8 +133,11 @@ public func rgLLMTranslationSettingsController(context: AccountContext) -> ViewC
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "LLMTranslation.Title".i18n(data.strings.baseLanguageCode)
-    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGLLMTranslationSettingsView(okTitle: data.strings.Common_OK) })
+    controller.title = "LLMTranslation.Title".i18n(data.strings.rgLanguageCode)
+    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGLLMTranslationSettingsView(presentMessage: { [weak controller] message in
+        guard let controller else { return }
+        rgPresentSettingsMessage(context: context, controller: controller, titleKey: "LLMTranslation.Title", text: message)
+    }) })
     controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
     return controller
 }

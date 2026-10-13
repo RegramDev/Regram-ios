@@ -6,7 +6,13 @@ import TelegramPresentationData
 import SwiftSignalKit
 import RGSimpleSettings
 import RGTypography
+import RGStrings
 
+
+// MARK: Regram — use the selected language before Telegram's secondary fallback language.
+public extension PresentationStrings {
+    var rgLanguageCode: String { RGLocalizationManager.shared.preferredLocale(primary: self.primaryComponent.languageCode, secondary: self.secondaryComponent?.languageCode) }
+}
 
 @available(iOS 13.0, *)
 public class ObservedValue<T>: ObservableObject {
@@ -187,7 +193,7 @@ public final class LegacySwiftUIController: LegacyController {
         navigationBarHeightModel = ObservedValue<CGFloat>(0.0)
         containerViewLayoutModel = ObservedValue<ContainerViewLayout?>(initialLayout)
         inputHeightModel = ObservedValue<CGFloat?>(nil)
-        languageModel = ObservedValue(strings?.baseLanguageCode ?? "en")
+        languageModel = ObservedValue(strings?.rgLanguageCode ?? "en")
         themeModel = ObservedValue(theme)
 //        containerViewLayoutUpdateCountModel = ObservedValue<Int64>(0)
         super.init(presentation: presentation, theme: theme, strings: strings, initialLayout: initialLayout)
@@ -199,7 +205,7 @@ public final class LegacySwiftUIController: LegacyController {
         self.appearanceDisposable.set((signal |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.themeModel.value = data.theme
-            self.languageModel.value = data.strings.baseLanguageCode
+            self.languageModel.value = data.strings.rgLanguageCode
             self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data), transition: .immediate)
             self.statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
         }))

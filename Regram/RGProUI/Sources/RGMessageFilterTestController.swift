@@ -62,7 +62,7 @@ func rgMessageFilterTestController(context: AccountContext, rules: [RGMessageFil
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "MessageFilter.Test.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "MessageFilter.Test.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGMessageFilterTestView(rules: rules) })
     controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
     return controller

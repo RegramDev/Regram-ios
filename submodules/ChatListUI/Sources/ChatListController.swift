@@ -804,6 +804,9 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         })
         
         self.updateNavigationMetadata()
+        self.rgLayoutObserver = NotificationCenter.default.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.requestLayout(transition: .immediate)
+        }
         
         self.globalControlPanelsContextStateDisposable = (self.globalControlPanelsContext.state
         |> deliverOnMainQueue).startStrict(next: { [weak self] state in
@@ -820,6 +823,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
+        if let observer = self.rgLayoutObserver { NotificationCenter.default.removeObserver(observer) }
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
         self.badgeIconDisposable?.dispose()
@@ -4756,6 +4760,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.activateSearch(filter: filter, query: query)
     }
         
+    // MARK: Regram — update the chat header when bottom-bar layout changes.
+    private var rgLayoutObserver: NSObjectProtocol?
     private var previousSearchToggleTimestamp: Double?
     func activateSearch(filter: ChatListSearchFilter = .chats, query: String? = nil, skipScrolling: Bool = false, searchContentNode: NavigationBarSearchContentNode?) {
         Task { @MainActor [weak self] in

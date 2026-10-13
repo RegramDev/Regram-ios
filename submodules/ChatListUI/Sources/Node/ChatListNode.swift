@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import RGAPIToken
 import RGAPIWebSettings
 import Foundation
@@ -1231,6 +1232,7 @@ public final class ChatListNode: ListViewImpl {
     }
     
     private let fillPreloadItems: Bool
+    private var rgSeparatorObserver: NSObjectProtocol?
     private let context: AccountContext
     private let location: ChatListControllerLocation
     private let mode: ChatListNodeMode
@@ -1440,9 +1442,14 @@ public final class ChatListNode: ListViewImpl {
         
         self.theme = theme
         
-        self.scrollHeightTopInset = ChatListNavigationBar.searchScrollHeight
+        // MARK: Regram — a hidden home search field has no collapsible scroll space.
+        self.scrollHeightTopInset = location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? 0.0 : ChatListNavigationBar.searchScrollHeight
         
         super.init()
+        // MARK: Regram — update existing rows immediately without resetting chat-list state.
+        self.rgSeparatorObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.chatListSeparatorSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
+            self?.forEachItemNode { node in (node as? ChatListItemNode)?.rgRefreshSeparatorVisibility() }
+        }
         
         if case .internal = context.sharedContext.applicationBindings.appBuildType {
             //self.useMainQueueTransactions = true
@@ -3258,6 +3265,7 @@ public final class ChatListNode: ListViewImpl {
     }
     
     deinit {
+        if let observer = self.rgSeparatorObserver { NotificationCenter.default.removeObserver(observer) }
         self.chatListDisposable.dispose()
         self.activityStatusesDisposable?.dispose()
         self.updatedFilterDisposable.dispose()

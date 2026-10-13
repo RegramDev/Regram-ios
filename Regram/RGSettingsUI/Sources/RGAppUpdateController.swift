@@ -40,7 +40,10 @@ import PresentationDataUtils
             Section(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang))) {
                 Picker("AppUpdate.InstallationMethod".i18n(lang), selection: $updater.installationMethod) {
                     ForEach(RGUpdateInstallationMethod.allCases, id: \.rawValue) { method in Text(method.localizationKey.i18n(lang)).tag(method) }
-                }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
+                }
+                // MARK: Regram — avoid pushing SwiftUI selection pages into Telegram's navigation stack.
+                .pickerStyle(.menu)
+                .disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
                 Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck)
                 Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured)
             }
@@ -65,6 +68,7 @@ import PresentationDataUtils
                         Text("AppUpdate.AutomaticNode".i18n(lang)).tag("")
                         ForEach(updater.availableNodes) { node in Text(node.name).tag(node.code) }
                     }
+                    .pickerStyle(.menu)
                     if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(.secondary) }
                 }.disabled(updater.stage.isBusy)
             }
@@ -146,14 +150,14 @@ public func rgAppUpdateController(context: AccountContext) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "AppUpdate.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "AppUpdate.Title".i18n(data.strings.rgLanguageCode)
     // MARK: Regram — present through Telegram's window stack. SwiftUI alerts on
     // a legacy hosted controller can receive touches behind the modal overlay.
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGAppUpdateView(owner: { [weak controller] in controller }, presentMessage: { [weak controller] message in
             guard let controller else { return }
             let data = context.sharedContext.currentPresentationData.with { $0 }
-            controller.present(textAlertController(context: context, title: "AppUpdate.Title".i18n(data.strings.baseLanguageCode), text: message, actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root))
+            controller.present(textAlertController(context: context, title: "AppUpdate.Title".i18n(data.strings.rgLanguageCode), text: message, actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root))
         })
     })
     controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))

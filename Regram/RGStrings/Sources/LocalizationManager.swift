@@ -35,13 +35,16 @@ public class RGLocalizationManager {
     }
     
     public func localizedString(_ key: String, _ locale: String = RGFallbackLocale, args: CVarArg...) -> String {
+        return self.localizedString(key, locale, arguments: args)
+    }
+
+    public func localizedString(_ key: String, _ locale: String, arguments: [CVarArg]) -> String {
         let sanitizedLocale = self.sanitizeLocale(locale)
-        
         if let localizedString = findLocalizedString(forKey: key, inLocale: sanitizedLocale) {
-            if args.isEmpty {
-                return String(format: localizedString)
+            if arguments.isEmpty {
+                return localizedString.replacingOccurrences(of: "%%", with: "%")
             } else {
-                return String(format: localizedString, arguments: args)
+                return String(format: localizedString, locale: Locale(identifier: sanitizedLocale), arguments: arguments)
             }
         }
         
@@ -88,27 +91,28 @@ public class RGLocalizationManager {
         }
     }
     
+    public func preferredLocale(primary: String, secondary: String?) -> String {
+        let normalized = sanitizeLocale(primary)
+        if localizations[normalized] != nil { return normalized }
+        return secondary.map(sanitizeLocale) ?? RGFallbackLocale
+    }
+
     private func sanitizeLocale(_ locale: String) -> String {
-        var sanitizedLocale = locale
-        let rawSuffix = "-raw"
-        if locale.hasSuffix(rawSuffix) {
-            sanitizedLocale = String(locale.dropLast(rawSuffix.count))
-        }
-
-        if sanitizedLocale == "pt-br" {
-            sanitizedLocale = "pt"
-        } else if sanitizedLocale == "nb" {
-            sanitizedLocale = "no"
-        }
-
-        return sanitizedLocale
+        var value = locale.lowercased().replacingOccurrences(of: "_", with: "-")
+        if value.hasSuffix("-raw") { value = String(value.dropLast(4)) }
+        if value == "zh" || value.hasPrefix("zh-cn") || value.hasPrefix("zh-sg") || value.hasPrefix("zh-hans") { return "zh-hans" }
+        if value.hasPrefix("zh-tw") || value.hasPrefix("zh-hk") || value.hasPrefix("zh-mo") || value.hasPrefix("zh-hant") { return "zh-hant" }
+        if value == "nb" { return "no" }
+        if value.hasPrefix("pt-") { return "pt" }
+        if localizations[value] != nil { return value }
+        return value.split(separator: "-").first.map(String.init) ?? RGFallbackLocale
     }
 
     private func findLocalizedString(forKey key: String, inLocale locale: String) -> String? {
-        if let string = self.webLocalizations[locale]?[key], !string.isEmpty {
+        if let string = self.localizations[locale]?[key], !string.isEmpty {
             return string
         }
-        if let string = self.localizations[locale]?[key], !string.isEmpty {
+        if let string = self.webLocalizations[locale]?[key], !string.isEmpty {
             return string
         }
         if let fallbackLocale = self.fallbackMappings[locale] {
@@ -123,11 +127,13 @@ public class RGLocalizationManager {
 
 }
 
-public let i18n = RGLocalizationManager.shared.localizedString
+public func i18n(_ key: String, _ locale: String = RGFallbackLocale, _ args: CVarArg...) -> String {
+    RGLocalizationManager.shared.localizedString(key, locale, arguments: args)
+}
 
 
 public extension String {
     func i18n(_ locale: String = RGFallbackLocale, args: CVarArg...) -> String {
-        return RGLocalizationManager.shared.localizedString(self, locale, args: args)
+        return RGLocalizationManager.shared.localizedString(self, locale, arguments: args)
     }
 }

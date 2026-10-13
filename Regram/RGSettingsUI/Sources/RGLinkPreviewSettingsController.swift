@@ -133,8 +133,8 @@ public func rgLinkPreviewSettingsController(context: AccountContext) -> ViewCont
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "LinkPreview.Repair".i18n(data.strings.baseLanguageCode)
-    let table = RGLinkPreviewTableController(language: data.strings.baseLanguageCode)
+    controller.title = "LinkPreview.Repair".i18n(data.strings.rgLanguageCode)
+    let table = RGLinkPreviewTableController(language: data.strings.rgLanguageCode)
     controller.bind(controller: table)
     controller.themeModel.$value.sink { [weak table] theme in
         if let theme { table?.applyTheme(theme) }

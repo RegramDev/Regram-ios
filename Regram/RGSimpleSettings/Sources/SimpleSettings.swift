@@ -8,6 +8,17 @@ public class RGSimpleSettings {
     
     public static let shared = RGSimpleSettings()
     
+    public var bottomBarSettings: RGBottomBarSettings {
+        get { RGBottomBarSettings.load() }
+        set {
+            newValue.save()
+            // Keep legacy backup keys readable by older Regram builds.
+            self.hideTabBar = !newValue.isBottomBarVisible
+            self.showTabNames = newValue.showLabels
+            DispatchQueue.main.async { NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
+        }
+    }
+
     private init() {
         // MARK: Regram — migrate before registration so the new default does not hide saved data.
         rgMigratedPreferenceKey(Keys.dismissedRGSuggestions.rawValue, legacyKey: "dismissedSGSuggestions", defaults: UserDefaults.standard)
@@ -226,6 +237,7 @@ public class RGSimpleSettings {
         case showRegDate
         case regDateCache
         case compactChatList
+        case hideChatListSeparators
         case chatListLines
         case compactFolderNames
         case allChatsTitleLengthOverride
@@ -428,7 +440,7 @@ public class RGSimpleSettings {
         Keys.lastAccountFolders.rawValue: [:],
         Keys.localDNSForProxyHost.rawValue: false,
         Keys.sendLargePhotos.rawValue: false,
-        Keys.outgoingPhotoQuality.rawValue: 70,
+        Keys.outgoingPhotoQuality.rawValue: 100,
         Keys.storyStealthMode.rawValue: false,
         Keys.canUseStealthMode.rawValue: true,
         Keys.disableSwipeToRecordStory.rawValue: false,
@@ -476,6 +488,7 @@ public class RGSimpleSettings {
         Keys.showCreationDate.rawValue: true,
         Keys.showRegDate.rawValue: true,
         Keys.regDateCache.rawValue: [:],
+        Keys.hideChatListSeparators.rawValue: false,
         Keys.compactChatList.rawValue: false,
         Keys.chatListLines.rawValue: ChatListLines.defaultValue.rawValue,
         Keys.compactFolderNames.rawValue: false,
@@ -1083,6 +1096,10 @@ public class RGSimpleSettings {
 
     public var regDateCache = UserDefaultsBackedDictionary<String, Data>(userDefaultsKey: Keys.regDateCache.rawValue, threadSafe: false)
     
+    public static let chatListSeparatorSettingsDidChange = Notification.Name("Regram.ChatListSeparatorSettingsDidChange")
+    @UserDefault(key: Keys.hideChatListSeparators.rawValue)
+    public var hideChatListSeparators: Bool
+
     @UserDefault(key: Keys.compactChatList.rawValue)
     public var compactChatList: Bool
 

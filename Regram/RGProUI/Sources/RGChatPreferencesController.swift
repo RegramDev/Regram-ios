@@ -11,7 +11,7 @@ import TelegramCore
 
 func rgSelectSettingsChat(context: AccountContext, controller: ViewController, completion: @escaping (EnginePeer) -> Void) {
     let data = context.sharedContext.currentPresentationData.with { $0 }
-    let selector = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(context: context, filter: [], title: "ChatPreferences.SelectChat".i18n(data.strings.baseLanguageCode)))
+    let selector = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(context: context, filter: [], title: "ChatPreferences.SelectChat".i18n(data.strings.rgLanguageCode)))
     selector.peerSelected = { [weak selector] peer, _ in selector?.dismiss(); completion(peer) }
     (controller.navigationController as? NavigationController)?.pushViewController(selector)
 }
@@ -43,12 +43,12 @@ private struct RGChatPreferencesView: View {
                         ForEach(RGSimpleSettings.DefaultOutgoingFormat.allCases, id: \.rawValue) { format in
                             Text("OutgoingFormatting.\(format.rawValue)".i18n(lang)).tag(format.rawValue)
                         }
-                    }
+                    }.pickerStyle(.menu)
                     Picker("Pangu.Title".i18n(lang), selection: Binding(get: { preferences.panguSpacing.map { $0 ? "on" : "off" } ?? "inherit" }, set: { preferences.panguSpacing = $0 == "inherit" ? nil : $0 == "on" })) {
                         Text("ChatPreferences.Inherit".i18n(lang)).tag("inherit")
                         Text("ChatPreferences.On".i18n(lang)).tag("on")
                         Text("ChatPreferences.Off".i18n(lang)).tag("off")
-                    }
+                    }.pickerStyle(.menu)
                     Button("ChatPreferences.Reset".i18n(lang)) { preferences = RGChatPreferences() }
                 }
                 Section(footer: Text("ChatPreferences.Reveal.Notice".i18n(lang))) {
@@ -73,7 +73,7 @@ func rgChatPreferencesController(context: AccountContext) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "ChatPreferences.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "ChatPreferences.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGChatPreferencesView(context: context, selectChat: { [weak controller] completion in
             guard let controller else { return }

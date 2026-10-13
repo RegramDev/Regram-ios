@@ -1,3 +1,4 @@
+import RGSwiftUI
 // MARK: Regram
 import RGSimpleSettings
 import RGStrings
@@ -77,7 +78,7 @@ private final class RGContextMenuOrderArguments {
 /// Display name for a managed item. Reuses the same strings the menu itself uses, so the settings
 /// row and the menu entry can never drift apart.
 private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: PresentationStrings) -> String {
-    let lang = strings.baseLanguageCode
+    let lang = strings.rgLanguageCode
     switch id {
     case .repeatForward:
         return "Repeat.WithReply".i18n(lang)
@@ -197,7 +198,7 @@ private func rgContextMenuOrderEntries(presentationData: PresentationData, order
         entries.append(.item(sortIndex: index, id: id, title: rgContextMenuItemTitle(id, strings: presentationData.strings), value: RGSimpleSettings.shared.contextMenuItemIsEnabled(id)))
         index += 1
     }
-    entries.append(.info(sortIndex: index, text: i18n("Settings.ContextMenu.Notice", presentationData.strings.baseLanguageCode)))
+    entries.append(.info(sortIndex: index, text: i18n("Settings.ContextMenu.Notice", presentationData.strings.rgLanguageCode)))
     return entries
 }
 
@@ -218,7 +219,7 @@ public func rgContextMenuOrderController(context: AccountContext) -> ViewControl
         statePromise.get()
     )
     |> map { presentationData, order -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.ContextMenu", presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.ContextMenu", presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: rgContextMenuOrderEntries(presentationData: presentationData, order: order, available: availableItems), style: .blocks)
         return (controllerState, (listState, arguments))
     }

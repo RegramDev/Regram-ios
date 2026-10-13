@@ -33,6 +33,7 @@ Anti-revoke and edit history retain content already received or observed on this
 - Telegram, Apple, and external translation routes, including Google, Google CN, Microsoft, Yandex, and Tencent TranSmart.
 - LLM translation using OpenAI Chat Completions or Anthropic Messages formats, configurable endpoints, model lists and tests, prompts, temperature, and optional context.
 - Message, chat, and pre-send translation with links, code, and text formatting preserved.
+- Webpage translation from the in-app browser menu, with cancellation and original-page restoration.
 - Audio transcription through Telegram, Apple, or a custom OpenAI-compatible Transcriptions API.
 - Custom recognition for voice messages and round-video audio, with endpoint, model, language, prompt, and built-in audio testing.
 - Transcripts appear in the original message and can be copied, translated, canceled, or recognized again.
@@ -45,7 +46,8 @@ Custom recognition uploads only messages explicitly selected by the user. Secret
 - Preview requests can be repaired without changing the original message links. X/Instagram preview service domains are configurable.
 - Save static stickers as PNG and animated/video stickers as GIF to Photos.
 - Inspect media resolution, format/codec, bitrate, frame rate, duration, and file size.
-- Photo quality, large-image sending, sticker sizing and history, recording, and camera options.
+- Photo quality and large-image sending; pasted photos default to HD, maximum JPEG quality, and up to 2560 px.
+- Sticker sizing and history, recording, and camera options.
 - Upload, download, playback, default video quality, and experimental media loading settings.
 
 Preview availability depends on Telegram and the preview services. Unavailable media fields are shown as unknown.
@@ -53,8 +55,10 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 ### Appearance and input
 
 - App icons, settings entry artwork, and screenshot badges.
+- Bottom bar layout with a live preview, drag ordering, button visibility, standalone buttons, search style, width, and alignment.
+- Chat-list separator visibility.
 - Separate Latin and CJK fonts, downloadable fonts, TTF/OTF/TTC import, previews, management, and missing-glyph fallback.
-- Tab bar visibility, labels and width, chat list lines, compact layouts, and colors.
+- Chat list lines, compact layouts, and colors.
 - Input tools, default text formatting, per-chat input preferences, Pangu spacing, and Return-to-send.
 - Rich-text editing and rendering for headings, quotes, code, lists, tables, links, media, and drafts.
 - Profile role badges for developers, core testers, and sponsors.
@@ -62,7 +66,9 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 ### Login, backups, and updates
 
 - Colored QR login, token refresh, data center migration, two-step verification, and retry handling.
+- No local account-count cap; Telegram server login rules still apply.
 - Category-based JSON settings backup and restore, excluding login sessions, chat databases, certificates, and API keys.
+- DC1–DC5 connection tests: initial connection request, three subsequent samples, average/minimum latency, variation and failures; current proxy type, DC region and connection state, cancellation and a copyable report.
 - Media/filter diagnostics, font cache management, and local data cleanup.
 - Update checks and IPA downloads from this repository's GitHub Releases, with size and SHA-256 validation.
 - TrollStore updates: reuse GitHub downloads and verification, then hand the IPA to TrollStore for installation without certificates. Supports automatic checks and optional automatic downloads.
@@ -83,7 +89,7 @@ All Regram preferences are under **Settings → Regram Pro**, whose home page sh
 | Notifications & Alerts | Filtering, pins, mentions, and replies |
 | Management & Tools | Backups, diagnostics, updates, and data cleanup |
 
-Each feature has one settings entry. Larger categories use subpages; settings search and frequently used shortcuts have been removed.
+Each feature has one settings entry. Larger categories use subpages. Only the Regram Pro home page has category and feature-keyword search; category pages and subpages do not add settings search or frequently used shortcuts.
 
 Voice-to-text is under **Translation & Speech → Voice-to-Text**; LLM configuration is under **Translation & Speech → Translation → LLM Translation**; link-preview repair is under **Media & Links**; updates are under **Management & Tools → Regram Updates**.
 

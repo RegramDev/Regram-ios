@@ -16,6 +16,7 @@ swift_library(
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//Regram/RGTypography:RGTypography",
+        "//Regram/RGStrings:RGStrings",
     ],
     visibility = [
         "//visibility:public",

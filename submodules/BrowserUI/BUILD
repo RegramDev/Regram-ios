@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGWebTranslation",
+        "//Regram/RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit",

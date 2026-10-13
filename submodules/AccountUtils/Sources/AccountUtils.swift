@@ -5,7 +5,7 @@ import TelegramUIPreferences
 import AccountContext
 
 // MARK: Regram
-public let maximumRegramNumberOfAccounts = 500
+public let maximumRegramNumberOfAccounts = Int.max
 public let maximumSafeNumberOfAccounts = 6
 public let maximumNumberOfAccounts = maximumRegramNumberOfAccounts
 public let maximumPremiumNumberOfAccounts = maximumRegramNumberOfAccounts

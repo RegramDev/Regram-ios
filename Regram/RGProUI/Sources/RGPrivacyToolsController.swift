@@ -1,3 +1,4 @@
+import RGSwiftUI
 import Foundation
 import AccountContext
 import Display
@@ -68,7 +69,7 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
 
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let lang = presentationData.strings.baseLanguageCode
+        let lang = presentationData.strings.rgLanguageCode
         let id = RGItemListCounter()
 
         var entries: [RGPrivacyToolsEntry] = []
@@ -88,7 +89,7 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
 
 
 public func rgAntiFeaturesController(context: AccountContext) -> ViewController {
-    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
     return rgPrivacyToolsController(context: context, title: "AntiFeatures.Header".i18n(lang), noticeKey: "AntiFeatures.Notice", toggles: antiFeatureToggles())
 }
 
@@ -107,6 +108,6 @@ private func ghostModeToggles() -> [RGPrivacyToggle] {
 }
 
 public func rgGhostModeController(context: AccountContext) -> ViewController {
-    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
     return rgPrivacyToolsController(context: context, title: "Ghost.Header".i18n(lang), noticeKey: "Ghost.Notice", toggles: ghostModeToggles())
 }

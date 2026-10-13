@@ -53,7 +53,8 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     var setStatusTitle: String = ""
     let displaySetStatus: Bool
     var hasEmojiStatus = false
-    if case let .user(peer) = data.peer, peer.isPremium {
+    // MARK: Regram — local Premium cannot grant server-side emoji status or profile colors.
+    if case let .user(peer) = data.peer, peer.flags.contains(.isPremium) && !RGSimpleSettings.shared.localPremium {
         if peer.emojiStatus != nil {
             hasEmojiStatus = true
             setStatusTitle = presentationData.strings.PeerInfo_ChangeEmojiStatus
@@ -241,7 +242,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     let rgWebSettings = context.currentAppConfiguration.with({ $0 }).rgWebSettings
     // MARK: Regram — expose the local settings pages directly.
     do {
-        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Regram Pro", icon: PresentationResourcesSettings.regramPro, action: {
+        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: PresentationResourcesSettings.regramPro, action: {
             interaction.openSettings(.regramPro)
         }))
     }

@@ -1,3 +1,4 @@
+import RGSwiftUI
 // MARK: Regram — local enhancement settings, organized into focused pages.
 import RGSettingsUI
 import Foundation
@@ -26,6 +27,7 @@ public enum RGProSettingsPage: String {
 }
 
 private enum RGProControllerSection: Int32, RGItemListSection {
+    case search
     case base
     case antiFeatures
     case appearance
@@ -96,15 +98,53 @@ private enum RGProAction: String {
 
 private typealias RGProControllerEntry = RGItemListUIEntry<RGProControllerSection, RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>
 
-private func RGProControllerEntries(presentationData: PresentationData, page: RGProSettingsPage) -> [RGProControllerEntry] {
+private func rgProCategoryMatches(page: RGProSettingsPage, query: String, lang: String) -> Bool {
+    let identifiers: [String]
+    let aliases: String
+    switch page {
+    case .home: return true
+    case .messages:
+        identifiers = ["inputToolbar", "mentionAsUserIdLink", "panguSpacing", "defaultOutgoingFormatting", "chatPreferences", "messageActionsSettings", "chatListSettings", "folderSettings"]
+        aliases = "double tap pin separators message id folders chat list 双击 置顶 分组 会话 分隔线 横线 橫線"
+    case .translation:
+        identifiers = ["translationSettings", "llmSettings", "sttSettings", "transcriptionSettings"]
+        aliases = "language voice audio 语言 語言 语音 語音"
+    case .privacy:
+        identifiers = ["localPremium", "messageFilter", "hiddenUsers", "antiFeatures", "antiRevokeChats", "revokedMessages", "ghostMode"]
+        aliases = "stories premium 动态 動態 会员 會員"
+    case .media:
+        identifiers = ["disableLinkPreview", "linkPreviewSettings", "photoSettings", "stickerSettings", "recordingSettings", "mediaSettings"]
+        aliases = "photos quality paste stickers record upload download video 照片 图片 画质 粘贴 贴纸 錄製 下载 上傳 下載"
+    case .appearance:
+        identifiers = ["fonts", "appIcons", "appBages", "appearanceSettings", "profileSettings"]
+        aliases = "tab bar width tabs contacts calls profile 底栏 底欄 布局 佈局 宽度 寬度 联系人 聯絡人 通话 通話 资料 資料"
+    case .notifications:
+        identifiers = ["pinnedMessageNotifications", "mentionsAndRepliesNotifications", "filterNotifications"]
+        aliases = "notification 通知 提醒"
+    case .tools:
+        identifiers = ["backup", "diagnostics", "appUpdate", "eraseAllData"]
+        aliases = "dc ping performance transmission certificate 性能 传输 傳輸 证书 憑證"
+    }
+    let text = page.titleKey.i18n(lang).lowercased() + " " + aliases.lowercased()
+    return query.lowercased().split(whereSeparator: { $0.isWhitespace }).allSatisfy { token in
+        text.contains(token) || identifiers.contains { RGProSearchIndex.matches(query: String(token), id: $0, lang: lang) }
+    }
+}
+
+private func RGProControllerEntries(presentationData: PresentationData, page: RGProSettingsPage, searchQuery: String) -> [RGProControllerEntry] {
     var entries: [RGProControllerEntry] = []
-    let lang = presentationData.strings.baseLanguageCode
+    let lang = presentationData.strings.rgLanguageCode
     
     let id = RGItemListCounter()
     if page == .home {
+        entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: ""), text: searchQuery, placeholder: presentationData.strings.Common_Search))
         for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.toolsPage, .tools)] {
-            entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
+            let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            if query.isEmpty || rgProCategoryMatches(page: destination, query: query, lang: lang) {
+                entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
+            }
         }
+        if entries.count == 1 { entries.append(.notice(id: id.count, section: .base, text: "Settings.Search.NoResults".i18n(lang))) }
         return entries
     }
     
@@ -194,6 +234,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     var askForRestart: (() -> Void)?
 
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    let searchPromise = ValuePromise(initialSearchQuery ?? "", ignoreRepeated: true)
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -218,7 +259,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
     }, setOneFromManyValue: { setting in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let lang = presentationData.strings.baseLanguageCode
+        let lang = presentationData.strings.rgLanguageCode
         let actionSheet = ActionSheetController(presentationData: presentationData)
         var items: [ActionSheetItem] = []
         
@@ -320,7 +361,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch action {
             case .eraseAllData:
-                let lang = presentationData.strings.baseLanguageCode
+                let lang = presentationData.strings.rgLanguageCode
                 let actionSheet = ActionSheetController(presentationData: presentationData)
                 actionSheet.setItemGroups([
                     ActionSheetItemGroup(items: [
@@ -343,14 +384,14 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                 ])
                 presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         }
-    })
+    }, searchInput: { searchPromise.set($0) })
     
-    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
-    |> map { presentationData, _ ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
+    |> map { presentationData, _, query ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
-        let entries = RGProControllerEntries(presentationData: presentationData, page: page)
+        let entries = RGProControllerEntries(presentationData: presentationData, page: page, searchQuery: query)
         
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram Pro" : page.titleKey.i18n(presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Settings.Pro.Title".i18n(presentationData.strings.rgLanguageCode) : page.titleKey.i18n(presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: nil /* scrollToItem*/ )
         
@@ -369,7 +410,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             return
         }
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let lang = presentationData.strings.baseLanguageCode
+        let lang = presentationData.strings.rgLanguageCode
         presentControllerImpl?(
             UndoOverlayController(
                 presentationData: presentationData,

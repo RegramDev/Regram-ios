@@ -16,6 +16,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//submodules/AsyncDisplayKit",
+        "//submodules/TelegramUI/Components/SliderComponent",
         "//Regram/RGItemListUI:RGItemListUI",
         "//Regram/RGLogging:RGLogging",
         "//Regram/RGSimpleSettings:RGSimpleSettings",

@@ -226,60 +226,8 @@ extension PeerInfoScreenNode {
             }
             push(usernameSetupController(context: self.context))
         case .addAccount:
-            let _ = (activeAccountsAndPeers(context: context)
-            |> take(1)
-            |> deliverOnMainQueue
-            ).startStandalone(next: { [weak self] accountAndPeer, accountsAndPeers in
-                guard let strongSelf = self else {
-                    return
-                }
-                var maximumAvailableAccounts: Int = maximumRegramNumberOfAccounts
-                if accountAndPeer?.1.isPremium == true && !strongSelf.context.account.testingEnvironment {
-                    maximumAvailableAccounts = maximumRegramNumberOfAccounts
-                }
-                var count: Int = 1
-                for (accountContext, peer, _) in accountsAndPeers {
-                    if !accountContext.account.testingEnvironment {
-                        if peer.isPremium {
-                            maximumAvailableAccounts = maximumRegramNumberOfAccounts
-                        }
-                        count += 1
-                    }
-                }
-                
-                if count >= maximumAvailableAccounts {
-                    var replaceImpl: ((ViewController) -> Void)?
-                    let controller = PremiumLimitScreen(context: strongSelf.context, subject: .accounts, count: Int32(count), action: {
-                        let controller = PremiumIntroScreen(context: strongSelf.context, source: .accounts)
-                        replaceImpl?(controller)
-                        return true
-                    })
-                    replaceImpl = { [weak controller] c in
-                        controller?.replace(with: c)
-                    }
-                    if let navigationController = strongSelf.context.sharedContext.mainWindow?.viewController as? NavigationController {
-                        navigationController.pushViewController(controller)
-                    }
-                } else {
-                    // MARK: Regram
-                    if count + 1 > maximumSafeNumberOfAccounts {
-                        let presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }
-                        let alertController = textAlertController(context: strongSelf.context, updatedPresentationData: strongSelf.controller?.updatedPresentationData, title: presentationData.strings.ChatList_DeleteSavedMessagesConfirmationTitle, text: i18n("Auth.AccountBackupReminder", presentationData.strings.baseLanguageCode), actions: [
-                            TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {
-                                strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
-                            })
-                        ])
-                        if let controller = strongSelf.controller {
-                            controller.present(alertController, in: .window(.root))
-                        } else {
-                            strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
-                        }
-                    } else {
-                        strongSelf.context.sharedContext.beginNewAuth(testingEnvironment: strongSelf.context.account.testingEnvironment)
-                    }
-                    //
-                }
-            })
+            // MARK: Regram — adding a local account has no client-side quota.
+            self.context.sharedContext.beginNewAuth(testingEnvironment: self.context.account.testingEnvironment)
         case .logout:
             if case let .user(user) = self.data?.peer, let phoneNumber = user.phone {
                 if let controller = self.controller, let navigationController = controller.navigationController as? NavigationController {

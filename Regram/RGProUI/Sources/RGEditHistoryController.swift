@@ -68,7 +68,7 @@ public func rgEditHistoryController(context: AccountContext, message: Message) -
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "EditHistory.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "EditHistory.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGEditHistoryView(versions: versions, copy: { text in
             UIPasteboard.general.string = text

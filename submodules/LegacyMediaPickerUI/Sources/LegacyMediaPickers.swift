@@ -143,15 +143,17 @@ private final class LegacyAssetItemWrapper: NSObject {
     let spoiler: Bool?
     let price: Int64?
     let forceHd: Bool
+    let isPastedPhoto: Bool
     let groupedId: Int64?
     let uniqueId: String?
     
-    init(item: LegacyAssetItem, timer: Int?, spoiler: Bool?, price: Int64?, forceHd: Bool = false, groupedId: Int64?, uniqueId: String?) {
+    init(item: LegacyAssetItem, timer: Int?, spoiler: Bool?, price: Int64?, forceHd: Bool = false, isPastedPhoto: Bool = false, groupedId: Int64?, uniqueId: String?) {
         self.item = item
         self.timer = timer
         self.spoiler = spoiler
         self.price = price
         self.forceHd = forceHd
+        self.isPastedPhoto = isPastedPhoto
         self.groupedId = groupedId
         self.uniqueId = uniqueId
         
@@ -187,7 +189,7 @@ public func legacyAssetPickerItemGenerator() -> ((Any?, NSAttributedString?, Str
                     result["item" as NSString] = LegacyAssetItemWrapper(item: .video(data: .tempFile(path: url, dimensions: dimensions, duration: 4.0), thumbnail: thumbnail, cover: cover, adjustments: dict["adjustments"] as? TGVideoEditAdjustments, caption: caption, asFile: false, asAnimation: true, stickers: stickers), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
                 }
             } else {
-                result["item" as NSString] = LegacyAssetItemWrapper(item: .image(data: .image(image), thumbnail: thumbnail, caption: caption, stickers: stickers, video: nil, adjustments: nil), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, forceHd: forceHd, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
+                result["item" as NSString] = LegacyAssetItemWrapper(item: .image(data: .image(image), thumbnail: thumbnail, caption: caption, stickers: stickers, video: nil, adjustments: nil), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, forceHd: forceHd, isPastedPhoto: (dict["regramPastedPhoto"] as? NSNumber)?.boolValue ?? false, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
             }
             return result
         } else if (dict["type"] as! NSString) == "cloudPhoto" {
@@ -406,8 +408,11 @@ public func legacyAssetPickerEnqueueMessages(
                                     var randomId: Int64 = 0
                                     arc4random_buf(&randomId, 8)
                                     let tempFilePath = NSTemporaryDirectory() + "\(randomId).jpeg"
-                                    let maxSize = item.forceHd ? CGSize(width: 2560.0, height: 2560.0) : CGSize(width: 1280.0, height: 1280.0)
-                                    let scaledSize = image.size.aspectFittedOrSmaller(maxSize)
+                                    // MARK: Regram — preserve clipboard pixel resolution and use the highest photo quality.
+                                    let maxSide: CGFloat = item.forceHd || item.isPastedPhoto ? 2560 : 1280
+                                    let maxSize = CGSize(width: maxSide, height: maxSide)
+                                    let sourceSize = item.isPastedPhoto ? CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale) : image.size
+                                    let scaledSize = sourceSize.aspectFittedOrSmaller(maxSize)
                                 
                                     if let scaledImage = TGScaleImageToPixelSize(image, scaledSize) {
                                         let tempFile = EngineTempBox.shared.tempFile(fileName: "file")
@@ -415,7 +420,7 @@ public func legacyAssetPickerEnqueueMessages(
                                             EngineTempBox.shared.dispose(tempFile)
                                         }
                                         // MARK: Regram
-                                        if let scaledImageData = compressImageToJPEG(scaledImage, quality: Float(RGSimpleSettings.shared.outgoingPhotoQuality) / 100.0, tempFilePath: tempFile.path) {
+                                        if let scaledImageData = compressImageToJPEG(scaledImage, quality: item.isPastedPhoto ? 1.0 : Float(RGSimpleSettings.shared.outgoingPhotoQuality) / 100.0, tempFilePath: tempFile.path) {
                                             let _ = try? scaledImageData.write(to: URL(fileURLWithPath: tempFilePath))
 
                                             let resource = LocalFileReferenceMediaResource(localFilePath: tempFilePath, randomId: randomId)

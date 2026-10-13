@@ -143,7 +143,7 @@ public func rgAppBadgeSettingsController(context: AccountContext, presentationDa
 
     legacyController.statusBar.statusBarStyle = theme.rootController
         .statusBarStyle.style
-    legacyController.title = "AppBadge.Title".i18n(strings.baseLanguageCode)
+    legacyController.title = "AppBadge.Title".i18n(strings.rgLanguageCode)
     
     let swiftUIView = RGSwiftUIView<AppBadgeSettingsView>(
         legacyController: legacyController,

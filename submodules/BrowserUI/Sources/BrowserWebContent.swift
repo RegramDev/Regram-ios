@@ -1,3 +1,5 @@
+// MARK: Regram — page translation shares the selected provider and resets on navigation.
+import RGWebTranslation
 import Foundation
 import LottieSettings
 import UIKit
@@ -206,6 +208,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
     private let context: AccountContext
     private var presentationData: PresentationData
     
+    lazy var rgTranslation = RGWebpageTranslation(webView: self.webView, context: self.context)
     let webView: WebView
     var readability: Readability?
     
@@ -1138,6 +1141,7 @@ final class BrowserWebContent: UIView, BrowserContent, WKNavigationDelegate, WKU
     private var instantPageResources: [Any]?
     
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        self.rgTranslation.navigationChanged()
         self.pendingMainFrameUrl = nil
         if let _ = self.currentError {
             self.currentError = nil

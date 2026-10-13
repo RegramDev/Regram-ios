@@ -114,7 +114,7 @@ func rgRevokedMessagesController(context: AccountContext) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "Revoked.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "Revoked.Title".i18n(data.strings.rgLanguageCode)
     let history = RGRevokedHistory(context: context)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
         RGRevokedMessagesView(history: history, select: { [weak controller] completion in
@@ -125,7 +125,7 @@ func rgRevokedMessagesController(context: AccountContext) -> ViewController {
         }, clear: { [weak controller] apply in
             let current = context.sharedContext.currentPresentationData.with { $0 }
             let sheet = ActionSheetController(presentationData: current)
-            sheet.setItemGroups([ActionSheetItemGroup(items: [ActionSheetTextItem(title: "Revoked.Clear.Notice".i18n(current.strings.baseLanguageCode)), ActionSheetButtonItem(title: current.strings.Common_Delete, color: .destructive, action: { [weak sheet] in sheet?.dismissAnimated(); apply() })]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: current.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
+            sheet.setItemGroups([ActionSheetItemGroup(items: [ActionSheetTextItem(title: "Revoked.Clear.Notice".i18n(current.strings.rgLanguageCode)), ActionSheetButtonItem(title: current.strings.Common_Delete, color: .destructive, action: { [weak sheet] in sheet?.dismissAnimated(); apply() })]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: current.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
             controller?.present(sheet, in: .window(.root))
         })
     })

@@ -1,3 +1,5 @@
+import RGStrings // MARK: Regram
+import PresentationDataUtils
 import Foundation
 import LottieSettings
 import UIKit
@@ -1298,6 +1300,23 @@ public class BrowserScreen: ViewController, MinimizableController {
                     items.append(.separator)
                 }
                 
+                // MARK: Regram — page translation and restore actions only appear for web content.
+                if let webContent = content as? BrowserWebContent, let scheme = URL(string: contentState.url)?.scheme?.lowercased(), ["https", "http"].contains(scheme) {
+                    let session = webContent.rgTranslation
+                    let language = RGLocalizationManager.shared.preferredLocale(primary: self.presentationData.strings.primaryComponent.languageCode, secondary: self.presentationData.strings.secondaryComponent?.languageCode)
+                    let key = session.running ? "Browser.Translation.Cancel" : (session.translated ? "Browser.Translation.Restore" : "Browser.Translation.Translate")
+                    items.append(.action(ContextMenuActionItem(text: key.i18n(language), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Translate"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, action in
+                        action(.default)
+                        if session.running || session.translated { session.restore() }
+                        else {
+                            session.start(error: { [weak self] key in
+                                guard let self else { return }
+                                self.controller?.present(textAlertController(context: self.context, title: "Browser.Translation.Translate".i18n(language), text: key.i18n(language), actions: [TextAlertAction(type: .defaultAction, title: self.presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                            })
+                        }
+                    })))
+                }
+
                 if case .webPage = contentState.contentType {
                     items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.WebBrowser_Reload, icon: { theme in return generateTintedImage(image: UIImage(bundleImageName: "Instant View/Settings/Reload"), color: theme.contextMenu.primaryColor) }, action: { (controller, action) in
                         performAction.invoke(.reload)

@@ -2394,7 +2394,11 @@ public final class MediaPickerScreenImpl: ViewController, MediaPickerScreen, Att
         }
         self.interaction?.displayLivePhotoIcon = displayLivePhotoIcon
         
-        let highQualityPhoto = UserDefaults.standard.bool(forKey: "TG_photoHighQuality_v0")
+        // MARK: Regram — clipboard images start with HD enabled independently of the gallery default.
+        let isPastedPhoto: Bool
+        if case let .media(media) = subject { isPastedPhoto = media.contains { if case .image = $0 { return true }; return false } }
+        else { isPastedPhoto = false }
+        let highQualityPhoto = isPastedPhoto || UserDefaults.standard.bool(forKey: "TG_photoHighQuality_v0")
         if highQualityPhoto {
             self.interaction?.editingState.setHighQualityPhoto(highQualityPhoto)
         }

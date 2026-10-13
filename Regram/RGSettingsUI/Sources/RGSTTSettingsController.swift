@@ -1,3 +1,4 @@
+import RGSwiftUI
 // MARK: Regram
 import AccountContext
 import Display
@@ -131,7 +132,7 @@ private func rgSTTSettingsErrorText(_ error: Error, language: String) -> String 
 
 private func rgSTTSettingsEntries(presentationData: PresentationData, apiKey: String, isTesting: Bool) -> [RGSTTSettingsEntry] {
     let settings = RGSimpleSettings.shared
-    let lang = presentationData.strings.baseLanguageCode
+    let lang = presentationData.strings.rgLanguageCode
     return [
         .header(section: 0, text: i18n("RG.STTSettings", lang)),
         .provider(title: "Settings.Transcription.Backend".i18n(lang), value: "Settings.Transcription.Backend.\(settings.transcriptionBackendEnum.rawValue)".i18n(lang)),
@@ -163,12 +164,12 @@ public func rgSTTSettingsController(context: AccountContext) -> ViewController {
     var presentControllerImpl: ((ViewController) -> Void)?
     let presentResult: (String, String) -> Void = { titleKey, text in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        presentControllerImpl?(textAlertController(context: context, title: i18n(titleKey, presentationData.strings.baseLanguageCode), text: text, actions: [
+        presentControllerImpl?(textAlertController(context: context, title: i18n(titleKey, presentationData.strings.rgLanguageCode), text: text, actions: [
             TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})
         ]))
     }
     let presentError: (String, Error) -> Void = { titleKey, error in
-        let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
+        let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
         presentResult(titleKey, rgSTTSettingsErrorText(error, language: lang))
     }
 
@@ -237,7 +238,7 @@ public func rgSTTSettingsController(context: AccountContext) -> ViewController {
         let data = context.sharedContext.currentPresentationData.with { $0 }
         let sheet = ActionSheetController(presentationData: data)
         let choices: [ActionSheetItem] = RGSimpleSettings.TranscriptionBackend.allCases.map { provider in
-            ActionSheetButtonItem(title: "Settings.Transcription.Backend.\(provider.rawValue)".i18n(data.strings.baseLanguageCode), color: .accent, action: { [weak sheet] in
+            ActionSheetButtonItem(title: "Settings.Transcription.Backend.\(provider.rawValue)".i18n(data.strings.rgLanguageCode), color: .accent, action: { [weak sheet] in
                 sheet?.dismissAnimated()
                 RGSimpleSettings.shared.transcriptionBackend = provider.rawValue
                 NotificationCenter.default.post(name: RGSimpleSettings.sttSettingsDidChangeNotification, object: nil)
@@ -252,7 +253,7 @@ public func rgSTTSettingsController(context: AccountContext) -> ViewController {
 
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, updatePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.Category.transcription", presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.Category.transcription", presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let entries = rgSTTSettingsEntries(presentationData: presentationData, apiKey: apiKey, isTesting: isTesting)
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: nil, animateChanges: true)
         return (controllerState, (listState, arguments))

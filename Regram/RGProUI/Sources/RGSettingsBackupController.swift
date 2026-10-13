@@ -1,3 +1,4 @@
+import RGSettingsUI
 import Foundation
 import SwiftUI
 import UIKit
@@ -21,7 +22,7 @@ private struct RGSettingsBackupView: View {
     @State private var categories = Set(RGBackupCategory.allCases)
     @State private var candidate: RGSettingsBackup?
     @State private var importing = false
-    @State private var error = false
+    let presentError: () -> Void
 
     var body: some View {
         List {
@@ -33,7 +34,7 @@ private struct RGSettingsBackupView: View {
                         importing = false
                         switch result {
                         case let .success(value): candidate = value
-                        case let .failure(value): if !(value is CancellationError) { error = true }
+                        case let .failure(value): if !(value is CancellationError) { presentError() }
                         }
                     }
                 }.disabled(importing)
@@ -63,7 +64,7 @@ private struct RGSettingsBackupView: View {
             Section(footer: Text("Backup.Reset.Notice".i18n(lang))) {
                 Button("Backup.Reset".i18n(lang), role: .destructive) { restore(nil, categories) }.disabled(categories.isEmpty)
             }
-        }.alert("Backup.Error".i18n(lang), isPresented: $error) { Button("Fonts.OK".i18n(lang), role: .cancel) {} } message: { Text("Backup.Error.Notice".i18n(lang)) }
+        }
     }
 }
 
@@ -71,12 +72,23 @@ func rgSettingsBackupController(context: AccountContext) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "Backup.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "Backup.Title".i18n(data.strings.rgLanguageCode)
 
     func nativeValues(_ call: CallListSettings, _ experimental: ExperimentalUISettings) -> [String: RGBackupValue] {
         ["native.showContactsTab": .bool(call.showContactsTab), "native.showCallsTab": .bool(call.showTab), "native.foldersAtBottom": .bool(experimental.foldersTabAtBottom), "native.enableVoipTcp": .bool(experimental.enableVoipTcp)]
     }
     func applyNative(_ values: [String: RGBackupValue]) {
+        // MARK: Regram — old backups retain their tab preferences after the layout migration.
+        if values["bottomBarLayout"] == nil, ["showTabNames", "hideTabBar", "tabBarWidthPercent", "native.showContactsTab", "native.showCallsTab"].contains(where: { values[$0] != nil }) {
+            var layout = RGSimpleSettings.shared.bottomBarSettings
+            if case let .bool(value)? = values["showTabNames"] { layout.showLabels = value }
+            if case let .bool(value)? = values["hideTabBar"] { layout.isBottomBarVisible = !value }
+            if case let .integer(value)? = values["tabBarWidthPercent"], let percent = Int32(exactly: value) { layout.buttonWidthFillRatio = percent }
+            if case let .bool(value)? = values["native.showContactsTab"] { layout.setVisible(.contacts, visible: value) }
+            if case let .bool(value)? = values["native.showCallsTab"] { layout.setVisible(.calls, visible: value) }
+            RGSimpleSettings.shared.bottomBarSettings = layout
+        }
+
         let _ = updateCallListSettingsInteractively(accountManager: context.sharedContext.accountManager, { settings in
             var settings = settings
             if case let .bool(value)? = values["native.showContactsTab"] { settings.showContactsTab = value }
@@ -112,7 +124,7 @@ func rgSettingsBackupController(context: AccountContext) -> ViewController {
                     share.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: directory) }
                     presenter.present(share, animated: true)
                 } catch {
-                    controller.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "Backup.Error".i18n(data.strings.baseLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in false }), in: .window(.root))
+                    controller.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "Backup.Error".i18n(data.strings.rgLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in false }), in: .window(.root))
                 }
             })
         }, importFile: { [weak controller] completion in
@@ -129,7 +141,7 @@ func rgSettingsBackupController(context: AccountContext) -> ViewController {
             controller?.present(picker, in: .window(.root))
         }, restore: { [weak controller] backup, categories in
             let current = context.sharedContext.currentPresentationData.with { $0 }
-            let lang = current.strings.baseLanguageCode
+            let lang = current.strings.rgLanguageCode
             let sheet = ActionSheetController(presentationData: current)
             sheet.setItemGroups([ActionSheetItemGroup(items: [
                 ActionSheetTextItem(title: (backup == nil ? "Backup.Reset.Notice" : "Backup.Restore.Notice").i18n(lang)),
@@ -147,6 +159,10 @@ func rgSettingsBackupController(context: AccountContext) -> ViewController {
                 })
             ]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: current.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
             controller?.present(sheet, in: .window(.root))
+        }, presentError: { [weak controller] in
+            guard let controller else { return }
+            let data = context.sharedContext.currentPresentationData.with { $0 }
+            rgPresentSettingsMessage(context: context, controller: controller, titleKey: "Backup.Error", text: "Backup.Error.Notice".i18n(data.strings.rgLanguageCode))
         })
     })
     controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))

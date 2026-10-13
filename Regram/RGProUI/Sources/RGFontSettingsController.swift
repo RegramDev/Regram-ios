@@ -1,3 +1,4 @@
+import RGSettingsUI
 import Foundation
 import UIKit
 import SwiftUI
@@ -18,8 +19,6 @@ public struct RGFontSettingsView: SwiftUI.View {
     private let renameFont: (RGImportedFont, @escaping (String) -> Void) -> Void
     private let confirmRemoval: (String, @escaping () -> Void) -> Void
     @State private var importing = false
-    @State private var errorPresented = false
-    @State private var errorText = ""
     @State private var filter = ""
     @State private var script = 0
     @State private var family = RGSimpleSettings.shared.fontConfiguration.family
@@ -27,7 +26,10 @@ public struct RGFontSettingsView: SwiftUI.View {
     @State private var messages = RGSimpleSettings.shared.fontApplyToMessages
     @State private var interface = RGSimpleSettings.shared.fontApplyToInterface
 
-    public init(presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void, renameFont: @escaping (RGImportedFont, @escaping (String) -> Void) -> Void, confirmRemoval: @escaping (String, @escaping () -> Void) -> Void) {
+    private let presentMessage: (String) -> Void
+
+    public init(presentMessage: @escaping (String) -> Void, presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void, renameFont: @escaping (RGImportedFont, @escaping (String) -> Void) -> Void, confirmRemoval: @escaping (String, @escaping () -> Void) -> Void) {
+        self.presentMessage = presentMessage
         self.presentFontImporter = presentFontImporter
         self.renameFont = renameFont
         self.confirmRemoval = confirmRemoval
@@ -50,8 +52,7 @@ public struct RGFontSettingsView: SwiftUI.View {
         }
     }
     private func showError(_ key: String) {
-        self.errorText = key.i18n(self.lang)
-        self.errorPresented = true
+        self.presentMessage(key.i18n(self.lang))
     }
     private func importFromFiles() {
         guard !self.importing else { return }
@@ -300,7 +301,6 @@ public struct RGFontSettingsView: SwiftUI.View {
             }.padding(20)
         }
         .background(Color(uiColor: .systemGroupedBackground).ignoresSafeArea())
-        .alert("Fonts.Error.Title".i18n(self.lang), isPresented: self.$errorPresented) { Button("Fonts.OK".i18n(self.lang), role: .cancel) {} } message: { Text(self.errorText) }
         .onChange(of: self.importedLatin) { RGSimpleSettings.shared.fontImportedLatin = $0 }
         .onChange(of: self.importedChinese) { RGSimpleSettings.shared.fontImportedChinese = $0 }
         .onChange(of: self.family) { RGSimpleSettings.shared.fontFamily = $0.rawValue }
@@ -314,9 +314,12 @@ public func rgFontSettingsController(context: AccountContext) -> ViewController 
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "Fonts.Title".i18n(data.strings.baseLanguageCode)
+    controller.title = "Fonts.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
-        RGFontSettingsView(presentFontImporter: { [weak controller] completion in
+        RGFontSettingsView(presentMessage: { [weak controller] message in
+            guard let controller else { return }
+            rgPresentSettingsMessage(context: context, controller: controller, titleKey: "Fonts.Error.Title", text: message)
+        }, presentFontImporter: { [weak controller] completion in
             guard let controller else { completion(nil); return }
             let data = context.sharedContext.currentPresentationData.with { $0 }
             // Accept fonts and broadly typed file-provider data; CoreText checks actual contents.
@@ -328,7 +331,7 @@ public func rgFontSettingsController(context: AccountContext) -> ViewController 
             let data = context.sharedContext.currentPresentationData.with { $0 }
             let sheet = ActionSheetController(presentationData: data)
             sheet.setItemGroups([ActionSheetItemGroup(items: [
-                ActionSheetTextItem(title: notice.i18n(data.strings.baseLanguageCode)),
+                ActionSheetTextItem(title: notice.i18n(data.strings.rgLanguageCode)),
                 ActionSheetButtonItem(title: data.strings.Common_Delete, color: .destructive, action: { [weak sheet] in sheet?.dismissAnimated(); apply() })
             ]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: data.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
             controller?.present(sheet, in: .window(.root))

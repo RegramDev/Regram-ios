@@ -42,6 +42,8 @@ def main():
         ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
         ('content-filter-cache', [simple+'Sources/MessageFilter.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
         ('translation', ['Regram/RGGTranslate/Sources/RGTranslationLinkPlan.swift', 'Regram/RGGTranslate/Tests/LinkPlanTests.swift'], []),
+        ('datacenter-statistics', [simple+'Sources/RGDatacenterStatistics.swift', simple+'Tests/DatacenterStatisticsTests.swift'], []),
+        ('bottom-bar', [simple+'Sources/RGBottomBarSettings.swift', simple+'Sources/RGDatacenterLocation.swift', simple+'Tests/BottomBarSettingsTests.swift'], []),
         ('appearance', [simple+'Sources/TabBarLayoutPolicy.swift', simple+'Sources/FontSettings.swift', simple+'Tests/AppearancePolicyTests.swift'], []),
         ('mentions', [simple+'Sources/MentionReplacementPolicy.swift', simple+'Sources/FontSettings.swift', simple+'Tests/MentionReplacementPolicyTests.swift'], []),
         ('media-notifications', [simple+'Sources/'+name+'.swift' for name in ['MediaLoadingPolicy', 'MessageProcessingPolicy', 'VideoLoadingPolicy', 'VideoQualityPolicy', 'NotificationPolicy']] + [simple+'Tests/MediaLoadingPolicyTests.swift'], []),
@@ -56,6 +58,7 @@ def main():
         flags = ['-DREGRAM_MEDIA_LOADING_EXPERIMENT'] if name == 'media-experiment-default' else []
         if run(name+'-compile', ['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + flags + sources + ['-o', str(binary)]):
             run(name, [str(binary)] + arguments)
+    run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
     run('revoked-history', ['python3', 'Regram/RGProUI/Tests/run-archive-checks.py'])

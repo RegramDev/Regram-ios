@@ -1,3 +1,4 @@
+import RGSwiftUI
 import Foundation
 import UIKit
 import Display
@@ -213,7 +214,7 @@ private func rgPeerSettingListController(context: AccountContext, titleKey: Stri
 
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, peers, revealedPeerId.get())
     |> map { presentationData, peers, revealedPeerId -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let lang = presentationData.strings.baseLanguageCode
+        let lang = presentationData.strings.rgLanguageCode
         var entries: [RGHiddenUsersEntry] = []
         if peers.isEmpty {
             entries.append(.notice(emptyKey.i18n(lang)))

@@ -1,5 +1,6 @@
 import RGDebugUI
 import RGSettingsUI
+import RGConfig // MARK: Regram
 import UndoUI
 //
 import ContactListUI
@@ -300,7 +301,11 @@ private func handleInternetUrl(
                 } else {
                     // MARK: Regram
                     if localSettings.defaultWebBrowser == "inApp" {
-                        rgOpenUrlWithSafariController(parsedUrl: parsedUrl, originalUrl: originalUrl, context: context, presentationData: presentationData, navigationController: navigationController)
+                        // MARK: Regram — use the shared browser with page translation for in-app links.
+                        if let webappHost = RG_API_WEBAPP_URL_PARSED?.host, parsedUrl.host?.lowercased() == webappHost.lowercased() {
+                            rgOpenUrlWithSafariController(parsedUrl: parsedUrl, originalUrl: originalUrl, context: context, presentationData: presentationData, navigationController: navigationController)
+                        } else if let navigationController { navigationController.pushViewController(BrowserScreen(context: context, subject: .webPage(url: parsedUrl.absoluteString))) }
+                        else { rgOpenUrlWithSafariController(parsedUrl: parsedUrl, originalUrl: originalUrl, context: context, presentationData: presentationData, navigationController: navigationController) }
                     } else {
                         let openInOptions = availableOpenInOptions(context: context, item: .url(url: originalUrl))
                         var defaultWebBrowser = localSettings.defaultWebBrowser

@@ -1419,6 +1419,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     public let dateNode: TextNode
     var dateStatusIconNode: ASImageNode?
     var dateDisclosureIconView: UIImageView?
+    private var rgLayoutHidesSeparator = false
+    public func rgRefreshSeparatorVisibility() { separatorNode.isHidden = rgLayoutHidesSeparator || RGSimpleSettings.shared.hideChatListSeparators }
     public let separatorNode: ASDisplayNode
     let statusNode: ChatListStatusNode
     let badgeNode: ChatListBadgeNode
@@ -5467,7 +5469,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     }
                     
                     transition.updateFrame(node: strongSelf.separatorNode, frame: CGRect(origin: CGPoint(x: leftSeparatorInset, y: layoutOffset + itemHeight - separatorHeight), size: CGSize(width: params.width - leftSeparatorInset - rightSeparatorInset, height: separatorHeight)))
-                    strongSelf.separatorNode.isHidden = hideCommunitySeparator
+                    // MARK: Regram — optionally hide the separators between conversations.
+                    strongSelf.rgLayoutHidesSeparator = hideCommunitySeparator
+                    strongSelf.rgRefreshSeparatorVisibility()
                     if let inlineNavigationLocation = item.interaction.inlineNavigationLocation {
                         strongSelf.updateSeparatorAlpha(transition: transition, inlineNavigationProgress: inlineNavigationLocation.progress)
                     } else {
@@ -5476,7 +5480,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     
                     if case let .peer(peerData) = item.content, let customMessageListData = peerData.customMessageListData {
                         if customMessageListData.hideSeparator {
-                            strongSelf.separatorNode.isHidden = true
+                            strongSelf.rgLayoutHidesSeparator = true
+                            strongSelf.rgRefreshSeparatorVisibility()
                         }
                     }
                     

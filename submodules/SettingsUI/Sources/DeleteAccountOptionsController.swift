@@ -198,51 +198,9 @@ public func deleteAccountOptionsController(context: AccountContext, navigationCo
     }, addAccount: {
         context.engine.accountData.addAppLogEvent(type: "deactivate.options_add_account_tap")
         
-        let _ = (activeAccountsAndPeers(context: context)
-        |> take(1)
-        |> deliverOnMainQueue
-        ).start(next: { accountAndPeer, accountsAndPeers in
-            var maximumAvailableAccounts: Int = maximumRegramNumberOfAccounts
-            if accountAndPeer?.1.isPremium == true && !context.account.testingEnvironment {
-                maximumAvailableAccounts = maximumRegramNumberOfAccounts
-            }
-            var count: Int = 1
-            for (accountContext, peer, _) in accountsAndPeers {
-                if !accountContext.account.testingEnvironment {
-                    if peer.isPremium {
-                        maximumAvailableAccounts = maximumRegramNumberOfAccounts
-                    }
-                    count += 1
-                }
-            }
-
-            if count >= maximumAvailableAccounts {
-                var replaceImpl: ((ViewController) -> Void)?
-                let controller = PremiumLimitScreen(context: context, subject: .accounts, count: Int32(count), action: {
-                    let controller = PremiumIntroScreen(context: context, source: .accounts)
-                    replaceImpl?(controller)
-                    return true
-                })
-                replaceImpl = { [weak controller] c in
-                    controller?.replace(with: c)
-                }
-                pushControllerImpl?(controller)
-            } else {
-                if count + 1 > maximumSafeNumberOfAccounts {
-                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                    let alertController = textAlertController(context: context, title: presentationData.strings.ChatList_DeleteSavedMessagesConfirmationTitle, text: i18n("Auth.AccountBackupReminder", presentationData.strings.baseLanguageCode), actions: [
-                        TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {
-                            context.sharedContext.beginNewAuth(testingEnvironment: context.account.testingEnvironment)
-                        })
-                    ], dismissOnOutsideTap: false)
-                    presentControllerImpl?(alertController, nil)
-                } else {
-                    context.sharedContext.beginNewAuth(testingEnvironment: context.account.testingEnvironment)
-                }
-                
-                dismissImpl?()
-            }
-        })
+        // MARK: Regram — remove the local account quota and its Premium/backup gates.
+        context.sharedContext.beginNewAuth(testingEnvironment: context.account.testingEnvironment)
+        dismissImpl?()
     }, setupPrivacy: {
         context.engine.accountData.addAppLogEvent(type: "deactivate.options_privacy_tap")
         

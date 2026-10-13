@@ -16,8 +16,7 @@ final class TabBarControllerNode: ASDisplayNode {
         let isTabBarHidden: Bool
         let currentControllerSearchState: ViewController.TabBarSearchState?
         // MARK: Regram — sizing preferences must invalidate cached content insets too.
-        let rgWidthPercent: Int32
-        let rgShowTabNames: Bool
+        let rgBottomBarSettings: RGBottomBarSettings
         
         init(
             layout: ContainerViewLayout,
@@ -29,8 +28,7 @@ final class TabBarControllerNode: ASDisplayNode {
             self.toolbar = toolbar
             self.isTabBarHidden = isTabBarHidden
             self.currentControllerSearchState = currentControllerSearchState
-            self.rgWidthPercent = RGSimpleSettings.shared.tabBarWidthPercent
-            self.rgShowTabNames = RGSimpleSettings.shared.showTabNames
+            self.rgBottomBarSettings = RGSimpleSettings.shared.bottomBarSettings
         }
     }
     
@@ -61,7 +59,9 @@ final class TabBarControllerNode: ASDisplayNode {
     private let itemDoubleTapped: (Int) -> Void
     private let contextAction: (Int, ContextExtractedContentContainingView, ContextGesture) -> Void
     
-    private let tabBarView = ComponentView<Empty>()
+    private var tabBarView = ComponentView<Empty>()
+    private var tabBarContentState: (hasItems: Bool, hasContent: Bool)?
+    private var needsTabBarRecreation = false
     
     private let disabledOverlayNode: ASDisplayNode
     private var toolbar: ComponentView<Empty>?
@@ -195,7 +195,7 @@ final class TabBarControllerNode: ASDisplayNode {
     }
     
     func containerLayoutUpdated(_ layout: ContainerViewLayout, toolbar: Toolbar?, transition: ContainedViewLayoutTransition) -> CGFloat {
-        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: self.tabBarHidden, currentControllerSearchState: self.currentController?.tabBarSearchState)
+        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: self.tabBarHidden || !RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible, currentControllerSearchState: self.currentController?.tabBarSearchState)
         if let layoutResult = self.layoutResult, layoutResult.params == params {
             return layoutResult.bottomInset
         } else {
@@ -210,6 +210,25 @@ final class TabBarControllerNode: ASDisplayNode {
         self.view.setNeedsLayout()
     }
     
+    // MARK: Regram — map native controllers to stable configurable tab identities.
+    private func rgItemId(for item: UITabBarItem) -> RGBottomBarItemId? {
+        switch item.animationName {
+        case "TabContacts":
+            return .contacts
+        case "TabCalls":
+            return .calls
+        case "TabChats":
+            return .chats
+        case "TabSettings":
+            return .settings
+        default:
+            if item.ringSelection {
+                return .settings
+            }
+            return nil
+        }
+    }
+
     private func updateImpl(params: Params, transition: ContainedViewLayoutTransition) -> CGFloat {
         var panelsBottomInset: CGFloat = params.layout.insets(options: []).bottom
         if params.layout.metrics.widthClass == .regular, let inputHeight = params.layout.inputHeight, inputHeight != 0.0 {
@@ -233,10 +252,93 @@ final class TabBarControllerNode: ASDisplayNode {
             sideInset = 20.0
         }
         
+        // MARK: Regram — shared ordered layout, external slot and search presentation.
+        let bottomBarSettings = params.rgBottomBarSettings
+        let tabBarItemsById: [RGBottomBarItemId: (index: Int, item: TabBarNodeItem)] = Dictionary(uniqueKeysWithValues: self.tabBarItems.enumerated().compactMap { index, item -> (RGBottomBarItemId, (Int, TabBarNodeItem))? in
+            guard let id = self.rgItemId(for: item.item) else {
+                return nil
+            }
+            return (id, (index, item))
+        })
+        let makeComponentItem: (RGBottomBarItemId) -> TabBarComponent.Item? = { [weak self] id in
+            guard let self else {
+                return nil
+            }
+            if id == .search {
+                return TabBarComponent.Item(
+                    content: .customItem(TabBarComponent.Item.Content.CustomItem(id: AnyHashable("rg.search"), title: self.strings.Common_Search, icon: .bundleIcon(name: "Navigation/Search"))),
+                    action: { [weak self] _ in
+                        self?.activateSearch()
+                    },
+                    doubleTapAction: nil,
+                    contextAction: nil
+                )
+            }
+            guard let item = tabBarItemsById[id] else {
+                return nil
+            }
+            let index = item.index
+            return TabBarComponent.Item(
+                content: .tabBarItem(item.item.item),
+                action: { [weak self] isLongTap in
+                    self?.itemSelected(index, isLongTap, [])
+                },
+                doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
+                    self?.itemDoubleTapped(index)
+                } : nil,
+                contextAction: { [weak self] gesture, sourceView in
+                    self?.contextAction(index, sourceView, gesture)
+                }
+            )
+        }
+
+        let visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        let externalComponentItem: TabBarComponent.Item?
+        if let externalItemId = bottomBarSettings.externalItem, externalItemId != .search, !bottomBarSettings.hiddenItems.contains(externalItemId) {
+            externalComponentItem = makeComponentItem(externalItemId)
+        } else {
+            externalComponentItem = nil
+        }
+
         var selectedId: AnyHashable?
         if self.selectedIndex < self.tabBarItems.count {
-            selectedId = ObjectIdentifier(self.tabBarItems[self.selectedIndex].item)
+            let selectedItem = self.tabBarItems[self.selectedIndex].item
+            let isBottomSelected = visibleComponentItems.contains(where: { item in
+                if case let .tabBarItem(tabBarItem) = item.content {
+                    return tabBarItem === selectedItem
+                } else {
+                    return false
+                }
+            })
+            let isExternalSelected: Bool
+            if let externalComponentItem, case let .tabBarItem(tabBarItem) = externalComponentItem.content {
+                isExternalSelected = tabBarItem === selectedItem
+            } else {
+                isExternalSelected = false
+            }
+            if isBottomSelected || isExternalSelected {
+                selectedId = ObjectIdentifier(selectedItem)
+            }
         }
+        // MARK: Regram — empty glass containers must not be reused when content returns.
+        let tabBarSearchState: ViewController.TabBarSearchState? = self.currentController?.tabBarSearchState ?? ViewController.TabBarSearchState(isActive: false)
+        let searchIsVisible = bottomBarSettings.isVisible(.search)
+        let hasVisibleSearch = searchIsVisible && tabBarSearchState != nil
+        let hasTabBarItems = !visibleComponentItems.isEmpty
+        let hasVisibleTabBarContent = hasTabBarItems || externalComponentItem != nil || hasVisibleSearch
+        if let previousState = self.tabBarContentState {
+            if (!previousState.hasItems && hasTabBarItems) || (!previousState.hasContent && hasVisibleTabBarContent) {
+                self.needsTabBarRecreation = true
+            }
+        }
+        self.tabBarContentState = (hasTabBarItems, hasVisibleTabBarContent)
+        if self.needsTabBarRecreation && tabBarSearchState?.isActive != true {
+            self.needsTabBarRecreation = false
+            let previousTabBarView = self.tabBarView
+            self.tabBarView = ComponentView<Empty>()
+            previousTabBarView.view?.removeFromSuperview()
+        }
+
         var tabBarTransition = ComponentTransition(transition)
         if self.isChangingSelectedIndex {
             self.isChangingSelectedIndex = false
@@ -245,47 +347,18 @@ final class TabBarControllerNode: ASDisplayNode {
         if self.tabBarView.view == nil {
             tabBarTransition = .immediate
         }
+        let rgLayoutItemCount = max(visibleComponentItems.count, RGBottomBarSettings.defaultBottomItems.count)
         let tabBarSize = self.tabBarView.update(
             transition: tabBarTransition,
             component: AnyComponent(TabBarComponent(
                 theme: self.theme,
                 strings: self.strings,
-                items: self.tabBarItems.map { item in
-                    let itemId = AnyHashable(ObjectIdentifier(item.item))
-                    
-                    let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) ?? 0
-                    
-                    return TabBarComponent.Item(
-                        content: .tabBarItem(item.item),
-                        action: { [weak self] isLongTap in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.itemSelected(index, isLongTap, [])
-                            }
-                        },
-                        doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.itemDoubleTapped(index)
-                            }
-                        } : nil,
-                        contextAction: { [weak self] gesture, sourceView in
-                            guard let self else {
-                                return
-                            }
-                            if let index = self.tabBarItems.firstIndex(where: { AnyHashable(ObjectIdentifier($0.item)) == itemId }) {
-                                self.contextAction(index, sourceView, gesture)
-                            }
-                        }
-                    )
-                },
-                search: self.currentController?.tabBarSearchState.flatMap { tabBarSearchState in
+                items: visibleComponentItems,
+                externalItem: externalComponentItem,
+                search: searchIsVisible ? tabBarSearchState.flatMap { tabBarSearchState in
                     return TabBarComponent.Search(
                         isActive: tabBarSearchState.isActive,
+                        showsButton: bottomBarSettings.searchMode != .bar,
                         activate: { [weak self] in
                             guard let self else {
                                 return
@@ -299,21 +372,51 @@ final class TabBarControllerNode: ASDisplayNode {
                             self.deactivateSearch()
                         }
                     )
-                },
+                } : nil,
                 selectedId: selectedId,
-                outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset)
+                outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset),
+                layoutItemCount: rgLayoutItemCount,
+                isAdaptiveWidth: false,
+                alignItemsToLeft: bottomBarSettings.alignment == .spaceBetween,
+                centerItemsInAvailableWidth: bottomBarSettings.alignment == .center,
+                showItemTitles: bottomBarSettings.showLabels,
+                buttonWidthFillRatio: CGFloat(bottomBarSettings.buttonWidthFillRatio) / 100.0
             )),
             environment: {},
             containerSize: CGSize(width: params.layout.size.width - sideInset * 2.0, height: 100.0)
         )
-        let tabBarFrame = CGRect(origin: CGPoint(x: floor((params.layout.size.width - tabBarSize.width) * 0.5), y: params.layout.size.height - (self.tabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
+        let tabBarOriginX: CGFloat
+        let onlySearchButton = hasVisibleSearch && bottomBarSettings.searchMode != .bar && visibleComponentItems.isEmpty && externalComponentItem == nil && tabBarSearchState?.isActive != true
+        let fillsAvailableWidth = !onlySearchButton && (bottomBarSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || hasVisibleSearch)
+        if onlySearchButton {
+            tabBarOriginX = params.layout.size.width - sideInset - tabBarSize.width
+        } else if !fillsAvailableWidth && tabBarSearchState?.isActive != true {
+            if bottomBarSettings.alignment == .spaceBetween { // MARK: Regram
+                tabBarOriginX = sideInset
+            } else {
+                tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
+            }
+        } else if bottomBarSettings.buttonWidthFillRatio < 100 && tabBarSearchState == nil {
+            tabBarOriginX = sideInset
+        } else {
+            tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
+        }
+        let tabBarFrame = CGRect(origin: CGPoint(x: tabBarOriginX, y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
         
         if let tabBarComponentView = self.tabBarView.view {
+            // MARK: Regram — attach restored glass at its final size and opacity.
+            let viewTransition: ContainedViewLayoutTransition
             if tabBarComponentView.superview == nil {
+                viewTransition = .immediate
+                tabBarComponentView.frame = tabBarFrame
                 self.view.addSubview(tabBarComponentView)
+            } else {
+                viewTransition = transition
             }
-            transition.updateFrame(view: tabBarComponentView, frame: tabBarFrame)
-            transition.updateAlpha(layer: tabBarComponentView.layer, alpha: params.toolbar == nil ? 1.0 : 0.0)
+            viewTransition.updateFrame(view: tabBarComponentView, frame: tabBarFrame)
+            let tabBarContentAlpha: CGFloat = !params.isTabBarHidden && params.toolbar == nil && hasVisibleTabBarContent ? 1.0 : 0.0
+            viewTransition.updateAlpha(layer: tabBarComponentView.layer, alpha: tabBarContentAlpha)
+            tabBarComponentView.isUserInteractionEnabled = tabBarContentAlpha > 0.0
         }
         
         transition.updateFrame(node: self.disabledOverlayNode, frame: tabBarFrame)
@@ -411,7 +514,7 @@ final class TabBarControllerNode: ASDisplayNode {
         guard let tabBarView = self.tabBarView.view as? TabBarComponent.View else {
             return nil
         }
-        guard let itemFrame = tabBarView.frameForItem(at: index) else {
+        guard self.tabBarItems.indices.contains(index), let itemFrame = tabBarView.frameForItem(id: AnyHashable(ObjectIdentifier(self.tabBarItems[index].item))) else {
             return nil
         }
         return self.view.convert(itemFrame, from: tabBarView)
