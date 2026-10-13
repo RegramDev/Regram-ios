@@ -30,7 +30,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 @MainActor public final class RGAppUpdater: ObservableObject {
     public static let shared = RGAppUpdater()
     public enum Stage: Equatable {
-        case idle, restoring, checking, available, upToDate, validating, downloading, signing, uploading, ready, installRequested, installing, trollStoreReceived, failed(String)
+        case idle, restoring, checking, available, upToDate, validating, downloading, signing, uploading, ready, installRequested, installing, installerReceived, trollStoreReceived, failed(String)
         public var isBusy: Bool { [.restoring, .checking, .validating, .downloading, .signing, .uploading, .installing].contains(self) }
         public var localizationKey: String {
             switch self {
@@ -46,6 +46,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
             case .ready: return "AppUpdate.Ready"
             case .installRequested: return "AppUpdate.InstallRequested"
             case .installing: return "AppUpdate.InstallReading"
+            case .installerReceived: return "AppUpdate.InstallerReceived"
             case .trollStoreReceived: return "AppUpdate.TrollStoreReceived"
             case let .failed(key): return key
             }
@@ -64,6 +65,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     @Published public private(set) var availableNodes = RGLCSignNode.fallback
     @Published public private(set) var activeNode = ""
     @Published public var automaticallyPrepare: Bool { didSet { UserDefaults.standard.set(automaticallyPrepare, forKey: "Regram.AppUpdate.Prepare") } }
+    @Published public var automaticallyExitAfterInstalling: Bool { didSet { UserDefaults.standard.set(automaticallyExitAfterInstalling, forKey: "Regram.AppUpdate.ExitAfterInstalling") } }
     @Published public var installationMethod: RGUpdateInstallationMethod {
         didSet {
             guard oldValue != installationMethod else { return }
@@ -79,6 +81,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     public var installedBuild: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
     public var isConfigured: Bool { installationMethod == .trollStore || !certificateName.isEmpty }
     public var hasPreparedUpdate: Bool { preparedIPA != nil }
+    public var githubReleaseURL: URL { release?.releaseURL ?? URL(string: "https://github.com/RegramDev/Regram-ios/releases/latest")! }
     private var operation: Task<Void, Never>?
     private var operationId: UUID?
     private var preparedIPA: URL?
@@ -94,14 +97,16 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     private var didRestoreCache = false
     private var installationWatchdog: Task<Void, Never>?
     private var packageReadStarted = false
+    private var packageDeliveryComplete = false
+    private var automaticExitTask: Task<Void, Never>?
 
     private init() {
         let defaults = UserDefaults.standard
         let method = defaults.string(forKey: "Regram.AppUpdate.InstallationMethod").flatMap(RGUpdateInstallationMethod.init(rawValue:)) ?? .detected(bundleURL: Bundle.main.bundleURL)
         self.installationMethod = method
-        let isCertificateInstall = FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("embedded.mobileprovision").path)
-        self.automaticallyCheck = defaults.object(forKey: "Regram.AppUpdate.Check") as? Bool ?? (isCertificateInstall || method == .trollStore)
+        self.automaticallyCheck = defaults.object(forKey: "Regram.AppUpdate.Check") as? Bool ?? false
         self.automaticallyPrepare = defaults.bool(forKey: "Regram.AppUpdate.Prepare")
+        self.automaticallyExitAfterInstalling = defaults.bool(forKey: "Regram.AppUpdate.ExitAfterInstalling")
         self.preferredNode = defaults.string(forKey: "Regram.AppUpdate.LCSignNode") ?? ""
         self.certificateName = RGUpdateIdentity.load()?.displayName ?? ""
         self.savedProfileCount = (try? JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8)).count) ?? 0
@@ -414,11 +419,12 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         stopInstallation()
         let id = UUID(); operationId = id; failure = nil; stage = .uploading
         packageReadStarted = false
+        packageDeliveryComplete = false
         installationBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Regram.InstallUpdate") { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
                 self.stopInstallation()
-                if self.operationId == id, self.stage != .trollStoreReceived { self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey) }
+                if self.operationId == id, !self.packageDeliveryComplete { self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey) }
             }
         }
         if installationMethod == .trollStore {
@@ -447,7 +453,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 let server = try RGLocalUpdateServer(fileURL: preparedIPA)
                 localServer = server
                 server.closed = { Task { @MainActor in
-                    guard self.operationId == id else { return }
+                    guard self.operationId == id, !self.packageDeliveryComplete else { return }
                     self.stopInstallation()
                     if self.stage == .installRequested || self.stage == .installing {
                         self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey)
@@ -457,6 +463,22 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                     guard self.operationId == id else { return }
                     self.packageReadStarted = true; self.installationWatchdog?.cancel(); self.installationWatchdog = nil
                     self.failure = nil; self.stage = .installing
+                } }
+                server.packageDelivered = { Task { @MainActor in
+                    guard self.operationId == id else { return }
+                    self.packageDeliveryComplete = true
+                    self.failure = nil; self.stage = .installerReceived
+                    self.installationWatchdog?.cancel(); self.installationWatchdog = nil
+                    if self.automaticallyExitAfterInstalling {
+                        // Keep the background allowance until the final loopback bytes drain.
+                        self.automaticExitTask = Task {
+                            do { try await Task.sleep(nanoseconds: 1_000_000_000) } catch { return }
+                            guard self.operationId == id, self.packageDeliveryComplete else { return }
+                            let shouldExit = self.automaticallyExitAfterInstalling && self.installationMethod == .certificate
+                            self.stopInstallation()
+                            if shouldExit { exit(0) }
+                        }
+                    } else { self.stopInstallation() }
                 } }
                 let packageURL = try await server.start()
                 try Task.checkCancellation()
@@ -551,6 +573,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 } }
                 server.packageDelivered = { Task { @MainActor in
                     guard self.operationId == id else { return }
+                    self.packageDeliveryComplete = true
                     self.stage = .trollStoreReceived; self.failure = nil
                     self.stopInstallation()
                 } }
@@ -578,6 +601,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
 
     private func stopInstallation() {
+        automaticExitTask?.cancel(); automaticExitTask = nil
         installationWatchdog?.cancel(); installationWatchdog = nil
         let server = localServer; localServer = nil; server?.stop()
         if installationBackgroundTask != .invalid {
@@ -605,6 +629,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
 
     public func claimPrompt(for release: RGUpdateRelease) -> Bool {
+        guard automaticallyCheck else { return false }
         let key = stage == .ready ? "Regram.AppUpdate.PromptedReadyBuild" : "Regram.AppUpdate.PromptedBuild"
         guard UserDefaults.standard.string(forKey: key) != String(release.build) else { return false }
         UserDefaults.standard.set(String(release.build), forKey: key)

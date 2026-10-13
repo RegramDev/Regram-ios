@@ -32,7 +32,6 @@ public enum RGSettingsPage: String {
 }
 
 private enum RGControllerSection: Int32, RGItemListSection {
-    case search
     case trending
     case content
     case tabs
@@ -41,7 +40,6 @@ private enum RGControllerSection: Int32, RGItemListSection {
     case profiles
     case stories
     case translation
-    case voiceMessages
     case calls
     case photo
     case stickers
@@ -128,7 +126,6 @@ private enum RGOneFromManySetting: String {
     case allChatsTitleLengthOverride
 //    case allChatsFolderPositionOverride
     case translationBackend
-    case transcriptionBackend
     case recentStickerLimit
     case chatListLines
     case messageDoubleTapAction
@@ -142,31 +139,13 @@ private enum RGSliderSetting: String {
 }
 
 private enum RGDisclosureLink: String {
-    case appearancePage
-    case foldersPage
-    case chatListPage
-    case profilesPage
-    case storiesPage
-    case translationPage
-    case transcriptionPage
-    case messageActionsPage
-    case mediaPage
-    case photoPage
-    case stickerPage
-    case recordingPage
-    case appPage
-    case proSettings
-    case sttSettings
-    case linkPreviewSettings
 
     case contentSettings
     case languageSettings
     case llmTranslationSettings
-    case appUpdate // MARK: Regram
     // MARK: Regram
     case contextMenuOrder
     case tabBarWidth
-    case proSearch
 }
 
 private struct PeerNameColorScreenState: Equatable {
@@ -175,7 +154,6 @@ private struct PeerNameColorScreenState: Equatable {
 }
 
 private struct RGSettingsControllerState: Equatable {
-    var searchQuery: String?
 }
 
 private typealias RGControllerEntry = RGItemListUIEntry<RGControllerSection, RGBoolSetting, RGSliderSetting, RGOneFromManySetting, RGDisclosureLink, AnyHashable>
@@ -189,8 +167,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     let id = RGItemListCounter()
     
-    entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: state.searchQuery ?? "", placeholder: strings.Common_Search))
-    let proSearchId = id.count
     
     
     if RGSimpleSettings.shared.canUseNY {
@@ -274,17 +250,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.disclosure(id: id.count, section: .translation, link: .languageSettings, text: strings.Localization_TranslateEntireChat))
     entries.append(.notice(id: id.count, section: .translation, text: i18n("Common.NoTelegramPremiumNeeded", lang, strings.Settings_Premium)))
 
-    entries.append(.header(id: id.count, section: .voiceMessages, text: "Settings.Transcription.Header".i18n(lang), badge: nil))
-    entries.append(.oneFromManySelector(id: id.count, section: .voiceMessages, settingName: .transcriptionBackend, text: i18n("Settings.Transcription.Backend", lang), value: i18n("Settings.Transcription.Backend.\(RGSimpleSettings.shared.transcriptionBackend)", lang), enabled: true))
-    if RGSimpleSettings.shared.transcriptionBackendEnum == .default {
-        entries.append(.notice(id: id.count, section: .voiceMessages, text: i18n("Settings.Transcription.Backend.Notice", lang, "Settings.Transcription.Backend.\(RGSimpleSettings.TranscriptionBackend.apple.rawValue)".i18n(lang))))
-    } else {
-        id.increment(1)
-    }
-    entries.append(.disclosure(id: id.count, section: .voiceMessages, link: .sttSettings, text: "RG.STTSettings".i18n(lang)))
-    if RGSimpleSettings.shared.transcriptionBackendEnum == .openAICompatible {
-        entries.append(.notice(id: id.count, section: .voiceMessages, text: "RG.STTUsage".i18n(lang)))
-    }
     entries.append(.header(id: id.count, section: .recording, text: strings.Privacy_VoiceMessages.uppercased(), badge: nil))
     entries.append(.toggle(id: id.count, section: .recording, settingName: .forceBuiltInMic, value: RGSimpleSettings.shared.forceBuiltInMic, text: i18n("Settings.forceBuiltInMic", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .recording, text: i18n("Settings.forceBuiltInMic.Notice", lang)))
@@ -349,7 +314,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     id.increment(10000)
     entries.append(.header(id: id.count, section: .other, text: strings.Appearance_Other.uppercased(), badge: nil))
-    entries.append(.disclosure(id: id.count, section: .other, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .other, settingName: .hideChannelBottomButton, value: !RGSimpleSettings.shared.hideChannelBottomButton, text: i18n("Settings.showChannelBottomButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .wideChannelPosts, value: RGSimpleSettings.shared.wideChannelPosts, text: i18n("Settings.wideChannelPosts", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .secondsInMessages, value: RGSimpleSettings.shared.secondsInMessages, text: i18n("Settings.secondsInMessages", lang), enabled: true))
@@ -382,65 +346,40 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .profiles, settingName: .hidePhoneInSettings, value: RGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .profiles, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
     
-    let hasSearch = !(state.searchQuery ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    if page == .home && !hasSearch {
-        entries = [entries[0]]
-        let destinations: [(RGDisclosureLink, RGSettingsPage)] = [
-            (.appearancePage, .appearance), (.chatListPage, .chatList), (.foldersPage, .folders),
-            (.profilesPage, .profiles), (.storiesPage, .stories), (.appPage, .app)
-        ]
-        for (link, destination) in destinations {
-            entries.append(.disclosure(id: id.count, section: .tabs, link: link, text: destination.titleKey.i18n(lang)))
-        }
-        entries.append(.disclosure(id: id.count, section: .other, link: .proSettings, text: "Regram Pro"))
-        entries.append(.notice(id: id.count, section: .other, text: "Settings.ProHub.Notice".i18n(lang)))
-    } else if page != .home {
-        let sections: [RGControllerSection]
-        switch page {
-        case .home: sections = []
-        case .appearance: sections = [.tabs, .accountColors, .trending]
-        case .folders: sections = [.folders]
-        case .chatList: sections = [.chatList]
-        case .profiles: sections = [.profiles]
-        case .stories: sections = [.stories]
-        case .translation: sections = [.translation]
-        case .transcription: sections = [.voiceMessages]
-        case .messageActions: sections = [.contextMenu, .messageActions]
-        case .media: sections = [.media]
-        case .photos: sections = [.photo]
-        case .stickers: sections = [.stickers]
-        case .recording: sections = [.recording, .videoNotes]
-        case .app: sections = [.calls, .content, .other]
-        }
-        let allowed = Set(sections.map(\.rawValue))
-        entries = entries.filter { $0.section == RGControllerSection.search.rawValue || allowed.contains($0.section) }
-        if page == .media {
-            entries.append(.disclosure(id: id.count, section: .media, link: .photoPage, text: RGSettingsPage.photos.titleKey.i18n(lang)))
-            entries.append(.disclosure(id: id.count, section: .media, link: .stickerPage, text: RGSettingsPage.stickers.titleKey.i18n(lang)))
-            entries.append(.disclosure(id: id.count, section: .media, link: .recordingPage, text: RGSettingsPage.recording.titleKey.i18n(lang)))
-            entries.append(.disclosure(id: id.count, section: .media, link: .linkPreviewSettings, text: "LinkPreview.Repair".i18n(lang)))
-        }
+    let sections: [RGControllerSection]
+    switch page {
+    case .home, .transcription: sections = []
+    case .appearance: sections = [.tabs, .accountColors, .trending]
+    case .folders: sections = [.folders]
+    case .chatList: sections = [.chatList]
+    case .profiles: sections = [.profiles]
+    case .stories: sections = [.stories]
+    case .translation: sections = [.translation]
+    case .messageActions: sections = [.contextMenu, .messageActions]
+    case .media: sections = [.media]
+    case .photos: sections = [.photo]
+    case .stickers: sections = [.stickers]
+    case .recording: sections = [.recording, .videoNotes]
+    case .app: sections = [.calls, .content, .other]
     }
-    var filtered = filterRGItemListUIEntrires(entries: entries, by: state.searchQuery)
-    if let query = state.searchQuery, RGProSearchIndex.hasMatches(query: query, lang: lang) {
-        filtered.append(.disclosure(id: proSearchId, section: .search, link: .proSearch, text: "Settings.Search.Pro".i18n(lang)))
-    }
-    return filtered.sorted { $0.stableId < $1.stableId }
+    let allowed = Set(sections.map(\.rawValue))
+    return entries.filter { allowed.contains($0.section) }.sorted { $0.stableId < $1.stableId }
+
 }
 
 public func rgSettingsController(context: AccountContext, page: RGSettingsPage = .home, initialSearchQuery: String? = nil) -> ViewController {
+    // MARK: Regram — legacy root links open the single Pro hub; transcription has one editor.
+    if page == .home { return context.sharedContext.makeRGProController(context: context) }
+    if page == .transcription { return rgSTTSettingsController(context: context) }
+
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
 //    var getRootControllerImpl: (() -> UIViewController?)?
 //    var getNavigationControllerImpl: (() -> NavigationController?)?
     var askForRestart: (() -> Void)?
     
-    let initialState = RGSettingsControllerState(searchQuery: initialSearchQuery)
+    let initialState = RGSettingsControllerState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
-    let stateValue = Atomic(value: initialState)
-    let updateState: ((RGSettingsControllerState) -> RGSettingsControllerState) -> Void = { f in
-        statePromise.set(stateValue.modify { f($0) })
-    }
     
 //    let sliderPromise = ValuePromise(RGSimpleSettings.shared.accountColorsSaturation, ignoreRepeated: true)
 //    let sliderStateValue = Atomic(value: RGSimpleSettings.shared.accountColorsSaturation)
@@ -756,25 +695,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                         setAction(value.rawValue)
                     }))
                 }
-            case .transcriptionBackend:
-                let setAction: (String) -> Void = { value in
-                    RGSimpleSettings.shared.transcriptionBackend = value
-                    NotificationCenter.default.post(name: RGSimpleSettings.sttSettingsDidChangeNotification, object: nil)
-                    simplePromise.set(true)
-                }
-
-                for value in RGSimpleSettings.TranscriptionBackend.allCases {
-                    if #available(iOS 13.0, *) {
-                    } else {
-                        if value == .apple {
-                            continue // Apple recognition is not available on iOS 12
-                        }
-                    }
-                    items.append(ActionSheetButtonItem(title: i18n("Settings.Transcription.Backend.\(value.rawValue)", presentationData.strings.baseLanguageCode), color: .accent, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
-                        setAction(value.rawValue)
-                    }))
-                }
             case .nyStyle:
                 let setAction: (String) -> Void = { value in
                     RGSimpleSettings.shared.nyStyle = value
@@ -797,25 +717,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, openDisclosureLink: { [context] link in
         switch (link) {
-        case .appearancePage: pushControllerImpl?(rgSettingsController(context: context, page: .appearance))
-        case .foldersPage: pushControllerImpl?(rgSettingsController(context: context, page: .folders))
-        case .chatListPage: pushControllerImpl?(rgSettingsController(context: context, page: .chatList))
-        case .profilesPage: pushControllerImpl?(rgSettingsController(context: context, page: .profiles))
-        case .storiesPage: pushControllerImpl?(rgSettingsController(context: context, page: .stories))
-        case .translationPage: pushControllerImpl?(rgSettingsController(context: context, page: .translation))
-        case .transcriptionPage: pushControllerImpl?(rgSettingsController(context: context, page: .transcription))
-        case .messageActionsPage: pushControllerImpl?(rgSettingsController(context: context, page: .messageActions))
-        case .mediaPage: pushControllerImpl?(rgSettingsController(context: context, page: .media))
-        case .photoPage: pushControllerImpl?(rgSettingsController(context: context, page: .photos))
-        case .stickerPage: pushControllerImpl?(rgSettingsController(context: context, page: .stickers))
-        case .recordingPage: pushControllerImpl?(rgSettingsController(context: context, page: .recording))
-        case .appPage: pushControllerImpl?(rgSettingsController(context: context, page: .app))
-        case .proSettings: pushControllerImpl?(context.sharedContext.makeRGProController(context: context))
-        case .sttSettings: pushControllerImpl?(rgSTTSettingsController(context: context))
-        case .linkPreviewSettings: pushControllerImpl?(rgLinkPreviewSettingsController(context: context))
 
-            case .appUpdate:
-                pushControllerImpl?(rgAppUpdateController(context: context))
             case .llmTranslationSettings:
                 pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
             case .languageSettings:
@@ -833,15 +735,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             case .tabBarWidth:
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 pushControllerImpl?(rgTabBarWidthController(context: context))
-            case .proSearch:
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                pushControllerImpl?(context.sharedContext.makeRGProController(context: context, searchQuery: stateValue.with { $0.searchQuery }))
-        }
-    }, searchInput: { searchQuery in
-        updateState { state in
-            var updatedState = state
-            updatedState.searchQuery = searchQuery
-            return updatedState
         }
     })
     

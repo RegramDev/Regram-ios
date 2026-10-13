@@ -26,7 +26,6 @@ public enum RGProSettingsPage: String {
 }
 
 private enum RGProControllerSection: Int32, RGItemListSection {
-    case search
     case base
     case antiFeatures
     case appearance
@@ -45,7 +44,6 @@ private enum RGProDisclosureLink: String {
     case notificationsPage
     case toolsPage
     case translationSettings
-    case sttSettings
     case transcriptionSettings
     case linkPreviewSettings
     case messageActionsSettings
@@ -59,8 +57,7 @@ private enum RGProDisclosureLink: String {
     case stickerSettings
     case recordingSettings
     case appUpdate
-    case llmSettings
-    case allSettingsSearch
+    case appSettings
 
     case antiFeatures
     case ghostMode
@@ -99,12 +96,17 @@ private enum RGProAction: String {
 
 private typealias RGProControllerEntry = RGItemListUIEntry<RGProControllerSection, RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>
 
-private func RGProControllerEntries(presentationData: PresentationData, searchQuery: String?, page: RGProSettingsPage) -> [RGProControllerEntry] {
+private func RGProControllerEntries(presentationData: PresentationData, page: RGProSettingsPage) -> [RGProControllerEntry] {
     var entries: [RGProControllerEntry] = []
     let lang = presentationData.strings.baseLanguageCode
     
     let id = RGItemListCounter()
-    entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: searchQuery ?? "", placeholder: presentationData.strings.Common_Search))
+    if page == .home {
+        for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.toolsPage, .tools)] {
+            entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
+        }
+        return entries
+    }
     
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
@@ -156,58 +158,30 @@ private func RGProControllerEntries(presentationData: PresentationData, searchQu
     entries.append(.disclosure(id: id.count, section: .base, link: .chatListSettings, text: RGSettingsPage.chatList.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .folderSettings, text: RGSettingsPage.folders.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .translation, link: .translationSettings, text: RGSettingsPage.translation.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .translation, link: .llmSettings, text: "LLMTranslation.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .translation, link: .transcriptionSettings, text: RGSettingsPage.transcription.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .translation, link: .sttSettings, text: "RG.STTSettings".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .media, link: .linkPreviewSettings, text: "LinkPreview.Repair".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .media, link: .photoSettings, text: RGSettingsPage.photos.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .media, link: .stickerSettings, text: RGSettingsPage.stickers.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .media, link: .recordingSettings, text: RGSettingsPage.recording.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .media, link: .mediaSettings, text: "Settings.MediaLoading.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .mediaSettings, text: RGSettingsPage.media.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appearanceSettings, text: RGSettingsPage.appearance.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .profileSettings, text: RGSettingsPage.profiles.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .storiesSettings, text: RGSettingsPage.stories.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .footer, link: .appSettings, text: RGSettingsPage.app.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "Updates.Title".i18n(lang)))
 
-    let hasSearch = !(searchQuery ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    if page == .home && !hasSearch {
-        entries = [entries[0]]
-        entries.append(.header(id: id.count, section: .base, text: "Settings.Frequent".i18n(lang), badge: nil))
-        entries.append(.disclosure(id: id.count, section: .base, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
-        entries.append(.disclosure(id: id.count, section: .base, link: .sttSettings, text: "RG.STTSettings".i18n(lang)))
-        entries.append(.disclosure(id: id.count, section: .base, link: .linkPreviewSettings, text: "LinkPreview.Repair".i18n(lang)))
-        for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.toolsPage, .tools)] {
-            entries.append(.disclosure(id: id.count, section: .appearance, link: link, text: destination.titleKey.i18n(lang)))
-        }
-    } else if page != .home {
-        let section: RGProControllerSection
-        switch page {
-        case .home, .messages: section = .base
-        case .privacy: section = .antiFeatures
-        case .translation: section = .translation
-        case .media: section = .media
-        case .appearance: section = .appearance
-        case .notifications: section = .notifications
-        case .tools: section = .footer
-        }
-        entries = entries.filter { $0.section == RGProControllerSection.search.rawValue || $0.section == section.rawValue }
+    let section: RGProControllerSection
+    switch page {
+    case .home, .messages: section = .base
+    case .privacy: section = .antiFeatures
+    case .translation: section = .translation
+    case .media: section = .media
+    case .appearance: section = .appearance
+    case .notifications: section = .notifications
+    case .tools: section = .footer
     }
-    if hasSearch {
-        entries.append(.disclosure(id: id.count, section: .search, link: .allSettingsSearch, text: "Settings.Search.AllOptions".i18n(lang)))
-    }
+    return entries.filter { $0.section == section.rawValue }
 
-    return filterRGItemListUIEntrires(entries: entries, by: searchQuery, matching: { entry, query in
-        let key: String
-        switch entry {
-        case let .disclosure(_, _, link, _): key = link.rawValue
-        case let .toggle(_, _, setting, _, _, _): key = setting.rawValue
-        case let .oneFromManySelector(_, _, setting, _, _, _): key = setting.rawValue
-        case let .action(_, _, action, _, _): key = action.rawValue
-        default: return false
-        }
-        if key == RGProDisclosureLink.allSettingsSearch.rawValue { return true }
-        return RGProSearchIndex.matches(query: query, id: key, lang: lang)
-    })
 }
 
 public func okUndoController(_ text: String, _ presentationData: PresentationData) -> UndoOverlayController {
@@ -220,8 +194,6 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     var askForRestart: (() -> Void)?
 
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
-    var currentSearchQuery = initialSearchQuery
-    let searchPromise = ValuePromise(initialSearchQuery, ignoreRepeated: true)
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -315,11 +287,9 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .photoSettings: pushControllerImpl?(rgSettingsController(context: context, page: .photos))
             case .stickerSettings: pushControllerImpl?(rgSettingsController(context: context, page: .stickers))
             case .recordingSettings: pushControllerImpl?(rgSettingsController(context: context, page: .recording))
-            case .sttSettings: pushControllerImpl?(rgSTTSettingsController(context: context))
-            case .llmSettings: pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
             case .linkPreviewSettings: pushControllerImpl?(rgLinkPreviewSettingsController(context: context))
             case .appUpdate: pushControllerImpl?(rgAppUpdateController(context: context))
-            case .allSettingsSearch: pushControllerImpl?(rgSettingsController(context: context, initialSearchQuery: currentSearchQuery))
+            case .appSettings: pushControllerImpl?(rgSettingsController(context: context, page: .app))
 
             case .antiFeatures:
                 pushControllerImpl?(rgAntiFeaturesController(context: context))
@@ -373,12 +343,12 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                 ])
                 presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         }
-    }, searchInput: { query in currentSearchQuery = query; searchPromise.set(query) })
+    })
     
-    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
-    |> map { presentationData, _, searchQuery ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
+    |> map { presentationData, _ ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
-        let entries = RGProControllerEntries(presentationData: presentationData, searchQuery: searchQuery, page: page)
+        let entries = RGProControllerEntries(presentationData: presentationData, page: page)
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram Pro" : page.titleKey.i18n(presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         

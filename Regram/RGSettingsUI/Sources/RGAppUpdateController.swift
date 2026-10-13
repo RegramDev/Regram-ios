@@ -22,6 +22,7 @@ import PresentationDataUtils
             Section {
                 LabeledContentCompat(title: "AppUpdate.CurrentVersion".i18n(lang), value: "\(updater.installedVersion) (\(updater.installedBuild))")
                 Button("AppUpdate.Check".i18n(lang)) { updater.check() }.disabled(updater.stage.isBusy || credentialBusy)
+                Button("AppUpdate.OpenGitHub".i18n(lang)) { UIApplication.shared.open(updater.githubReleaseURL, options: [:]) }
                 if let release = updater.release {
                     Text("\(release.version) (\(release.build))").font(.headline)
                     if !release.notes.isEmpty {
@@ -30,7 +31,7 @@ import PresentationDataUtils
                     updateStatus
                     if updater.hasPreparedUpdate {
                         Button("AppUpdate.Install".i18n(lang)) { updater.install() }.disabled(updater.stage.isBusy)
-                    } else {
+                    } else if updater.isConfigured {
                         Button((updater.installationMethod == .trollStore ? "AppUpdate.DownloadTrollStore" : (updater.hasDownloadedUpdate ? "AppUpdate.SignCached" : "AppUpdate.Prepare")).i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
                     }
                 } else { updateStatus }
@@ -44,6 +45,9 @@ import PresentationDataUtils
                 Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured)
             }
             if updater.installationMethod == .certificate {
+                Section(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang))) {
+                    Toggle("AppUpdate.AutomaticExit".i18n(lang), isOn: $updater.automaticallyExitAfterInstalling)
+                }.disabled(updater.stage.isBusy)
                 Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
                     if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
                     Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)

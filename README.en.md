@@ -71,7 +71,7 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 
 ## Settings
 
-**Settings → Regram Pro** groups commonly used enhancements:
+All Regram preferences are under **Settings → Regram Pro**, whose home page shows only these categories:
 
 | Category | Contents |
 | --- | --- |
@@ -83,9 +83,11 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 | Notifications & Alerts | Filtering, pins, mentions, and replies |
 | Management & Tools | Backups, diagnostics, updates, and data cleanup |
 
-**Settings → Regram** contains appearance, chat list, folders, profiles, stories, and app options. Larger groups open focused subpages. Both entry points support search.
+Each feature has one settings entry. Larger categories use subpages; settings search and frequently used shortcuts have been removed.
 
-Custom speech recognition is also available from the frequently used section on the Pro home page. Updates are under **Regram Pro → Management & Tools → Regram Updates**, or **Regram → App & Advanced → Regram Updates**.
+Voice-to-text is under **Translation & Speech → Voice-to-Text**; LLM configuration is under **Translation & Speech → Translation → LLM Translation**; link-preview repair is under **Media & Links**; updates are under **Management & Tools → Regram Updates**.
+
+Update checks work without certificates. A separate GitHub Release button opens the release only when tapped. Automatic checks are off by default, and reminders require opting in. Certificate users can enable automatic exit after the system receives the complete installation package.
 
 ## Building
 

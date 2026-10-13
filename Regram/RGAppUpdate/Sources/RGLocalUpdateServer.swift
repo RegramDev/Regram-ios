@@ -13,6 +13,7 @@ final class RGLocalUpdateServer: @unchecked Sendable {
     private var timeout: DispatchWorkItem?
     private var stopped = false
     private var reportedPackageRequest = false
+    private var delivery: RGUpdateDeliveryTracker
     var closed: (@Sendable () -> Void)?
     var packageRequested: (@Sendable () -> Void)?
     var packageDelivered: (@Sendable () -> Void)?
@@ -21,6 +22,7 @@ final class RGLocalUpdateServer: @unchecked Sendable {
         self.fileURL = fileURL
         self.size = (try FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber)?.uint64Value ?? 0
         guard size > 0 else { throw RGUpdateError.invalidArchive }
+        self.delivery = RGUpdateDeliveryTracker(size: size)
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: .any)
         self.listener = try NWListener(using: parameters)
@@ -129,12 +131,12 @@ final class RGLocalUpdateServer: @unchecked Sendable {
             header += "\r\n"
             connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self, weak connection] error in
                 guard let self, let connection, error == nil, method != "HEAD" else { try? handle.close(); connection?.cancel(); return }
-                self.sendFile(connection, handle: handle, remaining: upper - lower + 1, reportDelivery: lower == 0 && upper == self.size - 1)
+                self.sendFile(connection, handle: handle, remaining: upper - lower + 1, range: lower..<(upper + 1))
             })
         } catch { sendError(connection, status: "500 Internal Server Error") }
     }
 
-    private func sendFile(_ connection: NWConnection, handle: FileHandle, remaining: UInt64, reportDelivery: Bool) {
+    private func sendFile(_ connection: NWConnection, handle: FileHandle, remaining: UInt64, range: Range<UInt64>) {
         do {
             guard !stopped, remaining > 0, let chunk = try handle.read(upToCount: Int(min(256 * 1024, remaining))), !chunk.isEmpty else { try? handle.close(); connection.cancel(); return }
             connection.send(content: chunk, completion: .contentProcessed { [weak self, weak connection] error in
@@ -142,9 +144,9 @@ final class RGLocalUpdateServer: @unchecked Sendable {
                 let rest = remaining - UInt64(chunk.count)
                 if rest == 0 {
                     try? handle.close(); connection.cancel()
-                    if reportDelivery { self.packageDelivered?() }
+                    if self.delivery.record(range) { self.packageDelivered?() }
                 }
-                else { self.sendFile(connection, handle: handle, remaining: rest, reportDelivery: reportDelivery) }
+                else { self.sendFile(connection, handle: handle, remaining: rest, range: range) }
             })
         } catch { try? handle.close(); connection.cancel() }
     }

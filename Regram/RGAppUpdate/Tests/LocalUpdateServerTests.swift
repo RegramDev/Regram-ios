@@ -62,6 +62,26 @@ private final class PackageRequests: @unchecked Sendable {
         let concurrent = try await (a, b)
         assert(concurrent.0.0 == bytes && concurrent.1.0 == bytes)
         assert(requests.count() == 1, "Repeated Range/GET requests must not produce duplicate installation-start events")
+        let rangedServer = try RGLocalUpdateServer(fileURL: file)
+        let rangedDeliveries = PackageRequests()
+        rangedServer.packageDelivered = { rangedDeliveries.record() }
+        let rangedURL = try await rangedServer.start()
+        defer { rangedServer.stop() }
+        for (lower, upper) in [(450000, 899999), (100000, 449999)] {
+            var part = URLRequest(url: rangedURL)
+            part.setValue("bytes=\(lower)-\(upper)", forHTTPHeaderField: "Range")
+            let (data, _) = try await session.data(for: part)
+            assert(data == bytes.subdata(in: lower..<(upper + 1)))
+            assert(rangedDeliveries.count() == 0, "Partial delivery must not permit automatic exit")
+        }
+        var finalRange = URLRequest(url: rangedURL)
+        finalRange.setValue("bytes=0-99999", forHTTPHeaderField: "Range")
+        _ = try await session.data(for: finalRange)
+        for _ in 0..<20 {
+            if rangedDeliveries.count() == 1 { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        assert(rangedDeliveries.count() == 1, "All ranges together must permit complete handoff")
         print("Local delivery checks passed: actual package request detection, HEAD exclusion, loopback binding, exact bytes, concurrent requests, ranges and invalid routes.")
     }
 }

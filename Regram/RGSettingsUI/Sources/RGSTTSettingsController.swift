@@ -252,7 +252,7 @@ public func rgSTTSettingsController(context: AccountContext) -> ViewController {
 
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, updatePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("RG.STTSettings", presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.Category.transcription", presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let entries = rgSTTSettingsEntries(presentationData: presentationData, apiKey: apiKey, isTesting: isTesting)
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: nil, animateChanges: true)
         return (controllerState, (listState, arguments))

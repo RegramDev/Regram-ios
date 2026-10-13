@@ -191,6 +191,8 @@ public final class LegacySwiftUIController: LegacyController {
         themeModel = ObservedValue(theme)
 //        containerViewLayoutUpdateCountModel = ObservedValue<Int64>(0)
         super.init(presentation: presentation, theme: theme, strings: strings, initialLayout: initialLayout)
+        // MARK: Regram — hosted settings share Telegram navigation and its localized back item.
+        if let strings { self.navigationItem.backBarButtonItem = UIBarButtonItem(title: strings.Common_Back, style: .plain, target: nil, action: nil) }
     }
 
     public func bindAppearance(_ signal: Signal<PresentationData, NoError>) {
@@ -228,19 +230,6 @@ public final class LegacySwiftUIController: LegacyController {
         addChild(controller)
         controller.didMove(toParent: self)
     }
-
-    public func bindNativeNavigation(controller: UIViewController, title: String, backLabel: String) {
-        self.setDisplayNavigationBar(false, transition: .immediate)
-        controller.title = title
-        let back = UIBarButtonItem(image: UIImage(systemName: "chevron.left"), style: .plain, target: self, action: #selector(self.nativeBack))
-        back.accessibilityLabel = backLabel
-        controller.navigationItem.leftBarButtonItem = back
-        let navigation = UINavigationController(rootViewController: controller)
-        navigation.navigationBar.prefersLargeTitles = false
-        self.bind(controller: navigation)
-    }
-
-    @objc private func nativeBack() { self.dismiss() }
 
     @available(*, unavailable)
     public required init(coder _: NSCoder) {

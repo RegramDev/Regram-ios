@@ -656,13 +656,13 @@
 "RG.STTRetranscribe" = "重新辨識";
 "RG.STTCancelTranscription" = "取消辨識";
 "Settings.Category.home" = "設定";
-"Settings.Category.appearance" = "外觀與介面";
+"Settings.Category.appearance" = "介面與底欄";
 "Settings.Category.folders" = "聊天分組";
 "Settings.Category.chatList" = "聊天列表";
 "Settings.Category.profiles" = "資料與帳號";
 "Settings.Category.stories" = "動態";
 "Settings.Category.translation" = "翻譯";
-"Settings.Category.transcription" = "語音辨識";
+"Settings.Category.transcription" = "語音轉文字";
 "Settings.Category.messageActions" = "訊息動作與顯示";
 "Settings.Category.media" = "媒體與下載";
 "Settings.Category.photos" = "照片與畫質";
@@ -699,3 +699,7 @@
 "AppUpdate.ImportConfirm" = "驗證並匯入";
 "AppUpdate.ImportSigningMaterials" = "匯入 P12 與描述檔";
 "AppUpdate.CertificateSelection" = "請同時選擇一份 P12／PFX 憑證及所需的 .mobileprovision 描述檔。憑證只能選擇一份。";
+"AppUpdate.OpenGitHub" = "開啟 GitHub Release";
+"AppUpdate.AutomaticExit" = "安裝時自動退出 Regram";
+"AppUpdate.AutomaticExitNotice" = "系統完整接收更新包後自動退出，方便完成安裝。安裝請求被拒絕或傳輸未完成時不會退出。";
+"AppUpdate.InstallerReceived" = "更新包已交給系統安裝器，安裝完成後重新開啟 Regram 確認新版本。";

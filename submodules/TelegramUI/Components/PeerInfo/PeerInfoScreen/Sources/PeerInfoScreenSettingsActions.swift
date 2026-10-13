@@ -57,10 +57,8 @@ extension PeerInfoScreenNode {
             }
         }
         switch section {
-        case .regram:
-            self.controller?.push(rgSettingsController(context: self.context))
-        case .regramPro:
-            // MARK: Regram — this is a permanent local settings entry.
+        // MARK: Regram — both current and legacy actions resolve to the single settings hub.
+        case .regram, .regramPro:
             self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()

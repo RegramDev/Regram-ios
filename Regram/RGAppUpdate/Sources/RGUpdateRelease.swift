@@ -8,6 +8,9 @@ public struct RGUpdateRelease: Equatable, Codable, Sendable {
     public let sha256: String
     public let size: Int64
     public let notes: String
+    public var releaseURL: URL {
+        URL(string: "https://github.com/RegramDev/Regram-ios/releases/tag")!.appendingPathComponent("v\(version)-b\(build)")
+    }
 
     public static func parseGitHub(_ data: Data) throws -> RGUpdateRelease {
         struct Asset: Decodable { let name: String; let size: Int64; let digest: String?; let browser_download_url: String }

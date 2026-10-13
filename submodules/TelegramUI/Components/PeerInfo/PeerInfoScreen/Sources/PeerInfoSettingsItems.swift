@@ -227,16 +227,6 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     
     // let locale = presentationData.strings.baseLanguageCode
     // MARK: Regram
-    let hasNewRGFeatures = {
-        return false
-    }
-    let regramLabel: PeerInfoScreenDisclosureItem.Label
-    if hasNewRGFeatures() {
-        regramLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
-    } else {
-        regramLabel = .none
-    }
-
     let hasNewRGProFeatures = {
         return false
     }
@@ -255,9 +245,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
             interaction.openSettings(.regramPro)
         }))
     }
-    items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 1, label: regramLabel, text: "Regram", icon: PresentationResourcesSettings.regram, action: {
-        interaction.openSettings(.regram)
-    }))
+
 
     var appIndex = 1000
     if let settings = data.globalSettings {
