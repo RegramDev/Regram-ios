@@ -22,18 +22,19 @@ import PresentationDataUtils
         Form {
             Section {
                 LabeledContentCompat(title: "AppUpdate.CurrentVersion".i18n(lang), value: "\(updater.installedVersion) (\(updater.installedBuild))")
-                Text(updater.stage.localizationKey.i18n(lang)).foregroundColor(.secondary)
-                if updater.stage.isBusy { ProgressView(value: updater.stage == .downloading ? updater.progress : nil) }
                 Button("AppUpdate.Check".i18n(lang)) { updater.check() }.disabled(updater.stage.isBusy || credentialBusy)
                 if let release = updater.release {
                     Text("\(release.version) (\(release.build))").font(.headline)
-                    if !release.notes.isEmpty { Text(release.notes).font(.footnote).textSelection(.enabled) }
+                    if !release.notes.isEmpty {
+                        DisclosureGroup("AppUpdate.ReleaseNotes".i18n(lang)) { Text(release.notes).font(.footnote).textSelection(.enabled) }
+                    }
+                    updateStatus
                     if updater.hasPreparedUpdate {
                         Button("AppUpdate.Install".i18n(lang)) { updater.install() }.disabled(updater.stage.isBusy)
                     } else {
                         Button("AppUpdate.Prepare".i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
                     }
-                }
+                } else { updateStatus }
                 if updater.stage.isBusy { Button("AppUpdate.Cancel".i18n(lang), role: .cancel) { updater.cancel() } }
             }
             Section(footer: Text("AppUpdate.AutomaticNotice".i18n(lang))) {
@@ -42,6 +43,7 @@ import PresentationDataUtils
             }
             Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
                 if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
+                Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)
                 SecureField("AppUpdate.CertificatePassword".i18n(lang), text: $password)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button("AppUpdate.ImportCertificate".i18n(lang)) { selectFiles(kind: .certificate) }
@@ -63,6 +65,24 @@ import PresentationDataUtils
         }
     }
 
+    private var updateStatus: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(updater.stage.localizationKey.i18n(lang)).foregroundColor(.secondary)
+            if let failure = updater.failure {
+                if let bundle = failure.profileBundle { Text("AppUpdate.ProfileBundle".i18n(lang, args: bundle)).font(.footnote) }
+                if let entitlement = failure.profileEntitlement { Text("AppUpdate.ProfileEntitlement".i18n(lang, args: entitlement)).font(.footnote).textSelection(.enabled) }
+            }
+            if updater.stage == .downloading {
+                HStack {
+                    Text("\(Int(updater.progress * 100))%").monospacedDigit()
+                    Spacer()
+                    Text("\(ByteCountFormatter.string(fromByteCount: updater.downloadedBytes, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: updater.release?.size ?? 0, countStyle: .file))").font(.footnote).foregroundColor(.secondary)
+                }
+                ProgressView(value: updater.progress, total: 1).progressViewStyle(.linear).frame(maxWidth: .infinity)
+            } else if updater.stage.isBusy { ProgressView().progressViewStyle(.circular) }
+        }
+    }
+
     private func selectFiles(kind: RGUpdateCredentialFileKind) {
         filePicker.owner = owner()
         filePicker.present(kind: kind) { urls in
@@ -78,7 +98,7 @@ import PresentationDataUtils
                     }.value
                     switch kind {
                     case .profiles:
-                        try updater.importProfiles(data)
+                        try await updater.importProfiles(data)
                         credentialBusy = false
                         presentMessage("AppUpdate.ProfilesImported".i18n(lang, args: String(data.count)))
                     case .certificate:
@@ -97,7 +117,12 @@ import PresentationDataUtils
 
     private func show(_ error: Error) {
         let key = (error as? RGUpdateCredentialFileError)?.localizationKey ?? (error as? RGUpdateError ?? .network).localizationKey
-        presentMessage(key.i18n(lang))
+        var message = key.i18n(lang)
+        if let failure = error as? RGUpdateError {
+            if let bundle = failure.profileBundle { message += "\n\n" + "AppUpdate.ProfileBundle".i18n(lang, args: bundle) }
+            if let entitlement = failure.profileEntitlement { message += "\n" + "AppUpdate.ProfileEntitlement".i18n(lang, args: entitlement) }
+        }
+        presentMessage(message)
     }
 }
 

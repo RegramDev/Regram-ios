@@ -47,6 +47,18 @@ public struct RGUpdateRelease: Equatable {
 
 public enum RGUpdateError: Error {
     case invalidRelease, invalidManifest, network, hashMismatch, notConfigured, keychain, invalidCertificate, certificateMismatch, invalidProfile, invalidArchive, identityMismatch, signing, cancelled
+    case profileMismatch(bundle: String, reason: String, entitlement: String)
+    case profileLimit
+
+    public var profileBundle: String? {
+        if case let .profileMismatch(bundle, _, _) = self, !bundle.isEmpty { return bundle }
+        return nil
+    }
+
+    public var profileEntitlement: String? {
+        if case let .profileMismatch(_, _, entitlement) = self, !entitlement.isEmpty { return entitlement }
+        return nil
+    }
 
     public var localizationKey: String {
         switch self {
@@ -63,6 +75,18 @@ public enum RGUpdateError: Error {
         case .identityMismatch: return "AppUpdate.IdentityMismatch"
         case .signing: return "AppUpdate.SigningFailed"
         case .cancelled: return "AppUpdate.Cancelled"
+        case let .profileMismatch(_, reason, _):
+            switch reason {
+            case "missing": return "AppUpdate.ProfileMissing"
+            case "unreadable": return "AppUpdate.ProfileUnreadable"
+            case "expired": return "AppUpdate.ProfileExpired"
+            case "certificate": return "AppUpdate.ProfileCertificateMismatch"
+            case "applicationIdentifier": return "AppUpdate.ProfileAppIDMismatch"
+            case "entitlement": return "AppUpdate.ProfileEntitlementMismatch"
+            case "installedEntitlements": return "AppUpdate.InstalledEntitlementsInvalid"
+            default: return "AppUpdate.InvalidProfile"
+            }
+        case .profileLimit: return "AppUpdate.ProfileLimit"
         }
     }
 }

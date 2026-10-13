@@ -8,10 +8,9 @@ import RGUpdateSigner
 
 public let rgAvailableAppUpdate = ValuePromise<RGUpdateRelease?>(nil, ignoreRepeated: true)
 
-private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, URLSessionDownloadDelegate, URLSessionDataDelegate, @unchecked Sendable {
+private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, URLSessionDataDelegate, @unchecked Sendable {
     let service: URL?
     let maximumSize: Int64
-    var progress: ((Double) -> Void)?
     init(service: URL?, maximumSize: Int64) { self.service = service; self.maximumSize = maximumSize }
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         guard let url = request.url, RGUpdateRelease.validHTTPS(url) else { completionHandler(nil); return }
@@ -24,27 +23,23 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         }
         completionHandler(request)
     }
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {}
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         completionHandler(response.expectedContentLength > maximumSize ? .cancel : .allow)
-    }
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        if totalBytesWritten > maximumSize || totalBytesExpectedToWrite > maximumSize { downloadTask.cancel(); return }
-        progress?(min(1.0, Double(totalBytesWritten) / Double(max(1, maximumSize))))
     }
 }
 
 @MainActor public final class RGAppUpdater: ObservableObject {
     public static let shared = RGAppUpdater()
     public enum Stage: Equatable {
-        case idle, checking, available, upToDate, downloading, signing, uploading, ready, installRequested, failed(String)
-        public var isBusy: Bool { [.checking, .downloading, .signing, .uploading].contains(self) }
+        case idle, checking, available, upToDate, validating, downloading, signing, uploading, ready, installRequested, failed(String)
+        public var isBusy: Bool { [.checking, .validating, .downloading, .signing, .uploading].contains(self) }
         public var localizationKey: String {
             switch self {
             case .idle: return "AppUpdate.Check"
             case .checking: return "AppUpdate.Checking"
             case .available: return "AppUpdate.Available"
             case .upToDate: return "AppUpdate.UpToDate"
+            case .validating: return "AppUpdate.Validating"
             case .downloading: return "AppUpdate.Downloading"
             case .signing: return "AppUpdate.Signing"
             case .uploading: return "AppUpdate.PreparingInstall"
@@ -56,8 +51,11 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
     @Published public private(set) var stage: Stage = .idle
     @Published public private(set) var progress = 0.0
+    @Published public private(set) var downloadedBytes: Int64 = 0
+    @Published public private(set) var failure: RGUpdateError?
     @Published public private(set) var release: RGUpdateRelease?
     @Published public private(set) var certificateName: String
+    @Published public private(set) var savedProfileCount: Int
     @Published public var automaticallyCheck: Bool { didSet { UserDefaults.standard.set(automaticallyCheck, forKey: "Regram.AppUpdate.Check"); if automaticallyCheck { checkAutomatically() } } }
     @Published public var preferredNode: String { didSet { UserDefaults.standard.set(preferredNode, forKey: "Regram.AppUpdate.LCSignNode") } }
     @Published public private(set) var availableNodes = RGLCSignNode.fallback
@@ -86,6 +84,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         self.automaticallyPrepare = defaults.bool(forKey: "Regram.AppUpdate.Prepare")
         self.preferredNode = defaults.string(forKey: "Regram.AppUpdate.LCSignNode") ?? ""
         self.certificateName = RGUpdateIdentity.load()?.displayName ?? ""
+        self.savedProfileCount = (try? JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8)).count) ?? 0
         self.directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("RegramUpdates", isDirectory: true)
         // The installed build itself confirms success. Opening itms-services never does.
         if let requested = defaults.string(forKey: "Regram.AppUpdate.RequestedBuild"), requested == installedBuild {
@@ -114,6 +113,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         // certificate as missing. Read again when protected data is available.
         guard !credentialIsBusy, let identity = RGUpdateIdentity.load() else { return }
         certificateName = identity.displayName
+        savedProfileCount = (try? JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8)).count) ?? 0
     }
 
     private func checkAutomatically() {
@@ -123,6 +123,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 
     private func invalidateInstallation() {
         stopInstallation()
+        failure = nil
         if let preparedIPA { try? FileManager.default.removeItem(at: preparedIPA) }
         preparedIPA = nil
         if !stage.isBusy { stage = release == nil ? .idle : .available }
@@ -134,31 +135,52 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         defer { credentialIsBusy = false }
         let path = Bundle.main.bundlePath
         let name: String
+        let installedProfiles: [Data]
         do {
-            name = try await Task.detached(priority: .userInitiated) { try RGUpdateSigner.validateCertificate(data, password: password, installedApp: path) }.value
+            (name, installedProfiles) = try await Task.detached(priority: .userInitiated) {
+                let name = try RGUpdateSigner.validateCertificate(data, password: password, installedApp: path)
+                let profiles = try RGUpdateSigner.installedProfiles(path, certificate: data, password: password)
+                return (name, profiles)
+            }.value
         } catch { throw mapSigningError(error) }
+        try saveProfiles(installedProfiles)
         try RGUpdateKeychain.write(try JSONEncoder().encode(RGUpdateIdentity(p12: data, password: password, name: name)), account: "identity")
         certificateName = name
         invalidateInstallation()
     }
 
-    public func importProfiles(_ data: [Data]) throws {
-        guard !stage.isBusy, data.count <= 16, data.allSatisfy({ $0.count <= 256 * 1024 }) else { throw RGUpdateError.invalidProfile }
-        try RGUpdateKeychain.write(try JSONEncoder().encode(data), account: "profiles")
+    public func importProfiles(_ data: [Data]) async throws {
+        guard !stage.isBusy, !credentialIsBusy, !data.isEmpty, data.count <= 16, data.allSatisfy({ $0.count <= 256 * 1024 }) else { throw RGUpdateError.invalidProfile }
+        credentialIsBusy = true
+        defer { credentialIsBusy = false }
+        do {
+            try await Task.detached(priority: .userInitiated) { try RGUpdateSigner.validateProfiles(data) }.value
+        } catch { throw mapSigningError(error) }
+        try saveProfiles(data)
         invalidateInstallation()
+    }
+
+    private func saveProfiles(_ data: [Data]) throws {
+        let existing = try JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8))
+        var merged = existing
+        for profile in data where !merged.contains(profile) { merged.append(profile) }
+        guard merged.count <= 64 else { throw RGUpdateError.profileLimit }
+        try RGUpdateKeychain.write(try JSONEncoder().encode(merged), account: "profiles")
+        savedProfileCount = merged.count
     }
 
     public func clearCertificate() throws {
         guard !stage.isBusy, !credentialIsBusy else { return }
         for key in ["identity", "certificate-name", "profiles"] { try RGUpdateKeychain.write(nil, account: key) }
         certificateName = ""
+        savedProfileCount = 0
         invalidateInstallation()
     }
 
     public func check() {
         guard !stage.isBusy, !credentialIsBusy else { return }
         operation?.cancel()
-        let id = UUID(); operationId = id; stage = .checking; lastCheck = Date()
+        let id = UUID(); operationId = id; failure = nil; stage = .checking; lastCheck = Date()
         operation = Task {
             do {
                 let delegate = RGUpdateNetworkDelegate(service: nil, maximumSize: 1024 * 1024)
@@ -187,31 +209,46 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 
     public func prepare() {
         guard !stage.isBusy, !credentialIsBusy, let release else { return }
-        guard isConfigured else { stage = .failed(RGUpdateError.notConfigured.localizationKey); return }
+        guard isConfigured else { failure = .notConfigured; stage = .failed(RGUpdateError.notConfigured.localizationKey); return }
         operation?.cancel()
-        let id = UUID(); operationId = id; invalidateInstallation(); stage = .downloading; progress = 0.0
+        let id = UUID(); operationId = id; invalidateInstallation(); failure = nil; stage = .validating; progress = 0.0; downloadedBytes = 0
         operation = Task {
             let operationDirectory = directory.appendingPathComponent(id.uuidString, isDirectory: true)
             defer { try? FileManager.default.removeItem(at: operationDirectory) }
             do {
-                try FileManager.default.createDirectory(at: operationDirectory, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.complete])
-                let delegate = RGUpdateNetworkDelegate(service: nil, maximumSize: release.size)
-                delegate.progress = { value in Task { @MainActor in if self.operationId == id { self.progress = value } } }
-                let downloadSession = makeSession(delegate)
-                defer { downloadSession.invalidateAndCancel() }
-                let (temporary, response) = try await downloadSession.download(from: release.downloadURL)
+                guard let identity = RGUpdateIdentity.load() else { throw RGUpdateError.notConfigured }
+                let installedPath = Bundle.main.bundlePath
+                let installedProfiles: [Data]
+                do {
+                    installedProfiles = try await Task.detached(priority: .userInitiated) {
+                        try RGUpdateSigner.installedProfiles(installedPath, certificate: identity.p12, password: identity.password)
+                    }.value
+                } catch { throw mapSigningError(error) }
                 try Task.checkCancellation()
-                guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw RGUpdateError.network }
+                guard operationId == id else { return }
+                try saveProfiles(installedProfiles)
+                let profiles = try JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8))
+                do {
+                    try await Task.detached(priority: .userInitiated) {
+                        try RGUpdateSigner.validateInstalledApp(installedPath, certificate: identity.p12, password: identity.password, profiles: profiles)
+                    }.value
+                } catch { throw mapSigningError(error) }
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                stage = .downloading
+                try FileManager.default.createDirectory(at: operationDirectory, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.complete])
                 let downloaded = operationDirectory.appendingPathComponent("release.ipa")
-                try FileManager.default.moveItem(at: temporary, to: downloaded)
-                let actualSize = try FileManager.default.attributesOfItem(atPath: downloaded.path)[.size] as? NSNumber
-                guard actualSize?.int64Value == release.size else { throw RGUpdateError.hashMismatch }
+                let download = RGUpdateDownload(destination: downloaded, expectedSize: release.size) { value, bytes in
+                    Task { @MainActor in
+                        guard self.operationId == id, self.stage == .downloading else { return }
+                        self.progress = value; self.downloadedBytes = bytes
+                    }
+                }
+                try await download.download(from: release.downloadURL, configuration: networkConfiguration())
+                try Task.checkCancellation()
                 let hash = try await Task.detached { try Self.hashFile(downloaded) }.value
                 guard hash == release.sha256 else { throw RGUpdateError.hashMismatch }
-                guard let identity = RGUpdateIdentity.load() else { throw RGUpdateError.notConfigured }
-                let profiles = try JSONDecoder().decode([Data].self, from: RGUpdateKeychain.read("profiles") ?? Data("[]".utf8))
                 let signed = operationDirectory.appendingPathComponent("signed.ipa")
-                let installedPath = Bundle.main.bundlePath
                 guard operationId == id else { return }
                 stage = .signing
                 do {
@@ -233,7 +270,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     public func install() {
         guard !stage.isBusy, let release, let preparedIPA else { return }
         stopInstallation()
-        let id = UUID(); operationId = id; stage = .uploading
+        let id = UUID(); operationId = id; failure = nil; stage = .uploading
         installationBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Regram.InstallUpdate") { [weak self] in
             Task { @MainActor in self?.stopInstallation() }
         }
@@ -323,7 +360,10 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     private func finishError(_ error: Error, id: UUID) {
         guard operationId == id else { return }
         if error is CancellationError { stage = release == nil ? .idle : .available }
-        else { stage = .failed((error as? RGUpdateError ?? .network).localizationKey) }
+        else {
+            let failure = error as? RGUpdateError ?? .network
+            self.failure = failure; stage = .failed(failure.localizationKey)
+        }
     }
 
     private func mapSigningError(_ error: Error) -> RGUpdateError {
@@ -332,7 +372,11 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         switch error.code {
         case 1: return .invalidCertificate
         case 2: return .certificateMismatch
-        case 3: return .invalidProfile
+        case 3:
+            if let reason = error.userInfo["profileReason"] as? String {
+                return .profileMismatch(bundle: error.userInfo["bundleName"] as? String ?? "", reason: reason, entitlement: error.userInfo["entitlement"] as? String ?? "")
+            }
+            return .invalidProfile
         case 4: return .invalidArchive
         case 5: return .identityMismatch
         default: return .signing
@@ -340,12 +384,16 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
 
     private func makeSession(_ delegate: RGUpdateNetworkDelegate) -> URLSession {
+        return URLSession(configuration: networkConfiguration(), delegate: delegate, delegateQueue: nil)
+    }
+
+    private func networkConfiguration() -> URLSessionConfiguration {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 60
         config.timeoutIntervalForResource = 900
         config.httpCookieStorage = nil
         config.urlCredentialStorage = nil
-        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        return config
     }
 
     nonisolated private static func hashFile(_ url: URL) throws -> String {

@@ -15,6 +15,13 @@ static BOOL RGFail(NSError **error, NSInteger code) {
     return NO;
 }
 
+static BOOL RGProfileFail(NSError **error, NSString *reason, NSString *bundle, NSString *entitlement = @"") {
+    if (error) *error = [NSError errorWithDomain:@"RGUpdateSigner" code:3 userInfo:@{
+        @"profileReason": reason, @"bundleName": bundle, @"entitlement": entitlement
+    }];
+    return NO;
+}
+
 static uint32_t RGWord(NSData *data, NSUInteger offset, BOOL bigEndian) {
     if (offset > data.length || data.length - offset < 4) return 0;
     const uint8_t *p = (const uint8_t *)data.bytes + offset;
@@ -102,22 +109,29 @@ static NSDictionary *RGProfile(NSData *data) {
 }
 
 static BOOL RGAllowed(id value, id allowed) {
-    if ([value isKindOfClass:NSString.class] && [allowed isKindOfClass:NSString.class]) {
-        if ([value isEqual:allowed]) return YES;
-        return [allowed hasSuffix:@"*"] && [value hasPrefix:[allowed substringToIndex:[allowed length] - 1]];
-    }
-    if ([value isKindOfClass:NSArray.class] && [allowed isKindOfClass:NSArray.class]) {
+    // A profile can allow a set of scalar values (for example, iCloud's
+    // Development/Production environments), or a wildcard for an array.
+    if ([value isKindOfClass:NSArray.class]) {
         for (id item in value) {
-            BOOL found = NO;
-            for (id candidate in allowed) { if (RGAllowed(item, candidate)) { found = YES; break; } }
-            if (!found) return NO;
+            if (!RGAllowed(item, allowed)) return NO;
         }
         return YES;
+    }
+    if ([allowed isKindOfClass:NSArray.class]) {
+        for (id candidate in allowed) {
+            if (RGAllowed(value, candidate)) return YES;
+        }
+        return NO;
+    }
+    if ([value isKindOfClass:NSString.class] && [allowed isKindOfClass:NSString.class]) {
+        if ([value isEqual:allowed]) return YES;
+        if ([allowed isEqual:@"*"]) return YES;
+        return [allowed hasSuffix:@"*"] && [value hasPrefix:[allowed substringToIndex:[allowed length] - 1]];
     }
     if ([value isKindOfClass:NSDictionary.class] && [allowed isKindOfClass:NSDictionary.class]) {
         for (id key in value) {
             // A disabled entitlement requires no additional capability.
-            if ([value[key] isKindOfClass:NSNumber.class] && ![value[key] boolValue]) continue;
+            if (CFGetTypeID((__bridge CFTypeRef)value[key]) == CFBooleanGetTypeID() && ![value[key] boolValue]) continue;
             if (!RGAllowed(value[key], allowed[key])) return NO;
         }
         return YES;
@@ -133,7 +147,79 @@ static NSArray<NSString *> *RGBundles(NSString *app) {
             [result addObject:[app stringByAppendingPathComponent:relative]];
         }
     }
-    return result;
+    return [result sortedArrayUsingSelector:@selector(compare:)];
+}
+
+static NSString *RGUnsupportedEntitlement(NSDictionary *entitlements, NSDictionary *allowed) {
+    for (NSString *key in [[entitlements allKeys] sortedArrayUsingSelector:@selector(compare:)]) {
+        id value = entitlements[key];
+        if (CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID() && ![value boolValue]) continue;
+        if (!RGAllowed(value, allowed[key])) return key;
+    }
+    return nil;
+}
+
+static NSArray<NSDictionary *> *RGSigningPlan(NSString *app, NSData *cert, NSArray<NSData *> *imported, NSError **error) {
+    NSArray<NSString *> *bundles = RGBundles(app);
+    NSMutableArray<NSData *> *data = [imported mutableCopy];
+    for (NSString *bundle in bundles) {
+        NSData *embedded = [NSData dataWithContentsOfFile:[bundle stringByAppendingPathComponent:@"embedded.mobileprovision"]];
+        if (embedded && ![data containsObject:embedded]) [data addObject:embedded];
+    }
+    NSMutableArray<NSDictionary *> *candidates = [NSMutableArray new];
+    for (NSData *bytes in data) {
+        NSDictionary *profile = RGProfile(bytes);
+        if ([profile[@"Entitlements"] isKindOfClass:NSDictionary.class] &&
+            [profile[@"ExpirationDate"] isKindOfClass:NSDate.class] &&
+            [profile[@"DeveloperCertificates"] isKindOfClass:NSArray.class]) {
+            [candidates addObject:@{@"data": bytes, @"profile": profile}];
+        }
+    }
+    NSMutableArray<NSDictionary *> *plan = [NSMutableArray new];
+    for (NSString *bundle in bundles) {
+        NSString *name = bundle.length == app.length ? app.lastPathComponent : [bundle substringFromIndex:app.length + 1];
+        NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[bundle stringByAppendingPathComponent:@"Info.plist"]];
+        NSString *bundleId = info[@"CFBundleIdentifier"], *exe = info[@"CFBundleExecutable"];
+        if (![bundleId isKindOfClass:NSString.class] || ![exe isKindOfClass:NSString.class] ||
+            ![cert isEqual:RGInstalledCertificate([bundle stringByAppendingPathComponent:exe])]) {
+            RGFail(error, 2); return nil;
+        }
+        NSData *entitlementData = RGSignatureSlot([bundle stringByAppendingPathComponent:exe], 5);
+        NSDictionary *entitlements = entitlementData ? [NSPropertyListSerialization propertyListWithData:entitlementData options:NSPropertyListImmutable format:nil error:nil] : nil;
+        if (![entitlements isKindOfClass:NSDictionary.class] ||
+            ![entitlements[@"application-identifier"] isKindOfClass:NSString.class] ||
+            [entitlements[@"application-identifier"] length] == 0) {
+            RGProfileFail(error, @"installedEntitlements", name); return nil;
+        }
+        NSString *reason = data.count == 0 ? @"missing" : @"unreadable";
+        NSInteger bestRank = 0;
+        NSString *unsupported = @"";
+        NSData *selected = nil;
+        NSDate *latest = NSDate.distantPast;
+        for (NSDictionary *candidate in candidates) {
+            NSDictionary *profile = candidate[@"profile"], *allowed = profile[@"Entitlements"];
+            NSDate *expiry = profile[@"ExpirationDate"];
+            NSInteger rank = 1; NSString *issue = @"expired", *key = @"";
+            if ([expiry compare:NSDate.date] == NSOrderedDescending) {
+                rank = 2; issue = @"certificate";
+                if ([profile[@"DeveloperCertificates"] containsObject:cert]) {
+                    rank = 3; issue = @"applicationIdentifier";
+                    if (RGAllowed(entitlements[@"application-identifier"], allowed[@"application-identifier"])) {
+                        rank = 4; issue = @"entitlement";
+                        key = RGUnsupportedEntitlement(entitlements, allowed);
+                        if (!key) {
+                            if ([expiry compare:latest] == NSOrderedDescending) { selected = candidate[@"data"]; latest = expiry; }
+                            continue;
+                        }
+                    }
+                }
+            }
+            if (rank > bestRank) { bestRank = rank; reason = issue; unsupported = key; }
+        }
+        if (!selected) { RGProfileFail(error, reason, name, unsupported); return nil; }
+        [plan addObject:@{@"bundle": bundle, @"info": info, @"entitlements": entitlements, @"profile": selected}];
+    }
+    return plan;
 }
 
 @interface RGUpdateArchiveGuard : NSObject <SSZipArchiveDelegate>
@@ -148,6 +234,49 @@ static NSArray<NSString *> *RGBundles(NSString *app) {
 @end
 
 @implementation RGUpdateSigner
++ (NSArray<NSData *> *)installedProfiles:(NSString *)installedApp certificate:(NSData *)p12 password:(NSString *)password error:(NSError **)error {
+    std::lock_guard<std::mutex> lock(signerMutex);
+    ZLog::SetLogLever(ZLog::E_NONE);
+    NSData *cert = RGCertificate(p12, password);
+    if (!cert) { RGFail(error, 1); return nil; }
+    NSMutableArray<NSData *> *result = [NSMutableArray new];
+    for (NSString *bundle in RGBundles(installedApp)) {
+        NSData *data = [NSData dataWithContentsOfFile:[bundle stringByAppendingPathComponent:@"embedded.mobileprovision"]];
+        if (!data || [result containsObject:data]) continue;
+        NSDictionary *profile = RGProfile(data);
+        NSDate *expiry = profile[@"ExpirationDate"];
+        if (![expiry isKindOfClass:NSDate.class] || [expiry compare:NSDate.date] != NSOrderedDescending ||
+            ![profile[@"DeveloperCertificates"] isKindOfClass:NSArray.class] || ![profile[@"DeveloperCertificates"] containsObject:cert]) continue;
+        [result addObject:data];
+    }
+    return result;
+}
+
++ (BOOL)validateProfiles:(NSArray<NSData *> *)profiles error:(NSError **)error {
+    std::lock_guard<std::mutex> lock(signerMutex);
+    ZLog::SetLogLever(ZLog::E_NONE);
+    for (NSData *data in profiles) {
+        NSDictionary *profile = RGProfile(data);
+        if (![profile[@"Entitlements"] isKindOfClass:NSDictionary.class] ||
+            ![profile[@"ExpirationDate"] isKindOfClass:NSDate.class] ||
+            ![profile[@"DeveloperCertificates"] isKindOfClass:NSArray.class] ||
+            ![profile[@"TeamIdentifier"] isKindOfClass:NSArray.class] || [profile[@"TeamIdentifier"] count] == 0) {
+            return RGProfileFail(error, @"unreadable", @"");
+        }
+        NSDate *expiry = profile[@"ExpirationDate"];
+        if ([expiry compare:NSDate.date] != NSOrderedDescending) return RGProfileFail(error, @"expired", @"");
+    }
+    return YES;
+}
+
++ (BOOL)validateInstalledApp:(NSString *)installedApp certificate:(NSData *)p12 password:(NSString *)password profiles:(NSArray<NSData *> *)profiles error:(NSError **)error {
+    std::lock_guard<std::mutex> lock(signerMutex);
+    ZLog::SetLogLever(ZLog::E_NONE);
+    NSData *cert = RGCertificate(p12, password);
+    if (!cert) return RGFail(error, 1);
+    return RGSigningPlan(installedApp, cert, profiles, error) != nil;
+}
+
 + (NSString *)validateCertificate:(NSData *)p12 password:(NSString *)password installedApp:(NSString *)installedApp error:(NSError **)error {
     std::lock_guard<std::mutex> lock(signerMutex);
     ZLog::SetLogLever(ZLog::E_NONE);
@@ -192,35 +321,21 @@ static NSArray<NSString *> *RGBundles(NSString *app) {
         if (![releaseInfo[@"CFBundleShortVersionString"] isEqual:version] || ![[releaseInfo[@"CFBundleVersion"] description] isEqual:build]) return RGFail(error, 5);
         NSArray<NSString *> *installed = RGBundles(installedApp), *downloaded = RGBundles(app);
         if (installed.count != downloaded.count) return RGFail(error, 5);
-        NSMutableArray<NSData *> *allProfiles = [profiles mutableCopy];
-        for (NSString *bundle in installed) {
-            NSData *profile = [NSData dataWithContentsOfFile:[bundle stringByAppendingPathComponent:@"embedded.mobileprovision"]];
-            if (profile) [allProfiles addObject:profile];
-        }
+        NSArray<NSDictionary *> *plan = RGSigningPlan(installedApp, cert, profiles, error);
+        if (!plan) return NO;
         NSString *keyPath = [work stringByAppendingPathComponent:@"identity.p12"];
         if (![p12 writeToFile:keyPath options:NSDataWritingAtomic | NSDataWritingFileProtectionComplete error:nil]) return RGFail(error, 1);
         std::list<ZSignAsset> assets;
         NSUInteger index = 0;
-        for (NSString *bundle in installed) {
+        for (NSDictionary *entry in plan) {
+            NSString *bundle = entry[@"bundle"];
             NSString *relative = bundle.length == installedApp.length ? @"" : [bundle substringFromIndex:installedApp.length + 1];
             NSString *target = relative.length ? [app stringByAppendingPathComponent:relative] : app;
             if (![downloaded containsObject:target]) return RGFail(error, 5);
-            NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[bundle stringByAppendingPathComponent:@"Info.plist"]];
+            NSDictionary *info = entry[@"info"];
             NSString *bundleId = info[@"CFBundleIdentifier"], *exe = info[@"CFBundleExecutable"];
-            if (![bundleId isKindOfClass:NSString.class] || ![exe isKindOfClass:NSString.class] || ![cert isEqual:RGInstalledCertificate([bundle stringByAppendingPathComponent:exe])]) return RGFail(error, 2);
-            NSData *entitlementData = RGSignatureSlot([bundle stringByAppendingPathComponent:exe], 5);
-            NSDictionary *entitlements = entitlementData ? [NSPropertyListSerialization propertyListWithData:entitlementData options:NSPropertyListImmutable format:nil error:nil] : nil;
-            if (![entitlements isKindOfClass:NSDictionary.class] || ![entitlements[@"application-identifier"] hasSuffix:[@"." stringByAppendingString:bundleId]]) return RGFail(error, 3);
-            NSData *selected = nil; NSDate *latest = NSDate.distantPast;
-            for (NSData *data in allProfiles) {
-                NSDictionary *profile = RGProfile(data);
-                NSDate *expiry = profile[@"ExpirationDate"];
-                if (![expiry isKindOfClass:NSDate.class] || [expiry compare:NSDate.date] != NSOrderedDescending || [expiry compare:latest] != NSOrderedDescending) continue;
-                if (![profile[@"DeveloperCertificates"] isKindOfClass:NSArray.class] || ![profile[@"DeveloperCertificates"] containsObject:cert]) continue;
-                if (!RGAllowed(entitlements, profile[@"Entitlements"])) continue;
-                selected = data; latest = expiry;
-            }
-            if (!selected) return RGFail(error, 3);
+            NSDictionary *entitlements = entry[@"entitlements"];
+            NSData *selected = entry[@"profile"];
             NSString *profilePath = [work stringByAppendingPathComponent:[NSString stringWithFormat:@"profile-%lu.mobileprovision", (unsigned long)index]];
             NSString *entitlementPath = [work stringByAppendingPathComponent:[NSString stringWithFormat:@"entitlements-%lu.plist", (unsigned long)index++]];
             NSData *xml = [NSPropertyListSerialization dataWithPropertyList:entitlements format:NSPropertyListXMLFormat_v1_0 options:0 error:nil];
@@ -228,7 +343,10 @@ static NSArray<NSString *> *RGBundles(NSString *app) {
             assets.emplace_back();
             ZSignAsset &asset = assets.back();
             if (!asset.Init("", keyPath.UTF8String, profilePath.UTF8String, entitlementPath.UTF8String, password.UTF8String, false, false, false)) return RGFail(error, 6);
-            asset.m_strApplicationId = [entitlements[@"application-identifier"] UTF8String];
+            // Use the actual bundle ID to route each signing asset. The existing
+            // application-identifier belongs in the preserved entitlements;
+            // sideloading tools can choose it independently of the plist ID.
+            asset.m_strApplicationId = [bundleId UTF8String];
             NSMutableDictionary *targetInfo = [[NSDictionary dictionaryWithContentsOfFile:[target stringByAppendingPathComponent:@"Info.plist"]] mutableCopy];
             if (!targetInfo || ![targetInfo[@"CFBundleExecutable"] isEqual:exe]) return RGFail(error, 5);
             targetInfo[@"CFBundleIdentifier"] = bundleId;

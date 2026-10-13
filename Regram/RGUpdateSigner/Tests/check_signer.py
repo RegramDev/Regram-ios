@@ -34,7 +34,9 @@ subprocess.run(['xcrun','clang++','-std=c++17','-fobjc-arc','-Wno-deprecated-dec
 import plistlib,datetime,shutil,zipfile,struct,hashlib
 openssl_prefix=subprocess.check_output(['pkg-config','--variable=prefix','openssl'],text=True).strip()
 openssl=str(Path(openssl_prefix)/'bin/openssl')
-dest=task/'fixture';dest.mkdir(exist_ok=True)
+dest=task/'fixture'
+if dest.exists():shutil.rmtree(dest)
+dest.mkdir()
 def run(args):
  r=subprocess.run(args,env=env,capture_output=True)
  if r.returncode:raise RuntimeError(str(r.returncode)+' '+r.stdout.decode()[-1500:]+' '+r.stderr.decode()[-2000:])
@@ -50,8 +52,10 @@ now=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 (dest/'profiles').mkdir(exist_ok=True)
 for index in range(7):
  suffix='' if index==0 else f'.Ext{index}'; bundle_id='com.example.Regram'+suffix
- ent={'application-identifier':'TESTTEAM01.'+bundle_id,'com.apple.developer.team-identifier':'TESTTEAM01','keychain-access-groups':['TESTTEAM01.com.example.Regram'],'com.apple.security.application-groups':['group.com.example.Regram'],'get-task-allow':False}
- profile={'Entitlements':ent,'TeamIdentifier':['TESTTEAM01'],'ExpirationDate':now+datetime.timedelta(days=1),'DeveloperCertificates':[(dest/'cert.der').read_bytes()],'ProvisionsAllDevices':True,'Name':'Synthetic Regram update check'}
+ ent={'application-identifier':'TESTTEAM01.'+bundle_id,'com.apple.developer.team-identifier':'TESTTEAM01','keychain-access-groups':['TESTTEAM01.com.example.Regram'],'com.apple.security.application-groups':['group.com.example.Regram'],'get-task-allow':False,'com.apple.developer.icloud-container-environment':'Production','com.apple.developer.icloud-services':['CloudKit']}
+ allowed=dict(ent,**{'keychain-access-groups':['TESTTEAM01.*'],'com.apple.developer.icloud-container-environment':['Development','Production'],'com.apple.developer.icloud-services':'*'})
+ profile={'Entitlements':allowed,'TeamIdentifier':['TESTTEAM01'],'ExpirationDate':now+datetime.timedelta(days=1),'DeveloperCertificates':[(dest/'cert.der').read_bytes()],'ProvisionsAllDevices':True,'Name':'Synthetic Regram update check'}
+ (dest/'profiles'/f'{index}.entitlements.plist').write_bytes(plistlib.dumps(ent))
  path=dest/'profiles'/f'{index}.plist';path.write_bytes(plistlib.dumps(profile))
  run([openssl,'cms','-sign','-binary','-in',str(path),'-signer',str(dest/'cert.pem'),'-inkey',str(dest/'key.pem'),'-nodetach','-outform','DER','-out',str(path.with_suffix('.mobileprovision'))])
  for folder,build,prefix in [('installed','34590','com.example.Regram'),('new/Payload','34591','com.reference.Regram')]:
@@ -59,11 +63,27 @@ for index in range(7):
   target=app if index==0 else app/'PlugIns'/f'Ext{index}.appex';target.mkdir(parents=True,exist_ok=True)
   info={'CFBundleIdentifier':prefix+suffix,'CFBundleExecutable':'Fixture','CFBundleVersion':build,'CFBundleShortVersionString':'13.0','CFBundleDisplayName':'Regram '+folder,'CFBundlePackageType':'APPL' if index==0 else 'XPC!'}
   (target/'Info.plist').write_bytes(plistlib.dumps(info));shutil.copyfile(dest/'Fixture',target/'Fixture');(target/'Fixture').chmod(0o755)
+# Independent profiles exercise wildcard reuse and actionable mismatch reasons.
+variants=dest/'variants';variants.mkdir(exist_ok=True)
+base=dict(profile);base['Entitlements']=dict(allowed,**{'application-identifier':'TESTTEAM01.*'})
+for label,change in {
+ 'universal':{},
+ 'expired':{'ExpirationDate':now-datetime.timedelta(days=1)},
+ 'certificate':{'DeveloperCertificates':[b'wrong synthetic certificate']},
+ 'applicationIdentifier':{'Entitlements':dict(base['Entitlements'],**{'application-identifier':'TESTTEAM01.com.other.App'})},
+ 'entitlement':{'Entitlements':dict(base['Entitlements'],**{'com.apple.developer.icloud-container-environment':['Development']})},
+}.items():
+ value=dict(base,**change);path=variants/f'{label}.plist';path.write_bytes(plistlib.dumps(value))
+ run([openssl,'cms','-sign','-binary','-in',str(path),'-signer',str(dest/'cert.pem'),'-inkey',str(dest/'key.pem'),'-nodetach','-outform','DER','-out',str(path.with_suffix('.mobileprovision'))])
 run([str(task/'signer-fixture'),'initial',str(dest)])
 with zipfile.ZipFile(dest/'new.ipa','w',compression=zipfile.ZIP_DEFLATED) as z:
  for path in (dest/'new').rglob('*'):
   if path.is_file():z.write(path,path.relative_to(dest/'new'))
 run([str(task/'signer-fixture'),'verify',str(dest)])
+run([str(task/'signer-fixture'),'profiles',str(dest)])
+run([str(task/'signer-fixture'),'legacy',str(dest)])
+print('Provisioning regression checks passed: imported profiles, a wildcard covering seven bundles, scalar/list permissions and six distinct failure reasons.')
+print('Automatic certificate/profile binding passed, including installed signing identifiers independent of plist bundle IDs.')
 print('Synthetic P12/profile fixture passed for main app and six extensions.')
 with zipfile.ZipFile(dest/'updated.ipa') as z:
  bundles=[x for x in z.namelist() if x.endswith('/Info.plist')]
@@ -76,40 +96,43 @@ print('Output IPA retains all identities and includes no signing keys.')
 # Check the actual signed pages, special slots and CMS on every executable.
 # The mock CA cannot satisfy Apple's trust requirement; cryptographic integrity
 # is checked separately, without claiming device installation eligibility.
-with zipfile.ZipFile(dest/'updated.ipa') as archive:
-    for name in archive.namelist():
-        if not name.endswith('/Info.plist'):
-            continue
-        bundle = name.removesuffix('Info.plist')
-        info = plistlib.loads(archive.read(name))
-        executable = archive.read(bundle + info['CFBundleExecutable'])
-        offset = 32
-        base = None
-        for _ in range(struct.unpack_from('<I', executable, 16)[0]):
-            kind, length = struct.unpack_from('<II', executable, offset)
-            if kind == 0x1d:
-                base = struct.unpack_from('<I', executable, offset + 8)[0]
-            offset += length
-        assert base is not None
-        slots = {}
-        for index in range(struct.unpack_from('>I', executable, base + 8)[0]):
-            kind, relative = struct.unpack_from('>II', executable, base + 12 + index * 8)
-            length = struct.unpack_from('>I', executable, base + relative + 4)[0]
-            slots[kind] = executable[base + relative:base + relative + length]
-        for kind in [0, 0x1000]:
-            directory = slots[kind]
-            hash_offset, _, _, pages, limit = struct.unpack_from('>IIIII', directory, 16)
-            hash_size, hash_type, page_size = directory[36], directory[37], 1 << directory[39]
-            algorithm = hashlib.sha1 if hash_type == 1 else hashlib.sha256
-            for page in range(pages):
-                actual = algorithm(executable[page * page_size:min(limit, (page + 1) * page_size)]).digest()
-                assert actual == directory[hash_offset + page * hash_size:hash_offset + (page + 1) * hash_size]
-            for slot, data in [(1, archive.read(name)), (2, slots[2]), (3, archive.read(bundle + '_CodeSignature/CodeResources')), (5, slots[5]), (7, slots[7])]:
-                assert algorithm(data).digest() == directory[hash_offset - slot * hash_size:hash_offset - (slot - 1) * hash_size]
-        (dest/'cms.der').write_bytes(slots[0x10000][8:])
-        (dest/'content.bin').write_bytes(slots[0])
-        run([openssl, 'cms', '-verify', '-binary', '-inform', 'DER', '-in', str(dest/'cms.der'), '-content', str(dest/'content.bin'), '-noverify', '-out', os.devnull])
-        entitlements = plistlib.loads(slots[5][8:])
-        assert entitlements['application-identifier'] == 'TESTTEAM01.' + info['CFBundleIdentifier']
-        assert entitlements['com.apple.security.application-groups'] == ['group.com.example.Regram']
-print('Seven executables passed page hashes, plist/resource/entitlement slots and CMS verification.')
+for artifact in ['updated.ipa', 'legacy-updated.ipa']:
+    with zipfile.ZipFile(dest/artifact) as archive:
+        for name in archive.namelist():
+            if not name.endswith('/Info.plist'):
+                continue
+            bundle = name.removesuffix('Info.plist')
+            info = plistlib.loads(archive.read(name))
+            executable = archive.read(bundle + info['CFBundleExecutable'])
+            offset = 32
+            base = None
+            for _ in range(struct.unpack_from('<I', executable, 16)[0]):
+                kind, length = struct.unpack_from('<II', executable, offset)
+                if kind == 0x1d:
+                    base = struct.unpack_from('<I', executable, offset + 8)[0]
+                offset += length
+            assert base is not None
+            slots = {}
+            for index in range(struct.unpack_from('>I', executable, base + 8)[0]):
+                kind, relative = struct.unpack_from('>II', executable, base + 12 + index * 8)
+                length = struct.unpack_from('>I', executable, base + relative + 4)[0]
+                slots[kind] = executable[base + relative:base + relative + length]
+            for kind in [0, 0x1000]:
+                directory = slots[kind]
+                hash_offset, _, _, pages, limit = struct.unpack_from('>IIIII', directory, 16)
+                hash_size, hash_type, page_size = directory[36], directory[37], 1 << directory[39]
+                algorithm = hashlib.sha1 if hash_type == 1 else hashlib.sha256
+                for page in range(pages):
+                    actual = algorithm(executable[page * page_size:min(limit, (page + 1) * page_size)]).digest()
+                    assert actual == directory[hash_offset + page * hash_size:hash_offset + (page + 1) * hash_size]
+                for slot, data in [(1, archive.read(name)), (2, slots[2]), (3, archive.read(bundle + '_CodeSignature/CodeResources')), (5, slots[5]), (7, slots[7])]:
+                    assert algorithm(data).digest() == directory[hash_offset - slot * hash_size:hash_offset - (slot - 1) * hash_size]
+            (dest/'cms.der').write_bytes(slots[0x10000][8:])
+            (dest/'content.bin').write_bytes(slots[0])
+            run([openssl, 'cms', '-verify', '-binary', '-inform', 'DER', '-in', str(dest/'cms.der'), '-content', str(dest/'content.bin'), '-noverify', '-out', os.devnull])
+            entitlements = plistlib.loads(slots[5][8:])
+            expected = info['CFBundleIdentifier'] if artifact == 'updated.ipa' else info['CFBundleIdentifier'].replace('com.example.Regram', 'com.legacy.Regram', 1)
+            assert entitlements['application-identifier'] == 'TESTTEAM01.' + expected
+            assert entitlements['keychain-access-groups'] == ['TESTTEAM01.com.example.Regram']
+            assert entitlements['com.apple.security.application-groups'] == ['group.com.example.Regram']
+print('Fourteen executables passed page hashes, plist/resource/entitlement slots and CMS verification; app groups, keychain groups and installed identities retained.')
