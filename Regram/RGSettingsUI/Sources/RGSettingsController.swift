@@ -366,7 +366,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
 
 }
 
-public func rgSettingsController(context: AccountContext, page: RGSettingsPage = .home, initialSearchQuery: String? = nil) -> ViewController {
+public func rgSettingsController(context: AccountContext, page: RGSettingsPage = .home, initialSearchQuery: String? = nil, focusSetting: String? = nil) -> ViewController {
     // MARK: Regram — legacy root links open the single Pro hub; transcription has one editor.
     if page == .home { return context.sharedContext.makeRGProController(context: context) }
     if page == .transcription { return rgSTTSettingsController(context: context) }
@@ -738,7 +738,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 pushControllerImpl?(rgBottomBarSettingsController(context: context))
         }
-    })
+    }, settingsPage: "settings." + page.rawValue)
     
     let sharedData = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.callListSettings, ApplicationSpecificSharedDataKeys.experimentalUISettings])
     let preferences = context.account.postbox.preferencesView(keys: [PreferencesKeys.appConfiguration])
@@ -774,12 +774,12 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             }
         } */
         
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: nil /* scrollToItem*/ )
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting), animateChanges: false)
         
         return (controllerState, (listState, arguments))
     }
     
-    let controller = ItemListController(context: context, state: signal)
+    let controller = RGSettingsListController(context: context, state: signal)
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)
     }

@@ -55,6 +55,8 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
     let setOneFromManyValue: (OneFromManySetting) -> Void
     let openDisclosureLink: (DisclosureLink) -> Void
     let action: (ActionType) -> Void
+    let openSettingsResult: (RGSettingsDestination) -> Void
+    let settingsPage: String?
     let searchInput: (String) -> Void
 
     
@@ -66,7 +68,9 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         setOneFromManyValue: @escaping (OneFromManySetting) -> Void = { _ in },
         openDisclosureLink: @escaping (DisclosureLink) -> Void = { _ in},
         action: @escaping (ActionType) -> Void = { _ in },
-        searchInput: @escaping (String) -> Void = { _ in }
+        searchInput: @escaping (String) -> Void = { _ in },
+        settingsPage: String? = nil,
+        openSettingsResult: @escaping (RGSettingsDestination) -> Void = { _ in }
     ) {
         self.context = context
         //
@@ -75,6 +79,8 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         self.setOneFromManyValue = setOneFromManyValue
         self.openDisclosureLink = openDisclosureLink
         self.action = action
+        self.openSettingsResult = openSettingsResult
+        self.settingsPage = settingsPage
         self.searchInput = searchInput
     }
 }
@@ -88,6 +94,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
     case disclosure(id: Int, section: Section, link: DisclosureLink, text: String)
     case peerColorDisclosurePreview(id: Int, section: Section, name: String, color: UIColor)
     case action(id: Int, section: Section, actionType: ActionType, text: String, kind: ItemListActionKind)
+    case settingsResult(id: Int, section: Section, entry: RGSettingsCatalogEntry)
     case searchInput(id: Int, section: Section, title: NSAttributedString, text: String, placeholder: String)
     
     public var section: ItemListSectionId {
@@ -113,6 +120,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
         case let .action(_, sectionId, _, _, _):
             return sectionId.rawValue
             
+        case let .settingsResult(_, sectionId, _): return sectionId.rawValue
         case let .searchInput(_, sectionId, _, _, _):
             return sectionId.rawValue
         }
@@ -136,6 +144,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
             return stableIdValue
         case let .action(stableIdValue, _, _, _, _):
             return stableIdValue
+        case let .settingsResult(stableIdValue, _, _): return stableIdValue
         case let .searchInput(stableIdValue, _, _, _, _):
             return stableIdValue
         }
@@ -170,6 +179,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
         case let (.action(id1, section1, actionType1, text1, kind1), .action(id2, section2, actionType2, text2, kind2)):
             return id1 == id2 && section1 == section2 && actionType1 == actionType2 && text1 == text2 && kind1 == kind2
             
+        case let (.settingsResult(id1, section1, entry1), .settingsResult(id2, section2, entry2)): return id1 == id2 && section1 == section2 && entry1 == entry2
         case let (.searchInput(id1, lhsValue1, lhsValue2, lhsValue3, lhsValue4), .searchInput(id2, rhsValue1, rhsValue2, rhsValue3, rhsValue4)):
             return id1 == id2 && lhsValue1 == rhsValue1 && lhsValue2 == rhsValue2 && lhsValue3 == rhsValue3 && lhsValue4 == rhsValue4
 
@@ -179,7 +189,29 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
     }
 
     
+    public var settingsIdentifier: String? {
+        switch self {
+        case let .toggle(_, _, value, _, _, _): return String(describing: value)
+        case let .percentageSlider(_, _, value, _): return String(describing: value)
+        case let .oneFromManySelector(_, _, value, _, _, _): return String(describing: value)
+        case let .disclosure(_, _, value, _): return String(describing: value)
+        case let .action(_, _, value, _, _): return String(describing: value)
+        default: return nil
+        }
+    }
+    public var tag: ItemListItemTag? { settingsIdentifier.map(RGSettingsItemTag.init) }
     public func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        let values = arguments as! RGItemListArguments<BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>
+        let destination: RGSettingsDestination?
+        if case let .settingsResult(_, _, entry) = self { destination = entry.destination }
+        else {
+            destination = values.settingsPage.flatMap { page in
+                settingsIdentifier.flatMap { RGSettingsDestination(page: page, item: $0) }
+            }
+        }
+        return rgSettingsLinkItem(baseItem(presentationData: presentationData, arguments: arguments), destination: destination)
+    }
+    private func baseItem(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! RGItemListArguments<BoolSetting, SliderSetting, OneFromManySetting, DisclosureLink, ActionType>
         switch self {
         case let .header(_, _, string, badge):
@@ -188,13 +220,13 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
         case let .toggle(_, _, setting, value, text, enabled):
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: text, value: value, enabled: enabled, maximumNumberOfLines: 0, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.setBoolValue(setting, value)
-            })
+            }, tag: self.tag)
         case let .notice(_, _, string):
             return ItemListTextItem(presentationData: presentationData, text: .markdown(string), sectionId: self.section)
         case let .disclosure(_, _, link, text):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks) {
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openDisclosureLink(link)
-            }
+            }, tag: self.tag)
         case let .percentageSlider(_, _, setting, value):
             return SliderPercentageItem(
                 theme: presentationData.theme,
@@ -215,12 +247,15 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, enabled: enabled, label: value, rgLabelMaximumNumberOfLines: 2, sectionId: self.section, style: .blocks, action: {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) // Closing search keyboard if active
                 arguments.setOneFromManyValue(settingName)
-            })
+            }, tag: self.tag)
         case let .action(_, _, actionType, text, kind):
             return ItemListActionItem(presentationData: presentationData, systemStyle: .glass, title: text, kind: kind, alignment: .natural, sectionId: self.section, style: .blocks, action: {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) // Closing search keyboard if active
                     arguments.action(actionType)
-            })
+            }, tag: self.tag)
+        case let .settingsResult(_, _, entry):
+            let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: entry.titleKey.i18n(language).replacingOccurrences(of: "%@", with: ""), label: entry.pageTitleKey.i18n(language), sectionId: self.section, style: .blocks, action: { arguments.openSettingsResult(entry.destination) })
         case let .searchInput(_, _, title, text, placeholder):
             return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: title, text: text, placeholder: placeholder, returnKeyType: .done, spacing: 3.0, clearType: .always, selectAllOnFocus: true, secondaryStyle: true, sectionId: self.section, textUpdated: { input in arguments.searchInput(input) }, action: {}, dismissKeyboardOnEnter: true)
         }
@@ -251,6 +286,7 @@ public func filterRGItemListUIEntrires<Section: RGItemListSection & Hashable, Bo
             return text.lowercased().contains(query)
         case .notice(_, _, let text):
             return text.lowercased().contains(query)
+        case let .settingsResult(_, _, entry): return entry.titleKey.lowercased().contains(query)
         case .percentageSlider:
             return false // Assuming percentage sliders don't have searchable text
         case .oneFromManySelector(_, _, _, let text, let value, _):

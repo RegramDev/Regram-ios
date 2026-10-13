@@ -766,7 +766,7 @@
 "RG.BottomBarLayout.SearchStyle" = "搜索样式";
 "RG.BottomBarLayout.SearchStyle.button" = "搜索按钮";
 "RG.BottomBarLayout.SearchStyle.bar" = "搜索条";
-"RG.BottomBarLayout.SearchStyle.BarDisabled" = "隐藏其他底栏按钮后，可切换为搜索条。";
+"RG.BottomBarLayout.SearchStyle.BarDisabled" = "聊天和设置保持显示，搜索使用独立按钮。";
 "RG.BottomBarLayout.EmptyBottom" = "所有按钮均隐藏";
 "RG.BottomBarLayout.ShowLabels" = "显示标签文字";
 "RG.BottomBarLayout.ButtonWidth" = "底栏按钮宽度";
@@ -782,7 +782,7 @@
 "RG.BottomBarLayout.Alignment.center" = "整体居中";
 "RG.BottomBarLayout.Alignment.disabled" = "占满时不适用";
 "RG.BottomBarLayout.Reset" = "重置底栏布局";
-"RG.BottomBarLayout.Footer" = "预览区用于拖动排序和右侧独立按钮调整；真实显示隐藏在状态区域切换。搜索可在按钮和搜索条间切换，搜索条仅在其他底栏按钮隐藏时可用。按钮宽度 0% 为四按钮宽度，100% 为填满当前底栏宽度。";
+"RG.BottomBarLayout.Footer" = "在预览区拖动按钮调整顺序。聊天和设置必须保留。自动宽度跟随可见标签数量，关闭后可手动调整宽度。整个底栏保持居中。";
 "RG.BottomBarLayout.Item.contacts" = "联系人";
 "RG.BottomBarLayout.Item.calls" = "通话";
 "RG.BottomBarLayout.Item.chats" = "聊天";
@@ -800,3 +800,44 @@
 "Diagnostics.DC.Timeout" = "超时";
 "Diagnostics.DC.Failed" = "失败";
 "Browser.Translation.SystemUnavailable" = "Apple 网页翻译需要 iOS 18 或更高版本。请在本机选择其他翻译服务。";
+
+"AppBadge.Notice" = "设置截图上显示的应用标记。";
+"AppBadge.Title" = "截图标记";
+"Common.KnowWhatYouDo" = "请在了解这些选项的作用后再修改。";
+"LocalPremium.Notice" = "在本机启用会员界面与客户端选项。贴纸、回应等需要 Telegram 服务端验证的权益仍需有效订阅。";
+"LocalPremium.Title" = "本地会员";
+"Settings.CompactMessagePreview" = "紧凑消息预览";
+"Settings.NY.Header" = "节日效果";
+"Settings.NY.Notice" = "节日主题的视觉效果。";
+"Settings.NY.Style" = "效果样式";
+"Settings.NY.Style.default" = "默认";
+"Settings.NY.Style.lightning" = "闪电";
+"Settings.NY.Style.snow" = "飘雪";
+"Settings.Tabs.SearchButton" = "底栏搜索按钮";
+"Settings.Tabs.WideTabBar" = "宽底栏";
+"Settings.Tabs.WideTabBar.Notice" = "让可见标签占满底栏的可用宽度。";
+"Settings.Transcription.Backend" = "识别服务";
+"Settings.Transcription.Backend.Notice" = "所选识别服务不可用时，Regram 会尝试使用 %@。";
+"Settings.Transcription.Backend.apple" = "Apple";
+"Settings.Transcription.Backend.default" = "Telegram";
+"Settings.Transcription.Header" = "语音转文字";
+"Settings.Translation.Backend" = "翻译服务";
+"Settings.Translation.Backend.Notice" = "所选服务不可用时，Regram 会尝试使用 %@。";
+"Settings.Translation.Backend.default" = "Telegram";
+"Settings.Translation.Backend.google" = "Google";
+"Settings.Translation.Backend.gtranslate" = "Google";
+"Settings.Translation.Backend.system" = "Apple";
+
+"Catalog.RepostToStory" = "转发到动态";
+"Catalog.StoryStealth" = "动态隐身模式";
+"Catalog.ChatTranslation" = "翻译整个聊天";
+"Catalog.PhotoQuality" = "照片上传质量";
+"Catalog.StickerSize" = "贴纸大小";
+"Catalog.AppIcons" = "应用图标";
+
+"Settings.Link.Copy" = "复制设置链接";
+
+"LinkPreview.XService" = "X 预览服务";
+"LinkPreview.InstagramService" = "Instagram 预览服务";
+
+"Fonts.Search" = "搜索字体";

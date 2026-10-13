@@ -55,7 +55,7 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 ### Appearance and input
 
 - App icons, settings entry artwork, and screenshot badges.
-- Bottom bar layout with a live preview, drag ordering, button visibility, standalone buttons, search style, width, and alignment.
+- Bottom bar layout with a live preview, drag ordering, button visibility, standalone buttons, and automatic or manual width. Chats and Settings stay selected, and the complete bar is centered.
 - Chat-list separator visibility.
 - Separate Latin and CJK fonts, downloadable fonts, TTF/OTF/TTC import, previews, management, and missing-glyph fallback.
 - Chat list lines, compact layouts, and colors.
@@ -89,7 +89,7 @@ All Regram preferences are under **Settings → Regram Pro**, whose home page sh
 | Notifications & Alerts | Filtering, pins, mentions, and replies |
 | Management & Tools | Backups, diagnostics, updates, and data cleanup |
 
-Each feature has one settings entry. Larger categories use subpages. Only the Regram Pro home page has category and feature-keyword search; category pages and subpages do not add settings search or frequently used shortcuts.
+Each feature has one settings entry. Larger categories use subpages. Only the Regram Pro home page has search across all settings; results open their destination and scroll to the setting. Category pages and subpages do not add settings search or frequently used shortcuts. Long-press a setting to copy its deep link, containing only the page and setting identifier.
 
 Voice-to-text is under **Translation & Speech → Voice-to-Text**; LLM configuration is under **Translation & Speech → Translation → LLM Translation**; link-preview repair is under **Media & Links**; updates are under **Management & Tools → Regram Updates**.
 

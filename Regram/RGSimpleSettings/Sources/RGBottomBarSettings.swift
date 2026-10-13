@@ -55,6 +55,7 @@ public struct RGBottomBarSettings: Equatable {
     public static let defaultBottomItems: [RGBottomBarItemId] = [.contacts, .calls, .chats, .settings]
     public static let minimumVisibleNonSearchBottomItems = 2
 
+    public var automaticWidth: Bool
     public var isBottomBarVisible: Bool
     public var bottomItems: [RGBottomBarItemId]
     public var externalItem: RGBottomBarItemId?
@@ -68,6 +69,7 @@ public struct RGBottomBarSettings: Equatable {
     public var searchMode: RGBottomBarSearchMode
 
     public init(
+        automaticWidth: Bool = true,
         isBottomBarVisible: Bool = true,
         bottomItems: [RGBottomBarItemId] = RGBottomBarSettings.defaultBottomItems,
         externalItem: RGBottomBarItemId? = .search,
@@ -77,9 +79,10 @@ public struct RGBottomBarSettings: Equatable {
         widthMode: RGBottomBarWidthMode = .full,
         slotMode: RGBottomBarSlotMode = .visibleOnly,
         buttonWidthFillRatio: Int32 = 100,
-        alignment: RGBottomBarAlignment = .leftCenter,
+        alignment: RGBottomBarAlignment = .center,
         searchMode: RGBottomBarSearchMode = .button
     ) {
+        self.automaticWidth = automaticWidth
         self.isBottomBarVisible = isBottomBarVisible
         self.bottomItems = bottomItems
         self.externalItem = externalItem
@@ -133,10 +136,7 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public func canHide(_ item: RGBottomBarItemId) -> Bool {
-        if item == .search || !self.activeBottomItems.contains(item) {
-            return true
-        }
-        return item != .chats
+        return item != .chats && item != .settings
     }
 
     public mutating func toggleHidden(_ item: RGBottomBarItemId) {
@@ -170,13 +170,6 @@ public struct RGBottomBarSettings: Equatable {
 
     public mutating func hide(_ item: RGBottomBarItemId) {
         guard self.canHide(item) else {
-            return
-        }
-        if self.activeBottomItems.contains(item) && self.activeBottomItems.count <= Self.minimumVisibleNonSearchBottomItems {
-            let activeItems = Set(self.activeBottomItems)
-            self.hiddenItems.formUnion(activeItems)
-            self.bottomItems.removeAll(where: { activeItems.contains($0) })
-            self.normalize()
             return
         }
         if !self.hiddenItems.contains(item) {
@@ -280,6 +273,11 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     private mutating func normalize() {
+        // Required tabs are restored even in old backups or externally modified preferences.
+        self.hiddenItems.subtract([.chats, .settings])
+        self.alignment = .center
+        if self.searchMode == .bar { self.searchMode = .button }
+
         self.bottomItems.removeAll(where: { $0 == .search })
 
         if self.searchMode == .hidden || self.hiddenItems.contains(.search) {
@@ -325,18 +323,6 @@ public struct RGBottomBarSettings: Equatable {
             self.bottomItems.append(item)
             seen.insert(item)
         }
-        if !self.activeBottomItems.isEmpty && !self.activeBottomItems.contains(.chats) {
-            self.hiddenItems.remove(.chats)
-            if !self.bottomItems.contains(.chats) {
-                self.bottomItems.append(.chats)
-            }
-        }
-        if self.activeBottomItems.count == 1, let restoredItem = Self.defaultBottomItems.first(where: { self.hiddenItems.contains($0) }) {
-            self.hiddenItems.remove(restoredItem)
-            if !self.bottomItems.contains(restoredItem) {
-                self.bottomItems.append(restoredItem)
-            }
-        }
         self.buttonWidthFillRatio = max(0, min(100, self.buttonWidthFillRatio))
     }
 
@@ -359,6 +345,7 @@ public extension RGBottomBarSettings {
             )
         }
         return RGBottomBarSettings(
+            automaticWidth: values["automaticWidth"] != "false",
             isBottomBarVisible: values["visible"] != "false",
             bottomItems: (values["items"] ?? "").split(separator: ",").compactMap { RGBottomBarItemId(rawValue: String($0)) },
             externalItem: values["external"].flatMap(RGBottomBarItemId.init(rawValue:)),
@@ -368,7 +355,7 @@ public extension RGBottomBarSettings {
             widthMode: values["width"].flatMap(RGBottomBarWidthMode.init(rawValue:)) ?? .full,
             slotMode: values["slots"].flatMap(RGBottomBarSlotMode.init(rawValue:)) ?? .visibleOnly,
             buttonWidthFillRatio: values["fill"].flatMap(Int32.init) ?? 100,
-            alignment: values["alignment"].flatMap(RGBottomBarAlignment.init(rawValue:)) ?? .leftCenter,
+            alignment: values["alignment"].flatMap(RGBottomBarAlignment.init(rawValue:)) ?? .center,
             searchMode: values["search"].flatMap(RGBottomBarSearchMode.init(rawValue:)) ?? .button
         )
     }
@@ -377,7 +364,7 @@ public extension RGBottomBarSettings {
         var value = self
         value.normalize()
         defaults.set([
-            "visible": String(value.isBottomBarVisible), "items": value.bottomItems.map(\.rawValue).joined(separator: ","),
+            "automaticWidth": String(value.automaticWidth), "visible": String(value.isBottomBarVisible), "items": value.bottomItems.map(\.rawValue).joined(separator: ","),
             "external": value.externalItem?.rawValue ?? "", "hidden": RGBottomBarItemId.allCases.filter { value.hiddenItems.contains($0) }.map(\.rawValue).joined(separator: ","),
             "topSearch": String(value.topSearchVisible), "labels": String(value.showLabels),
             "width": value.widthMode.rawValue, "slots": value.slotMode.rawValue, "fill": String(value.buttonWidthFillRatio),

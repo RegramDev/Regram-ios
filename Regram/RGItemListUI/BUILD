@@ -10,6 +10,10 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGStrings",
+        "//Regram/RGSimpleSettings",
+        "//Regram/RGLogging",
+        "//Regram/RGAPIToken",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",
         "//submodules/Postbox:Postbox",

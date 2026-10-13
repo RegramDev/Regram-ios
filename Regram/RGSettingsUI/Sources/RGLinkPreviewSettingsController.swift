@@ -11,6 +11,7 @@ import UIKit
 
 private final class RGLinkPreviewTableController: UITableViewController {
     private let settings = RGSimpleSettings.shared
+    private let focusSetting: String?
     private let language: String
     private let enabledSwitch = UISwitch()
     private let xField = UITextField()
@@ -28,7 +29,8 @@ private final class RGLinkPreviewTableController: UITableViewController {
         rows[1][2].textLabel?.textColor = theme.list.itemAccentColor
     }
 
-    init(language: String) {
+    init(language: String, focusSetting: String?) {
+        self.focusSetting = focusSetting
         self.language = language
         super.init(style: .insetGrouped)
     }
@@ -47,8 +49,8 @@ private final class RGLinkPreviewTableController: UITableViewController {
         enabledSwitch.isOn = settings.fixLinkPreviews
         enabledSwitch.addTarget(self, action: #selector(enabledChanged), for: .valueChanged)
         enabled.accessoryView = enabledSwitch
-        let x = domainCell(title: "X / Twitter", field: xField, value: settings.linkPreviewXHost, placeholder: RGLinkPreviewRules.defaultXHost)
-        let instagram = domainCell(title: "Instagram", field: instagramField, value: settings.linkPreviewInstagramHost, placeholder: RGLinkPreviewRules.defaultInstagramHost)
+        let x = domainCell(title: "LinkPreview.XService".i18n(language), field: xField, value: settings.linkPreviewXHost, placeholder: RGLinkPreviewRules.defaultXHost)
+        let instagram = domainCell(title: "LinkPreview.InstagramService".i18n(language), field: instagramField, value: settings.linkPreviewInstagramHost, placeholder: RGLinkPreviewRules.defaultInstagramHost)
         let reset = UITableViewCell(style: .default, reuseIdentifier: nil)
         reset.textLabel?.text = "Common.Reset".i18n(language)
         reset.textLabel?.textColor = view.tintColor
@@ -91,6 +93,25 @@ private final class RGLinkPreviewTableController: UITableViewController {
         }
     }
 
+    private func setting(at path: IndexPath) -> String? {
+        if path.section == 0 && path.row == 0 { return "enabled" }
+        if path.section == 1 { return ["xHost", "instagramHost", "reset"][path.row] }
+        return nil
+    }
+    override func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        guard let item = setting(at: indexPath), let destination = RGSettingsDestination(page: "linkPreview", item: item) else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { _ in
+            UIMenu(children: [UIAction(title: "Settings.Link.Copy".i18n(self.language), image: UIImage(systemName: "link"), handler: { _ in UIPasteboard.general.string = destination.url.absoluteString })])
+        })
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let focusSetting else { return }
+        for section in rows.indices { for row in rows[section].indices {
+            let index = IndexPath(row: row, section: section)
+            if setting(at: index) == focusSetting { tableView.scrollToRow(at: index, at: .middle, animated: false); return }
+        } }
+    }
     override func numberOfSections(in tableView: UITableView) -> Int { rows.count }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows[section].count }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell { rows[indexPath.section][indexPath.row] }
@@ -129,12 +150,12 @@ private final class RGLinkPreviewTableController: UITableViewController {
     }
 }
 
-public func rgLinkPreviewSettingsController(context: AccountContext) -> ViewController {
+public func rgLinkPreviewSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "LinkPreview.Repair".i18n(data.strings.rgLanguageCode)
-    let table = RGLinkPreviewTableController(language: data.strings.rgLanguageCode)
+    let table = RGLinkPreviewTableController(language: data.strings.rgLanguageCode, focusSetting: focusSetting)
     controller.bind(controller: table)
     controller.themeModel.$value.sink { [weak table] theme in
         if let theme { table?.applyTheme(theme) }

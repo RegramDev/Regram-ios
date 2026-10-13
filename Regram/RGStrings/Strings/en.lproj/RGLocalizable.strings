@@ -800,7 +800,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout.SearchStyle" = "Search Style";
 "RG.BottomBarLayout.SearchStyle.button" = "Search Button";
 "RG.BottomBarLayout.SearchStyle.bar" = "Search Bar";
-"RG.BottomBarLayout.SearchStyle.BarDisabled" = "Hide the other bottom buttons to use the search bar.";
+"RG.BottomBarLayout.SearchStyle.BarDisabled" = "Chats and Settings stay visible; search uses a standalone button.";
 "RG.BottomBarLayout.EmptyBottom" = "All buttons are hidden";
 "RG.BottomBarLayout.ShowLabels" = "Show Labels";
 "RG.BottomBarLayout.ButtonWidth" = "Bottom Button Width";
@@ -816,7 +816,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout.Alignment.center" = "Center All";
 "RG.BottomBarLayout.Alignment.disabled" = "Not used in full width";
 "RG.BottomBarLayout.Reset" = "Reset Bottom Bar Layout";
-"RG.BottomBarLayout.Footer" = "Use the preview to reorder buttons and adjust the right standalone button. Toggle actual visibility in the State section. Search can switch between button and bar; the bar is available only when other bottom buttons are hidden. Button width 0% matches four buttons; 100% fills the current bottom bar width.";
+"RG.BottomBarLayout.Footer" = "Drag buttons in the preview to change their order. Chats and Settings are always selected. Automatic width follows the number of visible tabs; turn it off to adjust the width manually. The complete bar is centered.";
 "RG.BottomBarLayout.Item.contacts" = "Contacts";
 "RG.BottomBarLayout.Item.calls" = "Calls";
 "RG.BottomBarLayout.Item.chats" = "Chats";
@@ -834,3 +834,17 @@ Matching is case-insensitive.";
 "Diagnostics.DC.Timeout" = "Timed out";
 "Diagnostics.DC.Failed" = "Failed";
 "Browser.Translation.SystemUnavailable" = "Apple webpage translation requires iOS 18 or later. Select another translation service on this device.";
+
+"Catalog.RepostToStory" = "Repost to Stories";
+"Catalog.StoryStealth" = "Story Stealth Mode";
+"Catalog.ChatTranslation" = "Translate Entire Chat";
+"Catalog.PhotoQuality" = "Photo Upload Quality";
+"Catalog.StickerSize" = "Sticker Size";
+"Catalog.AppIcons" = "App Icons";
+
+"Settings.Link.Copy" = "Copy Setting Link";
+
+"LinkPreview.XService" = "X Preview Service";
+"LinkPreview.InstagramService" = "Instagram Preview Service";
+
+"Fonts.Search" = "Search Fonts";

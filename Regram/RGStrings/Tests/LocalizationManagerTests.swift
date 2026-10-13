@@ -16,7 +16,13 @@ func getAppBundle() -> Bundle { Bundle(path: CommandLine.arguments[1])! }
         assert(RGLocalizationManager.shared.preferredLocale(primary: "zh-CN", secondary: "en") == "zh-hans")
         assert(RGLocalizationManager.shared.preferredLocale(primary: "ZH_TW", secondary: "en") == "zh-hant")
         assert(RGLocalizationManager.shared.preferredLocale(primary: "unsupported-custom", secondary: "en") == "en")
-        assert("RG.BottomBarLayout.Footer".i18n("en").contains("100%"))
+        for language in ["en", "zh-hans", "zh-hant"] {
+            for key in ["LocalPremium.Title", "LocalPremium.Notice", "AppUpdate.Title", "Settings.Translation.Backend.Notice", "Settings.Transcription.Backend.Notice", "Common.KnowWhatYouDo", "RG.BottomBarLayout.Footer", "Settings.Link.Copy"] {
+                assert(key.i18n(language) != key)
+            }
+        }
+        assert("LocalPremium.Title".i18n("zh-hans") == "本地会员")
+        assert("AppUpdate.Title".i18n("zh-hant") == "Regram 更新")
         assert("Settings.CustomColors.Saturation.Notice".i18n("en").contains("0%"))
         print("Localization checks passed: selected language, normalized regions, variadic formatting and literal percentages")
     }

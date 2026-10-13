@@ -1,4 +1,5 @@
 // MARK: Regram — layout adapted from NextAlone/Nagram-iOS (96ae08c), under the repository GPL license.
+import RGSimpleSettings // MARK: Regram
 import Foundation
 import LottieSettings
 import UIKit
@@ -385,6 +386,7 @@ public final class TabBarComponent: Component {
     public let centerItemsInAvailableWidth: Bool // MARK: Regram
     public let showItemTitles: Bool
     public let buttonWidthFillRatio: CGFloat?
+    public let rgWidthPercent: Int32?
 
     // MARK: Regram — gestures need to address both bottom items and the standalone item.
     fileprivate var interactiveItems: [Item] {
@@ -410,7 +412,8 @@ public final class TabBarComponent: Component {
         alignItemsToLeft: Bool = false,
         centerItemsInAvailableWidth: Bool = false, // MARK: Regram
         showItemTitles: Bool = true,
-        buttonWidthFillRatio: CGFloat? = nil
+        buttonWidthFillRatio: CGFloat? = nil,
+        rgWidthPercent: Int32? = nil
     ) {
         self.theme = theme
         self.tintSelectedItem = tintSelectedItem
@@ -427,6 +430,7 @@ public final class TabBarComponent: Component {
         self.centerItemsInAvailableWidth = centerItemsInAvailableWidth
         self.showItemTitles = showItemTitles
         self.buttonWidthFillRatio = buttonWidthFillRatio
+        self.rgWidthPercent = rgWidthPercent
     }
     
     public static func ==(lhs: TabBarComponent, rhs: TabBarComponent) -> Bool {
@@ -472,6 +476,7 @@ public final class TabBarComponent: Component {
         if lhs.showItemTitles != rhs.showItemTitles {
             return false
         }
+        if lhs.rgWidthPercent != rhs.rgWidthPercent { return false }
         if lhs.buttonWidthFillRatio != rhs.buttonWidthFillRatio {
             return false
         }
@@ -736,7 +741,13 @@ public final class TabBarComponent: Component {
             let _ = alphaTransition
 
             let innerInset: CGFloat = 4.0
-            let availableSize = CGSize(width: min(500.0, availableSize.width), height: availableSize.height)
+            // MARK: Regram — automatic width matches the earlier item-count based layout.
+            let width: CGFloat
+            if let percent = component.rgWidthPercent {
+                let count = component.items.count + (component.externalItem == nil ? 0 : 1)
+                width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: count, percent: percent, searchButtonWidth: component.search?.showsButton == true ? 72 : 0, searchActive: component.search?.isActive == true))
+            } else { width = min(500.0, availableSize.width) }
+            let availableSize = CGSize(width: width, height: availableSize.height)
             
             let previousComponent = self.component
             self.component = component
@@ -806,7 +817,7 @@ public final class TabBarComponent: Component {
             let itemWidths: [CGFloat]
             let totalItemsWidth: CGFloat
 
-            let layoutItemCount = max(component.items.count, component.layoutItemCount ?? component.items.count)
+            let layoutItemCount = component.rgWidthPercent == nil ? max(component.items.count, component.layoutItemCount ?? component.items.count) : component.items.count
             let equalWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, layoutItemCount)))
             // MARK: Regram — support adaptive content width instead of forced equal-width slots.
             if let buttonWidthFillRatio = component.buttonWidthFillRatio {

@@ -744,7 +744,7 @@
 "RG.BottomBarLayout.SearchStyle" = "搜尋樣式";
 "RG.BottomBarLayout.SearchStyle.button" = "搜尋按鈕";
 "RG.BottomBarLayout.SearchStyle.bar" = "搜尋列";
-"RG.BottomBarLayout.SearchStyle.BarDisabled" = "隱藏其他底欄按鈕後，可切換為搜尋列。";
+"RG.BottomBarLayout.SearchStyle.BarDisabled" = "對話和設定保持顯示，搜尋使用獨立按鈕。";
 "RG.BottomBarLayout.EmptyBottom" = "所有按鈕均隱藏";
 "RG.BottomBarLayout.ShowLabels" = "顯示標籤文字";
 "RG.BottomBarLayout.ButtonWidth" = "底欄按鈕寬度";
@@ -760,7 +760,7 @@
 "RG.BottomBarLayout.Alignment.center" = "整體置中";
 "RG.BottomBarLayout.Alignment.disabled" = "佔滿時不適用";
 "RG.BottomBarLayout.Reset" = "重置底欄佈局";
-"RG.BottomBarLayout.Footer" = "預覽區用於拖動排序與右側獨立按鈕調整；實際顯示隱藏在狀態區域切換。搜尋可在按鈕與搜尋列間切換，搜尋列僅在其他底欄按鈕隱藏時可用。按鈕寬度 0% 為四按鈕寬度，100% 為填滿目前底欄寬度。";
+"RG.BottomBarLayout.Footer" = "在預覽區拖動按鈕調整順序。對話和設定必須保留。自動寬度跟隨可見標籤數量，關閉後可手動調整寬度。整個底欄保持置中。";
 "RG.BottomBarLayout.Item.contacts" = "聯絡人";
 "RG.BottomBarLayout.Item.calls" = "通話";
 "RG.BottomBarLayout.Item.chats" = "聊天";
@@ -778,3 +778,64 @@
 "Diagnostics.DC.Timeout" = "逾時";
 "Diagnostics.DC.Failed" = "失敗";
 "Browser.Translation.SystemUnavailable" = "Apple 網頁翻譯需要 iOS 18 或更新版本。請在本機選擇其他翻譯服務。";
+
+"AppBadge.Notice" = "設定截圖上顯示的應用程式標記。";
+"AppBadge.Title" = "截圖標記";
+"Common.Cancel" = "取消";
+"Common.KnowWhatYouDo" = "請在了解這些選項的作用後再修改。";
+"Common.Save" = "儲存";
+"EraseData.Action" = "清除資料";
+"EraseData.Confirm" = "確認清除";
+"EraseData.Notice" = "清除本機登入與應用程式資料，需要重新登入。";
+"EraseData.Title" = "清除所有資料";
+"FreshInstall.Erase" = "清除舊資料";
+"FreshInstall.Keep" = "保留資料";
+"FreshInstall.Ready" = "準備完成";
+"FreshInstall.ReadyText" = "資料處理完成，可以繼續使用 Regram。";
+"FreshInstall.Text" = "是否保留此裝置上的現有資料？";
+"FreshInstall.Title" = "初始化 Regram";
+"LinkPreview.Disable" = "停用連結預覽";
+"LinkPreview.Disable.Notice" = "傳送訊息時不附加連結預覽。";
+"LocalPremium.Notice" = "在本機啟用會員介面與客戶端選項。貼圖、回應等需要 Telegram 伺服器驗證的權益仍需有效訂閱。";
+"LocalPremium.Title" = "本機會員";
+"MessageFilter.PerChat.Notice" = "為目前對話設定訊息過濾。";
+"MessageFilter.PerChat.Title" = "此對話的過濾設定";
+"MessageFilter.Rule.EditMessage" = "含有此文字的訊息將被隱藏。";
+"MessageFilter.Rule.EditMessageRegex" = "符合此正規表示式的訊息將被隱藏。";
+"MessageFilter.Rule.EditTitle" = "編輯關鍵字";
+"MessageFilter.Rule.LimitToChats" = "限於指定對話";
+"Settings.CompactMessagePreview" = "精簡訊息預覽";
+"Settings.NY.Header" = "節日效果";
+"Settings.NY.Notice" = "節日主題的視覺效果。";
+"Settings.NY.Style" = "效果樣式";
+"Settings.NY.Style.default" = "預設";
+"Settings.NY.Style.lightning" = "閃電";
+"Settings.NY.Style.snow" = "飄雪";
+"Settings.Tabs.SearchButton" = "底欄搜尋按鈕";
+"Settings.Tabs.WideTabBar" = "寬底欄";
+"Settings.Tabs.WideTabBar.Notice" = "讓可見標籤佔滿底欄的可用寬度。";
+"Settings.Transcription.Backend" = "辨識服務";
+"Settings.Transcription.Backend.Notice" = "所選辨識服務無法使用時，Regram 會嘗試使用 %@。";
+"Settings.Transcription.Backend.apple" = "Apple";
+"Settings.Transcription.Backend.default" = "Telegram";
+"Settings.Transcription.Header" = "語音轉文字";
+"Settings.Translation.Backend" = "翻譯服務";
+"Settings.Translation.Backend.Notice" = "所選服務無法使用時，Regram 會嘗試使用 %@。";
+"Settings.Translation.Backend.default" = "Telegram";
+"Settings.Translation.Backend.google" = "Google";
+"Settings.Translation.Backend.gtranslate" = "Google";
+"Settings.Translation.Backend.system" = "Apple";
+
+"Catalog.RepostToStory" = "轉發到限時動態";
+"Catalog.StoryStealth" = "限時動態隱身模式";
+"Catalog.ChatTranslation" = "翻譯整個對話";
+"Catalog.PhotoQuality" = "照片上傳畫質";
+"Catalog.StickerSize" = "貼圖大小";
+"Catalog.AppIcons" = "應用程式圖示";
+
+"Settings.Link.Copy" = "複製設定連結";
+
+"LinkPreview.XService" = "X 預覽服務";
+"LinkPreview.InstagramService" = "Instagram 預覽服務";
+
+"Fonts.Search" = "搜尋字型";

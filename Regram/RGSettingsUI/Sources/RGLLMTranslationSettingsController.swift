@@ -47,6 +47,7 @@ private struct RGLLMTranslationSettingsView: View {
                 Text("Anthropic").tag(RGLLMAPIFormat.anthropic.rawValue)
             }
             .pickerStyle(.menu)
+            .rgSettingsLink("format")
             .onChange(of: format) { newValue in
                 RGSimpleSettings.shared.translationLLMAPIFormat = newValue
                 // Empty fields use the selected format's defaults; explicit custom URLs stay intact.
@@ -57,10 +58,13 @@ private struct RGLLMTranslationSettingsView: View {
             TextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, prompt: Text(apiFormat.defaultBaseURL))
                 .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: baseURL) { RGSimpleSettings.shared.translationLLMBaseURL = $0 }
+                .rgSettingsLink("baseURL")
             TextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, prompt: Text(apiFormat.defaultTranslationEndpoint))
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: endpoint) { RGSimpleSettings.shared.translationLLMEndpoint = $0 }
+                .rgSettingsLink("endpoint")
             SecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
+                .rgSettingsLink("apiKey")
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: apiKey) { value in
                     if !RGSimpleSettings.shared.setTranslationLLMAPIKey(value) {
@@ -75,14 +79,15 @@ private struct RGLLMTranslationSettingsView: View {
             TextField("LLMTranslation.Model".i18n(lang), text: $model)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: model) { RGSimpleSettings.shared.translationLLMModel = $0 }
+                .rgSettingsLink("model")
             if !models.isEmpty {
                 Picker("LLMTranslation.SelectModel".i18n(lang), selection: $model) {
                     if !models.contains(model) { Text(model.isEmpty ? "LLMTranslation.SelectModel".i18n(lang) : model).tag(model) }
                     ForEach(models, id: \.self) { Text($0).tag($0) }
                 }.pickerStyle(.menu)
             }
-            Button("LLMTranslation.FetchModels".i18n(lang)) { fetchModels() }.disabled(busy)
-            Button("LLMTranslation.TestModel".i18n(lang)) { testModel() }.disabled(busy || model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button("LLMTranslation.FetchModels".i18n(lang)) { fetchModels() }.disabled(busy).rgSettingsLink("fetchModels")
+            Button("LLMTranslation.TestModel".i18n(lang)) { testModel() }.disabled(busy || model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty).rgSettingsLink("testModel")
             if busy { ProgressView() }
         }
     }
@@ -92,14 +97,16 @@ private struct RGLLMTranslationSettingsView: View {
             Text("LLMTranslation.Prompt".i18n(lang))
             TextEditor(text: $prompt).frame(minHeight: 110)
                 .onChange(of: prompt) { RGSimpleSettings.shared.translationLLMPrompt = $0 }
+                .rgSettingsLink("prompt")
             Toggle("LLMTranslation.UseContext".i18n(lang), isOn: $useContext)
                 .onChange(of: useContext) { RGSimpleSettings.shared.translationLLMUseContext = $0 }
+                .rgSettingsLink("useContext")
             HStack {
                 Text("LLMTranslation.Temperature".i18n(lang))
                 Spacer()
                 Text(String(format: "%.1f", temperature)).foregroundColor(.secondary)
             }
-            Slider(value: $temperature, in: 0...1, step: 0.1)
+            Slider(value: $temperature, in: 0...1, step: 0.1).rgSettingsLink("temperature")
                 .onChange(of: temperature) { RGSimpleSettings.shared.translationLLMTemperatureTenths = Int32(($0 * 10).rounded()) }
         }
     }
@@ -129,7 +136,7 @@ private struct RGLLMTranslationSettingsView: View {
     }
 }
 
-public func rgLLMTranslationSettingsController(context: AccountContext) -> ViewController {
+public func rgLLMTranslationSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
@@ -138,6 +145,6 @@ public func rgLLMTranslationSettingsController(context: AccountContext) -> ViewC
         guard let controller else { return }
         rgPresentSettingsMessage(context: context, controller: controller, titleKey: "LLMTranslation.Title", text: message)
     }) })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("llm", focus: focusSetting), ignoreSafeArea: true))
     return controller
 }

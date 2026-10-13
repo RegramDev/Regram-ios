@@ -5,6 +5,7 @@ import ComponentFlow
 import Display
 import Foundation
 import ItemListUI
+import RGItemListUI
 import RGSimpleSettings
 import RGStrings
 import RGSwiftUI
@@ -32,10 +33,10 @@ private enum RGBottomBarSwitchOption: Int32 {
     case hidden
     case topSearch
     case labels
+    case automaticWidth
 }
 
 private enum RGBottomBarOption: Int32 {
-    case alignment
     case searchMode
 }
 
@@ -140,9 +141,21 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         return lhs.stableId < rhs.stableId
     }
 
-    var tag: ItemListItemTag? { nil }
+    var settingsIdentifier: String? {
+        switch self {
+        case let .toggle(_, _, _, _, option): return String(describing: option)
+        case .visibility: return "visibility"
+        case .slider: return "width"
+        case .reset: return "reset"
+        default: return nil
+        }
+    }
+    var tag: ItemListItemTag? { settingsIdentifier.map(RGSettingsItemTag.init) }
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        return rgSettingsLinkItem(baseItem(presentationData: presentationData, arguments: arguments), destination: settingsIdentifier.flatMap { RGSettingsDestination(page: "bottomBar", item: $0) })
+    }
+    private func baseItem(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! RGBottomBarArguments
         switch self {
         case let .preview(_, settings, strings, itemTitles, topSearchTitle, topSearchVisibleHint, topSearchHiddenHint, bottomBarTitle, emptyBottomTitle):
@@ -168,16 +181,18 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                     case .hidden: settings.isBottomBarVisible = !value
                     case .topSearch:
                         settings.topSearchVisible = value
+                    case .automaticWidth:
+                        settings.automaticWidth = value
+                        if !value { settings.buttonWidthFillRatio = max(50, settings.buttonWidthFillRatio) }
                     case .labels:
                         settings.showLabels = value
                     }
                 }
             }, tag: self.tag)
         case let .visibility(_, section, title, settings, itemTitles):
-            let visibleBottomItems = Set(settings.visibleBottomItems)
             let chips = RGBottomBarItemId.allCases.map { id in
                 let isSelected = settings.isVisible(id)
-                let isEnabled = id == .search || !isSelected || !visibleBottomItems.contains(id) || settings.canHide(id)
+                let isEnabled = settings.canHide(id)
                 return RGBottomBarChipRowItem.Chip(id: id.rawValue, title: itemTitles[id] ?? id.rawValue, isSelected: isSelected, isEnabled: isEnabled)
             }
             return RGBottomBarChipRowItem(theme: presentationData.theme, title: title, chips: chips, sectionId: section, selected: { rawValue in
@@ -197,7 +212,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                 }
             })
         case let .slider(_, section, title, value):
-            return RGSliderItem(theme: presentationData.theme, minValue: 0, maxValue: 100, value: value, title: title, sectionId: section, updated: { value in
+            return RGSliderItem(theme: presentationData.theme, minValue: 50, maxValue: 100, value: value, title: title, sectionId: section, updated: { value in
                 arguments.update { settings in
                     settings.buttonWidthFillRatio = value
                     settings.widthMode = value >= 100 ? .full : .adaptive
@@ -211,7 +226,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         case let .reset(_, section, title):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: section, style: .blocks, action: {
                 arguments.reset()
-            })
+            }, tag: self.tag)
         case let .footer(_, section, text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: section)
         }
@@ -237,7 +252,7 @@ private func rgBottomBarSettings(_ settings: RGBottomBarSettings, applyingShowCa
     return rgBottomBarSettingsNormalizedForLayout(result)
 }
 
-public func rgBottomBarSettingsController(context: AccountContext) -> ViewController {
+public func rgBottomBarSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
     let bump: () -> Void = {
@@ -286,13 +301,6 @@ public func rgBottomBarSettingsController(context: AccountContext) -> ViewContro
         let titleKey: String
         let items: [(String, (inout RGBottomBarSettings) -> Void)]
         switch option {
-        case .alignment:
-            titleKey = "RG.BottomBarLayout.Alignment"
-            items = [
-                ("RG.BottomBarLayout.Alignment.spaceBetween", { $0.alignment = .spaceBetween }),
-                ("RG.BottomBarLayout.Alignment.leftCenter", { $0.alignment = .leftCenter }),
-                ("RG.BottomBarLayout.Alignment.center", { $0.alignment = .center }),
-            ]
         case .searchMode:
             titleKey = "RG.BottomBarLayout.SearchStyle"
             let settings = rgBottomBarSettings(RGSimpleSettings.shared.bottomBarSettings, applyingShowCallsTab: currentShowCallsTab, showContactsTab: currentShowContactsTab)
@@ -358,17 +366,7 @@ public func rgBottomBarSettingsController(context: AccountContext) -> ViewContro
             .search: i18n("RG.BottomBarLayout.Item.search", lang)
         ]
 
-        let alignmentLabel: String
-        switch settings.alignment {
-        case .spaceBetween:
-            alignmentLabel = i18n("RG.BottomBarLayout.Alignment.spaceBetween", lang)
-        case .leftCenter:
-            alignmentLabel = i18n("RG.BottomBarLayout.Alignment.leftCenter", lang)
-        case .center:
-            alignmentLabel = i18n("RG.BottomBarLayout.Alignment.center", lang)
-        }
-
-        let entries: [RGBottomBarEntry] = [
+        var entries: [RGBottomBarEntry] = [
             .preview(
                 section: 0,
                 settings: settings,
@@ -385,20 +383,21 @@ public func rgBottomBarSettingsController(context: AccountContext) -> ViewContro
             .toggle(stableId: 3, section: 1, title: i18n("RG.BottomBarLayout.TopSearch", lang), value: settings.topSearchVisible, option: .topSearch),
             .visibility(stableId: 4, section: 1, title: i18n("RG.BottomBarLayout.Visibility", lang), settings: settings, itemTitles: itemTitles),
             .header(stableId: 5, section: 2, text: i18n("RG.BottomBarLayout.Options", lang)),
-            .disclosure(stableId: 6, section: 2, title: i18n("RG.BottomBarLayout.SearchStyle", lang), label: settings.searchMode == .bar ? i18n("RG.BottomBarLayout.SearchStyle.bar", lang) : i18n("RG.BottomBarLayout.SearchStyle.button", lang), option: .searchMode),
+            .toggle(stableId: 6, section: 2, title: i18n("Settings.Tabs.Width.Automatic", lang), value: settings.automaticWidth, option: .automaticWidth),
             .toggle(stableId: 7, section: 2, title: i18n("RG.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
-            .slider(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.ButtonWidth", lang), value: settings.buttonWidthFillRatio),
-            .disclosure(stableId: 9, section: 2, title: i18n("RG.BottomBarLayout.Alignment", lang), label: settings.buttonWidthFillRatio >= 100 ? i18n("RG.BottomBarLayout.Alignment.disabled", lang) : alignmentLabel, option: .alignment),
             .reset(stableId: 10, section: 3, title: i18n("RG.BottomBarLayout.Reset", lang)),
             .footer(stableId: 11, section: 3, text: i18n("RG.BottomBarLayout.Footer", lang))
         ]
 
+        if !settings.automaticWidth {
+            entries.insert(.slider(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
+        }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("RG.BottomBarLayout", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting == "width" && settings.automaticWidth ? "automaticWidth" : focusSetting), animateChanges: false)
         return (controllerState, (listState, arguments))
     }
 
-    let controller = ItemListController(context: context, state: signal)
+    let controller = RGSettingsListController(context: context, state: signal)
     controller.navigationPresentation = .default
     presentControllerImpl = { [weak controller] c, presentationArguments in
         controller?.present(c, in: .window(.root), with: presentationArguments)
@@ -856,10 +855,11 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 outerInsets: .zero,
                 layoutItemCount: layoutItemCount,
                 isAdaptiveWidth: false,
-                alignItemsToLeft: previewSettings.alignment == .spaceBetween,
-                centerItemsInAvailableWidth: previewSettings.alignment == .center,
+                alignItemsToLeft: false,
+                centerItemsInAvailableWidth: true,
                 showItemTitles: previewSettings.showLabels,
-                buttonWidthFillRatio: CGFloat(previewSettings.buttonWidthFillRatio) / 100.0
+                buttonWidthFillRatio: nil,
+                rgWidthPercent: previewSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(previewSettings.buttonWidthFillRatio)
             )),
             environment: {},
             containerSize: CGSize(width: availableWidth, height: 80.0)
@@ -871,16 +871,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             }
             tabBarView.isHidden = false
 
-            let onlySearchButton = searchIsVisible && previewSettings.searchMode != .bar && visibleComponentItems.isEmpty && externalComponentItem == nil
-            let fillsAvailableWidth = !onlySearchButton && (previewSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || searchIsVisible)
-            let tabBarX: CGFloat
-            if onlySearchButton {
-                tabBarX = previewSideInset + availableWidth - tabBarSize.width
-            } else if previewSettings.alignment == .spaceBetween && !fillsAvailableWidth {
-                tabBarX = previewSideInset
-            } else {
-                tabBarX = previewSideInset + floor((availableWidth - tabBarSize.width) * 0.5)
-            }
+            let tabBarX = previewSideInset + floor((availableWidth - tabBarSize.width) * 0.5)
             let tabBarFrame = CGRect(origin: CGPoint(x: tabBarX, y: 130.0), size: tabBarSize)
             tabBarView.frame = tabBarFrame
             tabBarView.isUserInteractionEnabled = false

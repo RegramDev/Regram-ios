@@ -1,3 +1,5 @@
+import RGStrings // MARK: Regram — shared settings link types.
+import RGProUI // MARK: Regram — local setting links resolve to the same pages as search.
 import RGDebugUI
 import RGSettingsUI
 import RGConfig // MARK: Regram
@@ -447,6 +449,10 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
     
     let continueHandling: () -> Void = {
         // MARK: Regram — local routes also work with queries and current scheme names.
+        if let destination = RGSettingsDestination.parse(parsedUrl, appSpecificScheme: context.sharedContext.applicationBindings.appSpecificScheme), let controller = rgControllerForSettingsLink(context: context, destination: destination) {
+            navigationController?.pushViewController(controller)
+            return
+        }
         if let path = rgLocalAppLinkPath(parsedUrl, appSpecificScheme: context.sharedContext.applicationBindings.appSpecificScheme) {
             switch path {
                 case "debug":
@@ -459,7 +465,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
                     navigationController?.pushViewController(rgDebugController(context: context))
                     return
                 case "settings":
-                    navigationController?.pushViewController(rgSettingsController(context: context))
+                    navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
                     return
                 case "ios_settings":
                     context.sharedContext.applicationBindings.openSettings()

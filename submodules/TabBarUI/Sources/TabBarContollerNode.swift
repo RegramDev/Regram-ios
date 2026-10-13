@@ -377,30 +377,17 @@ final class TabBarControllerNode: ASDisplayNode {
                 outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset),
                 layoutItemCount: rgLayoutItemCount,
                 isAdaptiveWidth: false,
-                alignItemsToLeft: bottomBarSettings.alignment == .spaceBetween,
-                centerItemsInAvailableWidth: bottomBarSettings.alignment == .center,
+                alignItemsToLeft: false,
+                centerItemsInAvailableWidth: true,
                 showItemTitles: bottomBarSettings.showLabels,
-                buttonWidthFillRatio: CGFloat(bottomBarSettings.buttonWidthFillRatio) / 100.0
+                buttonWidthFillRatio: nil,
+                rgWidthPercent: bottomBarSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(bottomBarSettings.buttonWidthFillRatio)
             )),
             environment: {},
             containerSize: CGSize(width: params.layout.size.width - sideInset * 2.0, height: 100.0)
         )
-        let tabBarOriginX: CGFloat
-        let onlySearchButton = hasVisibleSearch && bottomBarSettings.searchMode != .bar && visibleComponentItems.isEmpty && externalComponentItem == nil && tabBarSearchState?.isActive != true
-        let fillsAvailableWidth = !onlySearchButton && (bottomBarSettings.buttonWidthFillRatio >= 100 || externalComponentItem != nil || hasVisibleSearch)
-        if onlySearchButton {
-            tabBarOriginX = params.layout.size.width - sideInset - tabBarSize.width
-        } else if !fillsAvailableWidth && tabBarSearchState?.isActive != true {
-            if bottomBarSettings.alignment == .spaceBetween { // MARK: Regram
-                tabBarOriginX = sideInset
-            } else {
-                tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
-            }
-        } else if bottomBarSettings.buttonWidthFillRatio < 100 && tabBarSearchState == nil {
-            tabBarOriginX = sideInset
-        } else {
-            tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
-        }
+        // MARK: Regram — the complete bottom bar is always centered.
+        let tabBarOriginX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
         let tabBarFrame = CGRect(origin: CGPoint(x: tabBarOriginX, y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
         
         if let tabBarComponentView = self.tabBarView.view {

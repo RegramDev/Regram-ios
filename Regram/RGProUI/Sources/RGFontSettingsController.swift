@@ -28,7 +28,8 @@ public struct RGFontSettingsView: SwiftUI.View {
 
     private let presentMessage: (String) -> Void
 
-    public init(presentMessage: @escaping (String) -> Void, presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void, renameFont: @escaping (RGImportedFont, @escaping (String) -> Void) -> Void, confirmRemoval: @escaping (String, @escaping () -> Void) -> Void) {
+    public init(initialScript: Int = 0, presentMessage: @escaping (String) -> Void, presentFontImporter: @escaping (@escaping (URL?) -> Void) -> Void, renameFont: @escaping (RGImportedFont, @escaping (String) -> Void) -> Void, confirmRemoval: @escaping (String, @escaping () -> Void) -> Void) {
+        self._script = State(initialValue: initialScript)
         self.presentMessage = presentMessage
         self.presentFontImporter = presentFontImporter
         self.renameFont = renameFont
@@ -134,6 +135,7 @@ public struct RGFontSettingsView: SwiftUI.View {
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
         .accessibilityLabel(title.i18n(self.lang))
+        .rgSettingsLink(id == "regram.font.messages" ? "messages" : "interface")
         .accessibilityValue((selected.wrappedValue ? "Fonts.Selected" : "Fonts.Unselected").i18n(self.lang))
         .accessibilityAddTraits(selected.wrappedValue ? .isSelected : [])
     }
@@ -219,10 +221,10 @@ public struct RGFontSettingsView: SwiftUI.View {
                     Picker("Fonts.Title".i18n(self.lang), selection: self.$script) {
                         Text("Fonts.Latin.Title".i18n(self.lang)).tag(0)
                         Text("Fonts.Chinese.Title".i18n(self.lang)).tag(1)
-                    }.pickerStyle(.segmented)
+                    }.pickerStyle(.segmented).rgSettingsLink("script")
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-                        TextField(self.lang.hasPrefix("zh") ? "搜索字体" : "Search fonts", text: self.$filter)
+                        TextField("Fonts.Search".i18n(self.lang), text: self.$filter)
                             .autocapitalization(.none).disableAutocorrection(true)
                         if !self.filter.isEmpty { Button { self.filter = "" } label: { Image(systemName: "xmark.circle.fill").foregroundColor(.secondary) } }
                     }.padding(14).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(14)
@@ -274,12 +276,12 @@ public struct RGFontSettingsView: SwiftUI.View {
                         Spacer()
                         if self.importing { ProgressView() } else { Image(systemName: "chevron.right").font(.caption.weight(.semibold)) }
                     }.padding(18).background(Color(uiColor: .secondarySystemGroupedBackground)).cornerRadius(16)
-                }.buttonStyle(.plain).disabled(self.importing || self.store.downloading != nil)
+                }.buttonStyle(.plain).disabled(self.importing || self.store.downloading != nil).rgSettingsLink("import")
                 Text("Fonts.Import.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Cloud.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 Text("Fonts.Scripts.Notice".i18n(self.lang)).font(.footnote).foregroundColor(.secondary)
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Fonts.Storage".i18n(self.lang)).font(.headline)
+                    Text("Fonts.Storage".i18n(self.lang)).font(.headline).rgSettingsLink("storage")
                     Text("Fonts.Storage.Downloads".i18n(self.lang) + ": " + ByteCountFormatter.string(fromByteCount: self.store.storageBytes(downloads: true), countStyle: .file))
                     Text("Fonts.Imported".i18n(self.lang) + ": " + ByteCountFormatter.string(fromByteCount: self.store.storageBytes(downloads: false), countStyle: .file))
                     Button("Fonts.ClearDownloads".i18n(self.lang), role: .destructive) {
@@ -310,13 +312,13 @@ public struct RGFontSettingsView: SwiftUI.View {
     }
 }
 
-public func rgFontSettingsController(context: AccountContext) -> ViewController {
+public func rgFontSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "Fonts.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
-        RGFontSettingsView(presentMessage: { [weak controller] message in
+        RGFontSettingsView(initialScript: focusSetting == "chinese" ? 1 : 0, presentMessage: { [weak controller] message in
             guard let controller else { return }
             rgPresentSettingsMessage(context: context, controller: controller, titleKey: "Fonts.Error.Title", text: message)
         }, presentFontImporter: { [weak controller] completion in
@@ -337,6 +339,6 @@ public func rgFontSettingsController(context: AccountContext) -> ViewController 
             controller?.present(sheet, in: .window(.root))
         })
     })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("fonts", focus: ["latin", "chinese"].contains(focusSetting ?? "") ? "script" : focusSetting), ignoreSafeArea: true))
     return controller
 }

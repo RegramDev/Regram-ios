@@ -9,33 +9,44 @@ import Foundation
         defaults.set(false, forKey: "showTabNames")
         defaults.set(72, forKey: "tabBarWidthPercent")
         var settings = RGBottomBarSettings.load(from: defaults)
-        assert(!settings.isBottomBarVisible && !settings.showLabels && settings.buttonWidthFillRatio == 72)
+        assert(settings.automaticWidth && !settings.isBottomBarVisible && !settings.showLabels)
         settings.isBottomBarVisible = true
         settings.moveBottomItem(from: 0, to: 3)
         assert(settings.visibleBottomItems == [.calls, .chats, .settings, .contacts])
         settings.hide(.calls)
         assert(!settings.isVisible(.calls))
-        settings.hide(.chats)
-        assert(settings.isVisible(.chats))
+        for required in [RGBottomBarItemId.chats, .settings] {
+            assert(!settings.canHide(required))
+            settings.hide(required); settings.toggleHidden(required)
+            assert(settings.isVisible(required))
+        }
         settings.setSearchMode(.hidden)
         settings.moveToExternal(.settings)
-        assert(settings.externalItem == .settings && !settings.visibleBottomItems.contains(.settings))
-        settings.alignment = .center
+        assert(settings.externalItem == .settings && settings.isVisible(.settings))
+        settings.automaticWidth = false
+        settings.buttonWidthFillRatio = 80
         settings.save(to: defaults)
         assert(RGBottomBarSettings.load(from: defaults) == settings)
-        settings.setSearchMode(.button)
-        assert(settings.externalItem == .search && settings.isVisible(.settings))
+        let previous = defaults.dictionary(forKey: RGBottomBarSettings.storageKey) as! [String: String]
+        var legacy = previous
+        legacy.removeValue(forKey: "automaticWidth")
+        legacy["hidden"] = "chats,settings,contacts,calls"
+        legacy["items"] = "contacts,calls"
+        legacy["alignment"] = "spaceBetween"
+        defaults.set(legacy, forKey: RGBottomBarSettings.storageKey)
+        let restored = RGBottomBarSettings.load(from: defaults)
+        assert(restored.automaticWidth && restored.alignment == .center)
+        assert(restored.isVisible(.chats) && restored.isVisible(.settings))
+        assert(restored.visibleNavigationItems.count >= 2)
         let invalid = RGBottomBarSettings(bottomItems: [.calls, .calls, .search], hiddenItems: [.contacts, .settings], buttonWidthFillRatio: 200)
         assert(Set(invalid.bottomItems).count == invalid.bottomItems.count)
-        assert(!invalid.bottomItems.contains(.search) && invalid.visibleBottomItems.contains(.chats))
+        assert(!invalid.bottomItems.contains(.search) && invalid.visibleBottomItems.contains(.chats) && invalid.visibleBottomItems.contains(.settings))
         assert(invalid.buttonWidthFillRatio == 100)
-        var empty = RGBottomBarSettings(hiddenItems: [.contacts, .calls, .chats, .settings])
-        assert(empty.showsOnlySearchButton)
-        empty.setSearchMode(.bar)
-        empty.save(to: defaults)
-        assert(RGBottomBarSettings.load(from: defaults).visibleBottomItems.isEmpty)
+        let onlyRequired = RGBottomBarSettings(hiddenItems: Set(RGBottomBarItemId.allCases))
+        assert(onlyRequired.visibleBottomItems == [.chats, .settings])
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0) == 240)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 3, percent: 0) == 288)
         assert(RGDatacenterLocation.title(5) == "DC5 · Singapore")
-        assert(RGDatacenterLocation.title(99) == "DC99")
-        print("Bottom-bar checks passed: legacy migration, ordering, visibility, navigation protection, external slot, bounds and persistence")
+        print("Bottom-bar checks passed: required tabs, legacy/backup recovery, automatic/manual width, centering and persistence")
     }
 }

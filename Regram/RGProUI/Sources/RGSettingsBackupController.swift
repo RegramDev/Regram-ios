@@ -27,7 +27,7 @@ private struct RGSettingsBackupView: View {
     var body: some View {
         List {
             Section(footer: Text("Backup.Notice".i18n(lang))) {
-                Button("Backup.Export".i18n(lang)) { export(categories) }.disabled(categories.isEmpty)
+                Button("Backup.Export".i18n(lang)) { export(categories) }.rgSettingsLink("export").disabled(categories.isEmpty)
                 Button("Backup.Import".i18n(lang)) {
                     importing = true
                     importFile { result in
@@ -37,7 +37,7 @@ private struct RGSettingsBackupView: View {
                         case let .failure(value): if !(value is CancellationError) { presentError() }
                         }
                     }
-                }.disabled(importing)
+                }.disabled(importing).rgSettingsLink("import")
                 if importing { ProgressView() }
             }
             Section(header: Text("Backup.Categories".i18n(lang))) {
@@ -62,13 +62,13 @@ private struct RGSettingsBackupView: View {
                 }
             }
             Section(footer: Text("Backup.Reset.Notice".i18n(lang))) {
-                Button("Backup.Reset".i18n(lang), role: .destructive) { restore(nil, categories) }.disabled(categories.isEmpty)
+                Button("Backup.Reset".i18n(lang), role: .destructive) { restore(nil, categories) }.disabled(categories.isEmpty).rgSettingsLink("reset")
             }
         }
     }
 }
 
-func rgSettingsBackupController(context: AccountContext) -> ViewController {
+func rgSettingsBackupController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
@@ -165,6 +165,6 @@ func rgSettingsBackupController(context: AccountContext) -> ViewController {
             rgPresentSettingsMessage(context: context, controller: controller, titleKey: "Backup.Error", text: "Backup.Error.Notice".i18n(data.strings.rgLanguageCode))
         })
     })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("backup", focus: focusSetting), ignoreSafeArea: true))
     return controller
 }

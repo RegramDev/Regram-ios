@@ -21,8 +21,8 @@ import PresentationDataUtils
         Form {
             Section {
                 LabeledContentCompat(title: "AppUpdate.CurrentVersion".i18n(lang), value: "\(updater.installedVersion) (\(updater.installedBuild))")
-                Button("AppUpdate.Check".i18n(lang)) { updater.check() }.disabled(updater.stage.isBusy || credentialBusy)
-                Button("AppUpdate.OpenGitHub".i18n(lang)) { UIApplication.shared.open(updater.githubReleaseURL, options: [:]) }
+                Button("AppUpdate.Check".i18n(lang)) { updater.check() }.disabled(updater.stage.isBusy || credentialBusy).rgSettingsLink("check")
+                Button("AppUpdate.OpenGitHub".i18n(lang)) { UIApplication.shared.open(updater.githubReleaseURL, options: [:]) }.rgSettingsLink("github")
                 if let release = updater.release {
                     Text("\(release.version) (\(release.build))").font(.headline)
                     if !release.notes.isEmpty {
@@ -42,19 +42,19 @@ import PresentationDataUtils
                     ForEach(RGUpdateInstallationMethod.allCases, id: \.rawValue) { method in Text(method.localizationKey.i18n(lang)).tag(method) }
                 }
                 // MARK: Regram — avoid pushing SwiftUI selection pages into Telegram's navigation stack.
-                .pickerStyle(.menu)
+                .pickerStyle(.menu).rgSettingsLink("installationMethod")
                 .disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
-                Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck)
-                Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured)
+                Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck).rgSettingsLink("automaticCheck")
+                Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured).rgSettingsLink("automaticDownload")
             }
             if updater.installationMethod == .certificate {
                 Section(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang))) {
-                    Toggle("AppUpdate.AutomaticExit".i18n(lang), isOn: $updater.automaticallyExitAfterInstalling)
+                    Toggle("AppUpdate.AutomaticExit".i18n(lang), isOn: $updater.automaticallyExitAfterInstalling).rgSettingsLink("automaticExit")
                 }.disabled(updater.stage.isBusy)
                 Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
                     if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
                     Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)
-                    Button("AppUpdate.ImportSigningMaterials".i18n(lang)) { selectFiles(kind: .signingMaterials) }
+                    Button("AppUpdate.ImportSigningMaterials".i18n(lang)) { selectFiles(kind: .signingMaterials) }.rgSettingsLink("certificate")
                     Button("AppUpdate.ImportProfiles".i18n(lang)) { selectFiles(kind: .profiles) }
                     if credentialBusy { ProgressView("AppUpdate.Importing".i18n(lang)) }
                     if !updater.certificateName.isEmpty {
@@ -146,7 +146,7 @@ private struct LabeledContentCompat: View {
     var body: some View { HStack { Text(title); Spacer(); Text(value).foregroundColor(.secondary) } }
 }
 
-public func rgAppUpdateController(context: AccountContext) -> ViewController {
+public func rgAppUpdateController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
@@ -160,6 +160,6 @@ public func rgAppUpdateController(context: AccountContext) -> ViewController {
             controller.present(textAlertController(context: context, title: "AppUpdate.Title".i18n(data.strings.rgLanguageCode), text: message, actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root))
         })
     })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("updates", focus: focusSetting), ignoreSafeArea: true))
     return controller
 }

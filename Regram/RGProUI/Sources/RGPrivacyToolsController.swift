@@ -57,7 +57,7 @@ private func antiFeatureToggles() -> [RGPrivacyToggle] {
     ]
 }
 
-private func rgPrivacyToolsController(context: AccountContext, title: String, noticeKey: String, toggles: [RGPrivacyToggle]) -> ViewController {
+private func rgPrivacyToolsController(context: AccountContext, title: String, noticeKey: String, toggles: [RGPrivacyToggle], page: String, focusSetting: String?) -> ViewController {
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
 
     let arguments = RGItemListArguments<RGPrivacyToolsToggle, AnyHashable, AnyHashable, AnyHashable, AnyHashable>(context: context, setBoolValue: { toggleName, value in
@@ -65,7 +65,7 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
             toggle.set(value)
         }
         simplePromise.set(true)
-    })
+    }, settingsPage: page)
 
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -79,18 +79,18 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
         entries.append(.notice(id: id.count, section: .main, text: noticeKey.i18n(lang)))
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: nil, initialScrollToItem: nil)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: nil, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting), animateChanges: false)
 
         return (controllerState, (listState, arguments))
     }
 
-    return ItemListController(context: context, state: signal)
+    return RGSettingsListController(context: context, state: signal)
 }
 
 
-public func rgAntiFeaturesController(context: AccountContext) -> ViewController {
+public func rgAntiFeaturesController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
-    return rgPrivacyToolsController(context: context, title: "AntiFeatures.Header".i18n(lang), noticeKey: "AntiFeatures.Notice", toggles: antiFeatureToggles())
+    return rgPrivacyToolsController(context: context, title: "AntiFeatures.Header".i18n(lang), noticeKey: "AntiFeatures.Notice", toggles: antiFeatureToggles(), page: "antiFeatures", focusSetting: focusSetting)
 }
 
 // MARK: Regram — ghost mode.
@@ -107,7 +107,7 @@ private func ghostModeToggles() -> [RGPrivacyToggle] {
     ]
 }
 
-public func rgGhostModeController(context: AccountContext) -> ViewController {
+public func rgGhostModeController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
-    return rgPrivacyToolsController(context: context, title: "Ghost.Header".i18n(lang), noticeKey: "Ghost.Notice", toggles: ghostModeToggles())
+    return rgPrivacyToolsController(context: context, title: "Ghost.Header".i18n(lang), noticeKey: "Ghost.Notice", toggles: ghostModeToggles(), page: "ghostMode", focusSetting: focusSetting)
 }

@@ -26,7 +26,7 @@ private struct RGDiagnosticsView: View {
                 Text(network.connectionKey.i18n(lang)).foregroundColor(.secondary)
             }
             Section(header: Text("Diagnostics.DC.Title".i18n(lang)), footer: Text("Diagnostics.DC.Notice".i18n(lang))) {
-                Button((network.running ? "Diagnostics.DC.Cancel" : "Diagnostics.DC.Start").i18n(lang)) { if network.running { network.cancel() } else { network.start() } }
+                Button((network.running ? "Diagnostics.DC.Cancel" : "Diagnostics.DC.Start").i18n(lang)) { if network.running { network.cancel() } else { network.start() } }.rgSettingsLink("datacenters")
                 ForEach(1...5, id: \.self) { dc in
                     let value = network.results[dc]!
                     VStack(alignment: .leading, spacing: 6) {
@@ -46,7 +46,7 @@ private struct RGDiagnosticsView: View {
                 HStack { Text("Diagnostics.Speed".i18n(lang)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: snapshot.roundedBytesPerSecond, countStyle: .file) + "/s").monospacedDigit() }
                 HStack { Text("Diagnostics.Received".i18n(lang)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: snapshot.receivedBytes, countStyle: .file)).monospacedDigit() }
                 Text((RGSimpleSettings.DownloadSpeedBoostValues(rawValue: RGSimpleSettings.shared.downloadSpeedBoost) == .enabled ? "Diagnostics.Boost.On" : "Diagnostics.Boost.Off").i18n(lang))
-            }
+            }.rgSettingsLink("transfer")
             Section(header: Text("Diagnostics.Filter".i18n(lang)), footer: Text("Diagnostics.Filter.Notice".i18n(lang))) {
                 HStack {
                     Button("Diagnostics.Filter.Run".i18n(lang)) {
@@ -71,7 +71,7 @@ private struct RGDiagnosticsView: View {
                     Text(timing.map { String(format: "%.2f ms", $0) } ?? "—").monospacedDigit()
                 }
                 Text("\(RGSimpleSettings.shared.messageFilterRules.count) " + "Diagnostics.Rules".i18n(lang))
-            }
+            }.rgSettingsLink("filter")
             Section(footer: Text("Diagnostics.Media.Notice".i18n(lang))) {
                 Text((RGSimpleSettings.shared.mediaLoadingExperiment ? "Diagnostics.Media.On" : "Diagnostics.Media.Off").i18n(lang))
             }
@@ -86,12 +86,12 @@ private struct RGDiagnosticsView: View {
     }
 }
 
-func rgDiagnosticsController(context: AccountContext) -> ViewController {
+func rgDiagnosticsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "Diagnostics.Title".i18n(data.strings.rgLanguageCode)
     let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: { RGDiagnosticsView(network: RGDatacenterDiagnostics(context: context)) })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("diagnostics", focus: focusSetting), ignoreSafeArea: true))
     return controller
 }

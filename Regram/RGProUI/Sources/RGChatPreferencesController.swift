@@ -34,7 +34,7 @@ private struct RGChatPreferencesView: View {
                         preferences = RGSimpleSettings.shared.chatPreferences(accountId: context.account.peerId.toInt64(), peerId: peer.id.toInt64())
                         revealed = RGSimpleSettings.shared.temporarilyVisiblePeerIds(accountId: context.account.peerId.toInt64()).contains(peer.id.toInt64())
                     }
-                }
+                }.rgSettingsLink("selectChat")
             }
             if peer != nil {
                 Section {
@@ -43,13 +43,13 @@ private struct RGChatPreferencesView: View {
                         ForEach(RGSimpleSettings.DefaultOutgoingFormat.allCases, id: \.rawValue) { format in
                             Text("OutgoingFormatting.\(format.rawValue)".i18n(lang)).tag(format.rawValue)
                         }
-                    }.pickerStyle(.menu)
+                    }.pickerStyle(.menu).rgSettingsLink("formatting")
                     Picker("Pangu.Title".i18n(lang), selection: Binding(get: { preferences.panguSpacing.map { $0 ? "on" : "off" } ?? "inherit" }, set: { preferences.panguSpacing = $0 == "inherit" ? nil : $0 == "on" })) {
                         Text("ChatPreferences.Inherit".i18n(lang)).tag("inherit")
                         Text("ChatPreferences.On".i18n(lang)).tag("on")
                         Text("ChatPreferences.Off".i18n(lang)).tag("off")
-                    }.pickerStyle(.menu)
-                    Button("ChatPreferences.Reset".i18n(lang)) { preferences = RGChatPreferences() }
+                    }.pickerStyle(.menu).rgSettingsLink("panguSpacing")
+                    Button("ChatPreferences.Reset".i18n(lang)) { preferences = RGChatPreferences() }.rgSettingsLink("reset")
                 }
                 Section(footer: Text("ChatPreferences.Reveal.Notice".i18n(lang))) {
                     Button((revealed ? "ChatPreferences.Reveal.End" : "ChatPreferences.Reveal").i18n(lang)) {
@@ -69,7 +69,7 @@ private struct RGChatPreferencesView: View {
     }
 }
 
-func rgChatPreferencesController(context: AccountContext) -> ViewController {
+func rgChatPreferencesController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
@@ -80,6 +80,6 @@ func rgChatPreferencesController(context: AccountContext) -> ViewController {
             rgSelectSettingsChat(context: context, controller: controller, completion: completion)
         })
     })
-    controller.bind(controller: UIHostingController(rootView: content, ignoreSafeArea: true))
+    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("chatPreferences", focus: focusSetting), ignoreSafeArea: true))
     return controller
 }

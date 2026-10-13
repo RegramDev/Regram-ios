@@ -107,7 +107,7 @@ public struct RGSettingsBackup: Codable {
         case "stickerSize": if case let .integer(v) = value { return (0...200).contains(v) }; return false
         case "recentStickerLimit": if case let .integer(v) = value { return (1...1000).contains(v) }; return false
         case "bottomBarLayout":
-            if case let .dictionary(v) = value { return v.count <= 12 && v.allSatisfy { $0.key.count < 32 && $0.value.count < 128 } }; return false
+            if case let .dictionary(v) = value { return v.count <= 13 && v.allSatisfy { $0.key.count < 32 && $0.value.count < 128 } }; return false
         case "tabBarWidthPercent": if case let .integer(v) = value { return v == 0 || (50...100).contains(v) }; return false
         case "contextMenuOrder", "contextMenuDisabledItems", "blockedPeerIds", "messageFilterDisabledPeerIds", "antiRevokePeerIds":
             if case let .strings(v) = value { return v.count <= 10000 && v.allSatisfy { $0.utf8.count <= 128 } }; return false

@@ -4999,7 +4999,8 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
                 if let strongSelf = self, strongSelf.selectionTouchLocation != nil {
                     strongSelf.clearHighlightAnimated(false)
                     
-                    if let index = strongSelf.itemIndexAtPoint(strongSelf.touchesPosition) {
+                    // MARK: Regram — filtered rows may disappear before the delayed touch callback.
+                    if let index = strongSelf.itemIndexAtPoint(strongSelf.touchesPosition), strongSelf.items.indices.contains(index) {
                         var canBeSelectedOrLongTapped = false
                         for itemNode in strongSelf.itemNodes {
                             var canBeSelected = itemNode.canBeSelected
@@ -5010,7 +5011,7 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
                                     }
                                 }
                             }
-                            if itemNode.index == index && (strongSelf.items[index].selectable && canBeSelected) || itemNode.canBeLongTapped {
+                            if itemNode.index == index && ((strongSelf.items[index].selectable && canBeSelected) || itemNode.canBeLongTapped) {
                                 canBeSelectedOrLongTapped = true
                             }
                         }
@@ -5045,7 +5046,7 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
                                         
                                         if itemNode.canBeLongTapped {
                                             let timer = Timer(timeInterval: 0.3, target: ListViewTimerProxy {
-                                                if let strongSelf = self, strongSelf.highlightedItemIndex == index {
+                                                if let strongSelf = self, strongSelf.highlightedItemIndex == index, strongSelf.items.indices.contains(index) {
                                                     for itemNode in strongSelf.itemNodes {
                                                         if itemNode.index == index && itemNode.canBeLongTapped {
                                                             itemNode.longTapped()
@@ -5278,7 +5279,7 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
             let index = self.itemIndexAtPoint(selectionTouchLocation)
             
             if isSecondary {
-                if let index = index {
+                if let index = index, self.items.indices.contains(index) {
                     if self.items[index].selectable {
                         self.highlightedItemIndex = index
                         for itemNode in self.itemNodes {
@@ -5295,7 +5296,7 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
                     self.clearHighlightAnimated(false)
                 }
                 
-                if let index = index {
+                if let index = index, self.items.indices.contains(index) {
                     if self.items[index].selectable {
                         self.highlightedItemIndex = index
                         for itemNode in self.itemNodes {
@@ -5321,7 +5322,8 @@ open class ListViewImpl: ASDisplayNode, ListView, ASScrollViewDelegate, ASGestur
             }
         }
                 
-        if !isSecondary, let highlightedItemIndex = self.highlightedItemIndex {
+        // MARK: Regram — a pending selection cannot address a deleted search result.
+        if !isSecondary, let highlightedItemIndex = self.highlightedItemIndex, self.items.indices.contains(highlightedItemIndex) {
             for itemNode in self.itemNodes {
                 if itemNode.index == highlightedItemIndex {
                     itemNode.selected()

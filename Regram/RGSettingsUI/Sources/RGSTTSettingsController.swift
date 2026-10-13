@@ -4,6 +4,7 @@ import AccountContext
 import Display
 import Foundation
 import ItemListUI
+import RGItemListUI
 import RGSimpleSettings
 import RGStrings
 import RGTranscription
@@ -73,13 +74,25 @@ private enum RGSTTSettingsEntry: ItemListNodeEntry {
         return lhs.stableId < rhs.stableId
     }
 
-    var tag: ItemListItemTag? { return nil }
+    var settingsIdentifier: String? {
+        switch self {
+        case .provider: return "provider"
+        case let .input(field, _, _, _): return ["baseURL", "endpoint", "apiKey", "model", "language", "prompt"][Int(field.rawValue)]
+        case .prompt: return "prompt"
+        case .test: return "test"
+        default: return nil
+        }
+    }
+    var tag: ItemListItemTag? { settingsIdentifier.map(RGSettingsItemTag.init) }
 
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
+        return rgSettingsLinkItem(baseItem(presentationData: presentationData, arguments: arguments), destination: settingsIdentifier.flatMap { RGSettingsDestination(page: "stt", item: $0) })
+    }
+    private func baseItem(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let arguments = arguments as! RGSTTSettingsArguments
         switch self {
         case let .provider(title, value):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: value, sectionId: 0, style: .blocks, action: arguments.selectProvider)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: value, sectionId: 0, style: .blocks, action: arguments.selectProvider, tag: self.tag)
         case let .header(section, text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: section)
         case let .input(field, title, text, placeholder):
@@ -150,7 +163,7 @@ private func rgSTTSettingsEntries(presentationData: PresentationData, apiKey: St
     ]
 }
 
-public func rgSTTSettingsController(context: AccountContext) -> ViewController {
+public func rgSTTSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let updatePromise = ValuePromise<Int32>(0, ignoreRepeated: false)
     var updateValue: Int32 = 0
     let bump: () -> Void = {
@@ -255,13 +268,13 @@ public func rgSTTSettingsController(context: AccountContext) -> ViewController {
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("Settings.Category.transcription", presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let entries = rgSTTSettingsEntries(presentationData: presentationData, apiKey: apiKey, isTesting: isTesting)
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: nil, animateChanges: true)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting), animateChanges: false)
         return (controllerState, (listState, arguments))
     }
     |> afterDisposed {
         testDisposable.dispose()
     }
-    let controller = ItemListController(context: context, state: signal)
+    let controller = RGSettingsListController(context: context, state: signal)
     controller.navigationPresentation = .default
     presentControllerImpl = { [weak controller] alert in
         controller?.present(alert, in: .window(.root), with: nil)
