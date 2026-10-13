@@ -1777,6 +1777,8 @@ plist_fragment(
     <false/>
     <key>LSApplicationQueriesSchemes</key>
     <array>
+        <!-- MARK: Regram — required for TrollStore installation handoff. -->
+        <string>apple-magnifier</string>
         <string>instagram</string>
         <string>comgooglemaps-x-callback</string>
         <string>foursquare</string>

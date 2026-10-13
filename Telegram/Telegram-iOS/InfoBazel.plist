@@ -66,6 +66,8 @@
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<!-- MARK: Regram — TrollStore's documented install URL. -->
+		<string>apple-magnifier</string>
 		<string>instagram</string>
 		<string>comgooglemaps-x-callback</string>
 		<string>foursquare</string>
