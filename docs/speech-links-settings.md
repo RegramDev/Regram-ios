@@ -30,7 +30,7 @@ Regram 设置提供外观、聊天列表、分组、资料、动态和应用选�
 
 ## 图标
 
-设置列表中的 Regram 图标使用用户提供的原始图片，Pro 图标使用默认应用图标。应用图标同时提供命名的 Icon Composer 资源与旧系统 PNG 回退，保留升级前的备选图标名称兼容。图标声明在代码签名前归一化。
+设置列表中的 Regram 图标使用用户提供的原始图片，Pro 图标使用默认应用图标。主应用图标继续使用 Icon Composer，备选图标恢复使用 PNG 资源，保留升级前的备选图标名称兼容。已回退为全部备选图标生成高分辨率多外观资源及归一化声明的改动。
 
 系统通知的头部由 iOS 绘制，没有供通知扩展独立替换应用图标的公开接口。补齐图标资源与切换回调不等于已经验证所有系统界面随之更新；通知展示及缓存行为需要设备确认。参考 [Apple 的备选图标配置](https://developer.apple.com/documentation/xcode/configuring-your-app-to-use-alternate-app-icons)和[通知界面说明](https://developer.apple.com/documentation/usernotificationsui/customizing-the-appearance-of-notifications)。
 

@@ -367,18 +367,17 @@ rg_renamed_icon_folders = [name for name in alternate_icon_folders if name.start
     genrule(
         name = "RGLegacyAppIcon" + name[2:],
         srcs = glob(["Telegram-iOS/{}.alticon/*.png".format(name)]),
-        outs = ["LegacyAppIcons/SG{}.alticon/RGLegacy{}@{}x.png".format(name[2:], name[2:], scale) for scale in [2, 3]],
+        # Generated filenames must match the legacy name in CFBundleIconFiles.
+        outs = ["RGAppIconAliases/SG{}.alticon/SG{}@{}x.png".format(name[2:], name[2:], scale) for scale in [2, 3]],
         cmd = " && ".join([
-            "cp $(location Telegram-iOS/{name}.alticon/{name}@{scale}x.png) $(location LegacyAppIcons/SG{suffix}.alticon/RGLegacy{suffix}@{scale}x.png)".format(name = name, suffix = name[2:], scale = scale)
+            "cp $(location Telegram-iOS/{name}.alticon/{name}@{scale}x.png) $(location RGAppIconAliases/SG{suffix}.alticon/SG{suffix}@{scale}x.png)".format(name = name, suffix = name[2:], scale = scale)
             for scale in [2, 3]
         ]),
     ) for name in rg_renamed_icon_folders
 ]
 
-# MARK: Regram — the *primary* icon, which is also the one iOS draws on every notification.
-# MARK: Regram — provide named Icon Composer variants for system icon rendering as well as
-# PNG fallbacks for older iOS versions. The primary icon remains Regram.
-composer_icon_folders = ["Regram"] + alternate_icon_folders
+# MARK: Regram — compile the primary icon with Icon Composer; alternate icons use PNG resources.
+composer_icon_folders = ["Regram"]
 
 [
     filegroup(
@@ -1996,7 +1995,6 @@ ios_application(
         ":UrlTypesInfoPlist",
     ],
     primary_app_icon = "Regram",
-    ipa_post_processor = ":normalize_app_icons.py",
     app_icons = [ ":{}_icon".format(name) for name in composer_icon_folders ],
     alternate_icons = [
         ":{}".format(name) for name in alternate_icon_folders
