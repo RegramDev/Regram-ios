@@ -15,7 +15,6 @@ import TelegramUIPreferences
 // Optional
 import RGSimpleSettings
 import RGLogging
-import RGPayWall
 import OverlayStatusController
 #if DEBUG
 import FLEX
@@ -37,9 +36,9 @@ private enum RGDebugActions: String {
     case fileManager
     case clearRegDateCache
     case clearOutgoingTranslationLanguageCache
-    case restorePurchases
-    case setIAP
-    case resetIAP
+
+
+
 }
 
 private enum RGDebugToggles: String {
@@ -69,11 +68,8 @@ private func RGDebugControllerEntries(presentationData: PresentationData) -> [RG
     entries.append(.action(id: id.count, section: .base, actionType: .clearOutgoingTranslationLanguageCache, text: "Clear Outgoing Translation cache", kind: .generic))
     entries.append(.toggle(id: id.count, section: .base, settingName: .forceImmediateShareSheet, value: RGSimpleSettings.shared.forceSystemSharing, text: "Force System Share Sheet", enabled: true))
     
-    entries.append(.action(id: id.count, section: .base, actionType: .restorePurchases, text: "PayWall.RestorePurchases".i18n(presentationData.strings.baseLanguageCode), kind: .generic))
     #if DEBUG
-    entries.append(.action(id: id.count, section: .base, actionType: .setIAP, text: "Set Pro", kind: .generic))
     #endif
-    entries.append(.action(id: id.count, section: .base, actionType: .resetIAP, text: "Reset Pro", kind: .destructive))
 
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .legacyNotificationsFix, value: RGSimpleSettings.shared.legacyNotificationsFix, text: "[OLD] Fix empty notifications", enabled: true))
     return entries
@@ -119,7 +115,7 @@ public func rgDebugController(context: AccountContext) -> ViewController {
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch actionType {
             case .clearRegDateCache:
-                RGLogger.shared.log("SGDebug", "Regdate cache cleanup init")
+                RGLogger.shared.log("RGDebug", "Regdate cache cleanup init")
                 
                 /*
                 let spinner = OverlayStatusController(theme: presentationData.theme, type: .loading(cancelled: nil))
@@ -127,7 +123,7 @@ public func rgDebugController(context: AccountContext) -> ViewController {
                 presentControllerImpl?(spinner, nil)
                 */
                 RGSimpleSettings.shared.regDateCache.drop()
-                RGLogger.shared.log("SGDebug", "Regdate cache cleanup succesfull")
+                RGLogger.shared.log("RGDebug", "Regdate cache cleanup succesfull")
                 presentControllerImpl?(okUndoController("OK: Regdate cache cleaned", presentationData), nil)
                 /*
                 Queue.mainQueue().async() { [weak spinner] in
@@ -135,9 +131,9 @@ public func rgDebugController(context: AccountContext) -> ViewController {
                 }
                 */
             case .clearOutgoingTranslationLanguageCache:
-                RGLogger.shared.log("SGDebug", "Outgoing translation language cache cleanup init")
+                RGLogger.shared.log("RGDebug", "Outgoing translation language cache cleanup init")
                 RGSimpleSettings.shared.outgoingLanguageTranslation.drop()
-                RGLogger.shared.log("SGDebug", "Outgoing translation language cache cleanup succesfull")
+                RGLogger.shared.log("RGDebug", "Outgoing translation language cache cleanup succesfull")
                 presentControllerImpl?(okUndoController("OK: Outgoing translation language cache cleaned", presentationData), nil)
         case .flexing:
             #if DEBUG
@@ -161,34 +157,7 @@ public func rgDebugController(context: AccountContext) -> ViewController {
                 nil)
             }
             #endif
-        case .restorePurchases:
-            presentControllerImpl?(UndoOverlayController(
-                presentationData: presentationData,
-                content: .info(title: nil, text: "PayWall.Button.Restoring".i18n(args: context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode), timeout: nil, customUndoText: nil),
-                elevatedLayout: false,
-                action: { _ in return false }
-            ),
-            nil)
-            context.sharedContext.RGIAP?.restorePurchases {}
-        case .setIAP:
-            #if DEBUG
-            #endif
-        case .resetIAP:
-            let updateSettingsSignal = updateRGStatusInteractively(accountManager: context.sharedContext.accountManager, { status in
-                var status = status
-                status.status = RGStatus.default.status
-                RGSimpleSettings.shared.primaryUserId = ""
-                return status
-            })
-            let _ = (updateSettingsSignal |> deliverOnMainQueue).start(next: {
-                presentControllerImpl?(UndoOverlayController(
-                    presentationData: presentationData,
-                    content: .info(title: nil, text: "Status reset completed. You can now restore purchases.", timeout: nil, customUndoText: nil),
-                    elevatedLayout: false,
-                    action: { _ in return false }
-                ),
-                nil)
-            })
+
         }
     })
     

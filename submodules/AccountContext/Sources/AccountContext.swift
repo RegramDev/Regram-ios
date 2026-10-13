@@ -1,5 +1,4 @@
 import RGSimpleSettings
-import RGIAP
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -1424,12 +1423,9 @@ public protocol SharedAccountContext: AnyObject {
     var currentAutodownloadSettings: Atomic<AutodownloadSettings> { get }
     var immediateExperimentalUISettings: ExperimentalUISettings { get }
     // MARK: Regram
-    var immediateRGStatus: RGStatus { get }
-    var RGIAP: RGIAPManager? { get }
     func makeRGProController(context: AccountContext) -> ViewController
     // MARK: Regram — preserve the query when jumping from the shared settings search.
     func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController
-    func makeRGPayWallController(context: AccountContext) -> ViewController?
     func makeRGUpdateIOSController() -> ViewController
     // MARK: Regram — recently opened chats (RGProUI's rgRecentChatsController).
     func makeRGRecentChatsController(context: AccountContext) -> ViewController

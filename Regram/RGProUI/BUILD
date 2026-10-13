@@ -14,6 +14,7 @@ swift_library(
         "//Regram/RGItemListUI:RGItemListUI",
         "//Regram/RGLogging:RGLogging",
         "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Regram/RGSettingsUI:RGSettingsUI",
         "//Regram/RGStrings:RGStrings",
         "//Regram/RGAPI:RGAPI",
         "//Regram/RGAPIToken:RGAPIToken",

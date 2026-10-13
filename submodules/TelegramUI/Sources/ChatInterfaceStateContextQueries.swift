@@ -1,3 +1,7 @@
+// MARK: Regram
+import RGLinkMetadata
+// MARK: Regram
+import RGSimpleSettings
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -553,6 +557,8 @@ func detectUrls(_ inputText: NSAttributedString?) -> [String] {
 
 struct UrlPreviewState {
     var detectedUrls: [String]
+    // MARK: Regram — rules and provider changes are part of the preview query's identity.
+    var effectiveUrls: [String] = []
 }
 
 func urlPreviewStateForInputText(_ inputText: NSAttributedString?, context: AccountContext, currentQuery: UrlPreviewState?, forPeerId: EnginePeer.Id?) -> (UrlPreviewState?, Signal<(TelegramMediaWebpage?) -> (TelegramMediaWebpage, String)?, NoError>)? {
@@ -565,15 +571,28 @@ func urlPreviewStateForInputText(_ inputText: NSAttributedString?, context: Acco
     }
     if let _ = dataDetector {
         let detectedUrls = detectUrls(inputText)
-        if detectedUrls != (currentQuery?.detectedUrls ?? []) {
+        // MARK: Regram — only preview requests are rewritten; message text stays unchanged.
+        if RGSimpleSettings.shared.fixLinkPreviews, !detectedUrls.isEmpty {
+            RGLinkMetadata.shared.refreshIfNeeded(engine: context.engine)
+        }
+        let effectiveUrls = detectedUrls.map { RGLinkMetadata.shared.previewUrl($0) }
+        if detectedUrls != (currentQuery?.detectedUrls ?? []) || effectiveUrls != (currentQuery?.effectiveUrls ?? []) {
             if !detectedUrls.isEmpty {
-                return (UrlPreviewState(detectedUrls: detectedUrls), webpagePreview(account: context.account, urls: detectedUrls, forPeerId: forPeerId)
+                return (UrlPreviewState(detectedUrls: detectedUrls, effectiveUrls: effectiveUrls), webpagePreview(account: context.account, urls: effectiveUrls, forPeerId: forPeerId)
                 |> mapToSignal { result -> Signal<(TelegramMediaWebpage, String)?, NoError> in
                     guard case let .result(webpageResult) = result else {
                         return .complete()
                     }
                     if let webpageResult {
-                        return .single((webpageResult.webpage, webpageResult.sourceUrl))
+                        let originalUrl: String
+                        if let index = effectiveUrls.firstIndex(of: webpageResult.sourceUrl) {
+                            originalUrl = detectedUrls[index]
+                        } else if effectiveUrls.count == 1, effectiveUrls[0] != detectedUrls[0] {
+                            originalUrl = detectedUrls[0]
+                        } else {
+                            originalUrl = webpageResult.sourceUrl
+                        }
+                        return .single((webpageResult.webpage, originalUrl))
                     } else {
                         return .single(nil)
                     }

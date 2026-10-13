@@ -1,0 +1,701 @@
+"Settings.ContentSettings" = "敏感內容設定";
+
+"Settings.Tabs.Header" = "頁籤";
+"Settings.Tabs.HideTabBar" = "隱藏導航列";
+"Settings.Tabs.ShowContacts" = "顯示聯絡人頁籤";
+"Settings.Tabs.ShowNames" = "顯示頁籤名稱";
+
+"Settings.Folders.BottomTab" = "底部頁籤";
+"Settings.Folders.BottomTabStyle" = "底部對話盒樣式";
+
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.ios" = "iOS";
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.telegram" = "Telegram";
+/* Example: Hide "All Chats" */
+"Settings.Folders.AllChatsHidden" = "隱藏 \"%@\"";
+"Settings.Folders.RememberLast" = "開啟最後瀏覽的對話盒";
+"Settings.Folders.RememberLast.Notice" = "Regram 會在重啟或帳號切換後開啟最後瀏覽的對話盒";
+
+"Settings.Folders.CompactNames" = "縮小間距";
+"Settings.Folders.AllChatsTitle" = "\"所有對話\"標題";
+"Settings.Folders.AllChatsTitle.short" = "短";
+"Settings.Folders.AllChatsTitle.long" = "長";
+/* Default behaviour for All Chats Folder Title. "All Chats" title: Default */
+"Settings.Folders.AllChatsTitle.none" = "預設";
+
+
+"Settings.ChatList.Header" = "對話列表";
+"Settings.CompactChatList" = "緊湊型對話列表";
+"Settings.ChatList.Lines" = "訊息預覽行數";
+"Settings.ChatList.Lines.1" = "1 行";
+"Settings.ChatList.Lines.2" = "2 行";
+"Settings.ChatList.Lines.3" = "3 行";
+"Mention.UserIdLink" = "按暱稱提及";
+"Mention.UserIdLink.Notice" = "長按頭像提及時，插入對方的完整暱稱作為提及，而不是 @使用者名稱。點按可開啟對方資料。";
+"Settings.Profiles.DefaultTabGroupsInCommon" = "預設顯示共同群組";
+"Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "開啟有共同群組的使用者或機器人時，優先顯示「群組」標籤。";
+"Settings.Profiles.Header" = "配置文件";
+
+"Settings.Stories.Hide" = "隱藏限時動態";
+"Settings.Stories.WarnBeforeView" = "瀏覽前確認";
+"Settings.Stories.DisableSwipeToRecord" = "停用滑動錄製";
+
+"Settings.Translation.QuickTranslateButton" = "快速翻譯按鈕";
+
+"Stories.Warning.Author" = "來自";
+"Stories.Warning.ViewStory" = "查看限時動態？";
+/* Author will be able to see that you viewed their Story */
+"Stories.Warning.Notice" = "%@ 將會看到您瀏覽了限時動態";
+"Stories.Warning.NoticeStealth" = "%@ 將無法看到您瀏覽了限時動態";
+
+"Settings.Photo.Quality.Notice" = "傳送影像畫質";
+"Settings.Photo.SendLarge" = "傳送大尺寸影像";
+"Settings.Photo.SendLarge.Notice" = "將壓縮影像的尺寸限制增加到 2560px";
+
+"Settings.VideoNotes.Header" = "圓形影片";
+"Settings.VideoNotes.StartWithRearCam" = "預設使用後置鏡頭";
+
+"Settings.CustomColors.Header" = "帳號顏色";
+"Settings.CustomColors.Saturation" = "飽和度";
+/* Make sure to escape Percentage sign % */
+"Settings.CustomColors.Saturation.Notice" = "將飽和度設為 0%% 以停用帳戶顏色";
+
+"Settings.UploadsBoost" = "上傳加速";
+"Settings.DownloadsBoost" = "下載加速";
+"Settings.MediaLoadingExperiment" = "媒體載入最佳化（實驗）";
+"Settings.MediaLoadingExperiment.Notice" = "提前準備聊天中的照片和影片，減少來回捲動的等待。關閉可與原有方式比較。";
+"Settings.DownloadsBoost.Notice" = "開啟後增加下載並行數與檔案區塊大小。";
+"Settings.DownloadsBoost.none" = "已停用";
+
+"Settings.ShowProfileID" = "顯示用戶 UID";
+"Settings.ShowDC" = "顯示資料中心 (DC)";
+"Settings.ShowCreationDate" = "顯示對話建立日期";
+"Settings.ShowCreationDate.Notice" = "某些對話可能會缺少建立日期";
+
+"Settings.ShowRegDate" = "顯示註冊日期";
+"Settings.ShowRegDate.Notice" = "大約註冊日期";
+
+"Settings.SendWithReturnKey" = "使用「換行」鍵傳送";
+"Settings.HidePhoneInSettingsUI" = "在設定頁中隱藏電話號碼";
+"Settings.HidePhoneInSettingsUI.Notice" = "您的電話在「設定頁」中不再顯示，可到「隱私與安全性」設定來對其他人隱藏。";
+
+"PasscodeSettings.AutoLock.InFiveSeconds" = "離開5秒後";
+
+"ProxySettings.UseSystemDNS" = "使用系統 DNS";
+"ProxySettings.UseSystemDNS.Notice" = "如果您無法使用 Google DNS，請使用系統 DNS";
+
+/* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
+"Common.NoTelegramPremiumNeeded" = "您 **不需要** %@！";
+"Common.RestartRequired" = "需要重新啟動";
+"Common.RestartNow" = "立即重啟";
+"Common.OpenTelegram" = "開啟 Telegram";
+"Common.UseTelegramForPremium" = "要獲得 Telegram Premium，您必須使用官方 Telegram App。一旦您擁有 Telegram Premium，其所有功能都將在 Regram 中可用。";
+"Common.UpdateOS" = "需要 iOS 更新";
+
+"Message.HoldToShowOrReport" = "按住以顯示訊息或報告";
+
+"Auth.AccountBackupReminder" = "請確保您有備用訪問方法。保留用於接收簡訊的 SIM 卡或其他登入狀態以避免被鎖定。";
+"Auth.UnofficialAppCodeTitle" = "您只能透過官方 App 取得驗證碼";
+
+"Settings.SmallReactions" = "縮小回應圖示";
+"Settings.HideReactions" = "隱藏回應";
+
+"ContextMenu.SaveToCloud" = "轉傳到儲存的訊息";
+"ContextMenu.SelectFromUser" = "選取此人的所有訊息";
+
+"Settings.ContextMenu" = "內容選單";
+"Settings.ContextMenu.Customize" = "自訂選單";
+"Settings.ContextMenu.Notice" = "關閉後隱藏，長按拖動排序。這裡只列出 Regram 的常用操作，以及目前帳號實際出現過的其他選單項目，不包含診斷項目或空白佔位。";
+
+
+"Settings.ChatSwipeOptions" = "對話列表滑動選項";
+"Settings.DeleteChatSwipeOption" = "滑動刪除聊天記錄";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextChannelSameLocationSwipeProgress */
+"Settings.PullToNextChannel" = "頻道瀑布流";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextUnreadTopicSwipeProgress */
+"Settings.PullToNextTopic" = "下拉以查看下一話題";
+"Settings.GalleryCamera" = "相簿圖庫";
+"Settings.GalleryCameraPreview" = "照片預覽";
+/* "Send Message As..." button */
+"Settings.SendAsButton" = "\"%@\" 按鈕";
+"Settings.SnapDeletionEffect" = "訊息刪除效果";
+
+"Settings.Stickers.Size" = "尺寸";
+"Settings.Stickers.Timestamp" = "顯示時間戳";
+"Settings.Stickers.RecentLimit" = "最近貼圖數量上限";
+
+"Settings.RecordingButton" = "錄音按鈕";
+
+"Settings.DefaultEmojisFirst" = "優先顯示標準表情符號";
+"Settings.DefaultEmojisFirst.Notice" = "在表情符號鍵盤中，先顯示標準表情符號，再顯示 Premium 的";
+
+/* Date when chat was created. "created: 24 May 2016" */
+"Chat.Created" = "建立於：%@";
+
+/* Date when user joined the chat. "Joined Regram Chat" */
+"Chat.JoinedDateTitle" = "已加入 %@";
+/* Date when user registered in Telegram. Will be shown like "Registered\n24 May 2016" */
+"Chat.RegDate" = "註冊日期";
+
+"Settings.messageDoubleTapActionOutgoingEdit" = "雙擊以編輯訊息";
+
+"Settings.wideChannelPosts" = "在頻道中以更寬的樣式顯示訊息";
+"Settings.ForceEmojiTab" = "預設表情符號鍵盤";
+
+"Settings.forceBuiltInMic" = "強制使用裝置麥克風";
+"Settings.forceBuiltInMic.Notice" = "如果啟用，應用程式將只會使用設備麥克風。";
+
+"Settings.showChannelBottomButton" = "頻道底部面板";
+
+"Settings.secondsInMessages" = "消息中的秒數";
+
+"Settings.CallConfirmation" = "撥號確認";
+"Settings.CallConfirmation.Notice" = "Regram 在撥打電話之前會要求您確認。";
+
+/* Confirmation before making a Call */
+"CallConfirmation.Audio.Title" = "打電話？";
+
+/* Confirmation before making a Video Call */
+"CallConfirmation.Video.Title" = "進行視訊通話？";
+
+"MutualContact.Label" = "雙向聯絡人";
+
+"MessageFilter.Title" = "訊息過濾器";
+"MessageFilter.SubTitle" = "移除干擾並直接隱藏符合以下規則的訊息。
+比對不區分大小寫。";
+"MessageFilter.Keywords.Title" = "關鍵字";
+"MessageFilter.InputPlaceholder" = "輸入關鍵字";
+
+"InputToolbar.Title" = "格式化面板";
+
+"Notifications.MentionsAndReplies.Title" = "@提及和回覆";
+"Notifications.MentionsAndReplies.value.default" = "預設";
+"Notifications.MentionsAndReplies.value.silenced" = "靜音";
+"Notifications.MentionsAndReplies.value.disabled" = "已停用";
+"Notifications.PinnedMessages.Title" = "置頂訊息";
+"Notifications.PinnedMessages.value.default" = "預設";
+"Notifications.PinnedMessages.value.silenced" = "靜音";
+"Notifications.PinnedMessages.value.disabled" = "已停用";
+
+
+"PayWall.Text" = "以 Pro 功能強化";
+
+"PayWall.MessageFilter.Title" = "訊息過濾器";
+"PayWall.MessageFilter.Notice" = "隱藏 SPAM、促銷和煩人的訊息。";
+"PayWall.MessageFilter.Description" = "建立一個不想看到的關鍵字列表，Regram 將隱藏包含這些關鍵字的訊息。";
+
+"PayWall.Notifications.Title" = "禁用 @提及和回覆";
+"PayWall.Notifications.Notice" = "隱藏或靜音不重要的通知。";
+"PayWall.Notifications.Description" = "當你需要一些心情時，不再有固定的訊息或 @提及。";
+
+"PayWall.InputToolbar.Title" = "格式化面板";
+"PayWall.InputToolbar.Notice" = "只需輕點即可節省時間格式化訊息。";
+"PayWall.InputToolbar.Description" = "像專業人士一樣應用或清除格式化，或插入新行。";
+
+"PayWall.AppIcons.Title" = "獨特的應用圖標";
+"PayWall.AppIcons.Notice" = "自訂 Regram 在您的主屏幕上的外觀。";
+
+"PayWall.About.Title" = "關於 Regram Pro";
+"PayWall.About.Notice" = "Regram 免費版本提供比 Telegram 應用更多的功能和改進。創新和保持 Regram 與 Telegram 更新同步是一項巨大的努力，需要大量的時間和昂貴的硬體。\n\nRegram 是一個尊重您隱私且不會打擾您廣告的開源應用。訂閱 Regram Pro，您可以訪問獨家功能並支持獨立開發者。";
+/* DO NOT TRANSLATE */
+"PayWall.About.Signature" = "@Kylmakalle";
+/* DO NOT TRANSLATE */
+"PayWall.About.SignatureURL" = "https://t.me/Kylmakalle";
+
+"PayWall.ProSupport.Title" = "支付問題？";
+"PayWall.ProSupport.Contact" = "不用擔心！";
+
+"PayWall.RestorePurchases" = "恢復購買";
+"PayWall.Terms" = "服務條款";
+"PayWall.Privacy" = "隱私政策";
+"PayWall.Notice.Markdown" = "通過訂閱 Regram Pro，您同意[Regram 服務條款](%1$@)和[隱私政策](%2$@)。";
+"PayWall.Notice.Raw" = "通過訂閱 Regram Pro，您同意 Regram 服務條款和隱私政策。";
+
+"PayWall.Button.OpenPro" = "使用 Pro 功能";
+"PayWall.Button.Purchasing" = "購買中……";
+"PayWall.Button.Restoring" = "恢復購買中……";
+"PayWall.Button.Validating" = "驗證購買中……";
+"PayWall.Button.PaymentsUnavailable" = "付款不可用";
+"PayWall.Button.BuyInAppStore" = "訂閱 App Store 版本";
+"PayWall.Button.Subscribe" = "訂閱 %@ / 月";
+"PayWall.Button.ContactingAppStore" = "正在聯繫 App Store……";
+
+"Paywall.Error.Title" = "錯誤";
+"PayWall.ValidationError" = "驗證錯誤";
+"PayWall.ValidationError.TryAgain" = "在購買驗證過程中出錯。別擔心！稍後再試恢復購買。";
+"PayWall.ValidationError.Expired" = "您的訂閱已過期。請重新訂閱以恢復訪問 Pro 功能。";
+
+
+// MARK: Ghost Mode & Anti-deletion
+"AntiFeatures.Header" = "防刪除與限制解除";
+"AntiFeatures.Notice" = "僅影響本機保留的內容。你自己刪除的訊息仍會被刪除。";
+"AntiFeatures.Revoke" = "保留被收回的訊息";
+"AntiFeatures.AutoDelete" = "忽略自動刪除計時";
+"AntiFeatures.SelfDestruct" = "忽略閱後即焚計時";
+"AntiFeatures.Screenshot" = "截圖時不通知對方";
+"AntiFeatures.SaveProtected" = "允許儲存受保護內容";
+"AntiFeatures.SaveProtectedStories" = "允許儲存受保護的限時動態";
+"AntiFeatures.DisableAds" = "隱藏贊助訊息";
+"MessageFilter.InputPlaceholderRegex" = "輸入正規表達式";
+"MessageFilter.Regex" = "正規表達式";
+"MessageFilter.Regex.Notice" = "比對不區分大小寫。正規表達式使用 ICU 語法，無法新增無效的表達式。";
+"MessageFilter.Export" = "匯出規則";
+"MessageFilter.Import" = "匯入規則";
+"MessageFilter.Transfer" = "匯出 / 匯入";
+"MessageFilter.Add" = "加入關鍵字";
+"MessageFilter.Rules.Notice" = "點擊規則可將其限定於指定對話。長按可查看更多選項。";
+"MessageFilter.Rule.Regex" = "正規";
+"MessageFilter.Rule.AllChats" = "所有對話";
+"MessageFilter.Rule.SelectedChats" = "指定對話";
+"MessageFilter.Rule.InvalidRegex" = "表達式無效";
+"MessageFilter.Rule.MakeRegex" = "以正規表達式比對";
+"MessageFilter.Rule.MakePlain" = "以普通文字比對";
+"MessageFilter.Rule.Delete" = "刪除";
+"MessageFilter.SelectChats.Title" = "在這些對話中過濾";
+"MessageFilter.AddToFilter" = "加入過濾器";
+"MessageFilter.Added" = "已加入訊息過濾器。";
+"MessageFilter.AlreadyExists" = "該內容已在訊息過濾器中。";
+"MessageFilter.Imported" = "已將 %@ 條規則匯入訊息過濾器。";
+"MessageFilter.ImportFailed" = "無法從此檔案讀取訊息過濾器規則。";
+"BlockUser.Block" = "隱藏此使用者的訊息";
+"BlockUser.Notice" = "此使用者或機器人的訊息會在所有對話中從本機隱藏，對方不會收到通知。";
+"HiddenUsers.Title" = "已封鎖使用者";
+"HiddenUsers.Notice" = "這些使用者與機器人的訊息會在所有對話中隱藏。左滑可取消封鎖,點擊可查看資料。";
+"HiddenUsers.Empty" = "尚未封鎖任何使用者。打開使用者或機器人的資料頁,開啟「隱藏此使用者的訊息」即可。";
+"MessageFilter.CopyAsKeyword" = "複製並加入過濾器";
+"Repeat.WithReply" = "複讀";
+"Repeat.Plain" = "無引用複讀";
+"Repeat.ForwardNoQuote" = "無引用轉發";
+
+"Ghost.Header" = "幽靈模式";
+"Ghost.Notice" = "讓本機不再回報你瀏覽了哪些限時動態、你的在線狀態和輸入狀態。你這邊不受影響：限時動態照常消除圓環。傳送訊息仍會讓你顯示在線 —— 這是伺服器決定的,App 無法繞過。";
+"Ghost.DontReadStories" = "不回報限時動態瀏覽";
+"Ghost.DontSendOnline" = "始終不顯示在線";
+"Ghost.DontSendTyping" = "不傳送輸入狀態";
+"Pangu.Title" = "盤古之白";
+"Pangu.Notice" = "傳送訊息時,在中日韓文字與相鄰的拉丁字母或數字之間插入空格。程式碼區塊與引用區塊不會被改動。";
+"OutgoingFormatting.Title" = "傳送訊息預設格式";
+"OutgoingFormatting.none" = "關閉";
+"OutgoingFormatting.bold" = "粗體";
+"OutgoingFormatting.italic" = "斜體";
+"OutgoingFormatting.underline" = "底線";
+"OutgoingFormatting.strikethrough" = "刪除線";
+"OutgoingFormatting.spoiler" = "暴雷";
+"OutgoingFormatting.Notice" = "傳送新文字訊息時自動套用所選格式，保留手動設定的格式；程式碼、引用和自訂表情不受影響。";
+
+/* Per-chat anti-revoke */
+"AntiRevoke.PerChat.Title" = "防收回";
+"AntiRevoke.PerChat.Notice" = "開啟後，此對話中被收回的訊息會保留下來，並標記為已刪除。";
+"AntiRevoke.PerChat.AllChats" = "已對所有對話開啟防收回，可在 Regram Pro →「防刪除與限制解除」中變更。";
+"AntiRevoke.Chats.Title" = "防收回的對話";
+"AntiRevoke.Chats.Notice" = "這些對話中被收回的訊息會保留下來，並標記為已刪除。左滑可移除，點擊可查看資料。";
+"AntiRevoke.Chats.Empty" = "尚未加入任何對話。打開對話的資料頁，開啟「防收回」即可。";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "預設影片畫質";
+"Settings.DefaultVideoQuality.automatic" = "自動";
+"Settings.DefaultVideoQuality.highest" = "最高可用畫質";
+"Settings.DefaultVideoQuality.lowest" = "最低可用畫質";
+
+// MARK: Regram — Telegram 13 appearance controls.
+"Settings.Tabs.Width" = "底欄寬度";
+"Settings.Tabs.Width.Preview" = "效果預覽";
+"Settings.Tabs.Width.Automatic" = "自動寬度";
+"Settings.Tabs.Width.Actual" = "目前寬度：%@ pt";
+"Settings.Tabs.Width.Notice" = "可調整為可用寬度的 50–100%（最高 500 pt）。底欄會為各按鈕保留足夠的點擊空間。調整立即生效。";
+"Settings.Tabs.Width.Hidden" = "目前已隱藏底欄，請關閉「隱藏底欄」以顯示。";
+"Settings.Tabs.Width.Reset" = "恢復自動寬度";
+"Fonts.Title" = "更改字型";
+"Fonts.System" = "系統預設";
+"Fonts.Rounded" = "系統圓體";
+"Fonts.Serif" = "系統襯線體";
+"Fonts.Preview" = "字型預覽";
+"Fonts.Sample" = "聊天文字 · 中文字型自動回退";
+"Fonts.Areas" = "套用位置";
+"Fonts.Messages" = "聊天內容";
+"Fonts.Interface" = "主要介面文字";
+"Fonts.Areas.Notice" = "勾選的位置會立即更新。程式碼、圖示和大表情保留各自的字型。";
+"Fonts.Selected" = "已勾選";
+"Fonts.Unselected" = "未勾選";
+"Fonts.NoArea" = "勾選套用位置後，所選字型才會生效。";
+"Fonts.Family" = "選擇字型";
+"Fonts.Fallback" = "所選字型未包含的字元使用系統後備字型。程式碼和大表情保留各自的字型。";
+"Fonts.Reset" = "恢復系統預設字型";
+
+"Fonts.More.Notice" = "Poppins 與 Lora 來自 Anthropic 官方品牌風格範例。IBM Plex Sans SC 與 Noto Serif SC 包含中文字形，斜體採用傾斜顯示。";
+
+"Fonts.Latin.Title" = "英文字型";
+
+"Fonts.Chinese.Title" = "中文字型";
+
+"Fonts.Chinese.System" = "系統中文字型";
+
+"Fonts.Chinese.Sample" = "中文字型範例：你好，世界。";
+
+"Fonts.Scripts.Notice" = "英文字母、數字和英文標點使用英文字型；漢字及中文標點使用中文字型。兩項選擇都套用到勾選的位置。";
+
+"Fonts.Cloud.Notice" = "字体按需从官方来源下载，下载完成后可离线使用。首次使用需要网络。";
+"Fonts.Import" = "从文件导入字体";
+"Fonts.Imported" = "已导入";
+"Fonts.Import.Notice" = "支援不超過 64 MB 的 TTF、OTF 和 TTC。TTC 內所有支援的字型會加入字型庫，可分別選擇中英文字型。";
+"Fonts.Cancel" = "取消下载";
+"Fonts.Download.Error" = "下载失败，请检查网络后重试。当前字体未更改。";
+"Fonts.Import.Error" = "无法导入该字体。请选择有效的 TTF、OTF 或 TTC 文件，大小不超过 64 MB。";
+"Fonts.Error.Title" = "字体";
+"Fonts.OK" = "好";
+
+"MessageFilter.Rule.Disabled" = "已停用";
+"MessageFilter.Rule.Disable" = "停用規則";
+"MessageFilter.Rule.Enable" = "啟用規則";
+"MessageFilter.Rule.Keep" = "保留匹配訊息（白名單）";
+"MessageFilter.Rule.Hide" = "隱藏匹配訊息";
+"MessageFilter.Test.Title" = "規則試比對";
+"MessageFilter.Test.Run" = "開始試比對";
+"MessageFilter.Test.Matched" = "符合";
+"MessageFilter.Test.NotMatched" = "不符合";
+"MessageFilter.Test.TimedOut" = "已中止：正則執行逾時";
+"MessageFilter.Test.Notice" = "僅測試目前規則，不會隱藏或傳送輸入文字。此處不限定對話範圍；實際使用時以規則範圍為準。白名單優先於內容隱藏規則，已封鎖使用者仍會隱藏。耗時過長的正則會中止並保留訊息。";
+"Fonts.Rename" = "重新命名字型";
+"Fonts.Rename.Notice" = "為字型設定一個不超過 80 字元的名稱。";
+"Fonts.Delete" = "刪除字型";
+"Fonts.Delete.Notice" = "從字型庫刪除此字型？正在使用的字型會恢復為系統字型，同一 TTC 中的其他字型仍會保留。";
+"Fonts.Management.Error" = "無法更新字型儲存，請重試。";
+"Fonts.Storage" = "字型儲存";
+"Fonts.Storage.Downloads" = "已下載";
+"Fonts.ClearDownloads" = "清理已下載字型";
+"Fonts.ClearDownloads.Notice" = "清理已下載字型，並將內建字型選擇恢復為系統字型？自行匯入的字型檔案會保留。";
+"Settings.Search.Pro" = "Regram Pro 中的相關設定";
+"Fonts.Preview.Download" = "下載後顯示此字型預覽";
+
+"Backup.Title" = "設定備份";
+"Backup.Export" = "匯出所選設定";
+"Backup.Import" = "匯入設定檔案";
+"Backup.Notice" = "備份 Regram 設定、規則、字型選擇及相關導覽選項，不包含登入工作階段和字型檔案。匯入後先預覽，再選擇還原。";
+"Backup.Categories" = "設定分類";
+"Backup.Category.appearance" = "外觀與導覽";
+"Backup.Category.messages" = "訊息與輸入";
+"Backup.Category.privacy" = "隱私與過濾";
+"Backup.Category.translation" = "翻譯與轉寫";
+"Backup.Category.media" = "媒體與傳輸";
+"Backup.Category.notifications" = "通知";
+"Backup.Preview" = "匯入預覽";
+"Backup.Items" = "項設定已選取";
+"Backup.Fonts.Notice" = "字型檔案需要另外下載或匯入，缺失時使用系統字型回退。依帳號／對話儲存的規則會保留原有 ID。";
+"Backup.Restore" = "還原所選設定";
+"Backup.CancelPreview" = "取消預覽";
+"Backup.Reset" = "重設所選分類";
+"Backup.Reset.Notice" = "所選分類恢復預設值，不會清除聊天訊息或登入工作階段。";
+"Backup.Error" = "無法匯入或匯出設定";
+"Backup.Error.Notice" = "請選擇不超過 2 MB 的有效 Regram 設定 JSON 檔案。不支援的版本、錯誤類型或超出範圍的值會被拒絕。";
+"Backup.Restore.Notice" = "使用預覽中的設定覆蓋所選分類？其他分類會保留。";
+"Backup.Done" = "設定已更新，重新啟動應用程式可重新整理所有已開啟的頁面。";
+"ChatPreferences.Title" = "對話個別設定";
+"ChatPreferences.SelectChat" = "選擇對話";
+"ChatPreferences.Notice" = "僅對目前帳號的所選對話生效，包含該對話的主題。傳送時明確選擇無格式仍有最高優先順序。";
+"ChatPreferences.Inherit" = "依照全域設定";
+"ChatPreferences.On" = "開啟";
+"ChatPreferences.Off" = "關閉";
+"ChatPreferences.Reset" = "恢復依照全域設定";
+"ChatPreferences.Reveal" = "暫時顯示過濾訊息（5 分鐘）";
+"ChatPreferences.Reveal.End" = "立即恢復過濾";
+"ChatPreferences.Reveal.Notice" = "暫時在此對話顯示關鍵字過濾及已隱藏傳送者的訊息。規則會保留並自動恢復，通知過濾不受影響。";
+"Revoked.Title" = "已保留的撤回訊息";
+"Revoked.Notice" = "選擇對話查找本機已保留的撤回訊息，分批讀取本機記錄。載入更多可繼續查找舊記錄，日期為原訊息日期。";
+"Revoked.Search" = "搜尋已載入訊息";
+"Revoked.Media" = "媒體或服務訊息";
+"Revoked.Scanned" = "則本機訊息已檢查";
+"Revoked.LoadMore" = "載入更多本機記錄";
+"Revoked.Empty" = "已載入記錄中沒有符合的撤回訊息。";
+"Revoked.ClearLoaded" = "清理已載入的撤回訊息";
+"Revoked.Clear.Notice" = "永久清除本機已載入的撤回訊息？只刪除仍帶撤回標記的記錄，不影響其他訊息或其他使用者。";
+"Diagnostics.Title" = "效能與傳輸";
+"Diagnostics.Download" = "Telegram 媒體下載";
+"Diagnostics.Download.Notice" = "統計本次啟動以來各帳號收到的媒體資料，包含重新下載。速度為最近 3 秒平均值，不包含快取、本機檔案、字型下載和通訊協定開銷。";
+"Diagnostics.Speed" = "傳輸速度（3 秒平均）";
+"Diagnostics.Received" = "本次已接收";
+"Diagnostics.Boost.On" = "下載加速：已開啟";
+"Diagnostics.Boost.Off" = "下載加速：已關閉";
+"Diagnostics.Filter" = "目前過濾規則";
+"Diagnostics.Filter.Notice" = "使用 100 則本機合成訊息測試目前規則，不限定對話，顯示每則訊息的平均比對耗時。不會傳送訊息，也不代表捲動影格率。";
+"Diagnostics.Filter.Run" = "測試 100 則訊息";
+"Diagnostics.Rules" = "條已設定規則";
+"Diagnostics.Media.Notice" = "媒體載入依照 Telegram 自動下載與網路限制，可切換實驗設定比較實際傳輸表現。";
+"Diagnostics.Media.On" = "媒體載入實驗：已開啟";
+"Diagnostics.Media.Off" = "媒體載入實驗：已關閉";
+"Notifications.ContentFilter" = "依訊息規則過濾通知";
+"Notifications.ContentFilter.Notice" = "通知訊息在本機成功解析後套用關鍵字、白名單及隱藏傳送者規則。需要可用的共享 App Group，未能解析的推播無法可靠比對。";
+"Notifications.ContentFilter.Unavailable" = "目前簽名沒有可用的共享偏好容器。簽名時啟用有效 App Group 後才能使用通知過濾。";
+
+"Diagnostics.Filter.Average" = "平均每則耗時";
+
+"Settings.UnlimitedPinnedChats" = "不限置頂數量";
+"Settings.UnlimitedPinnedChats.Notice" = "Telegram 只同步帳戶上限內的置頂（一般帳戶 5 個，Premium 10 個）。排在最前的置頂會同步，超出部分只保存在本機。";
+"AntiFeatures.EditHistory" = "保存訊息編輯紀錄";
+"EditHistory.Title" = "編輯紀錄";
+"EditHistory.Notice" = "本機收到編輯時記錄的舊版本。開啟前的編輯，或本機紀錄被整段重新載入取代時的編輯，無法找回。長按某個版本可複製。";
+"EditHistory.Current" = "目前版本";
+"EditHistory.Original" = "原始版本";
+"EditHistory.Copy" = "複製";
+"EditHistory.EmptyText" = "（無文字）";
+"RecentChats.Title" = "最近對話";
+"RecentChats.Notice" = "本機最近開啟過的對話，最新的在前。在聊天中長按返回按鈕也可以快速跳轉。左滑可移除。";
+"RecentChats.Empty" = "暫無最近對話。";
+"RecentChats.Clear" = "清空";
+
+/* MARK: Regram — media information in the photo/video viewer */
+"MediaMetadata.Setting" = "顯示媒體資訊";
+"MediaMetadata.Setting.Notice" = "在圖片和影片檢視器的選單中加入「媒體資訊」，顯示從已下載檔案中讀取的解析度、大小、時長、影格率、位元率和編碼。";
+"MediaMetadata.MenuItem" = "媒體資訊";
+"MediaMetadata.Title" = "媒體資訊";
+"MediaMetadata.Type" = "類型";
+"MediaMetadata.Format" = "格式";
+"MediaMetadata.Resolution" = "解析度";
+"MediaMetadata.FileSize" = "檔案大小";
+"MediaMetadata.Duration" = "時長";
+"MediaMetadata.FrameRate" = "影格率";
+"MediaMetadata.Bitrate" = "位元率";
+"MediaMetadata.Codec" = "編碼";
+"MediaMetadata.AudioCodec" = "音訊編碼";
+"MediaMetadata.Image" = "圖片";
+"MediaMetadata.Video" = "影片";
+"MediaMetadata.Audio" = "音訊";
+"MediaMetadata.Animation" = "動圖";
+"MediaMetadata.File" = "檔案";
+"MediaMetadata.Unknown" = "未知";
+"MediaMetadata.NotDownloaded" = "媒體完整下載後才能顯示部分資訊。";
+
+"JoinFolder.Setting" = "加入群組或頻道後選擇對話盒";
+"JoinFolder.Setting.Notice" = "加入群組或頻道後，Regram 會提示你將其加入某個對話盒。";
+"JoinFolder.Picker.Title" = "將「%@」加入對話盒";
+"JoinFolder.Unavailable" = "無法加入此聊天，對話盒可能已被刪除或已達聊天數量上限。請整理對話盒後再試。";
+"DoubleTap.Action" = "點兩下訊息動作";
+"DoubleTap.WithoutEditPermission" = "無編輯權限的訊息";
+"DoubleTap.Action.sameAsUnified" = "跟隨上一項";
+"DoubleTap.Action.disabled" = "無";
+"DoubleTap.Action.sendReaction" = "傳送回應";
+"DoubleTap.Action.showReactions" = "顯示回應選單";
+"DoubleTap.Action.reply" = "回覆";
+"DoubleTap.Action.repeatMessage" = "複讀";
+"DoubleTap.Action.repeatWithoutQuote" = "無引用複讀";
+"DoubleTap.Action.translate" = "翻譯";
+"DoubleTap.Action.edit" = "編輯";
+"Settings.ShowMessageId" = "顯示訊息 ID";
+"Settings.ShowForwardedMessageDate" = "顯示轉寄訊息的原始時間";
+"QrLogin.Button" = "掃碼登入";
+"QrLogin.Title" = "掃碼登入";
+"QrLogin.Text" = "1. 在已登入的裝置上開啟 Telegram。\n2. 前往 設定 → 裝置 → 連結桌面裝置。\n3. 掃描此 QR 碼即可登入。";
+"QrLogin.Accepted.Title" = "正在登入";
+"QrLogin.Accepted.Text" = "QR 碼已被接受，正在完成登入…";
+"QrLogin.TooManyAttempts" = "嘗試次數過多，稍後將自動重試…";
+
+// Message menu management
+"ContextMenu.saveStickerToCameraRoll" = "儲存貼紙到相簿（PNG/GIF）";
+"ContextMenu.viewAuthorMessages" = "查看此人的所有訊息";
+"ContextMenu.sendMoney" = "傳送資金";
+"ContextMenu.sendLogs" = "傳送日誌";
+"ContextMenu.stopPoll" = "停止投票";
+"ContextMenu.factCheck" = "事實查核";
+"ContextMenu.selectAll" = "選擇全部";
+
+"StickerSave.Saving" = "正在儲存貼紙…";
+"StickerSave.Success" = "貼紙已儲存到相簿";
+"StickerSave.Failed" = "儲存失敗，請檢查相簿權限後重試。";
+"ProfileBadge.developer" = "開發者";
+"ProfileBadge.coreTester" = "核心測試";
+"ProfileBadge.sponsor" = "贊助者";
+"ProfileBadge.developer.Info" = "Regram 開發者。";
+"ProfileBadge.coreTester.Info" = "參與 Regram 核心功能測試。";
+"ProfileBadge.sponsor.Info" = "支持 Regram 開發的贊助者。";
+
+"LLMTranslation.Title" = "LLM 翻譯";
+"LLMTranslation.Format" = "API 格式";
+"LLMTranslation.BaseURL" = "基礎位址";
+"LLMTranslation.Endpoint" = "請求路徑";
+"LLMTranslation.Model" = "模型";
+"LLMTranslation.SelectModel" = "選擇模型";
+"LLMTranslation.FetchModels" = "取得模型清單";
+"LLMTranslation.TestModel" = "測試模型";
+"LLMTranslation.Prompt" = "提示詞";
+"LLMTranslation.UseContext" = "使用聊天上下文";
+"LLMTranslation.Temperature" = "溫度";
+"LLMTranslation.TestSucceeded" = "模型測試成功。";
+"LLMTranslation.KeySaveFailed" = "API Key 無法儲存到鑰匙圈。";
+"LLMTranslation.ConnectionNotice" = "請求傳送到你設定的服務。API Key 只儲存在本機鑰匙圈，不包含在設定備份中。位址留空時使用所選 API 格式的預設位址。";
+"LLMTranslation.PromptNotice" = "@text 表示訊息，@toLang 表示目標語言。開啟上下文後，會傳送同一對話或話題中之前最多 5 條訊息，每條最多 800 字。";
+"Settings.Translation.Backend.googleCN" = "Google CN";
+"Settings.Translation.Backend.microsoft" = "Microsoft";
+"Settings.Translation.Backend.yandex" = "Yandex";
+"Settings.Translation.Backend.transmart" = "騰訊 TranSmart";
+"Settings.Translation.Backend.llm" = "LLM";
+
+"AuthorMessages.Title" = "%1$@ 的訊息";
+"AuthorMessages.Count" = "%1$@ · %2$@ 條訊息";
+"AuthorMessages.Empty" = "此人在目前對話中沒有可查看的訊息。";
+"AuthorMessages.LoadFailed" = "訊息載入失敗，請重試。";
+"AuthorMessages.Retry" = "重試";
+
+"QrLogin.RetryButton" = "重試";
+"QrLogin.LoadFailed" = "無法取得登入 QR 碼，請檢查網路或代理後重試。";
+"QrLogin.RenderFailed" = "QR 碼繪製失敗，請重試。";
+
+// MARK: Regram — QR request diagnostics and certificate updates.
+"QrLogin.RequestTimedOut" = "登入權杖請求逾時，請檢查 Telegram 網路連線或代理後重試。";
+"QrLogin.RequestError" = "Telegram 拒絕了登入權杖請求：%1$@";
+"AppUpdate.Title" = "Regram 更新";
+"AppUpdate.CurrentVersion" = "目前版本";
+"AppUpdate.Check" = "檢查更新";
+"AppUpdate.Checking" = "正在檢查更新…";
+"AppUpdate.Available" = "發現 Regram 新版本";
+"AppUpdate.UpToDate" = "目前已是最新版本";
+"AppUpdate.Downloading" = "正在下載更新…";
+"AppUpdate.Signing" = "正在使用你的憑證簽名…";
+"AppUpdate.PreparingInstall" = "正在準備安裝…";
+"AppUpdate.Ready" = "更新已準備好，可以安裝";
+"AppUpdate.InstallRequested" = "已請求安裝，請確認 iOS 提示，完成後重新開啟 Regram。";
+"AppUpdate.Prepare" = "下載並簽名更新";
+"AppUpdate.Install" = "安裝更新";
+"AppUpdate.Cancel" = "取消";
+"AppUpdate.Later" = "稍後";
+"AppUpdate.AutomaticCheck" = "自動檢查更新";
+"AppUpdate.AutomaticPrepare" = "自動下載並簽名";
+"AppUpdate.AutomaticNotice" = "開啟 Regram 時檢查 GitHub Releases，每六小時最多一次。自動準備會在手機上下載並簽名，LCSign 提供安裝清單，安裝時仍需確認 iOS 提示。";
+"AppUpdate.CertificatePassword" = "P12 憑證密碼";
+"AppUpdate.ImportCertificate" = "匯入 P12 憑證";
+"AppUpdate.ImportProfiles" = "匯入描述檔";
+"AppUpdate.RemoveCertificate" = "移除憑證";
+"AppUpdate.CertificateNotice" = "同時選擇一份 P12／PFX 憑證和描述檔，再輸入密碼，驗證成功後儲存。請使用安裝目前 Regram 的同一份憑證；能從目前應用程式擷取的匹配描述檔會自動儲存。檔案和密碼僅儲存在本機鑰匙圈。";
+"AppUpdate.ServiceNotice" = "使用 LCSign 的 HTTPS 安裝清單服務，簽好的 IPA 透過手機本機連線交給 iOS。憑證、密碼和 IPA 不上傳；節點無法使用時自動切換。";
+"AppUpdate.CertificateImported" = "憑證已儲存在本機，並與目前安裝的應用程式匹配。重新啟動或更新 Regram 後仍可使用，直到你主動移除。";
+"AppUpdate.ProfilesImported" = "已匯入 %1$@ 份描述檔。";
+"AppUpdate.Validating" = "正在檢查憑證和描述檔…";
+"AppUpdate.ProfileMissing" = "沒有可用的描述檔，請匯入安裝目前應用程式和擴充功能時使用的描述檔。";
+"AppUpdate.ProfileUnreadable" = "無法讀取描述檔，請匯入原始 .mobileprovision 檔案。";
+"AppUpdate.ProfileExpired" = "相符的描述檔已過期，請匯入續期後的檔案。";
+"AppUpdate.ProfileCertificateMismatch" = "描述檔不包含安裝目前應用程式時使用的憑證。";
+"AppUpdate.ProfileAppIDMismatch" = "描述檔未涵蓋此應用程式或擴充功能的識別碼。";
+"AppUpdate.ProfileEntitlementMismatch" = "描述檔不允許此應用程式或擴充功能目前使用的某項權限。";
+"AppUpdate.InstalledEntitlementsInvalid" = "無法讀取目前應用程式或擴充功能的簽章權限。";
+"AppUpdate.ProfileLimit" = "最多可儲存 64 份描述檔。";
+"AppUpdate.ProfileBundle" = "應用程式或擴充功能：%1$@";
+"AppUpdate.ProfileEntitlement" = "權限：%1$@";
+"AppUpdate.ReleaseNotes" = "更新說明";
+"AppUpdate.Restoring" = "正在還原已下載的更新…";
+"AppUpdate.SignCached" = "簽署已下載的更新";
+"AppUpdate.InstallReading" = "iOS 正在讀取已簽署的更新套件…";
+"AppUpdate.CacheError" = "無法儲存或驗證更新快取，請重試。";
+"AppUpdate.InstallationNotStarted" = "未偵測到系統讀取更新套件。如果沒有出現 iOS 安裝提示，請再次點擊「安裝更新」，會重用已儲存的簽署套件。";
+"AppUpdate.InstallationRejected" = "iOS 未能開啟安裝連結。簽署套件已儲存，可重試安裝。";
+"AppUpdate.InstallationChannelEnded" = "本機安裝連線已結束。如果更新尚未安裝，可使用已儲存的簽署套件重試。";
+"AppUpdate.SavedProfiles" = "已儲存 %1$@ 份描述檔";
+"AppUpdate.InvalidRelease" = "更新資訊不完整或缺少 SHA-256 校驗值。";
+"AppUpdate.InvalidManifest" = "安裝服務傳回了無效的安裝清單。";
+"AppUpdate.NetworkError" = "連線失敗，請檢查網路和安裝服務後重試。";
+"AppUpdate.HashMismatch" = "下載套件校驗失敗，請重新下載。";
+"AppUpdate.NotConfigured" = "請先匯入安裝目前 Regram 時使用的同一份憑證。";
+"AppUpdate.KeychainError" = "無法將憑證資料儲存到本機鑰匙圈。";
+"AppUpdate.InvalidCertificate" = "P12 憑證、密碼或有效期限不正確。";
+"AppUpdate.CertificateMismatch" = "請使用簽名目前 Regram 安裝版本的同一份憑證。";
+"AppUpdate.InvalidProfile" = "主應用程式和每個擴充功能都需要匹配且未過期的描述檔。";
+"AppUpdate.InvalidArchive" = "無法解壓縮或打包此次更新。";
+"AppUpdate.IdentityMismatch" = "更新版本或擴充功能結構與目前安裝版本不匹配。";
+"AppUpdate.SigningFailed" = "簽名失敗，請檢查憑證和描述檔。";
+"AppUpdate.Cancelled" = "更新已取消";
+
+"AppUpdate.InstallationNode" = "LCSign 安裝節點";
+
+"AppUpdate.AutomaticNode" = "自動";
+
+// MARK: Regram — native certificate import results.
+"AppUpdate.Importing" = "正在匯入並檢查…";
+"AppUpdate.ImportWrongType" = "請選擇對應的 P12／PFX 憑證或 .mobileprovision 描述檔。";
+"AppUpdate.ImportTooLarge" = "選擇的檔案超過 256 KB 匯入限制。";
+"AppUpdate.ImportEmpty" = "選擇的檔案為空。";
+"AppUpdate.ImportUnreadable" = "無法讀取這個檔案，請先將它下載到「檔案」中，再重新選擇。";
+"QrLogin.Retrying" = "正在初始化連線並重試…";
+"QrLogin.Reconnecting" = "正在重新建立待登入連線…";
+"QrLogin.NetworkUnavailable" = "目前沒有可用的網路連線，請恢復網路後重試。";
+"QrLogin.ConnectionTimedOut" = "連線至 Telegram 逾時，請檢查網路或代理後重試。";
+"QrLogin.InitializationTimedOut" = "已連線至 Telegram，但登入連線初始化逾時，正在重試…";
+
+// Regram — speech, link previews and categorized settings.
+"RG.STT.Cancel" = "取消測試";
+"RG.STT.Error.Download" = "無法下載音訊，請重試。";
+"RG.STT.Error.InvalidAudio" = "無法準備有效的音訊檔案。";
+"RG.STT.Error.FileTooLarge" = "音訊超出 25 MB 上傳限制。";
+"RG.STT.Error.Cancelled" = "已取消辨識，點擊可重試。";
+"RG.STT.Error.Timeout" = "辨識逾時，請重試。";
+"RG.STT.Error.InvalidResponse" = "API 回應未包含有效的辨識文字。";
+"RG.STT.Error.NoSpeech" = "未辨識到語音。";
+"RG.STT.Error.InvalidURL" = "請輸入不含使用者名稱和密碼的有效 HTTP 或 HTTPS API 位址。OpenAI 必須使用 HTTPS。";
+"RG.STT.Error.MissingModel" = "請輸入語音轉文字模型名稱。";
+"RG.STT.Error.MissingAPIKey" = "使用 api.openai.com 時必須填寫 API Key。";
+"RG.STT.Error.InvalidLanguage" = "請輸入 zh、en 等兩字母語言代碼，或留空以自動辨識。";
+"RG.STT.Error.Keychain" = "無法存取本機鑰匙圈中的 API Key，請重試儲存。";
+"RG.STTProvider" = "辨識方式";
+"RG.STTProvider.default" = "預設";
+"RG.STTProvider.openAICompatible" = "自訂（OpenAI 相容）";
+"RG.STTSettings" = "自訂 STT API";
+"RG.STTBaseURL" = "Base URL";
+"RG.STTEndpoint" = "Endpoint";
+"RG.STTAPIKey" = "API Key";
+"RG.STTAPIKey.Placeholder" = "OpenAI 必填；本機服務可留空";
+"RG.STTModel" = "模型";
+"RG.STTLanguage" = "辨識語言";
+"RG.STTLanguage.Placeholder" = "自動（留空）、zh、en…";
+"RG.STTSettings.Footer" = "修改後自動儲存。Base URL 和 Endpoint 留空時使用 OpenAI 預設地址；Endpoint 也可以填寫完整 URL。API Key 僅儲存在本機鑰匙圈，不透過 iCloud 同步。切回預設後停止使用自訂服務商。";
+"RG.STTPrompt" = "辨識提示詞";
+"RG.STTPrompt.Placeholder" = "可選的人名、專有名詞等提示";
+"RG.STTPrompt.Footer" = "可填寫人名和專有名詞，協助提高辨識準確度；是否支援取決於所選轉寫模型。";
+"RG.STTTest" = "測試轉寫";
+"RG.STTTesting" = "正在測試轉寫…";
+"RG.STTTest.Footer" = "將內建短音訊上傳至設定的 API，驗證實際轉寫；不使用聊天中的音訊。服務商可能對這次請求收費。";
+"RG.STTTestSucceeded" = "轉寫測試成功";
+"RG.STTTestFailed" = "轉寫測試失敗";
+"RG.STTSaveFailed" = "API Key 未儲存";
+"RG.STTRetranscribe" = "重新辨識";
+"RG.STTCancelTranscription" = "取消辨識";
+"Settings.Category.home" = "設定";
+"Settings.Category.appearance" = "外觀與介面";
+"Settings.Category.folders" = "聊天分組";
+"Settings.Category.chatList" = "聊天列表";
+"Settings.Category.profiles" = "資料與帳號";
+"Settings.Category.stories" = "動態";
+"Settings.Category.translation" = "翻譯";
+"Settings.Category.transcription" = "語音辨識";
+"Settings.Category.messageActions" = "訊息動作與顯示";
+"Settings.Category.media" = "媒體與下載";
+"Settings.Category.photos" = "照片與畫質";
+"Settings.Category.stickers" = "貼圖與表情";
+"Settings.Category.recording" = "語音與圓形影片";
+"Settings.Category.app" = "應用與進階";
+"Settings.ProCategory.messages" = "訊息與輸入";
+"Settings.ProCategory.privacy" = "隱私與過濾";
+"Settings.ProCategory.translation" = "翻譯與語音";
+"Settings.ProCategory.media" = "媒體與連結";
+"Settings.ProCategory.appearance" = "外觀與介面";
+"Settings.ProCategory.notifications" = "通知與提醒";
+"Settings.ProCategory.tools" = "管理與工具";
+"Settings.Frequent" = "常用功能";
+"Settings.ProHub.Notice" = "訊息工具、隱私、翻譯、語音辨識、媒體與備份等功能集中在 Regram Pro。";
+"Settings.Search.AllOptions" = "搜尋全部詳細設定";
+"Settings.MediaLoading.Title" = "下載與播放";
+"Settings.Transcription.Backend.openAICompatible" = "自訂 API（OpenAI 格式）";
+"RG.STTUsage" = "辨識語音訊息或圓形影片後，可在訊息選單中繼續翻譯辨識文字。";
+"LinkPreview.Repair" = "連結預覽修復";
+"LinkPreview.Repair.Notice" = "透過預覽服務修復支援的連結；訊息文字和原連結保持不變。";
+"LinkPreview.Services" = "自訂預覽服務";
+"LinkPreview.InvalidHost" = "請輸入域名，不含協定、路徑或連接埠。無效輸入不會取代已儲存的服務。";
+"Common.Reset" = "重設";
+"AppUpdate.InstallationMethod" = "安裝方式";
+"AppUpdate.MethodCertificate" = "憑證簽名（LCSign）";
+"AppUpdate.MethodTrollStore" = "TrollStore（巨魔）";
+"AppUpdate.DownloadTrollStore" = "下載更新";
+"AppUpdate.AutomaticDownload" = "自動下載更新";
+"AppUpdate.TrollStoreNotice" = "從 GitHub 下載並校驗更新，點擊安裝更新後交給 TrollStore，無需憑證或描述檔。安裝確認遵循 TrollStore 的設定，請先開啟其 URL Scheme 選項。";
+"AppUpdate.TrollStoreReceived" = "更新包已交給 TrollStore，請在其中完成安裝，再開啟 Regram 確認新版本。";
+"AppUpdate.TrollStoreUnavailable" = "無法開啟 TrollStore 安裝器，請確認已安裝 TrollStore 並開啟 URL Scheme 選項。";
+"AppUpdate.TrollStoreNotStarted" = "TrollStore 尚未讀取更新包，請開啟其 URL Scheme 選項後重試。如果開啟的是放大鏡，表示連結未交給 TrollStore。";
+"AppUpdate.ImportConfirm" = "驗證並匯入";
+"AppUpdate.ImportSigningMaterials" = "匯入 P12 與描述檔";
+"AppUpdate.CertificateSelection" = "請同時選擇一份 P12／PFX 憑證及所需的 .mobileprovision 描述檔。憑證只能選擇一份。";

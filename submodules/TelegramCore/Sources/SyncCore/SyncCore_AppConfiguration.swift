@@ -25,8 +25,11 @@ public struct AppConfiguration: Codable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: StringCodingKey.self)
         
-        self.rgWebSettings = (try container.decodeIfPresent(RGWebSettings.self, forKey: "sg")) ?? RGWebSettings.defaultValue
-        self.rgGHSettings = (try container.decodeIfPresent(RGGHSettings.self, forKey: "sggh")) ?? RGGHSettings.defaultValue
+        // MARK: Regram — read previous storage keys; new records use the current names.
+        self.rgWebSettings = try (container.decodeIfPresent(RGWebSettings.self, forKey: "rg")
+            ?? container.decodeIfPresent(RGWebSettings.self, forKey: "sg") ?? RGWebSettings.defaultValue)
+        self.rgGHSettings = try (container.decodeIfPresent(RGGHSettings.self, forKey: "rggh")
+            ?? container.decodeIfPresent(RGGHSettings.self, forKey: "sggh") ?? RGGHSettings.defaultValue)
         self.data = try container.decodeIfPresent(JSON.self, forKey: "data")
         self.hash = (try container.decodeIfPresent(Int32.self, forKey: "storedHash")) ?? 0
     }
@@ -35,8 +38,9 @@ public struct AppConfiguration: Codable, Equatable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: StringCodingKey.self)
         
-        try container.encode(self.rgWebSettings, forKey: "sg")
-        try container.encode(self.rgGHSettings, forKey: "sggh")
+        // MARK: Regram
+        try container.encode(self.rgWebSettings, forKey: "rg")
+        try container.encode(self.rgGHSettings, forKey: "rggh")
         try container.encodeIfPresent(self.data, forKey: "data")
         try container.encode(self.hash, forKey: "storedHash")
     }

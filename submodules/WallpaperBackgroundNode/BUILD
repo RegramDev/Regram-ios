@@ -1,3 +1,4 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load(
     "@build_bazel_rules_apple//apple:resources.bzl",
@@ -40,11 +41,11 @@ apple_resource_bundle(
     ],
 )
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings",
 ]
 
-sgsrcs = [
+rgsrcs = [
     "//Regram/RGNY:RGNY"
 ]
 
@@ -53,14 +54,14 @@ swift_library(
     module_name = "WallpaperBackgroundNode",
     srcs = glob([
         "Sources/**/*.swift",
-    ]) + sgsrcs,
+    ]) + rgsrcs,
     copts = [
         "-warnings-as-errors",
     ],
     data = [
         ":WallpaperBackgroundNodeBundle",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/Display:Display",

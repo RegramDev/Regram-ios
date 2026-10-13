@@ -1,23 +1,24 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings"
 ]
 
-sgsrc = [
+rgsrc = [
     "//Regram/RGEmojiKeyboardDefaultFirst:RGEmojiKeyboardDefaultFirst"
 ]
 
 swift_library(
     name = "EntityKeyboard",
     module_name = "EntityKeyboard",
-    srcs = sgsrc + glob([
+    srcs = rgsrc + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",
         "//submodules/ComponentFlow:ComponentFlow",

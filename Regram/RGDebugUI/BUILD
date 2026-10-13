@@ -40,8 +40,6 @@ swift_library(
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//Regram/RGStrings:RGStrings",
         "//Regram/RGSwiftUI:RGSwiftUI",
-        "//Regram/RGIAP:RGIAP",
-        "//Regram/RGPayWall:RGPayWall",
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
         "//submodules/LegacyUI:LegacyUI",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",

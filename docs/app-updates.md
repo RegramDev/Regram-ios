@@ -1,10 +1,10 @@
-# Regram 自动更新与 LCSign 安装
+# Regram 自动更新与安装
 
-入口：**Regram 设置 → 其他 → Regram 更新**。更新源固定为 [RegramDev/Regram-ios 的 GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)。读取最新正式发布，比较版本号及构建号；不会安装更旧的版本，也不会选择草稿、预发布或名称不匹配的 IPA。
+入口：**设置 → Regram Pro → 管理与工具 → Regram 更新**，或 **设置 → Regram → 应用与高级 → Regram 更新**。更新源固定为 [RegramDev/Regram-ios 的 GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)。读取最新正式发布，比较版本号及构建号；不会安装更旧的版本，也不会选择草稿、预发布或名称不匹配的 IPA。
 
-## 安装流程
+## 证书安装流程
 
-1. 首次使用时，导入 LCSign 安装当前 Regram 所用的同一份 P12，并填写密码。自动提取当前安装版中未过期、包含该证书的描述文件，去重后保存在本机钥匙串，页面显示已保存数量。已有描述文件自动复用；如已过期，可导入主应用和扩展对应的新描述文件。多次导入会合并保存并去重，保留之前导入的文件；每次最多选择 16 份，总计最多保存 64 份。导入时检查文件是否可读取及是否已过期。
+1. 点击“导入 P12 与描述文件”，在同一次文件选择中选中一份 P12／PFX 和所需的 `.mobileprovision` 文件，选择完成后输入密码，再验证证书、文件有效期、主应用及扩展的匹配关系。验证通过后统一保存，验证失败不更改现有配置。当前安装版中能提取的匹配描述文件自动保存，因此可仅选 P12；不会要求提前填写密码。证书必须是安装当前 Regram 所用的同一份。密码为空的 P12 可直接确认。后续也可单独导入新的描述文件，合并保存并去重；每次最多选择 16 个文件，总计最多保存 64 份描述文件。
 2. 下载前检查证书与所有已安装应用、扩展的描述文件匹配情况。同一通配符描述文件可以复用于它允许的多个 Bundle ID。匹配失败时区分缺失、读取失败、过期、证书、应用标识及权限问题，显示对应应用或扩展和不匹配的权限名称。不会在匹配失败后继续下载 IPA。
 3. 下载 Release 的 IPA，校验 GitHub 提供的 SHA-256、文件大小及包内版本。发布资产需要提供 `digest: sha256:...`；缺少校验值的发布不会用于自动更新。使用 URLSession 下载任务的委托回调更新线性进度条，同时显示百分比和已下载／总大小；校验证书、签名及准备安装显示等待指示。校验后的下载包与签名包分别保存在不参与系统备份的 Application Support 目录；重新启动时校验并恢复。签名失败、取消或更换签名材料时保留原始下载包，界面提供“签名已下载的更新”。发布说明修改不会使缓存失效；目标资产改变或更新已安装后清理旧缓存。
 4. 使用嵌入的开源 [zsign](https://github.com/zhlynn/zsign) 在手机上签名。证书必须与当前主应用及扩展一致，保留安装后的 Bundle ID、URL Scheme、App Group、钥匙串权限及全部已安装扩展；结构不匹配或缺少合适描述文件时停止。权限允许值按描述文件的标量、列表及通配符规则匹配，参考 [Apple TN2415](https://developer.apple.com/library/archive/technotes/tn2415/_index.html)。
@@ -18,15 +18,26 @@
 
 自动检查默认在证书安装版启用，启动及回到前台时检查，每六小时最多一次。自动下载及签名默认关闭，导入证书后可以开启。安装由用户发起并确认系统提示。安装通道使用系统允许的有限后台时间，最长保留五分钟；期限结束、取消或进程退出后关闭，可回到更新页重试。
 
-## LCSign 参考证据
+## LCSign 服务
 
-参考 LCSign 1.4-1 IPA 的静态接口分析，并验证公开服务的节点列表、`POST /ota/manifest`、`GET /ota/m/{token}`。服务测试仅使用虚构标识和不存在的回环 IPA 地址。
+安装使用公开的节点列表、`POST /ota/manifest` 与 `GET /ota/m/{token}`；服务检查仅使用虚构标识和不存在的回环 IPA 地址。
 
 接口的 `manifest_url` 可能指向 `support.lcsignx.com`，实测该地址返回 404，而创建令牌的 CF 节点返回正确清单；客户端按 LCSign 自身的做法，在实际节点上构造地址。
 
 `loadcontroller://import` 只负责下载和导入，不能代替自动签名安装。`/ota/sign-and-host` 签名服务端 LCSign 底包；Regram 使用本地签名和清单接口。
 
 zsign 修订及适配见 [UPSTREAM.md](../Regram/RGUpdateSigner/Vendor/zsign/UPSTREAM.md)，MIT 许可随资源打包。不使用 LCSign 内置证书、私钥或私有安装 API。
+
+## TrollStore（巨魔）安装
+
+在更新页将“安装方式”选为 **TrollStore（巨魔）**。能读取到当前应用容器的 `_TrollStore` 安装标记时默认选中；读不到时可手动选择，不将 URL Scheme 可打开当作巨魔安装的证明。切换方式会保留原包缓存和已保存的证书。
+
+1. 从同一 GitHub Release 检查新版本、下载 IPA、验证大小与 SHA-256；开启“自动下载更新”可在前台检查后准备更新，默认关闭。
+2. 检查包内版本、主应用与全部扩展的 Bundle ID、执行文件、App Group 和钥匙串组，与当前安装版不一致时停止。这个分支不要求 P12／描述文件，也不重签 IPA。
+3. 点击“安装更新”后，将已校验的本机 IPA 通过仅绑定 `127.0.0.1` 的临时通道提供给 TrollStore，以其[官方 URL Scheme](https://github.com/opa334/TrollStore#url-scheme) `apple-magnifier://install?url=…` 打开安装器。不会再次从 GitHub 下载，不依赖 LCSign 清单服务。
+4. 需要先在 TrollStore 设置中开启 URL Scheme。没有 TrollStore 或未启用接口时，系统可能打开“放大镜”；Regram 三十秒未收到 IPA 请求后会给出对应提示。是否出现安装确认由 TrollStore 的设置控制。完整文件交付后显示“更新包已交给 TrollStore”，并结束临时通道；新版启动的构建号才是安装成功的依据。
+
+下载缓存跨重启保留。手动安装或失败重试继续使用已校验文件，安装新版本后清理旧缓存。这里的自动更新指自动检查和可选自动下载，覆盖安装由用户从更新页发起，交给 TrollStore 处理。覆盖安装需保持原来的应用身份；不要卸载旧版。
 
 ## 验证边界
 
@@ -35,6 +46,8 @@ zsign 修订及适配见 [UPSTREAM.md](../Regram/RGUpdateSigner/Vendor/zsign/UPS
 下载进度回归入口为 `Regram/RGAppUpdate/Tests/run-download-progress-checks.py`，用本机限速 HTTP 服务检查中间进度、无 Content-Length 的下载、大小限制、错误状态、重定向和取消。签名合成检查同时覆盖一份通配符描述文件匹配主应用及六个扩展、标量与允许值列表匹配，以及每类失败原因。真实证书与设备上的具体失败原因仍以更新页显示的诊断为准。
 
 缓存检查为 `Regram/RGAppUpdate/Tests/UpdateCacheTests.swift`，覆盖新进程对象恢复下载与签名、临时无法读取钥匙串、签名身份变化时保留下载、发布说明修改、文件损坏、不完整文件及已安装版本清理。安装 URL 检查要求完整的 `itms-services://?` 形式；本机服务检查同时验证 GET 只上报一次安装开始、HEAD 不误报，以及文件大小、并发和 Range 行为。
+
+TrollStore 主机检查覆盖安装标记与证书回退、URL 编码、原包缓存、完整交付与部分读取的区分，以及无需证书的包身份检查；密码输入弹窗、巨魔跳转和最终覆盖安装仍需真机测试。
 
 这些检查不代表真机完成了覆盖安装。证书信任、设备准入、iOS 安装确认、后台期限和数据保留，需要在实际证书安装的设备上验证。二维码登录也需要真实 Telegram 网络验证令牌导出、扫码接受、跨 DC 和二步验证；图片解码通过不等于登录成功。
 

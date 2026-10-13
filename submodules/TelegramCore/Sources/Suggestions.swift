@@ -234,23 +234,24 @@ func _internal_dismissPeerSpecificServerProvidedSuggestion(account: Account, pee
 
 
 // MARK: Regram
-private var dismissedSGSuggestionsPromise = ValuePromise<Set<String>>(Set())
-private var dismissedSGSuggestions: Set<String> = Set() {
+// MARK: Regram
+private var dismissedRGSuggestionsPromise = ValuePromise<Set<String>>(Set())
+private var dismissedRGSuggestions: Set<String> = Set() {
     didSet {
-        dismissedSGSuggestionsPromise.set(dismissedSGSuggestions)
+        dismissedRGSuggestionsPromise.set(dismissedRGSuggestions)
     }
 }
 
 
 public func dismissRGProvidedSuggestion(suggestionId: String) {
-    dismissedSGSuggestions.insert(suggestionId)
-    RGSimpleSettings.shared.dismissedSGSuggestions.append(suggestionId)
+    dismissedRGSuggestions.insert(suggestionId)
+    RGSimpleSettings.shared.dismissedRGSuggestions.append(suggestionId)
 }
 
 public func getRGProvidedSuggestions(account: Account) -> Signal<Data?, NoError> {
     let key: PostboxViewKey = .preferences(keys: Set([PreferencesKeys.appConfiguration]))
 
-    return combineLatest(account.postbox.combinedView(keys: [key]), dismissedSGSuggestionsPromise.get())
+    return combineLatest(account.postbox.combinedView(keys: [key]), dismissedRGSuggestionsPromise.get())
     |> map { views, dismissedSuggestionsValue -> Data? in
         guard let view = views.views[key] as? PreferencesView,
               let appConfiguration = view.values[PreferencesKeys.appConfiguration]?.get(AppConfiguration.self) else {
@@ -277,7 +278,7 @@ public func getRGProvidedSuggestions(account: Account) -> Signal<Data?, NoError>
                 return true
             }
             return !dismissedSuggestionsValue.contains(id) &&
-                   !RGSimpleSettings.shared.dismissedSGSuggestions.contains(id)
+                   !RGSimpleSettings.shared.dismissedRGSuggestions.contains(id)
         }
 
         guard let modifiedData = try? JSONSerialization.data(withJSONObject: filteredSuggestions, options: []) else {
@@ -288,6 +289,5 @@ public func getRGProvidedSuggestions(account: Account) -> Signal<Data?, NoError>
     }
     |> distinctUntilChanged
 }
-
 
 

@@ -143,7 +143,7 @@ private var declaredEncodables: Void = {
     // MARK: Regram — registered under BOTH type-name hashes on purpose.
     //
     // Postbox keys a stored object by murMurHashString32("\(type(of: object))"), computed at encode
-    // time (Coding.swift). Renaming this class from SGRevokedMessageAttribute therefore splits the
+    // time (Coding.swift). Renaming the Regram attribute class therefore splits the
     // data in two: rows written before the rename carry the old name's hash, rows written after carry
     // the new one. Registering only one of them silently drops the other, and the visible symptom is
     // narrow — anti-revoke keeps the message either way, it just loses the "deleted" indicator.

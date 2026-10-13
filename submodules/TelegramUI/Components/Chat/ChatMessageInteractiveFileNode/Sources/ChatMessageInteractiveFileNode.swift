@@ -1,3 +1,5 @@
+// MARK: Regram — managed external transcription requests.
+import RGTranscription
 import RGSimpleSettings
 import Foundation
 import UIKit
@@ -352,17 +354,35 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
         guard let arguments = self.arguments, let context = self.context, let message = self.message else {
             return
         }
+
+        // MARK: Regram — Custom STT uses its own provider limits while preserving media boundaries.
+        let useCustomTranscription = RGTranscriptionService.isEnabled
+        let clientTranscription = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute
+        let useManagedTranscription = useCustomTranscription || (clientTranscription?.requestId != nil && (clientTranscription?.source == .local || clientTranscription?.source == .external))
+        if useManagedTranscription {
+            guard message.id.namespace == Namespaces.Message.Cloud,
+                  message.id.peerId.namespace != Namespaces.Peer.SecretChat,
+                  message.minAutoremoveOrClearTimeout != viewOnceTimeout,
+                  !arguments.presentationData.isPreview,
+                  arguments.file.isVoice || arguments.file.isInstantVideo else {
+                return
+            }
+        }
         
-        if /*!context.isPremium,*/ case .inProgress = self.audioTranscriptionState {
-            return
+        if !useCustomTranscription && !context.isPremium, case .inProgress = self.audioTranscriptionState {
+            // MARK: Regram — A persisted client request can outlive its task after a process restart.
+            let canRetryInterruptedRequest = clientTranscription?.requestId != nil && clientTranscription?.id == 0 && clientTranscription?.isPending == true && self.transcribeDisposable == nil && !RGTranscriptionService.shared.isTranscribing(context: context, messageId: message.id)
+            if !canRetryInterruptedRequest {
+                return
+            }
         }
         
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
         
         let transcriptionText = self.forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(message))
-        // MARK: Regram
-        if transcriptionText == nil && false {
+        // MARK: Regram — Telegram subscriptions and trial quotas apply only to the default provider.
+        if !useCustomTranscription && transcriptionText == nil && !arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !arguments.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -421,7 +441,33 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                if context.sharedContext.immediateExperimentalUISettings.localTranscription || !arguments.associatedData.isPremium || RGSimpleSettings.shared.transcriptionBackend == RGSimpleSettings.TranscriptionBackend.apple.rawValue {
+                // MARK: Regram — The service owns the request; this node only observes its state.
+                if useManagedTranscription {
+                    let messageId = message.id
+                    let disposable = MetaDisposable()
+                    self.transcribeDisposable = disposable
+                    disposable.set((RGTranscriptionService.shared.transcribe(context: context, messageId: messageId, force: !useCustomTranscription)
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] state in
+                        guard let self, self.message?.id == messageId else {
+                            return
+                        }
+                        switch state {
+                        case .inProgress:
+                            self.audioTranscriptionState = .inProgress
+                        case .completed:
+                            self.transcribeDisposable?.dispose()
+                            self.transcribeDisposable = nil
+                            self.audioTranscriptionState = .expanded
+                        case let .failed(error):
+                            self.transcribeDisposable?.dispose()
+                            self.transcribeDisposable = nil
+                            self.audioTranscriptionState = .collapsed
+                            self.arguments?.controllerInteraction.displayUndo(.info(title: nil, text: error, timeout: nil, customUndoText: nil))
+                        }
+                        self.requestUpdateLayout(true)
+                        self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+                    }))
+                } else if RGSimpleSettings.shared.transcriptionBackendEnum == .apple {
                     let appLocale = presentationData.strings.baseLanguageCode
                     
                     let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
@@ -453,8 +499,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         guard let result = result else {
                             return .single(nil)
                         }
-                        
-                        return transcribeAudio(path: result, appLocale: arguments.controllerInteraction.rgGetChatPredictedLang() ?? appLocale)
+                        return transcribeAudio(path: result, appLocale: appLocale)
                     }
                     
                     self.transcribeDisposable = (signal
@@ -768,6 +813,8 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 let textFont = arguments.presentationData.messageFont
                 var textString: NSAttributedString?
                 var updatedAudioTranscriptionState: AudioTranscriptionButtonComponent.TranscriptionState?
+                // MARK: Regram — resolve stored transcription before deciding button availability.
+                let transcribedText = forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(arguments.message))
                 
                 var displayTranscribe = false
                 if Namespaces.Message.allNonRegular.contains(arguments.message.id.namespace) {
@@ -775,7 +822,11 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 } else if arguments.message.id.peerId.namespace != Namespaces.Peer.SecretChat && !isViewOnceMessage && !arguments.presentationData.isPreview {
                     let premiumConfiguration = PremiumConfiguration.with(appConfiguration: arguments.context.currentAppConfiguration.with { $0 })
                     // MARK: Regram
-                    if arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost || true {
+                    if let result = transcribedText, case .success = result {
+                        displayTranscribe = true
+                    } else if RGTranscriptionService.isEnabled {
+                        displayTranscribe = arguments.message.id.namespace == Namespaces.Message.Cloud
+                    } else if arguments.associatedData.isPremium || arguments.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost || true {
                         displayTranscribe = true
                     } else if premiumConfiguration.audioTransciptionTrialCount > 0 {
                         if arguments.incoming {
@@ -792,8 +843,9 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                     }
                 }
                 
-                let transcribedText = forcedAudioTranscriptionText ?? transcribedText(message: EngineMessage(arguments.message))
-                
+                if RGTranscriptionService.isEnabled, case .locked = audioTranscriptionState {
+                    updatedAudioTranscriptionState = .collapsed
+                }
                 switch audioTranscriptionState {
                 case .inProgress:
                     if transcribedText != nil {
@@ -804,7 +856,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                 }
                 
                 let currentTime = Int32(Date().timeIntervalSince1970)
-                if transcribedText == nil, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime, { return false }() /* MARK: Regram */ {
+                if !RGTranscriptionService.isEnabled, transcribedText == nil, let cooldownUntilTime = arguments.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime, { return false }() /* MARK: Regram */ {
                     updatedAudioTranscriptionState = .locked
                 }
                 

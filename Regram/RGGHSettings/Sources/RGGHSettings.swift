@@ -36,7 +36,7 @@ enum RGGHFetchError: Error {
 }
 
 func fetchRGGHSettings(locale: String) async throws -> RGGHSettings {
-    let baseURL = "https://raw.githubusercontent.com/Swiftgram/settings/refs/heads/main"
+    let baseURL = "https://raw.githubusercontent.com/RegramDev/Regram-ios/master/Regram/RGGHSettings/Settings"
     var candidates: [String] = []
     if let buildNumber = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
         if locale != "en" {
@@ -53,7 +53,7 @@ func fetchRGGHSettings(locale: String) async throws -> RGGHSettings {
     for candidate in candidates {
         let urlString = "\(baseURL)/\(candidate)"
         guard let url = URL(string: urlString) else {
-            RGLogger.shared.log("SGGHSettings", "[0] Fetch failed for \(candidate). Invalid URL: \(urlString)")
+            RGLogger.shared.log("RGGHSettings", "[0] Fetch failed for \(candidate). Invalid URL: \(urlString)")
             continue
         }
 
@@ -61,7 +61,7 @@ func fetchRGGHSettings(locale: String) async throws -> RGGHSettings {
             do {
                 let (data, response) = try await URLSession.shared.data(from: url)
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    RGLogger.shared.log("SGGHSettings", "[\(attempt)] Fetch failed for \(candidate). Invalid response type: \(response)")
+                    RGLogger.shared.log("RGGHSettings", "[\(attempt)] Fetch failed for \(candidate). Invalid response type: \(response)")
                     throw RGGHFetchError.fetchFailed(statusCode: -1)
                 }
 
@@ -71,17 +71,17 @@ func fetchRGGHSettings(locale: String) async throws -> RGGHSettings {
                         let jsonDecoder = JSONDecoder()
                         jsonDecoder.keyDecodingStrategy = .convertFromSnakeCase
                         let settings = try jsonDecoder.decode(RGGHSettings.self, from: data)
-                        RGLogger.shared.log("SGGHSettings", "[\(attempt)] Fetched \(candidate): \(settings)")
+                        RGLogger.shared.log("RGGHSettings", "[\(attempt)] Fetched \(candidate): \(settings)")
                         return settings
                     } catch {
-                        RGLogger.shared.log("SGGHSettings", "[\(attempt)] Failed to decode \(candidate): \(error)")
+                        RGLogger.shared.log("RGGHSettings", "[\(attempt)] Failed to decode \(candidate): \(error)")
                         throw RGGHFetchError.decodingFailed
                     }
                 case 404:
-                    RGLogger.shared.log("SGGHSettings", "[\(attempt)] Not found \(candidate) on the remote.")
+                    RGLogger.shared.log("RGGHSettings", "[\(attempt)] Not found \(candidate) on the remote.")
                     break attemptsOuter
                 default:
-                    RGLogger.shared.log("SGGHSettings", "[\(attempt)] Fetch failed for \(candidate), status code: \(httpResponse.statusCode)")
+                    RGLogger.shared.log("RGGHSettings", "[\(attempt)] Fetch failed for \(candidate), status code: \(httpResponse.statusCode)")
                     throw RGGHFetchError.fetchFailed(statusCode: httpResponse.statusCode)
                 }
             } catch {
@@ -94,6 +94,6 @@ func fetchRGGHSettings(locale: String) async throws -> RGGHSettings {
         }
     }
 
-    RGLogger.shared.log("SGGHSettings", "All attempts failed. Last error: \(String(describing: lastError))")
+    RGLogger.shared.log("RGGHSettings", "All attempts failed. Last error: \(String(describing: lastError))")
     throw RGGHFetchError.fetchFailed(statusCode: -1)
 }

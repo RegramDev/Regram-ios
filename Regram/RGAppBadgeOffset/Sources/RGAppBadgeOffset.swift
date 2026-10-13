@@ -69,7 +69,7 @@ extension DeviceMetrics {
         }
         let offset: CGFloat = floorToScreenPixels(defaultOffset * self.rgScaleFactor)
         #if DEBUG
-        print("deviceMetrics \(self). deviceModel: \(currentDevice). sgIsDisplayZoomed: \(self.rgIsDisplayZoomed). sgScaleFactor: \(self.rgScaleFactor) defaultOffset: \(defaultOffset), offset: \(offset)")
+        print("deviceMetrics \(self). deviceModel: \(currentDevice). rgIsDisplayZoomed: \(self.rgIsDisplayZoomed). rgScaleFactor: \(self.rgScaleFactor) defaultOffset: \(defaultOffset), offset: \(offset)")
         #endif
         return offset
     }

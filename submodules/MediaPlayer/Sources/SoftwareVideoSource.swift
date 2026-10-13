@@ -593,11 +593,15 @@ public final class SoftwareAudioSource {
         }
     }
     
-    public func readSampleBuffer() -> CMSampleBuffer? {
+    // MARK: Regram — let transcription drain decoded audio without changing playback defaults.
+    public func readSampleBuffer(drainRemainingFrames: Bool = false) -> CMSampleBuffer? {
         guard let audioStream = self.audioStream, let _ = self.avFormatContext else {
             return nil
         }
         
+        if drainRemainingFrames, let result = audioStream.decoder.takeQueuedFrame() {
+            return result.sampleBuffer
+        }
         while true {
             if let decodableFrame = self.readDecodableFrame() {
                 if audioStream.decoder.send(frame: decodableFrame) {
@@ -606,6 +610,9 @@ public final class SoftwareAudioSource {
                     }
                 }
             } else {
+                if drainRemainingFrames, let result = audioStream.decoder.takeRemainingFrame() {
+                    return result.sampleBuffer
+                }
                 return nil
             }
         }

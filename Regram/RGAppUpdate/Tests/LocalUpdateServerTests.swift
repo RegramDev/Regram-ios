@@ -17,7 +17,9 @@ private final class PackageRequests: @unchecked Sendable {
         try bytes.write(to: file)
         let server = try RGLocalUpdateServer(fileURL: file)
         let requests = PackageRequests()
+        let deliveries = PackageRequests()
         server.packageRequested = { requests.record() }
+        server.packageDelivered = { deliveries.record() }
         let url = try await server.start()
         defer { server.stop() }
         assert(url.host == "127.0.0.1")
@@ -27,9 +29,16 @@ private final class PackageRequests: @unchecked Sendable {
         probe.httpMethod = "HEAD"
         _ = try await session.data(for: probe)
         assert(requests.count() == 0, "HEAD must not be treated as installation starting")
+        assert(deliveries.count() == 0)
         let (complete, response) = try await session.data(from: url)
         assert((response as? HTTPURLResponse)?.statusCode == 200 && complete == bytes)
         assert(requests.count() == 1)
+        // The complete file, rather than just a GET probe, confirms delivery to TrollStore.
+        for _ in 0..<20 {
+            if deliveries.count() == 1 { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        assert(deliveries.count() == 1)
         var request = URLRequest(url: url)
         request.setValue("bytes=17-100016", forHTTPHeaderField: "Range")
         let (part, partResponse) = try await session.data(for: request)
@@ -37,6 +46,7 @@ private final class PackageRequests: @unchecked Sendable {
         request.setValue("bytes=899990-", forHTTPHeaderField: "Range")
         let (tail, _) = try await session.data(for: request)
         assert(tail == bytes.suffix(10))
+        assert(deliveries.count() == 1, "Partial requests must not report complete delivery")
         request.setValue("bytes=9999999-", forHTTPHeaderField: "Range")
         let (_, invalidResponse) = try await session.data(for: request)
         assert((invalidResponse as? HTTPURLResponse)?.statusCode == 416)

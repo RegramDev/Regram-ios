@@ -30,7 +30,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 @MainActor public final class RGAppUpdater: ObservableObject {
     public static let shared = RGAppUpdater()
     public enum Stage: Equatable {
-        case idle, restoring, checking, available, upToDate, validating, downloading, signing, uploading, ready, installRequested, installing, failed(String)
+        case idle, restoring, checking, available, upToDate, validating, downloading, signing, uploading, ready, installRequested, installing, trollStoreReceived, failed(String)
         public var isBusy: Bool { [.restoring, .checking, .validating, .downloading, .signing, .uploading, .installing].contains(self) }
         public var localizationKey: String {
             switch self {
@@ -46,6 +46,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
             case .ready: return "AppUpdate.Ready"
             case .installRequested: return "AppUpdate.InstallRequested"
             case .installing: return "AppUpdate.InstallReading"
+            case .trollStoreReceived: return "AppUpdate.TrollStoreReceived"
             case let .failed(key): return key
             }
         }
@@ -63,9 +64,20 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     @Published public private(set) var availableNodes = RGLCSignNode.fallback
     @Published public private(set) var activeNode = ""
     @Published public var automaticallyPrepare: Bool { didSet { UserDefaults.standard.set(automaticallyPrepare, forKey: "Regram.AppUpdate.Prepare") } }
+    @Published public var installationMethod: RGUpdateInstallationMethod {
+        didSet {
+            guard oldValue != installationMethod else { return }
+            UserDefaults.standard.set(installationMethod.rawValue, forKey: "Regram.AppUpdate.InstallationMethod")
+            operationId = nil; operation?.cancel(); stopInstallation()
+            preparedIPA = nil; failure = nil; activeNode = ""
+            lastAutomaticPreparation = nil; didRestoreCache = false
+            stage = release == nil ? .idle : .available
+            activate()
+        }
+    }
     public var installedVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     public var installedBuild: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
-    public var isConfigured: Bool { !certificateName.isEmpty }
+    public var isConfigured: Bool { installationMethod == .trollStore || !certificateName.isEmpty }
     public var hasPreparedUpdate: Bool { preparedIPA != nil }
     private var operation: Task<Void, Never>?
     private var operationId: UUID?
@@ -85,8 +97,10 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 
     private init() {
         let defaults = UserDefaults.standard
+        let method = defaults.string(forKey: "Regram.AppUpdate.InstallationMethod").flatMap(RGUpdateInstallationMethod.init(rawValue:)) ?? .detected(bundleURL: Bundle.main.bundleURL)
+        self.installationMethod = method
         let isCertificateInstall = FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("embedded.mobileprovision").path)
-        self.automaticallyCheck = defaults.object(forKey: "Regram.AppUpdate.Check") as? Bool ?? isCertificateInstall
+        self.automaticallyCheck = defaults.object(forKey: "Regram.AppUpdate.Check") as? Bool ?? (isCertificateInstall || method == .trollStore)
         self.automaticallyPrepare = defaults.bool(forKey: "Regram.AppUpdate.Prepare")
         self.preferredNode = defaults.string(forKey: "Regram.AppUpdate.LCSignNode") ?? ""
         self.certificateName = RGUpdateIdentity.load()?.displayName ?? ""
@@ -120,17 +134,18 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         if !didRestoreCache, UIApplication.shared.isProtectedDataAvailable, !stage.isBusy, !credentialIsBusy {
             didRestoreCache = true
             let id = UUID(); operationId = id; stage = .restoring
-            let fingerprint = signingFingerprint()
+            let method = installationMethod
+            let fingerprint = method == .certificate ? signingFingerprint() : nil
             let version = installedVersion, build = installedBuild, cache = self.cache
             operation = Task {
                 do {
                     let state = try await Task.detached(priority: .utility) { try cache.load(installedVersion: version, installedBuild: build, signer: fingerprint) }.value
                     guard operationId == id else { return }
                     if let state {
-                        release = state.release; preparedIPA = state.prepared; hasDownloadedUpdate = state.downloaded != nil
+                        release = state.release; preparedIPA = method == .trollStore ? state.downloaded : state.prepared; hasDownloadedUpdate = state.downloaded != nil
                         downloadedBytes = state.downloaded == nil ? 0 : state.release.size
                         progress = state.downloaded == nil ? 0 : 1
-                        stage = state.prepared == nil ? .available : .ready
+                        stage = preparedIPA == nil ? .available : .ready
                         rgAvailableAppUpdate.set(state.release)
                     } else { stage = .idle }
                     checkAutomatically()
@@ -171,22 +186,32 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         if cancelOperation || !stage.isBusy { stage = release == nil ? .idle : .available }
     }
 
-    public func importCertificate(_ data: Data, password: String) async throws {
-        guard !stage.isBusy, !credentialIsBusy, data.count <= 256 * 1024 else { throw RGUpdateError.invalidCertificate }
+    public func importCertificate(_ data: Data, password: String, profiles importedProfiles: [Data] = []) async throws {
+        guard !stage.isBusy, !credentialIsBusy, data.count <= 256 * 1024, importedProfiles.count <= 16, importedProfiles.allSatisfy({ $0.count <= 256 * 1024 }) else { throw RGUpdateError.invalidCertificate }
         credentialIsBusy = true
         defer { credentialIsBusy = false }
         let path = Bundle.main.bundlePath
         let name: String
         let installedProfiles: [Data]
+        let previousProfiles = RGUpdateKeychain.read("profiles")
+        let existing = try JSONDecoder().decode([Data].self, from: previousProfiles ?? Data("[]".utf8))
         do {
             (name, installedProfiles) = try await Task.detached(priority: .userInitiated) {
                 let name = try RGUpdateSigner.validateCertificate(data, password: password, installedApp: path)
+                if !importedProfiles.isEmpty { try RGUpdateSigner.validateProfiles(importedProfiles) }
                 let profiles = try RGUpdateSigner.installedProfiles(path, certificate: data, password: password)
+                try RGUpdateSigner.validateInstalledApp(path, certificate: data, password: password, profiles: existing + importedProfiles + profiles)
                 return (name, profiles)
             }.value
         } catch { throw mapSigningError(error) }
-        try saveProfiles(installedProfiles)
-        try RGUpdateKeychain.write(try JSONEncoder().encode(RGUpdateIdentity(p12: data, password: password, name: name)), account: "identity")
+        try saveProfiles(importedProfiles + installedProfiles)
+        do {
+            try RGUpdateKeychain.write(try JSONEncoder().encode(RGUpdateIdentity(p12: data, password: password, name: name)), account: "identity")
+        } catch {
+            try? RGUpdateKeychain.write(previousProfiles, account: "profiles")
+            savedProfileCount = existing.count
+            throw error
+        }
         certificateName = name
         invalidateInstallation()
     }
@@ -265,6 +290,10 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         guard isConfigured else { failure = .notConfigured; stage = .failed(RGUpdateError.notConfigured.localizationKey); return }
         operation?.cancel()
         let id = UUID(); operationId = id; stopInstallation(); failure = nil; stage = .validating
+        if installationMethod == .trollStore {
+            prepareTrollStore(release: release, id: id)
+            return
+        }
         operation = Task {
             let operationDirectory = directory.appendingPathComponent(id.uuidString, isDirectory: true)
             defer { try? FileManager.default.removeItem(at: operationDirectory) }
@@ -336,6 +365,50 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         }
     }
 
+    private func prepareTrollStore(release: RGUpdateRelease, id: UUID) {
+        operation = Task {
+            let operationDirectory = directory.appendingPathComponent(id.uuidString, isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: operationDirectory) }
+            do {
+                let cache = self.cache, version = installedVersion, build = installedBuild
+                let state = try await Task.detached { try cache.load(installedVersion: version, installedBuild: build, signer: nil) }.value
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                let downloaded: URL
+                if let state, state.release.hasSameArtifact(as: release), let existing = state.downloaded {
+                    downloaded = existing
+                } else {
+                    try FileManager.default.createDirectory(at: operationDirectory, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.complete])
+                    stage = .downloading; progress = 0; downloadedBytes = 0; hasDownloadedUpdate = false
+                    let temporary = operationDirectory.appendingPathComponent("release.ipa")
+                    let download = RGUpdateDownload(destination: temporary, expectedSize: release.size) { value, bytes in
+                        Task { @MainActor in
+                            guard self.operationId == id, self.stage == .downloading else { return }
+                            self.progress = value; self.downloadedBytes = bytes
+                        }
+                    }
+                    try await download.download(from: release.downloadURL, configuration: networkConfiguration())
+                    try Task.checkCancellation()
+                    guard operationId == id else { return }
+                    downloaded = try await Task.detached { try cache.saveDownloaded(temporary, release: release) }.value
+                }
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                hasDownloadedUpdate = true; progress = 1; downloadedBytes = release.size; stage = .validating
+                let installedPath = Bundle.main.bundlePath
+                do {
+                    try await Task.detached(priority: .userInitiated) {
+                        try RGUpdateSigner.validateTrollStoreIPA(downloaded.path, installedApp: installedPath, expectedVersion: release.version, expectedBuild: String(release.build))
+                    }.value
+                } catch { throw mapSigningError(error) }
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                preparedIPA = downloaded; stage = .ready
+                rgAvailableAppUpdate.set(nil); rgAvailableAppUpdate.set(release)
+            } catch { finishError(error, id: id) }
+        }
+    }
+
     public func install() {
         guard !stage.isBusy, let release, let preparedIPA else { return }
         stopInstallation()
@@ -345,8 +418,12 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
             Task { @MainActor in
                 guard let self else { return }
                 self.stopInstallation()
-                if self.operationId == id { self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey) }
+                if self.operationId == id, self.stage != .trollStoreReceived { self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey) }
             }
+        }
+        if installationMethod == .trollStore {
+            installTrollStore(release: release, preparedIPA: preparedIPA, id: id)
+            return
         }
         operation = Task {
             do {
@@ -444,6 +521,62 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         }
     }
 
+    private func installTrollStore(release: RGUpdateRelease, preparedIPA: URL, id: UUID) {
+        operation = Task {
+            do {
+                let cache = self.cache, version = installedVersion, build = installedBuild
+                let state = try await Task.detached { try cache.load(installedVersion: version, installedBuild: build, signer: nil) }.value
+                guard let state, state.release.hasSameArtifact(as: release), state.downloaded == preparedIPA else { throw RGUpdateError.cache }
+                let installedPath = Bundle.main.bundlePath
+                do {
+                    try await Task.detached(priority: .userInitiated) {
+                        try RGUpdateSigner.validateTrollStoreIPA(preparedIPA.path, installedApp: installedPath, expectedVersion: release.version, expectedBuild: String(release.build))
+                    }.value
+                } catch { throw mapSigningError(error) }
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                let server = try RGLocalUpdateServer(fileURL: preparedIPA)
+                localServer = server
+                server.closed = { Task { @MainActor in
+                    guard self.operationId == id else { return }
+                    self.stopInstallation()
+                    if self.stage == .installRequested || self.stage == .installing {
+                        self.failure = .installationChannelEnded; self.stage = .failed(RGUpdateError.installationChannelEnded.localizationKey)
+                    }
+                } }
+                server.packageRequested = { Task { @MainActor in
+                    guard self.operationId == id else { return }
+                    self.packageReadStarted = true; self.installationWatchdog?.cancel(); self.installationWatchdog = nil
+                    self.failure = nil; self.stage = .installing
+                } }
+                server.packageDelivered = { Task { @MainActor in
+                    guard self.operationId == id else { return }
+                    self.stage = .trollStoreReceived; self.failure = nil
+                    self.stopInstallation()
+                } }
+                let packageURL = try await server.start()
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                let url = try RGTrollStoreInstallation.installationURL(packageURL: packageURL)
+                guard UIApplication.shared.canOpenURL(url) else { throw RGUpdateError.trollStoreUnavailable }
+                UIApplication.shared.open(url, options: [:]) { opened in
+                    Task { @MainActor in
+                        guard self.operationId == id else { return }
+                        if opened {
+                            UserDefaults.standard.set(String(release.build), forKey: "Regram.AppUpdate.RequestedBuild")
+                            if !self.packageReadStarted { self.stage = .installRequested; self.watchInstallationStart(id: id) }
+                        } else {
+                            self.stopInstallation(); self.failure = .trollStoreUnavailable; self.stage = .failed(RGUpdateError.trollStoreUnavailable.localizationKey)
+                        }
+                    }
+                }
+            } catch {
+                if operationId == id { stopInstallation() }
+                finishError(error, id: id)
+            }
+        }
+    }
+
     private func stopInstallation() {
         installationWatchdog?.cancel(); installationWatchdog = nil
         let server = localServer; localServer = nil; server?.stop()
@@ -458,7 +591,8 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         installationWatchdog = Task {
             do { try await Task.sleep(nanoseconds: 30_000_000_000) } catch { return }
             guard operationId == id, !packageReadStarted, stage == .installRequested else { return }
-            failure = .installationNotStarted; stage = .failed(RGUpdateError.installationNotStarted.localizationKey)
+            let error: RGUpdateError = installationMethod == .trollStore ? .trollStoreNotStarted : .installationNotStarted
+            failure = error; stage = .failed(error.localizationKey)
             // Keep the channel alive for a pending system dialog. A retry uses
             // the same signed cache, without another download or signature.
         }

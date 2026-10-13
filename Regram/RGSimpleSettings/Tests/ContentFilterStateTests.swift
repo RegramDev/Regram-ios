@@ -15,7 +15,6 @@ public struct EngineMessage {
 }
 final class RGSimpleSettings {
     static let shared = RGSimpleSettings()
-    var ephemeralStatus = 2
     var messageFilterRules: [RGMessageFilterRule] = []
     var blockedPeerIds: Set<Int64> = []
     var messageFilterDisabledPeerIds: Set<Int64> = []

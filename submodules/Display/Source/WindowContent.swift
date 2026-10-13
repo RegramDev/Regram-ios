@@ -454,7 +454,8 @@ public class Window1 {
         self.hostView = hostView
         self.badgeView = UIImageView()
         self.badgeOverlay = RGAppBadgeOverlay(badgeView: self.badgeView)
-        if RGSimpleSettings.shared.status > 1, let image = UIImage(bundleImageName: RGSimpleSettings.shared.customAppBadge) {
+        // MARK: Regram — badge appearance follows the saved preference.
+        if let image = UIImage(bundleImageName: RGSimpleSettings.shared.customAppBadge) {
             self.badgeView.image = image
         } else {
         self.badgeView.image = UIImage(bundleImageName: "Components/AppBadge")

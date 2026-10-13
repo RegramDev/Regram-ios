@@ -3,15 +3,9 @@ import RGRegDateScheme
 
 // MARK: Regram — local registration-date estimate
 //
-// Replaces the Swiftgram regdate web API, which cannot work in this fork: that endpoint authenticates
-// with an Apple DeviceCheck token (`DCDevice.generateToken`), and a resigned sideloaded build has no
-// DeviceCheck key registered under its team, so the token call always fails. The endpoint also
-// answers 401 to anything but Swiftgram's own app.
-//
-// Nothing is lost by dropping it. That API returned a `RegDate` *range* and the profile row renders
-// its midpoint, i.e. it was doing exactly this interpolation server-side. Doing it on-device is
-// strictly better: no network, no wait, and the ids of every profile opened are no longer sent to a
-// third party.
+// Regram estimates the registration-date range locally. Re-signed builds cannot authenticate
+// to the inherited DeviceCheck-backed service; local interpolation also keeps profile IDs
+// on the device.
 //
 // How it works: Telegram hands out user ids in roughly increasing order over time, so a table of
 // known (id, registration date) pairs can be binary-searched and linearly interpolated. Allocation is

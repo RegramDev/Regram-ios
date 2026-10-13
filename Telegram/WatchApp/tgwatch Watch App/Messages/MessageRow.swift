@@ -53,7 +53,7 @@ struct MessageBubble: Equatable, Hashable {
     /// Palette index for the sender-name label (incoming groups only); nil = uncolored.
     /// Set together with `senderName` — both nil for outgoing / private / non-user senders.
     var senderColorIndex: Int? = nil
-    // MARK: Swiftgram
+    // MARK: Regram
     /// Tiny sender avatar for incoming bubbles in groups; nil otherwise.
     var senderAvatar: AvatarVisual? = nil
     //
@@ -115,7 +115,7 @@ func messageRows(
     selfUserId: Int64? = nil,
     unreadDividerAfterId: Int64? = nil,
     lastReadOutboxMessageId: Int64 = 0,
-    // MARK: Swiftgram
+    // MARK: Regram
     userAvatars: [Int64: AvatarVisual] = [:]
     //
 ) -> [MessageRow] {
@@ -383,7 +383,7 @@ private func senderLabel(
            let name = userNames[u.userId],
            !name.isEmpty {
             let colorIndex = paletteIndex(for: u.userId)
-            // MARK: Swiftgram
+            // MARK: Regram
             var avatar = userAvatars[u.userId] ?? AvatarVisual(
                 kind: .normal,
                 initials: avatarInitials(from: name),

@@ -4456,7 +4456,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
                     
                     // MARK: Regram
-                    // Hidding SwiftgramBot from recents so it won't annoy people. Ideally we should call removeRecentlyUsedApp, so it won't annoy users in other apps
+                    // Hide the inherited settings bot from recent apps. This is its historical peer ID,
+                    // not a Regram-owned bot.
                     let skipId = 5846791198
                     
                     for id in localApps.peerIds {

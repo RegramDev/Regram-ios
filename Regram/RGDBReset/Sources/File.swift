@@ -5,10 +5,10 @@ import UIKit
 import Foundation
 import Security
 
-private let dbResetKey = "sg_db_reset"
-private let dbHardResetKey = "sg_db_hard_reset"
+private let dbResetKey = rgMigratedPreferenceKey("rg_db_reset", legacyKey: "sg_db_reset")
+private let dbHardResetKey = rgMigratedPreferenceKey("rg_db_hard_reset", legacyKey: "sg_db_hard_reset")
 // MARK: Regram — full wipe, see rgFullWipeIfNeeded.
-private let fullWipeKey = "sg_full_wipe"
+private let fullWipeKey = rgMigratedPreferenceKey("rg_full_wipe", legacyKey: "sg_full_wipe")
 
 private func rgDefaultDataPath() -> String? {
     guard let containerUrl = rgDataContainerURL() else {
@@ -21,7 +21,7 @@ public func rgDBResetIfNeeded(databasePath: String, present: ((UIViewController)
     guard UserDefaults.standard.bool(forKey: dbResetKey) else {
         return
     }
-    NSLog("[SG.DBReset] Resetting DB with system settings")
+    NSLog("[RG.DBReset] Resetting DB with system settings")
     let alert = UIAlertController(
         title: "Metadata Reset.\nDO NOT CLOSE THE APP\nPlease wait...",
         message: nil,
@@ -30,7 +30,7 @@ public func rgDBResetIfNeeded(databasePath: String, present: ((UIViewController)
     present?(alert)
     do {
         let _ = try FileManager.default.removeItem(atPath: databasePath)
-        NSLog("[SG.DBReset] Done. Reset completed")
+        NSLog("[RG.DBReset] Done. Reset completed")
         let successAlert = UIAlertController(
             title: "Metadata Reset completed",
             message: nil,
@@ -44,7 +44,7 @@ public func rgDBResetIfNeeded(databasePath: String, present: ((UIViewController)
             present?(successAlert)
         }
     } catch {
-        NSLog("[SG.DBReset] ERROR. Failed to reset database: \(error)")
+        NSLog("[RG.DBReset] ERROR. Failed to reset database: \(error)")
         let failAlert = UIAlertController(
             title: "ERROR. Failed to Reset database",
             message: "\(error)",
@@ -72,9 +72,9 @@ public func rgEraseAllLocalData() -> [String] {
             let path = (containerPath as NSString).appendingPathComponent(item)
             do {
                 try fileManager.removeItem(atPath: path)
-                NSLog("[SG.FullWipe] removed %@", item)
+                NSLog("[RG.FullWipe] removed %@", item)
             } catch {
-                NSLog("[SG.FullWipe] failed to remove %@: %@", item, "\(error)")
+                NSLog("[RG.FullWipe] failed to remove %@: %@", item, "\(error)")
                 failures.append(item)
             }
         }
@@ -110,11 +110,11 @@ public func rgEraseAllLocalData() -> [String] {
         let query: [CFString: Any] = [kSecClass: secClass]
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
-            NSLog("[SG.FullWipe] keychain class %@ delete status %d", "\(secClass)", status)
+            NSLog("[RG.FullWipe] keychain class %@ delete status %d", "\(secClass)", status)
         }
     }
 
-    NSLog("[SG.FullWipe] Done. failures=%@", "\(failures)")
+    NSLog("[RG.FullWipe] Done. failures=%@", "\(failures)")
     return failures
 }
 
@@ -128,7 +128,7 @@ public func rgEraseAllLocalData() -> [String] {
 ///
 /// Wipes the container (`telegram-data`, shared defaults, caches), the app's own sandbox and the
 /// keychain, so the next launch is the same as a first install. Triggered from the iOS Settings
-/// toggle `sg_full_wipe`, which lives in `UserDefaults.standard` — not in the container being
+/// toggle `rg_full_wipe`, which lives in `UserDefaults.standard` — not in the container being
 /// deleted — so the flag itself survives long enough to be read and cleared.
 @discardableResult
 public func rgFullWipeIfNeeded(present: ((UIViewController) -> ())?, beforePresent: (() -> ())? = nil) -> Bool {
@@ -139,7 +139,7 @@ public func rgFullWipeIfNeeded(present: ((UIViewController) -> ())?, beforePrese
     beforePresent?()
 
     guard rgDataContainerURL() != nil else {
-        NSLog("[SG.FullWipe] ERROR. Data container unavailable")
+        NSLog("[RG.FullWipe] ERROR. Data container unavailable")
         let failAlert = UIAlertController(title: "ERROR. Full wipe failed", message: "Data container unavailable", preferredStyle: .alert)
         failAlert.addAction(UIAlertAction(title: "Close", style: .cancel) { _ in exit(0) })
         present?(failAlert)
@@ -185,7 +185,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
     UserDefaults.standard.set(false, forKey: dbHardResetKey)
     beforePresent?()
     guard let dataPath = dataPath ?? rgDefaultDataPath() else {
-        NSLog("[SG.DBReset] ERROR. Reset All failed: Error 2")
+        NSLog("[RG.DBReset] ERROR. Reset All failed: Error 2")
         let failAlert = UIAlertController(
             title: "ERROR. Reset All failed",
             message: "Error 2",
@@ -214,7 +214,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
             exit(0)
         })
         ensureAlert.addAction(UIAlertAction(title: "RESET NOW", style: .destructive) { _ in
-            NSLog("[SG.DBReset] Reset All with system settings")
+            NSLog("[RG.DBReset] Reset All with system settings")
             let alert = UIAlertController(
                 title: "Reset All.\nDO NOT CLOSE THE APP\nPlease wait...",
                 message: nil,
@@ -229,9 +229,9 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
                 for metadataItem in ["db", "guard_db", "media", "spotlight"] {
                     let metadataItemPath = (dataPath as NSString).appendingPathComponent("accounts-metadata/\(metadataItem)")
                     if fileManager.fileExists(atPath: metadataItemPath) {
-                        NSLog("[SG.DBReset] Trying to delete accounts-metadata/\(metadataItem)")
+                        NSLog("[RG.DBReset] Trying to delete accounts-metadata/\(metadataItem)")
                         try fileManager.removeItem(atPath: metadataItemPath)
-                        NSLog("[SG.DBReset] OK. Deleted accounts-metadata/\(metadataItem)")
+                        NSLog("[RG.DBReset] OK. Deleted accounts-metadata/\(metadataItem)")
                     }
                 }
                 let contents = try fileManager.contentsOfDirectory(atPath: dataPath)
@@ -249,7 +249,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
                     return nil
                 }
 
-                NSLog("[SG.DBReset] Found \(accountDirectories.count) account dirs...")
+                NSLog("[RG.DBReset] Found \(accountDirectories.count) account dirs...")
                 var deletedPostboxCount = 0
                 for accountDir in accountDirectories {
                     let accountName = (accountDir as NSString).lastPathComponent
@@ -261,18 +261,18 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
                         let dbPath = (postboxPath as NSString).appendingPathComponent("db")
                         var isDbDir: ObjCBool = false
                         if fileManager.fileExists(atPath: dbPath, isDirectory: &isDbDir), isDbDir.boolValue {
-                            NSLog("[SG.DBReset] Trying to delete postbox/db in: \(accountName)")
+                            NSLog("[RG.DBReset] Trying to delete postbox/db in: \(accountName)")
                             try fileManager.removeItem(atPath: dbPath)
-                            NSLog("[SG.DBReset] OK. Deleted postbox/db directory in: \(accountName)")
+                            NSLog("[RG.DBReset] OK. Deleted postbox/db directory in: \(accountName)")
                         }
                         
                         // Delete postbox/media
                         let mediaPath = (postboxPath as NSString).appendingPathComponent("media")
                         var isMediaDir: ObjCBool = false
                         if fileManager.fileExists(atPath: mediaPath, isDirectory: &isMediaDir), isMediaDir.boolValue {
-                            NSLog("[SG.DBReset] Trying to delete postbox/media in: \(accountName)")
+                            NSLog("[RG.DBReset] Trying to delete postbox/media in: \(accountName)")
                             try fileManager.removeItem(atPath: mediaPath)
-                            NSLog("[SG.DBReset] OK. Deleted postbox/media directory in: \(accountName)")
+                            NSLog("[RG.DBReset] OK. Deleted postbox/media directory in: \(accountName)")
                         }
                         
                         deletedPostboxCount += 1
@@ -280,7 +280,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
                 }
 
 
-                NSLog("[SG.DBReset] Done. Reset All completed")
+                NSLog("[RG.DBReset] Done. Reset All completed")
                 let successAlert = UIAlertController(
                     title: "Reset All completed",
                     message: nil,
@@ -293,7 +293,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
                     present?(successAlert)
                 }
             } catch {
-                NSLog("[SG.DBReset] ERROR. Reset All failed: \(error)")
+                NSLog("[RG.DBReset] ERROR. Reset All failed: \(error)")
                 let failAlert = UIAlertController(
                     title: "ERROR. Reset All failed",
                     message: "\(error)",

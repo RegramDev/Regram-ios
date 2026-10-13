@@ -3,7 +3,7 @@ import SwiftSignalKit
 import ManagedFile
 import RGAppGroupIdentifier
 
-private let queue = DispatchQueue(label: "app.swiftgram.ios.trace", qos: .utility)
+private let queue = DispatchQueue(label: "app.regram.ios.trace", qos: .utility)
 
 private var sharedLogger: RGLogger?
 
@@ -14,7 +14,7 @@ private func rootPathForBasePath(_ appGroupPath: String) -> String {
 }
 
 public class RGLogger {
-    public let queue = Queue(name: "app.swiftgram.ios.log", qos: .utility)
+    public let queue = Queue(name: "app.regram.ios.log", qos: .utility)
     private let maxLength: Int = 2 * 1024 * 1024
     private let maxShortLength: Int = 1 * 1024 * 1024
     private let maxFiles: Int = 20
@@ -38,7 +38,7 @@ public class RGLogger {
         if let sharedLogger = sharedLogger {
             return sharedLogger
         } else {
-            print("SGLogger setup...")
+            print("RGLogger setup...")
             guard Bundle.main.bundleIdentifier != nil else {
                 print("Can't setup logger (1)!")
                 return RGLogger(rootPath: "", basePath: "")
@@ -84,7 +84,7 @@ public class RGLogger {
         
         var consoleContent: String?
         if self.logToConsole {
-            let content = String(format: "[SG.%@] %d-%d-%d %02d:%02d:%02d.%03d %@", arguments: [tag, Int(timeinfo.tm_year) + 1900, Int(timeinfo.tm_mon + 1), Int(timeinfo.tm_mday), Int(timeinfo.tm_hour), Int(timeinfo.tm_min), Int(timeinfo.tm_sec), Int(milliseconds), string])
+            let content = String(format: "[RG.%@] %d-%d-%d %02d:%02d:%02d.%03d %@", arguments: [tag, Int(timeinfo.tm_year) + 1900, Int(timeinfo.tm_mon + 1), Int(timeinfo.tm_mday), Int(timeinfo.tm_hour), Int(timeinfo.tm_min), Int(timeinfo.tm_sec), Int(milliseconds), string])
             consoleContent = content
             print(content)
         }
@@ -95,7 +95,7 @@ public class RGLogger {
                 if let consoleContent = consoleContent {
                     content = consoleContent
                 } else {
-                    content = String(format: "[SG.%@] %d-%d-%d %02d:%02d:%02d.%03d %@", arguments: [tag, Int(timeinfo.tm_year) + 1900, Int(timeinfo.tm_mon + 1), Int(timeinfo.tm_mday), Int(timeinfo.tm_hour), Int(timeinfo.tm_min), Int(timeinfo.tm_sec), Int(milliseconds), string])
+                    content = String(format: "[RG.%@] %d-%d-%d %02d:%02d:%02d.%03d %@", arguments: [tag, Int(timeinfo.tm_year) + 1900, Int(timeinfo.tm_mon + 1), Int(timeinfo.tm_mday), Int(timeinfo.tm_hour), Int(timeinfo.tm_min), Int(timeinfo.tm_sec), Int(milliseconds), string])
                 }
                 
                 var currentFile: ManagedFile?

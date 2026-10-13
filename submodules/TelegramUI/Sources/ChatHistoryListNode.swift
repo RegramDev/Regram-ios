@@ -1,3 +1,5 @@
+// MARK: Regram
+import RGTranscription
 import RGSimpleSettings
 import Foundation
 import UIKit
@@ -2240,6 +2242,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             }
             |> runOn(queue)
         }
+
+        // MARK: Regram — refresh source-specific transcription controls when the provider changes.
+        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, rgTranscriptionProviderSignal())
+        |> map { update, _ in update }
 
         let startTime = CFAbsoluteTimeGetCurrent()
         var measure_isFirstTime = true

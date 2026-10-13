@@ -5,6 +5,19 @@ import AppBundle
 
 private let gradientImage = UIImage(bundleImageName: "Item List/Icons/Gradient")
 private let backdropImage = UIImage(bundleImageName: "Item List/Icons/Backdrop")
+// MARK: Regram
+private func renderRegramSettingsArtwork(name: String) -> UIImage? {
+    guard let image = UIImage(bundleImageName: name)?.cgImage else { return nil }
+    return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
+        let rect = CGRect(origin: .zero, size: size)
+        context.clear(rect)
+        context.addPath(UIBezierPath(roundedRect: rect, cornerRadius: 7.0).cgPath)
+        context.clip()
+        context.interpolationQuality = .high
+        context.draw(image, in: rect)
+    })?.withRenderingMode(.alwaysOriginal)
+}
+
 public func renderSettingsIcon(name: String, scaleFactor: CGFloat = 1.0, backgroundColors: [UIColor]? = nil) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         let bounds = CGRect(origin: CGPoint(), size: size)
@@ -117,8 +130,9 @@ let colorGray = UIColor(rgb: 0x8E8E93)
 let colorViolet = UIColor(rgb: 0x5E5CE6)
 
 public struct PresentationResourcesSettings {
-    public static let regram = renderSettingsIcon(name: "RegramSettings", scaleFactor: 30.0 / 512.0)
-    public static let regramPro = renderSettingsIcon(name: "RegramPro", scaleFactor: 30.0 / 256.0)
+    // MARK: Regram — preserve the supplied artwork rather than treating it as a monochrome glyph.
+    public static let regram = renderRegramSettingsArtwork(name: "RegramSettings")
+    public static let regramPro = renderRegramSettingsArtwork(name: "RegramPro")
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])

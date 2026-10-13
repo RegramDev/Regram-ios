@@ -1,6 +1,6 @@
 import Foundation
 
-public let FALLBACK_BASE_BUNDLE_ID: String = "app.swiftgram.ios"
+public let FALLBACK_BASE_BUNDLE_ID: String = "app.regram.ios"
 
 public func rgBaseBundleIdentifier() -> String {
     let baseBundleId: String
@@ -287,7 +287,7 @@ public func rgDataContainerURL() -> URL? {
 /// that got the App Group, except for symptoms (generic notification text) that have several other
 /// possible causes.
 private func rgRecordResolvedContainer(_ value: String) {
-    let key = "sg_resolved_container"
+    let key = rgMigratedPreferenceKey("rg_resolved_container", legacyKey: "sg_resolved_container")
     let defaults = UserDefaults.standard
     guard defaults.string(forKey: key) != value else {
         return

@@ -5,13 +5,15 @@ load(
     "telegram_bundle_id",
 )
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSettingsUI:RGSettingsUI",
+    "//Regram/RGLinkMetadata:RGLinkMetadata",
     "//Regram/RGAppUpdate:RGAppUpdate", # MARK: Regram
     "//Regram/RGConfig:RGConfig",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Regram/RGTranscription:RGTranscription",
     "//Regram/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
     "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
     "//Regram/RGLogging:RGLogging",
@@ -20,8 +22,6 @@ sgdeps = [
     "//Regram/Wrap:Wrap",
     "//Regram/RGDeviceToken:RGDeviceToken",
     "//Regram/RGDebugUI:RGDebugUI",
-    "//Regram/RGIAP:RGIAP",
-    "//Regram/RGPayWall:RGPayWall",
     "//Regram/RGProUI:RGProUI",
     "//Regram/RGStickerSave:RGStickerSave", # MARK: Regram
     "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
@@ -30,7 +30,7 @@ sgdeps = [
     # "//Regram/RGContentAnalysis:RGContentAnalysis"
 ]
 
-sgsrcs = [
+rgsrcs = [
     "//Regram/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
     "//Regram/RGDBReset:RGDBReset",
     "//Regram/RGShowMessageJson:RGShowMessageJson",
@@ -93,11 +93,11 @@ swift_library(
     module_name = "TelegramUI",
     srcs = glob([
         "Sources/**/*.swift",
-    ]) + sgsrcs,
+    ]) + rgsrcs,
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//third-party/recaptcha:RecaptchaEnterprise",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/SSignalKit/SSignalKit:SSignalKit",

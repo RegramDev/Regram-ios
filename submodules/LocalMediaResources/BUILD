@@ -1,6 +1,7 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings"
 ]
 
@@ -13,7 +14,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/ImageCompression:ImageCompression",

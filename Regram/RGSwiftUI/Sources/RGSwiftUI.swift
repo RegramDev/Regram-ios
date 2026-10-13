@@ -81,7 +81,7 @@ public struct RGSwiftUIView<Content: View>: View {
     ) {
         #if DEBUG
         if manageSafeArea {
-            print("WARNING SGSwiftUIView: manageSafeArea is deprecated, use @Environment(\\.navigationBarHeight) and @Environment(\\.containerViewLayout)")
+            print("WARNING RGSwiftUIView: manageSafeArea is deprecated, use @Environment(\\.navigationBarHeight) and @Environment(\\.containerViewLayout)")
         }
         #endif
         self.navigationBarHeight = legacyController.navigationBarHeightModel

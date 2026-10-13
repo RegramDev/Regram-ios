@@ -375,54 +375,55 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
 
                             var name = "Icon"
                             var bordered = true
+                            // MARK: Regram — product icon identifiers use RG names.
                             switch icon.name {
-                                case "SGDefault":
+                                case "RGDefault":
                                     name = item.strings.Appearance_AppIconDefault
                                     bordered = false
-                                case "SGBlack":
+                                case "RGBlack":
                                     name = "Black"
                                     bordered = false
-                                case "SGLegacy":
+                                case "RGLegacy":
                                     name = "Legacy"
                                     bordered = false
-                                case "SGInverted":
+                                case "RGInverted":
                                     name = "Inverted"
-                                case "SGWhite":
+                                case "RGWhite":
                                     name = "White"
-                                case "SGNight":
+                                case "RGNight":
                                     name = "Night"
                                     bordered = false
-                                case "SGSky":
+                                case "RGSky":
                                     name = "Sky"
                                     bordered = false
-                                case "SGTitanium":
+                                case "RGTitanium":
                                     name = "Titanium"
                                     bordered = false
-                                case "SGNeon":
+                                case "RGNeon":
                                     name = "Neon"
                                     bordered = false
-                                case "SGNeonBlue":
+                                case "RGNeonBlue":
                                     name = "Neon Blue"
                                     bordered = false
-                                case "SGGlass":
+                                case "RGGlass":
                                     name = "Glass"
                                     bordered = false
-                                case "SGSparkling":
+                                case "RGSparkling":
                                     name = "Sparkling"
                                     bordered = false
-                                case "SGBeta":
+                                case "RGBeta":
                                     name = "β Beta"
                                     bordered = false
-                                case "SGPro":
+                                case "RGPro":
                                     name = "Pro"
                                     bordered = false
-                                case "SGGold":
+                                case "RGGold":
                                     name = "Gold"
                                     bordered = false
-                                case "SGDucky":
+                                case "RGDucky":
                                     name = "Ducky"
                                     bordered = false
-                                case "SGDay":
+                                case "RGDay":
                                     name = "Day"
                                     bordered = false
                                 case "RGAnime":
@@ -433,7 +434,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     bordered = false
                                 case "BlueIcon":
                                     // Not Appearance_AppIconDefault: that string is already used by
-                                    // SGDefault above, and two rows labelled "Default" is unusable.
+                                    // RGDefault above, and two rows labelled "Default" is unusable.
                                     name = "Telegram"
                                 case "BlackIcon":
                                     name = "Telegram X"
@@ -463,7 +464,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = icon.name
                             }
                         
-                            imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isRGPro, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
+                            imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
                                 item.updated(icon)
                             })
                         }
@@ -485,4 +486,3 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
         self.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
     }
 }
-

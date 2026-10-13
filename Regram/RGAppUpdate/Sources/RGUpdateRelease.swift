@@ -61,7 +61,7 @@ public enum RGUpdateError: Error {
     case invalidRelease, invalidManifest, network, hashMismatch, notConfigured, keychain, invalidCertificate, certificateMismatch, invalidProfile, invalidArchive, identityMismatch, signing, cancelled
     case profileMismatch(bundle: String, reason: String, entitlement: String)
     case profileLimit
-    case cache, installationNotStarted, installationRejected, installationChannelEnded
+    case cache, installationNotStarted, installationRejected, installationChannelEnded, trollStoreUnavailable, trollStoreNotStarted
 
     public var profileBundle: String? {
         if case let .profileMismatch(bundle, _, _) = self, !bundle.isEmpty { return bundle }
@@ -104,6 +104,8 @@ public enum RGUpdateError: Error {
         case .installationNotStarted: return "AppUpdate.InstallationNotStarted"
         case .installationRejected: return "AppUpdate.InstallationRejected"
         case .installationChannelEnded: return "AppUpdate.InstallationChannelEnded"
+        case .trollStoreUnavailable: return "AppUpdate.TrollStoreUnavailable"
+        case .trollStoreNotStarted: return "AppUpdate.TrollStoreNotStarted"
         }
     }
 }

@@ -4,23 +4,26 @@ import Foundation
 public enum RGUpdateCredentialFileKind {
     case certificate
     case profiles
+    case signingMaterials
 
     public func acceptsExtension(_ value: String) -> Bool {
         switch self {
         case .certificate: return ["p12", "pfx"].contains(value.lowercased())
         case .profiles: return value.lowercased() == "mobileprovision"
+        case .signingMaterials: return RGUpdateCredentialFileKind.certificate.acceptsExtension(value) || RGUpdateCredentialFileKind.profiles.acceptsExtension(value)
         }
     }
 }
 
 public enum RGUpdateCredentialFileError: Error {
-    case invalidType, tooLarge, empty, unreadable
+    case invalidType, tooLarge, empty, unreadable, certificateSelection
     public var localizationKey: String {
         switch self {
         case .invalidType: return "AppUpdate.ImportWrongType"
         case .tooLarge: return "AppUpdate.ImportTooLarge"
         case .empty: return "AppUpdate.ImportEmpty"
         case .unreadable: return "AppUpdate.ImportUnreadable"
+        case .certificateSelection: return "AppUpdate.CertificateSelection"
         }
     }
 }

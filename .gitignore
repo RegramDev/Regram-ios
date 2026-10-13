@@ -1,4 +1,6 @@
 submodules/**/.build/*
+regram-scripts
+# MARK: Regram — retain the ignore rule for existing local scripts.
 swiftgram-scripts
 Regram/Playground/custom_bazel_path.bzl
 Regram/Playground/codesigning
@@ -90,5 +92,15 @@ tools/sim-watcher/dist/
 
 # MARK: Regram — local build identity (bundle id, api_id/api_hash, signing team).
 # Not committed: it carries credentials and differs per builder.
-# Copy build-system/sg-device-configuration.example.json and fill it in.
+# Copy build-system/rg-device-configuration.example.json and fill it in.
+build-system/rg-device-configuration.json
+# MARK: Regram — keep older local credential files ignored.
 build-system/sg-device-configuration.json
+
+# MARK: Regram — local planning, client comparisons and extracted reference material.
+/docs/regram-desktop-*.md
+/docs/nagram-feature-backlog.md
+/docs/regram-naming.md
+/docs/lcsign-signing-comparison.md
+/docs/turrit-*.md
+/docs/notification-startup-and-empty-alerts.md

@@ -13,7 +13,7 @@ import TDShim
 @Observable @MainActor
 final class UserNamesStore {
     private(set) var names: [Int64: String] = [:]
-    // MARK: Swiftgram
+    // MARK: Regram
     private(set) var avatars: [Int64: AvatarVisual] = [:]
     //
 
@@ -21,7 +21,7 @@ final class UserNamesStore {
     func handle(_ update: Update) {
         if case .updateUser(let upd) = update {
             names[upd.user.id] = upd.user.firstName
-            // MARK: Swiftgram
+            // MARK: Regram
             avatars[upd.user.id] = AvatarVisual(
                 kind: .normal,
                 initials: avatarInitials(from: upd.user.firstName),

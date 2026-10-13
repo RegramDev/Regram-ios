@@ -1,6 +1,6 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram
@@ -22,7 +22,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/UrlWhitelist",
         "//submodules/AccountContext",
         "//submodules/LottieSettings:LottieSettings",

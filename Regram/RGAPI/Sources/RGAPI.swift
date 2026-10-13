@@ -11,8 +11,12 @@ import RGRegDateScheme
 
 private let API_VERSION: String = "0"
 
-private func buildApiUrl(_ endpoint: String) -> String {
-    return "\(RG_CONFIG.apiUrl)/v\(API_VERSION)/\(endpoint)"
+private func buildApiUrl(_ endpoint: String) -> URL? {
+    guard let baseURL = URL(string: RG_CONFIG.apiUrl), baseURL.host != nil,
+          baseURL.scheme == "https" || baseURL.scheme == "http" else {
+        return nil
+    }
+    return URL(string: "\(RG_CONFIG.apiUrl)/v\(API_VERSION)/\(endpoint)")
 }
 
 public let RG_API_AUTHORIZATION_HEADER = "Authorization"
@@ -29,7 +33,10 @@ public enum RGAPIError {
 public func getRGSettings(token: String) -> Signal<RGWebSettings, RGAPIError> {
     return Signal { subscriber in
 
-        let url = URL(string: buildApiUrl("settings"))!
+        guard let url = buildApiUrl("settings") else {
+            subscriber.putError(.generic("Regram backend is not configured"))
+            return EmptyDisposable
+        }
         let headers = [RG_API_AUTHORIZATION_HEADER: "Token \(token)"]
         let completed = Atomic<Bool>(value: false)
         
@@ -66,7 +73,10 @@ public func getRGSettings(token: String) -> Signal<RGWebSettings, RGAPIError> {
 public func postRGSettings(token: String, data: [String:Any]) -> Signal<Void, RGAPIError> {
     return Signal { subscriber in
 
-        let url = URL(string: buildApiUrl("settings"))!
+        guard let url = buildApiUrl("settings") else {
+            subscriber.putError(.generic("Regram backend is not configured"))
+            return EmptyDisposable
+        }
         let headers = [RG_API_AUTHORIZATION_HEADER: "Token \(token)"]
         let completed = Atomic<Bool>(value: false)
         
@@ -108,7 +118,10 @@ public func postRGSettings(token: String, data: [String:Any]) -> Signal<Void, RG
 public func getRGAPIRegDate(token: String, deviceToken: String, userId: Int64) -> Signal<RegDate, RGAPIError> {
     return Signal { subscriber in
 
-        let url = URL(string: buildApiUrl("regdate/\(userId)"))!
+        guard let url = buildApiUrl("regdate/\(userId)") else {
+            subscriber.putError(.generic("Regram backend is not configured"))
+            return EmptyDisposable
+        }
         let headers = [
             RG_API_AUTHORIZATION_HEADER: "Token \(token)",
             RG_API_DEVICE_TOKEN_HEADER: deviceToken
@@ -139,49 +152,6 @@ public func getRGAPIRegDate(token: String, deviceToken: String, userId: Int64) -
         return ActionDisposable {
             if !completed.with({ $0 }) {
                 downloadSignal.dispose()
-            }
-        }
-    }
-}
-
-
-public func postRGReceipt(token: String, deviceToken: String, encodedReceiptData: Data) -> Signal<Void, RGAPIError> {
-    return Signal { subscriber in
-
-        let url = URL(string: buildApiUrl("validate"))!
-        let headers = [
-            RG_API_AUTHORIZATION_HEADER: "Token \(token)",
-            RG_API_DEVICE_TOKEN_HEADER: deviceToken
-        ]
-        let completed = Atomic<Bool>(value: false)
-        
-        var request = URLRequest(url: url)
-        headers.forEach { key, value in
-            request.addValue(value, forHTTPHeaderField: key)
-        }
-        request.httpMethod = "POST"
-        request.httpBody = encodedReceiptData
-        
-        let dataSignal = requestsCustom(request: request).start(next: { data, urlResponse in
-            let _ = completed.swap(true)
-            
-            if let httpResponse = urlResponse as? HTTPURLResponse {
-                switch httpResponse.statusCode {
-                case 200...299:
-                    subscriber.putCompletion()
-                default:
-                    subscriber.putError(.generic("Error posting Receipt: \(httpResponse.statusCode). Response: \(String(data: data, encoding: .utf8) ?? "")"))
-                }
-            } else {
-                subscriber.putError(.generic("Not an HTTP response: \(String(describing: urlResponse))"))
-            }
-        }, error: { error in
-            subscriber.putError(.generic("Error posting Receipt: \(String(describing: error))"))
-        })
-        
-        return ActionDisposable {
-            if !completed.with({ $0 }) {
-                dataSignal.dispose()
             }
         }
     }

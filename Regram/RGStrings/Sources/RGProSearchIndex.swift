@@ -4,6 +4,23 @@ import Foundation
 /// presence leads to a usable destination even when the parent row has a different title.
 public enum RGProSearchIndex {
     public static let keys: [String: [String]] = [
+        "sttSettings": ["RG.STTSettings", "speech transcription whisper openai model voice audio round video 语音 转写 识别 圆视频 模型 密钥 音频 語音 辨識"],
+        "transcriptionSettings": ["Settings.Category.transcription", "Settings.Transcription.Backend", "speech voice telegram apple 语音 转写 识别"],
+        "translationSettings": ["Settings.Category.translation", "translation google microsoft yandex transmart llm 翻译"],
+        "llmSettings": ["LLMTranslation.Title", "LLMTranslation.Model", "openai anthropic prompt temperature context 大模型 提示词 温度 上下文"],
+        "linkPreviewSettings": ["LinkPreview.Repair", "preview x twitter instagram reddit pixiv tiktok 链接 预览 修复 连结 連結"],
+        "messageActionsSettings": ["Settings.Category.messageActions", "DoubleTap.Action", "Settings.ShowMessageId", "Settings.ShowForwardedMessageDate", "menu double tap id forwarded 消息 菜单 双击 时间 转发"],
+        "chatListSettings": ["Settings.Category.chatList", "Settings.UnlimitedPinnedChats", "chat list pinned swipe 聊天 列表 无限 置顶 侧滑"],
+        "folderSettings": ["Settings.Category.folders", "JoinFolder.Setting", "folders join 分组 加入"],
+        "profileSettings": ["Settings.Category.profiles", "profile id registration phone 资料 注册 手机号"],
+        "storiesSettings": ["Settings.Category.stories", "stories stealth 动态 快拍"],
+        "appearanceSettings": ["Settings.Category.appearance", "appearance tabs bar saturation 外观 界面 底栏 颜色"],
+        "mediaSettings": ["Settings.MediaLoading.Title", "MediaMetadata.Setting", "download speed video quality metadata 下载 速度 媒体 信息 播放 画质"],
+        "photoSettings": ["Settings.Category.photos", "photo quality image 照片 画质 图片"],
+        "stickerSettings": ["Settings.Category.stickers", "sticker emoji size recent 贴纸 表情 最近 大小"],
+        "recordingSettings": ["Settings.Category.recording", "recording microphone round camera 录制 麦克风 圆视频"],
+        "appUpdate": ["Updates.Title", "update github certificate p12 ipa install 更新 证书 签名 安装"],
+
         "messageFilter": ["MessageFilter.Title", "MessageFilter.Regex", "MessageFilter.Test.Title", "filter regex whitelist 过滤 正则 白名单"],
         "hiddenUsers": ["HiddenUsers.Title", "hidden blocked 隐藏 屏蔽用户"],
         "inputToolbar": ["InputToolbar.Title", "format toolbar 格式 工具栏"],

@@ -9,6 +9,8 @@ public class RGSimpleSettings {
     public static let shared = RGSimpleSettings()
     
     private init() {
+        // MARK: Regram — migrate before registration so the new default does not hide saved data.
+        rgMigratedPreferenceKey(Keys.dismissedRGSuggestions.rawValue, legacyKey: "dismissedSGSuggestions", defaults: UserDefaults.standard)
         setDefaultValues()
         migrate()
         preCacheValues()
@@ -35,10 +37,10 @@ public class RGSimpleSettings {
             if !groupUserDefaults.bool(forKey: showRepostToStoryMigrationKey) {
                 self.showRepostToStoryV2 = self.showRepostToStory
                 groupUserDefaults.set(true, forKey: showRepostToStoryMigrationKey)
-                RGLogger.shared.log("SGSimpleSettings", "Migrated showRepostToStory. \(self.showRepostToStory) -> \(self.showRepostToStoryV2)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated showRepostToStory. \(self.showRepostToStory) -> \(self.showRepostToStoryV2)")
             }
         } else {
-            RGLogger.shared.log("SGSimpleSettings", "Unable to migrate showRepostToStory. Shared UserDefaults are not available.")
+            RGLogger.shared.log("RGSimpleSettings", "Unable to migrate showRepostToStory. Shared UserDefaults are not available.")
         }
 
         // MARK: Regram — message filter v2. Plain keywords become all-chat substring rules.
@@ -47,7 +49,7 @@ public class RGSimpleSettings {
             let legacyKeywords = self.messageFilterKeywords
             if !legacyKeywords.isEmpty, self.messageFilterRules.isEmpty {
                 self.messageFilterRules = legacyKeywords.map { RGMessageFilterRule(pattern: $0) }
-                RGLogger.shared.log("SGSimpleSettings", "Migrated \(legacyKeywords.count) messageFilterKeywords -> messageFilterRules")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated \(legacyKeywords.count) messageFilterKeywords -> messageFilterRules")
             }
             UserDefaults.standard.set(true, forKey: messageFilterRulesMigrationKey)
         }
@@ -77,7 +79,7 @@ public class RGSimpleSettings {
                     self.chatListLines = ChatListLines.one.rawValue
                 }
                 UserDefaults.standard.removeObject(forKey: legacyCompactMessagePreviewKey)
-                RGLogger.shared.log("SGSimpleSettings", "Migrated compactMessagePreview -> chatListLines. \(self.chatListLines)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated compactMessagePreview -> chatListLines. \(self.chatListLines)")
             }
             UserDefaults.standard.set(true, forKey: chatListLinesMigrationKey)
         }
@@ -133,7 +135,7 @@ public class RGSimpleSettings {
             { let _ = self.startTelescopeWithRearCam },
             { let _ = self.hideRecordingButton },
             { let _ = self.inputToolbar },
-            { let _ = self.dismissedSGSuggestions },
+            { let _ = self.dismissedRGSuggestions },
             { let _ = self.customAppBadge }
         ]
 
@@ -248,11 +250,19 @@ public class RGSimpleSettings {
         case pinnedMessageNotifications
         case mentionsAndRepliesNotifications
         case primaryUserId
-        case status
-        case dismissedSGSuggestions
+
+        case dismissedRGSuggestions
         case duckyAppIconAvailable
         case transcriptionBackend
         case translationBackend
+        case sttBaseURL
+        case sttEndpoint
+        case sttModel
+        case sttLanguage
+        case sttPrompt
+        case fixLinkPreviews
+        case linkPreviewXHost
+        case linkPreviewInstagramHost
         case translationLLMAPIFormat
         case translationLLMBaseURL
         case translationLLMEndpoint
@@ -352,6 +362,7 @@ public class RGSimpleSettings {
     public enum TranscriptionBackend: String, CaseIterable {
         case `default`
         case apple
+        case openAICompatible
     }
 
     public enum TranslationBackend: String, CaseIterable {
@@ -482,9 +493,17 @@ public class RGSimpleSettings {
         Keys.messageFilterKeywords.rawValue: [],
         Keys.inputToolbar.rawValue: false,
         Keys.primaryUserId.rawValue: "",
-        Keys.dismissedSGSuggestions.rawValue: [],
+        Keys.dismissedRGSuggestions.rawValue: [],
         Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
+        Keys.sttBaseURL.rawValue: "",
+        Keys.sttEndpoint.rawValue: "",
+        Keys.sttModel.rawValue: "",
+        Keys.sttLanguage.rawValue: "",
+        Keys.sttPrompt.rawValue: "",
+        Keys.fixLinkPreviews.rawValue: false,
+        Keys.linkPreviewXHost.rawValue: RGLinkPreviewRules.defaultXHost,
+        Keys.linkPreviewInstagramHost.rawValue: RGLinkPreviewRules.defaultInstagramHost,
         Keys.translationLLMAPIFormat.rawValue: "openai",
         Keys.translationLLMBaseURL.rawValue: "",
         Keys.translationLLMEndpoint.rawValue: "",
@@ -525,7 +544,6 @@ public class RGSimpleSettings {
         Keys.legacyNotificationsFix.rawValue: false,
         Keys.pinnedMessageNotifications.rawValue: PinnedMessageNotificationsSettings.default.rawValue,
         Keys.mentionsAndRepliesNotifications.rawValue: MentionsAndRepliesNotificationsSettings.default.rawValue,
-        Keys.status.rawValue: 2, // Pro unlocked locally; see RGStatus.proStatus
         Keys.showRepostToStoryV2.rawValue: true,
         Keys.messageFilterRules.rawValue: "[]",
         Keys.blockedPeerIds.rawValue: [],
@@ -1112,12 +1130,7 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var legacyNotificationsFix: Bool
     
-    @UserDefault(key: Keys.status.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
-    public var status: Int64
 
-    // Mirrors RGStatus.status. Defaults to Pro so gates read as unlocked before the shared-data
-    // subscription in SharedAccountContext delivers its first value.
-    public var ephemeralStatus: Int64 = 2
     
     @UserDefault(key: Keys.messageFilterKeywords.rawValue)
     public var messageFilterKeywords: [String]
@@ -1130,7 +1143,7 @@ public class RGSimpleSettings {
     /// is rebuilt from a signal chain that only reacts to Postbox updates, so without an explicit
     /// notification a newly added rule would not take effect until some unrelated update happened
     /// to arrive.
-    public static let contentFiltersDidChangeNotification = Notification.Name("SGSimpleSettings.contentFiltersDidChange")
+    public static let contentFiltersDidChangeNotification = Notification.Name("RGSimpleSettings.contentFiltersDidChange")
 
     private func notifyContentFiltersChanged() {
         self.contentFilterCacheLock.lock()
@@ -1446,14 +1459,32 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.primaryUserId.rawValue)
     public var primaryUserId: String
 
-    @UserDefault(key: Keys.dismissedSGSuggestions.rawValue)
-    public var dismissedSGSuggestions: [String]
+    @UserDefault(key: Keys.dismissedRGSuggestions.rawValue)
+    public var dismissedRGSuggestions: [String]
 
     @UserDefault(key: Keys.duckyAppIconAvailable.rawValue)
     public var duckyAppIconAvailable: Bool
 
     @UserDefault(key: Keys.transcriptionBackend.rawValue)
     public var transcriptionBackend: String
+
+    // MARK: Regram — speech configuration and link preview preferences.
+    @UserDefault(key: Keys.sttBaseURL.rawValue)
+    public var sttBaseURL: String
+    @UserDefault(key: Keys.sttEndpoint.rawValue)
+    public var sttEndpoint: String
+    @UserDefault(key: Keys.sttModel.rawValue)
+    public var sttModel: String
+    @UserDefault(key: Keys.sttLanguage.rawValue)
+    public var sttLanguage: String
+    @UserDefault(key: Keys.sttPrompt.rawValue)
+    public var sttPrompt: String
+    @UserDefault(key: Keys.fixLinkPreviews.rawValue)
+    public var fixLinkPreviews: Bool
+    @UserDefault(key: Keys.linkPreviewXHost.rawValue)
+    public var linkPreviewXHost: String
+    @UserDefault(key: Keys.linkPreviewInstagramHost.rawValue)
+    public var linkPreviewInstagramHost: String
 
     @UserDefault(key: Keys.translationLLMAPIFormat.rawValue)
     public var translationLLMAPIFormat: String

@@ -1,5 +1,5 @@
 {
-	"bundle_id": "org.{! a random string !}.Swiftgram",
+	"bundle_id": "org.{! a random string !}.Regram",
 	"api_id": "{! get one at https://my.telegram.org/apps !}",
 	"api_hash": "{! get one at https://my.telegram.org/apps !}",
 	"team_id": "{! check README.md !}",
@@ -11,5 +11,5 @@
 	"premium_iap_product_id": "",
 	"enable_siri": false,
 	"enable_icloud": false,
-	"sg_config": ""
+	"rg_config": ""
 }

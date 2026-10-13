@@ -33,7 +33,7 @@ def generate_xcodeproj(build_environment: BuildEnvironment, disable_extensions, 
         project_bazel_arguments.append(argument)
 
     if target_name == "Regram/Playground":
-        project_bazel_arguments += ["--swiftcopt=-no-warnings-as-errors", "--copt=-Wno-error"]#, "--swiftcopt=-DSWIFTGRAM_PLAYGROUND", "--copt=-DSWIFTGRAM_PLAYGROUND=1"]
+        project_bazel_arguments += ["--swiftcopt=-no-warnings-as-errors", "--copt=-Wno-error"]#, "--swiftcopt=-DREGRAM_PLAYGROUND", "--copt=-DREGRAM_PLAYGROUND=1"]
 
     if target_name == 'Telegram':
         if disable_extensions:

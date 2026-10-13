@@ -12,7 +12,7 @@ import tempfile
 import uuid
 
 VARIABLES = {
-    'sg_config': str,
+    'rg_config': str,
     'telegram_api_hash': str,
     'telegram_api_id': str,
     'telegram_app_center_id': str,
@@ -41,6 +41,13 @@ PROFILE_SUFFIXES = {
 
 
 def validate_configuration(config):
+    # MARK: Regram — existing repository Secrets may still use the legacy name.
+    if isinstance(config, dict) and 'sg_config' in config:
+        config = dict(config)
+        legacy_config = config.pop('sg_config')
+        if 'rg_config' in config and config['rg_config'] != legacy_config:
+            raise ValueError('Conflicting application configuration keys')
+        config.setdefault('rg_config', legacy_config)
     if not isinstance(config, dict) or set(config) != set(VARIABLES):
         raise ValueError('CI configuration must contain exactly the documented build variables')
     if any(type(config[name]) is not kind for name, kind in VARIABLES.items()):

@@ -359,7 +359,7 @@ public final class GlobalControlPanelsContext {
 
                     // MARK: Regram
                     if let rgSuggestionsData = rgSuggestionsData, let dictionary = try? JSONSerialization.jsonObject(with: rgSuggestionsData, options: []), let rgSuggestions = dictionary as? [[String: Any]], let rgSuggestion = rgSuggestions.first, let rgSuggestionId = rgSuggestion["id"] as? String {
-                        if let rgSuggestionType = rgSuggestion["type"] as? String, rgSuggestionType == "SG_URL", let rgSuggestionTitle = rgSuggestion["title"] as? String, let rgSuggestionUrl = rgSuggestion["url"] as? String {
+                        if let rgSuggestionType = rgSuggestion["type"] as? String, ["RG_URL", "SG_URL"].contains(rgSuggestionType), let rgSuggestionTitle = rgSuggestion["title"] as? String, let rgSuggestionUrl = rgSuggestion["url"] as? String {
                             return .single(.rgUrl(id: rgSuggestionId, title: rgSuggestionTitle, text: rgSuggestion["text"] as? String, url: rgSuggestionUrl, needAuth: rgSuggestion["need_auth"] as? Bool ?? false, permanent: rgSuggestion["permanent"] as? Bool ?? false))
                             
                         }

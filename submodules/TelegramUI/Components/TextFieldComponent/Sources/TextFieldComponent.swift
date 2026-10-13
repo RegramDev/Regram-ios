@@ -444,7 +444,7 @@ public final class TextFieldComponent: Component {
             }
             
             // MARK: Regram
-            self.rgToolbarActionObserver = NotificationCenter.default.addObserver(forName: Notification.Name("sgToolbarAction"), object: nil, queue: .main, using: { [weak self] notification in
+            self.rgToolbarActionObserver = NotificationCenter.default.addObserver(forName: Notification.Name("rgToolbarAction"), object: nil, queue: .main, using: { [weak self] notification in
                     guard let self = self else { return }
                     if let action = notification.userInfo?["action"] as? String {
                         self.rgToolbarAction(action)

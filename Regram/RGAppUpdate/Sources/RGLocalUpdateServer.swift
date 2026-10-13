@@ -15,6 +15,7 @@ final class RGLocalUpdateServer: @unchecked Sendable {
     private var reportedPackageRequest = false
     var closed: (@Sendable () -> Void)?
     var packageRequested: (@Sendable () -> Void)?
+    var packageDelivered: (@Sendable () -> Void)?
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
@@ -128,19 +129,22 @@ final class RGLocalUpdateServer: @unchecked Sendable {
             header += "\r\n"
             connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self, weak connection] error in
                 guard let self, let connection, error == nil, method != "HEAD" else { try? handle.close(); connection?.cancel(); return }
-                self.sendFile(connection, handle: handle, remaining: upper - lower + 1)
+                self.sendFile(connection, handle: handle, remaining: upper - lower + 1, reportDelivery: lower == 0 && upper == self.size - 1)
             })
         } catch { sendError(connection, status: "500 Internal Server Error") }
     }
 
-    private func sendFile(_ connection: NWConnection, handle: FileHandle, remaining: UInt64) {
+    private func sendFile(_ connection: NWConnection, handle: FileHandle, remaining: UInt64, reportDelivery: Bool) {
         do {
             guard !stopped, remaining > 0, let chunk = try handle.read(upToCount: Int(min(256 * 1024, remaining))), !chunk.isEmpty else { try? handle.close(); connection.cancel(); return }
             connection.send(content: chunk, completion: .contentProcessed { [weak self, weak connection] error in
                 guard let self, let connection, error == nil else { try? handle.close(); connection?.cancel(); return }
                 let rest = remaining - UInt64(chunk.count)
-                if rest == 0 { try? handle.close(); connection.cancel() }
-                else { self.sendFile(connection, handle: handle, remaining: rest) }
+                if rest == 0 {
+                    try? handle.close(); connection.cancel()
+                    if reportDelivery { self.packageDelivered?() }
+                }
+                else { self.sendFile(connection, handle: handle, remaining: rest, reportDelivery: reportDelivery) }
             })
         } catch { try? handle.close(); connection.cancel() }
     }

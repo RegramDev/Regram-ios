@@ -576,7 +576,6 @@ private struct NotificationContent: CustomStringConvertible {
         return self.isForeignSession && RG_SILENCE_EMPTY_NOTIFICATIONS
     }
     let chatId: Int64?
-    let rgStatus: RGStatus
     /// The account this notification was delivered to, set only while more than one is signed
     /// in (see `notificationRecipientAccountName`).
     var recipientAccountName: String?
@@ -593,8 +592,8 @@ private struct NotificationContent: CustomStringConvertible {
     
     var isLockedMessage: String?
     
-    init(rgStatus: RGStatus, isLockedMessage: String?, isEmpty: Bool = false, isMentionOrReply: Bool = false, chatId: Int64? = nil) {
-        self.rgStatus = rgStatus
+    // MARK: Regram — notification handling is independent of local feature subscriptions.
+    init(isLockedMessage: String?, isEmpty: Bool = false, isMentionOrReply: Bool = false, chatId: Int64? = nil) {
         self.isLockedMessage = isLockedMessage
         self.isEmpty = isEmpty
         self.isMentionOrReply = isMentionOrReply
@@ -622,7 +621,6 @@ private struct NotificationContent: CustomStringConvertible {
         string += " forceIsEmpty: \(self.forceIsEmpty),\n"
         string += " isForeignSession: \(self.isForeignSession),\n"
         string += " forceIsSilent: \(self.forceIsSilent),\n"
-        string += " sgStatus: \(self.rgStatus.status),\n"
         string += "}"
         return string
     }
@@ -883,7 +881,7 @@ private func rgStandaloneStateManagerWithRetry(queue: Queue, accountManager: Acc
 // Reopen metadata after a routing miss to see writes made by the main app.
 private typealias RGNotificationAccountSnapshot = (AccountManager<TelegramAccountManagerTypes>, AccountRecordsView<TelegramAccountManagerTypes>, AccountSharedDataView<TelegramAccountManagerTypes>)
 private func rgNotificationAccountSnapshot(accountManager: AccountManager<TelegramAccountManagerTypes>, keyId: Data?, queue: Queue, attempt: Int = 1) -> Signal<RGNotificationAccountSnapshot, NoError> {
-    return combineLatest(queue: queue, accountManager.accountRecords(), accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings, ApplicationSpecificSharedDataKeys.voiceCallSettings, ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings, SharedDataKeys.loggingSettings, ApplicationSpecificSharedDataKeys.rgStatus]))
+    return combineLatest(queue: queue, accountManager.accountRecords(), accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings, ApplicationSpecificSharedDataKeys.voiceCallSettings, ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings, SharedDataKeys.loggingSettings]))
     |> take(1)
     |> mapToSignal { records, sharedData in
         let matched = keyId != nil && records.records.contains { record in
@@ -1085,7 +1083,6 @@ private final class NotificationServiceHandler {
             }
 
             let inAppNotificationSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.inAppNotificationSettings]?.get(InAppNotificationSettings.self) ?? InAppNotificationSettings.defaultSettings
-            let rgStatus = sharedData.entries[ApplicationSpecificSharedDataKeys.rgStatus]?.get(RGStatus.self) ?? RGStatus.default
             
             let voiceCallSettings: VoiceCallSettings
             if let value = sharedData.entries[ApplicationSpecificSharedDataKeys.voiceCallSettings]?.get(VoiceCallSettings.self) {
@@ -1097,7 +1094,7 @@ private final class NotificationServiceHandler {
             guard let strongSelf = self, let recordId = recordId else {
                 Logger.shared.log("NotificationService \(episode)", "Couldn't find a matching decryption key")
 
-                var content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                var content = NotificationContent(isLockedMessage: nil)
                 // MARK: Regram — the key id matched no account record, so this push was encrypted for
                 // a session that is not this install. Guarded on `recordId` rather than on reaching
                 // this branch at all: a nil `self` means the extension is being torn down, which says
@@ -1125,7 +1122,7 @@ private final class NotificationServiceHandler {
                 guard let stateManager = stateManager else {
                     Logger.shared.log("NotificationService \(episode)", "Didn't receive stateManager")
 
-                    let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                    let content = NotificationContent(isLockedMessage: nil)
                     updateCurrentContent(content)
                     completed()
                     return
@@ -1169,7 +1166,7 @@ private final class NotificationServiceHandler {
                     recipientAccountName
                 ) |> deliverOn(strongSelf.queue)).start(next: { notificationsKey, notificationSoundList, lottieSettings, recipientAccountName in
                     guard let strongSelf = self else {
-                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                        let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
                         completed()
 
@@ -1178,7 +1175,7 @@ private final class NotificationServiceHandler {
                     guard let notificationsKey = notificationsKey, notificationsKey.data.count >= 128 else { // MARK: Regram
                         Logger.shared.log("NotificationService \(episode)", "Didn't receive decryption key")
 
-                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                        let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
                         completed()
 
@@ -1187,7 +1184,7 @@ private final class NotificationServiceHandler {
                     guard let decryptedPayload = decryptedNotificationPayload(key: notificationsKey, data: payloadData) else {
                         Logger.shared.log("NotificationService \(episode)", "Couldn't decrypt payload")
 
-                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                        let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
                         completed()
 
@@ -1196,7 +1193,7 @@ private final class NotificationServiceHandler {
                     guard let payloadJson = try? JSONSerialization.jsonObject(with: decryptedPayload, options: []) as? [String: Any] else {
                         Logger.shared.log("NotificationService \(episode)", "Couldn't process payload as JSON")
 
-                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                        let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
                         completed()
 
@@ -1347,7 +1344,7 @@ private final class NotificationServiceHandler {
                             action = .logout
                         case "MESSAGE_MUTED":
                             if let peerId = peerId {
-                                action = .poll(peerId: peerId, content: NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true, isMentionOrReply: isMentionOrReply, chatId: chatId), messageId: nil, reportDelivery: false, enableInlineEmoji: false)
+                                action = .poll(peerId: peerId, content: NotificationContent(isLockedMessage: nil, isEmpty: true, isMentionOrReply: isMentionOrReply, chatId: chatId), messageId: nil, reportDelivery: false, enableInlineEmoji: false)
                             }
                         case "MESSAGE_DELETED":
                             if let peerId = peerId {
@@ -1398,7 +1395,7 @@ private final class NotificationServiceHandler {
                         }
                     } else {
                         if let aps = payloadJson["aps"] as? [String: Any], var peerId = peerId {
-                            var content: NotificationContent = NotificationContent(rgStatus: rgStatus, isLockedMessage: isLockedMessage, isMentionOrReply: isMentionOrReply, chatId: chatId)
+                            var content: NotificationContent = NotificationContent(isLockedMessage: isLockedMessage, isMentionOrReply: isMentionOrReply, chatId: chatId)
                             content.recipientAccountName = recipientAccountName
                             if let alert = aps["alert"] as? [String: Any] {
                                 if let topicTitleValue = payloadJson["topic_title"] as? String {
@@ -1561,7 +1558,7 @@ private final class NotificationServiceHandler {
 
                             updateCurrentContent(content)
                         } else if let aps = payloadJson["aps"] as? [String: Any], let url = payloadJson["url"] as? String {
-                            var content: NotificationContent = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                            var content: NotificationContent = NotificationContent(isLockedMessage: nil)
                             content.recipientAccountName = recipientAccountName
                             content.userInfo["url"] = url
                             content.userInfo["peerId"] = "777000"
@@ -1598,7 +1595,7 @@ private final class NotificationServiceHandler {
                         switch action {
                         case let .call(callData):
                             if let stateManager = strongSelf.stateManager {
-                                let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                let content = NotificationContent(isLockedMessage: nil)
                                 updateCurrentContent(content)
                                 
                                 let _ = (stateManager.postbox.transaction { transaction -> String? in
@@ -1621,7 +1618,7 @@ private final class NotificationServiceHandler {
 
                                     if #available(iOS 14.5, *), voiceCallSettings.enableSystemIntegration {
                                         Logger.shared.log("NotificationService \(episode)", "Will report voip notification")
-                                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                        let content = NotificationContent(isLockedMessage: nil)
                                         updateCurrentContent(content)
                                         
                                         CXProvider.reportNewIncomingVoIPPushPayload(voipPayload, completion: { error in
@@ -1630,7 +1627,7 @@ private final class NotificationServiceHandler {
                                             completed()
                                         })
                                     } else {
-                                        var content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                        var content = NotificationContent(isLockedMessage: nil)
                                         content.recipientAccountName = recipientAccountName
                                         if let peer = callData.peer {
                                             content.title = peer.debugDisplayTitle
@@ -1646,7 +1643,7 @@ private final class NotificationServiceHandler {
                             }
                         case let .groupCall(groupCallData):
                             if let stateManager = strongSelf.stateManager {
-                                let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                let content = NotificationContent(isLockedMessage: nil)
                                 updateCurrentContent(content)
                                 
                                 let _ = (stateManager.postbox.transaction { transaction -> TelegramUser? in
@@ -1667,7 +1664,7 @@ private final class NotificationServiceHandler {
 
                                     if #available(iOS 14.5, *), voiceCallSettings.enableSystemIntegration {
                                         Logger.shared.log("NotificationService \(episode)", "Will report voip notification")
-                                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                        let content = NotificationContent(isLockedMessage: nil)
                                         updateCurrentContent(content)
                                         
                                         CXProvider.reportNewIncomingVoIPPushPayload(voipPayload, completion: { error in
@@ -1676,7 +1673,7 @@ private final class NotificationServiceHandler {
                                             completed()
                                         })
                                     } else {
-                                        var content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                        var content = NotificationContent(isLockedMessage: nil)
                                         content.recipientAccountName = recipientAccountName
                                         if let peer = fromPeer {
                                             content.title = peer.debugDisplayTitle
@@ -1693,7 +1690,7 @@ private final class NotificationServiceHandler {
                         case .logout:
                             Logger.shared.log("NotificationService \(episode)", "Will logout")
 
-                            let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true)
+                            let content = NotificationContent(isLockedMessage: nil, isEmpty: true)
                             updateCurrentContent(content)
                             completed()
                         case let .poll(peerId, initialContent, messageId, reportDelivery, enableInlineEmoji):
@@ -1733,7 +1730,7 @@ private final class NotificationServiceHandler {
                                     
                                     queue.async {
                                         guard let strongSelf = self, let stateManager = strongSelf.stateManager else {
-                                            let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: isLockedMessage)
+                                            let content = NotificationContent(isLockedMessage: isLockedMessage)
                                             updateCurrentContent(content)
                                             completed()
                                             return
@@ -2193,7 +2190,7 @@ private final class NotificationServiceHandler {
                                                 Logger.shared.log("NotificationService \(episode)", "Updating content to \(content)")
 
                                                 if wasDisplayed {
-                                                    content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
+                                                    content = NotificationContent(isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
                                                     content.dismissAfterDelivery = true
                                                     Logger.shared.log("NotificationService \(episode)", "Was already displayed, skipping content")
                                                 } else if let messageId {
@@ -2306,7 +2303,7 @@ private final class NotificationServiceHandler {
                                                         case let .idBased(maxIncomingReadId, _, _, _, _):
                                                             if maxIncomingReadId >= messageId.id {
                                                                 Logger.shared.log("NotificationService \(episode)", "maxIncomingReadId: \(maxIncomingReadId), messageId: \(messageId.id), skipping")
-                                                                content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
+                                                                content = NotificationContent(isLockedMessage: nil, isMentionOrReply: isMentionOrReply, chatId: chatId)
                                                                 content.dismissAfterDelivery = true
                                                             } else {
                                                                 Logger.shared.log("NotificationService \(episode)", "maxIncomingReadId: \(maxIncomingReadId), messageId: \(messageId.id), not skipping")
@@ -2412,7 +2409,7 @@ private final class NotificationServiceHandler {
 
                                     queue.async {
                                         guard let strongSelf = self, let stateManager = strongSelf.stateManager else {
-                                            let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: isReaction ? isLockedMessage : isLockedStoryMessage, isEmpty: true)
+                                            let content = NotificationContent(isLockedMessage: isReaction ? isLockedMessage : isLockedStoryMessage, isEmpty: true)
                                             updateCurrentContent(content)
                                             completed()
                                             return
@@ -2612,7 +2609,7 @@ private final class NotificationServiceHandler {
                                             
                                             var content = content
                                             if wasDisplayed {
-                                                content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                                                content = NotificationContent(isLockedMessage: nil)
                                             } else {
                                                 let _ = (stateManager.postbox.transaction { transaction -> Void in
                                                     _internal_setStoryNotificationWasDisplayed(transaction: transaction, id: StoryId(peerId: peerId, id: storyId))
@@ -2704,7 +2701,7 @@ private final class NotificationServiceHandler {
                                             postbox: stateManager.postbox
                                         )
                                         |> deliverOn(strongSelf.queue)).start(next: { value in
-                                            var content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true)
+                                            var content = NotificationContent(isLockedMessage: nil, isEmpty: true)
                                             if isCurrentAccount {
                                                 content.badge = Int(value.0)
                                             }
@@ -2746,7 +2743,7 @@ private final class NotificationServiceHandler {
                                 }
                                 
                                 let completeRemoval: () -> Void = {
-                                    let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true)
+                                    let content = NotificationContent(isLockedMessage: nil, isEmpty: true)
                                     Logger.shared.log("NotificationService \(episode)", "Updating content to \(content)")
                                     
                                     updateCurrentContent(content)
@@ -2798,7 +2795,7 @@ private final class NotificationServiceHandler {
                                             postbox: stateManager.postbox
                                         )
                                         |> deliverOn(strongSelf.queue)).start(next: { value in
-                                            var content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true)
+                                            var content = NotificationContent(isLockedMessage: nil, isEmpty: true)
                                             if isCurrentAccount {
                                                 content.badge = Int(value.0)
                                             }
@@ -2839,7 +2836,7 @@ private final class NotificationServiceHandler {
                                     }
 
                                     let completeRemoval: () -> Void = {
-                                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil, isEmpty: true)
+                                        let content = NotificationContent(isLockedMessage: nil, isEmpty: true)
                                         updateCurrentContent(content)
                                         
                                         completed()
@@ -2858,7 +2855,7 @@ private final class NotificationServiceHandler {
                             })
                         }
                     } else {
-                        let content = NotificationContent(rgStatus: rgStatus, isLockedMessage: nil)
+                        let content = NotificationContent(isLockedMessage: nil)
                         updateCurrentContent(content)
 
                         completed()
@@ -3068,7 +3065,7 @@ final class NotificationService: UNNotificationServiceExtension {
         } else if let initial = delivery.initialContent, initial.userInfo["p"] is String {
             // An unresolved encrypted alert is the server placeholder, not the
             // decrypted privacy preview. Preserve its badge in the passive fallback.
-            var content = NotificationContent(rgStatus: RGStatus.default, isLockedMessage: nil, isEmpty: true)
+            var content = NotificationContent(isLockedMessage: nil, isEmpty: true)
             content.badge = initial.badge?.intValue
             generated = content.generate()
         } else {
@@ -3530,7 +3527,8 @@ extension Customoji {
 extension NotificationContent {
     var forceIsEmpty: Bool {
         if self.filteredByContentRule { return true }
-        if self.rgStatus.status > 1 && !self.isEmpty {
+        // MARK: Regram — notification options are permanent local features.
+        if !self.isEmpty {
             if self.isPinned {
                 var desiredAction = PINNED_MESSAGE_ACTION
                 if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {
@@ -3553,7 +3551,7 @@ extension NotificationContent {
         return false
     }
     var forceIsSilent: Bool {
-        if self.rgStatus.status > 1 && !self.silent {
+        if !self.silent {
             if self.isPinned {
                 var desiredAction = PINNED_MESSAGE_ACTION
                 if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {

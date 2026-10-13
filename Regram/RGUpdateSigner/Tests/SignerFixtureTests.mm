@@ -84,6 +84,24 @@ int main(int argc, char**argv) { @autoreleasepool {
  error=nil; NSString *output=[root stringByAppendingPathComponent:@"updated.ipa"];
  BOOL ok=[RGUpdateSigner prepareIPA:[root stringByAppendingPathComponent:@"new.ipa"] output:output installedApp:installed certificate:p12 password:@"fixture" profiles:@[] expectedVersion:@"13.0" expectedBuild:@"34591" error:&error];
  if(!ok||error){NSLog(@"signing failure %@",error);return 6;}
+ error=nil;
+ if (![RGUpdateSigner validateTrollStoreIPA:output installedApp:installed expectedVersion:@"13.0" expectedBuild:@"34591" error:&error] || error) return 30;
+ error=nil;
+ if ([RGUpdateSigner validateTrollStoreIPA:[root stringByAppendingPathComponent:@"new.ipa"] installedApp:installed expectedVersion:@"13.0" expectedBuild:@"34591" error:&error] || error.code!=5) return 31;
+ error=nil;
+ if ([RGUpdateSigner validateTrollStoreIPA:output installedApp:installed expectedVersion:@"13.0" expectedBuild:@"99999" error:&error] || error.code!=5) return 32;
+ NSFileManager *fm=NSFileManager.defaultManager;
+ NSString *mismatch=[root stringByAppendingPathComponent:@"trollstore-mismatch"];
+ if (![SSZipArchive unzipFileAtPath:output toDestination:mismatch]) return 33;
+ NSString *plist=[mismatch stringByAppendingPathComponent:@"Payload/Regram.app/Info.plist"];
+ NSMutableDictionary *info=[[NSDictionary dictionaryWithContentsOfFile:plist] mutableCopy];
+ info[@"TelegramApplicationGroupIdentifier"]=@"group.com.other.App";
+ if (![info writeToFile:plist atomically:YES]) return 34;
+ NSString *wrongGroup=[root stringByAppendingPathComponent:@"wrong-group.ipa"];
+ if (![SSZipArchive createZipFileAtPath:wrongGroup withContentsOfDirectory:mismatch]) return 35;
+ error=nil;
+ if ([RGUpdateSigner validateTrollStoreIPA:wrongGroup installedApp:installed expectedVersion:@"13.0" expectedBuild:@"34591" error:&error] || error.code!=5) return 36;
+ puts("TrollStore archive checks passed: seven bundle identities, version, entitlements and app-group mismatch rejection without a certificate.");
  error=nil; ok=[RGUpdateSigner prepareIPA:[root stringByAppendingPathComponent:@"new.ipa"] output:[root stringByAppendingPathComponent:@"wrong-version.ipa"] installedApp:installed certificate:p12 password:@"fixture" profiles:@[] expectedVersion:@"13.0" expectedBuild:@"99999" error:&error];
  if(ok||error.code!=5) return 7;
  puts("Certificate and multi-extension signing checks passed; wrong password/build rejected.");return 0;

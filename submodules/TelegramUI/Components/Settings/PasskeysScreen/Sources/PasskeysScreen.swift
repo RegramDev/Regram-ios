@@ -151,13 +151,13 @@ final class PasskeysScreenComponent: Component {
                     guard let pkDict = params["publicKey"] as? [String: Any] else {
                         return
                     }
-                    /* MARK: Regram
+                    // MARK: Regram — use the relying party returned by Telegram.
                     guard let rp = pkDict["rp"] as? [String: Any] else {
                         return
                     }
                     guard let relyingPartyIdentifier = rp["id"] as? String else {
                         return
-                    }*/
+                    }
                     guard let challengeBase64 = pkDict["challenge"] as? String else {
                         return
                     }
@@ -177,7 +177,7 @@ final class PasskeysScreenComponent: Component {
                         return
                     }
                     
-                    let platformProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: "swiftgram.app")
+                    let platformProvider = ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: relyingPartyIdentifier)
                     let platformKeyRequest = platformProvider.createCredentialRegistrationRequest(challenge: challengeData, name: userName, userID: userId)
                     let authController = ASAuthorizationController(authorizationRequests: [platformKeyRequest])
                     authController.delegate = self
@@ -238,14 +238,8 @@ final class PasskeysScreenComponent: Component {
                         do {
                             try await updater.reportUnknownPublicKeyCredential(relyingPartyIdentifier: "telegram.org", credentialID: credentialId)
                         } catch let e {
-                            Logger.shared.log("Passkeys", "reportUnknownPublicKeyCredential error: \(e). Retrying with another domain")
-                            // MARK: Regram
-                            do {
-                                try await updater.reportUnknownPublicKeyCredential(relyingPartyIdentifier: "swiftgram.app", credentialID: credentialId)
-                            } catch let e {
-                                Logger.shared.log("Passkeys", "reportUnknownPublicKeyCredential error: \(e)")
-                            }
-                            //
+                            // MARK: Regram — report Telegram credentials to their own relying party.
+                            Logger.shared.log("Passkeys", "reportUnknownPublicKeyCredential error: \(e)")
                         }
                     }
                 }

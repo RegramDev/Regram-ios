@@ -323,28 +323,28 @@ filegroup(
 
 # MARK: Regram alternative icons
 alternate_icon_folders = [
-    "SGDefault",
-    "SGBlack",
-    "SGLegacy",
-    "SGInverted",
-    "SGWhite",
-    "SGNight",
-    "SGSky",
-    "SGTitanium",
-    "SGNeon",
-    "SGNeonBlue",
-    "SGGlass",
-    "SGSparkling",
-    "SGBeta",
-    "SGPro",
-    "SGGold",
-    "SGDucky",
-    "SGDay",
+    "RGDefault",
+    "RGBlack",
+    "RGLegacy",
+    "RGInverted",
+    "RGWhite",
+    "RGNight",
+    "RGSky",
+    "RGTitanium",
+    "RGNeon",
+    "RGNeonBlue",
+    "RGGlass",
+    "RGSparkling",
+    "RGBeta",
+    "RGPro",
+    "RGGold",
+    "RGDucky",
+    "RGDay",
     # MARK: Regram — custom icons
     "RGAnime",
     "RGSilver",
     "iKun",
-    # Stock Telegram icons, restored from upstream (Swiftgram replaces the list wholesale).
+    # Stock Telegram icons, restored from upstream (Regram replaces the list wholesale).
     "BlueIcon",
     "BlackIcon",
     "BlueClassicIcon",
@@ -359,10 +359,26 @@ alternate_icon_folders = [
     "PremiumBlack"
 ]
 
+# MARK: Regram — iOS persists alternate-icon identifiers. Generate legacy aliases from RG assets
+# so an update keeps the selected icon, while all source files and picker entries use RG names.
+rg_renamed_icon_folders = [name for name in alternate_icon_folders if name.startswith("RG") and name not in ["RGAnime", "RGSilver"]]
+
+[
+    genrule(
+        name = "RGLegacyAppIcon" + name[2:],
+        srcs = glob(["Telegram-iOS/{}.alticon/*.png".format(name)]),
+        outs = ["LegacyAppIcons/SG{}.alticon/RGLegacy{}@{}x.png".format(name[2:], name[2:], scale) for scale in [2, 3]],
+        cmd = " && ".join([
+            "cp $(location Telegram-iOS/{name}.alticon/{name}@{scale}x.png) $(location LegacyAppIcons/SG{suffix}.alticon/RGLegacy{suffix}@{scale}x.png)".format(name = name, suffix = name[2:], scale = scale)
+            for scale in [2, 3]
+        ]),
+    ) for name in rg_renamed_icon_folders
+]
+
 # MARK: Regram — the *primary* icon, which is also the one iOS draws on every notification.
-# Notifications always use the primary icon and never follow `setAlternateIconName`, so picking
-# Regram from the in-app icon list cannot change them; only this can.
-composer_icon_folders = ["Regram"]
+# MARK: Regram — provide named Icon Composer variants for system icon rendering as well as
+# PNG fallbacks for older iOS versions. The primary icon remains Regram.
+composer_icon_folders = ["Regram"] + alternate_icon_folders
 
 [
     filegroup(
@@ -397,7 +413,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGPayWall:RGPayWallAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
+RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
 
 swift_library(
     name = "Lib",
@@ -477,6 +493,8 @@ plist_fragment(
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>regram</string>
+                <string>rg</string>
+                <!-- MARK: Regram — keep previously distributed links working. -->
                 <string>sg</string>
             </array>
         </dict>
@@ -568,8 +586,6 @@ associated_domains_fragment = "" if telegram_bundle_id not in official_bundle_id
     <string>applinks:telegram.me</string>
     <string>applinks:t.me</string>
     <string>applinks:*.t.me</string>
-    <string>applinks:swiftgram.app</string>
-    <string>webcredentials:swiftgram.app</string>
     <string>webcredentials:t.me</string>
     <string>webcredentials:telegram.org</string>
 </array>
@@ -1474,14 +1490,14 @@ ios_extension(
 # MARK: Regram
 # TODO(regram): Localize CFBundleDisplayName
 plist_fragment(
-    name = "SGActionRequestHandlerInfoPlist",
+    name = "RGActionRequestHandlerInfoPlist",
     extension = "plist",
     template = 
     """
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleIdentifier</key>
-    <string>{telegram_bundle_id}.SGActionRequestHandler</string>
+    <string>{telegram_bundle_id}.RGActionRequestHandler</string>
     <key>CFBundleName</key>
     <string>Regram</string>
     <key>CFBundleDisplayName</key>
@@ -1521,7 +1537,7 @@ plist_fragment(
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.services</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>SGActionRequestHandler</string>
+		<string>RGActionRequestHandler</string>
 	</dict>
     """.format(
         telegram_bundle_id = telegram_bundle_id,
@@ -1530,29 +1546,29 @@ plist_fragment(
 
 # TODO(regram): Proper icon
 filegroup(
-    name = "SGActionRequestHandlerAssets",
-    srcs = glob(["SGActionRequestHandler/Media.xcassets/**"]),
+    name = "RGActionRequestHandlerAssets",
+    srcs = glob(["RGActionRequestHandler/Media.xcassets/**"]),
     visibility = ["//visibility:public"],
 )
 
 filegroup(
-    name = "SGActionRequestHandlerScript",
-    srcs = ["SGActionRequestHandler/Action.js"],
+    name = "RGActionRequestHandlerScript",
+    srcs = ["RGActionRequestHandler/Action.js"],
     visibility = ["//visibility:public"],
 )
 
 swift_library(
-    name = "SGActionRequestHandlerLib",
-    module_name = "SGActionRequestHandlerLib",
+    name = "RGActionRequestHandlerLib",
+    module_name = "RGActionRequestHandlerLib",
     srcs = glob([
-        "SGActionRequestHandler/**/*.swift",
+        "RGActionRequestHandler/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
     data = [
-        ":SGActionRequestHandlerAssets",
-        ":SGActionRequestHandlerScript"
+        ":RGActionRequestHandlerAssets",
+        ":RGActionRequestHandlerScript"
     ],
     deps = [
         "//submodules/UrlEscaping:UrlEscaping"
@@ -1561,8 +1577,8 @@ swift_library(
 
 
 ios_extension(
-    name = "SGActionRequestHandler",
-    bundle_id = "{telegram_bundle_id}.SGActionRequestHandler".format(
+    name = "RGActionRequestHandler",
+    bundle_id = "{telegram_bundle_id}.RGActionRequestHandler".format(
         telegram_bundle_id = telegram_bundle_id,
     ),
     families = [
@@ -1570,7 +1586,7 @@ ios_extension(
         "ipad",
     ],
     infoplists = [
-        ":SGActionRequestHandlerInfoPlist",
+        ":RGActionRequestHandlerInfoPlist",
         ":VersionInfoPlist",
         ":RequiredDeviceCapabilitiesPlist",
         ":BuildNumberInfoPlist",
@@ -1580,10 +1596,10 @@ ios_extension(
     #provides_main = True,
     provisioning_profile = select({
         ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:SGActionRequestHandler.mobileprovision",
+        "//conditions:default": "@build_configuration//provisioning:RGActionRequestHandler.mobileprovision",
     }),
     deps = [
-        ":SGActionRequestHandlerLib",
+        ":RGActionRequestHandlerLib",
     ],
     frameworks = [
     ],
@@ -1977,12 +1993,18 @@ ios_application(
         ":RequiredDeviceCapabilitiesPlist",
         ":UrlTypesInfoPlist",
     ],
+    primary_app_icon = "Regram",
+    ipa_post_processor = ":normalize_app_icons.py",
     app_icons = [ ":{}_icon".format(name) for name in composer_icon_folders ],
     alternate_icons = [
         ":{}".format(name) for name in alternate_icon_folders
+    ] + [
+        ":RGLegacyAppIcon{}".format(name[2:]) for name in rg_renamed_icon_folders
     ],
     resources = [
         ":LaunchScreen",
+        # MARK: Regram — the STT test uses getAppBundle(), which resolves the main app.
+        "//Regram/RGTranscription:TestAudio",
         #":DefaultAppIcon",
     ],
     frameworks = [
@@ -2000,7 +2022,7 @@ ios_application(
     extensions = select({
         ":disableExtensionsSetting": [],
         "//conditions:default": [
-            # ":SGActionRequestHandler", # UX sucks https://t.me/swiftgramchat/7335
+            # ":RGActionRequestHandler", # MARK: Regram — this action extension remains disabled.
             ":ShareExtension",
             ":NotificationContentExtension",
             ":NotificationServiceExtension" + notificationServiceExtensionVersion,

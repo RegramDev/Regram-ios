@@ -27,7 +27,7 @@ func rgOpenUrlWithSafariController(
         let controller = SFSafariViewControllerPlusDidFinish(url: parsedUrl)
         controller.preferredBarTintColor = presentationData.theme.rootController.navigationBar.opaqueBackgroundColor
         controller.preferredControlTintColor = presentationData.theme.rootController.navigationBar.accentTextColor
-        if parsedUrl.host?.lowercased() == RG_API_WEBAPP_URL_PARSED.host?.lowercased() {
+        if let webappHost = RG_API_WEBAPP_URL_PARSED?.host, parsedUrl.host?.lowercased() == webappHost.lowercased() {
             controller.onDidFinish = {
                 RGLogger.shared.log("SafariController", "Closed webapp")
                 updateRGWebSettingsInteractivelly(context: context)

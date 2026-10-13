@@ -4190,7 +4190,8 @@ public final class WebAppController: ViewController, AttachmentContainable {
     }
     
     private func updateRGWebSettingsIfNeeded() {
-        if let url = self.url, let parsedUrl = URL(string: url), parsedUrl.host?.lowercased() == RG_API_WEBAPP_URL_PARSED.host?.lowercased() {
+        // MARK: Regram
+        if let webappHost = RG_API_WEBAPP_URL_PARSED?.host, let url = self.url, let parsedUrl = URL(string: url), parsedUrl.host?.lowercased() == webappHost.lowercased() {
             RGLogger.shared.log("WebApp", "Closed webapp")
             updateRGWebSettingsInteractivelly(context: self.context)
         }

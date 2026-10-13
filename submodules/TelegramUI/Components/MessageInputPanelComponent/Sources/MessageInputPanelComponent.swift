@@ -3190,9 +3190,10 @@ extension MessageInputPanelComponent.View {
     func initToolbarIfNeeded(context: AccountContext) {
         guard #available(iOS 13.0, *) else { return }
         guard RGSimpleSettings.shared.inputToolbar else { return }
-        guard context.sharedContext.immediateRGStatus.status > 1 else { return }
+
         guard self.toolbarView == nil else { return }
-        let notificationName = Notification.Name("sgToolbarAction")
+        // MARK: Regram
+        let notificationName = Notification.Name("rgToolbarAction")
         let toolbar = ChatToolbarView(
             onQuote: { [weak self] in
                 guard let _ = self else { return }

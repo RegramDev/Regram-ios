@@ -13,7 +13,7 @@ func rgRecentSessionApiIdItem(
     strings: PresentationStrings,
     controller: RecentSessionScreen?
 ) -> AnyComponentWithIdentity<Empty> {
-    let rgApiIdTextAttribute = NSAttributedString.Key(rawValue: "SGRecentSessionApiIdAttribute")
+    let rgApiIdTextAttribute = NSAttributedString.Key(rawValue: "RGRecentSessionApiIdAttribute")
     let rgApiIdText = NSMutableAttributedString(
         string: apiIdString,
         font: Font.regular(presentationData.listsFontSize.itemListBaseFontSize),

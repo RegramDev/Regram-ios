@@ -1,6 +1,6 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGQrLoginSupport:RGQrLoginSupport", # MARK: Regram
 ]
@@ -14,7 +14,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/TelegramCore:TelegramCore",

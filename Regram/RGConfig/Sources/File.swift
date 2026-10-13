@@ -2,11 +2,11 @@ import Foundation
 import BuildConfig
 
 public struct RGConfig: Codable {
-    public var apiUrl: String = "https://api.swiftgram.app"
-    public var webappUrl: String = "https://my.swiftgram.app"
-    public var botUsername: String = "SwiftgramBot"
+    // Regram uses local settings unless a builder explicitly configures its own backend.
+    public var apiUrl: String = ""
+    public var webappUrl: String = ""
+    public var botUsername: String = ""
     public var publicKey: String?
-    public var iaps: [String] = []
 }
 
 private func parseRGConfig(_ jsonString: String) -> RGConfig {
@@ -19,4 +19,4 @@ private func parseRGConfig(_ jsonString: String) -> RGConfig {
 private let baseAppBundleId = Bundle.main.bundleIdentifier!
 private let buildConfig = BuildConfig(baseAppBundleId: baseAppBundleId)
 public let RG_CONFIG: RGConfig = parseRGConfig(buildConfig.rgConfig)
-public let RG_API_WEBAPP_URL_PARSED = URL(string: RG_CONFIG.webappUrl)!
+public let RG_API_WEBAPP_URL_PARSED: URL? = URL(string: RG_CONFIG.webappUrl)

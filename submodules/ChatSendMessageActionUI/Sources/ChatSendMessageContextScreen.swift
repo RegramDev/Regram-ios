@@ -700,7 +700,8 @@ final class ChatSendMessageContextScreenComponent: Component {
                     }
                     
                     items.append(.action(ContextMenuActionItem(
-                        id: AnyHashable("sgTranslate"),
+                        // MARK: Regram
+                        id: AnyHashable("rgTranslate"),
                         text: translateTitle,
                         icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Translate"), color: theme.contextMenu.primaryColor)
@@ -716,7 +717,7 @@ final class ChatSendMessageContextScreenComponent: Component {
                     )))
                    
                     items.append(.action(ContextMenuActionItem(
-                        id: AnyHashable("sgChangeTranslateLang"),
+                        id: AnyHashable("rgChangeTranslateLang"),
                         text: presentationData.strings.Translate_ChangeLanguage,
                         icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Caption"), color: theme.contextMenu.primaryColor)
@@ -733,7 +734,7 @@ final class ChatSendMessageContextScreenComponent: Component {
                    
                 } else {
                     items.append(.action(ContextMenuActionItem(
-                        id: AnyHashable("sgChangeTranslateLang"),
+                        id: AnyHashable("rgChangeTranslateLang"),
                         text: presentationData.strings.Conversation_Translation_TranslateToOther("...").string,
                         icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Caption"), color: theme.contextMenu.primaryColor)

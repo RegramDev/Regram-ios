@@ -10,7 +10,7 @@ struct StickerBubbleView: View {
     var senderColorIndex: Int? = nil
     let isOutgoing: Bool
     let replyHeader: ReplyHeader?
-    // MARK: Swiftgram
+    // MARK: Regram
     var senderAvatar: AvatarVisual? = nil
     var onAvatarRequestDownload: (Int) -> Void = { _ in }
     var onAvatarCancelDownload: (Int) -> Void = { _ in }
@@ -25,7 +25,7 @@ struct StickerBubbleView: View {
     var body: some View {
         VStack(alignment: isOutgoing ? .trailing : .leading, spacing: 2) {
             if let name = senderName, !isOutgoing {
-                // MARK: Swiftgram
+                // MARK: Regram
                 SenderNameLabelView(
                     name: name,
                     avatar: senderAvatar,

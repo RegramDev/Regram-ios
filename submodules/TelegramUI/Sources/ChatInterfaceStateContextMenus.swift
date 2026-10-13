@@ -3,6 +3,8 @@ import RGSimpleSettings
 import RGProUI
 import PeerInfoUI
 import Foundation
+// MARK: Regram — managed transcription actions share the service used by message nodes.
+import RGTranscription
 import UIKit
 import TelegramCore
 import Postbox
@@ -1141,7 +1143,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }
         
         var hasRateTranscription = false
-        if hasExpandedAudioTranscription, let audioTranscription = audioTranscription, !didRateAudioTranscription {
+        // MARK: Regram — only Telegram transcriptions can be rated on its servers.
+        if hasExpandedAudioTranscription, let audioTranscription = audioTranscription, audioTranscription.canRate, !didRateAudioTranscription {
             hasRateTranscription = true
             actions.insert(.custom(ChatRateTranscriptionContextItem(context: context, message: message, action: { [weak context] value in
                 guard let context = context else {
@@ -1156,6 +1159,41 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             }), false), at: 0)
             actions.insert(.separator, at: 1)
         }
+
+    // MARK: Regram — Explicitly replace an existing result using the currently selected provider.
+        let isTranscribing = RGTranscriptionService.shared.isTranscribing(context: context, messageId: message.id)
+        if messages.count == 1, audioTranscription != nil || isTranscribing,
+           message.id.namespace == Namespaces.Message.Cloud,
+           message.id.peerId.namespace != Namespaces.Peer.SecretChat,
+           message.minAutoremoveOrClearTimeout != viewOnceTimeout,
+           chatPresentationInterfaceState.mode != .standard(.previewing),
+           messageNode?.item?.presentationData.isPreview != true,
+           message.media.contains(where: { media in
+               guard let file = media as? TelegramMediaFile else {
+                   return false
+               }
+               return file.isVoice || file.isInstantVideo
+           }) {
+            actions.append(.action(ContextMenuActionItem(text: i18n(isTranscribing ? "RG.STTCancelTranscription" : "RG.STTRetranscribe", chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: isTranscribing ? "Chat/Context Menu/StopPoll" : "Chat/Context Menu/Translate"), color: theme.actionSheet.primaryTextColor)
+            }, action: { [weak context, weak controllerInteraction = controllerInteraction] _, completion in
+                completion(.dismissWithoutContent)
+                guard let context, let controllerInteraction else {
+                    return
+                }
+                if isTranscribing {
+                    RGTranscriptionService.shared.cancel(context: context, messageId: message.id)
+                    return
+                }
+                let _ = (RGTranscriptionService.shared.transcribe(context: context, messageId: message.id, force: true)
+                |> deliverOnMainQueue).startStandalone(next: { [weak controllerInteraction] state in
+                    if case let .failed(error) = state {
+                        controllerInteraction?.displayUndo(.info(title: nil, text: error, timeout: nil, customUndoText: nil))
+                    }
+                })
+            })))
+        }
+
         
         if !hasRateTranscription && message.minAutoremoveOrClearTimeout == nil {
             for media in message.effectiveMedia {

@@ -57,7 +57,7 @@ struct AvatarView: View {
     }
 }
 
-// MARK: Swiftgram
+// MARK: Regram
 struct SenderNameLabelView: View {
     let name: String
     var avatar: AvatarVisual? = nil

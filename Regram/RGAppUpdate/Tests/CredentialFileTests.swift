@@ -12,6 +12,8 @@ import Foundation
             let kind: RGUpdateCredentialFileKind = name.hasSuffix("mobileprovision") ? .profiles : .certificate
             let read = try RGUpdateCredentialFile.read(url: url, kind: kind)
             assert(read == contents)
+            let mixed = try RGUpdateCredentialFile.read(url: url, kind: .signingMaterials)
+            assert(mixed == contents)
         }
         let wrong = directory.appendingPathComponent("certificate.txt")
         try contents.write(to: wrong)

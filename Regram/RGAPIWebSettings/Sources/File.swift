@@ -12,7 +12,7 @@ import TelegramCore
 public func updateRGWebSettingsInteractivelly(context: AccountContext) {
     let _ = getRGApiToken(context: context).startStandalone(next: { token in
         let _ = getRGSettings(token: token).startStandalone(next: { webSettings in
-            RGLogger.shared.log("SGAPI", "New SGWebSettings for id \(context.account.peerId.id._internalGetInt64Value()): \(webSettings) ")
+            RGLogger.shared.log("RGAPI", "New RGWebSettings for id \(context.account.peerId.id._internalGetInt64Value()): \(webSettings) ")
             RGSimpleSettings.shared.canUseStealthMode = webSettings.global.storiesAvailable
             RGSimpleSettings.shared.duckyAppIconAvailable = webSettings.global.duckyAppIconAvailable
             RGSimpleSettings.shared.canUseNY = webSettings.global.nyAvailable
@@ -25,12 +25,12 @@ public func updateRGWebSettingsInteractivelly(context: AccountContext) {
             }).startStandalone()
         }, error: { e in
             if case let .generic(errorMessage) = e, let errorMessage = errorMessage {
-                RGLogger.shared.log("SGAPI", errorMessage)
+                RGLogger.shared.log("RGAPI", errorMessage)
             }
         })
     }, error: { e in
         if case let .generic(errorMessage) = e, let errorMessage = errorMessage {
-            RGLogger.shared.log("SGAPI", errorMessage)
+            RGLogger.shared.log("RGAPI", errorMessage)
         }
     })
 }
@@ -40,12 +40,12 @@ public func postRGWebSettingsInteractivelly(context: AccountContext, data: [Stri
     let _ = getRGApiToken(context: context).startStandalone(next: { token in
         let _ = postRGSettings(token: token, data: data).startStandalone(error: { e in
             if case let .generic(errorMessage) = e, let errorMessage = errorMessage {
-                RGLogger.shared.log("SGAPI", errorMessage)
+                RGLogger.shared.log("RGAPI", errorMessage)
             }
         })
     }, error: { e in
         if case let .generic(errorMessage) = e, let errorMessage = errorMessage {
-            RGLogger.shared.log("SGAPI", errorMessage)
+            RGLogger.shared.log("RGAPI", errorMessage)
         }
     })
 }

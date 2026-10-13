@@ -599,6 +599,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     var premiumGiftSuggestionDisposable: Disposable?
     
     // MARK: Regram
+    private var rgLinkPreviewSettingsObserver: NSObjectProtocol?
     private var rgShowHiddenPinnedMessagesObserver: NSObjectProtocol?
     public var overlayTitle: String? {
          var title: String?
@@ -7103,8 +7104,17 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         }
 
         // MARK: Regram
+        // MARK: Regram — requery an existing draft when preview rules or services change.
+        self.rgLinkPreviewSettingsObserver = NotificationCenter.default.addObserver(forName: RGLinkPreviewRules.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.urlPreviewQueryState?.1.dispose()
+            self.urlPreviewQueryState = nil
+            self.editingUrlPreviewQueryState?.1.dispose()
+            self.editingUrlPreviewQueryState = nil
+            self.updateChatPresentationInterfaceState(interactive: false, { $0 })
+        }
         self.rgShowHiddenPinnedMessagesObserver = NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("SGShowHiddenPinnedMessages"),
+            forName: NSNotification.Name("RGShowHiddenPinnedMessages"),
             object: nil,
             queue: nil,
             using: { [weak self] notification in
@@ -7182,6 +7192,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
 
     deinit {
         // MARK: Regram
+        if let observer = rgLinkPreviewSettingsObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = rgShowHiddenPinnedMessagesObserver { NotificationCenter.default.removeObserver(observer) }
         let _ = ChatControllerCount.modify { value in
             return value - 1

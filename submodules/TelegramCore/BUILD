@@ -1,8 +1,9 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGGTranslate:RGGTranslate",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGTranslationLangFix:RGTranslationLangFix",
@@ -12,20 +13,20 @@ sgdeps = [
     "//Regram/RGLogging:RGLogging",
 ]
 
-sgsrc = [
+rgsrc = [
     "//Regram/RGIQTP:RGIQTP",
 ]
 
 swift_library(
     name = "TelegramCore",
     module_name = "TelegramCore",
-    srcs = sgsrc + glob([
+    srcs = rgsrc + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/TelegramApi:TelegramApi",
         "//submodules/MtProtoKit:MtProtoKit",
         "//submodules/MediaPreuploadRegistry:MediaPreuploadRegistry",

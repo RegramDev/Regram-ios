@@ -3,7 +3,7 @@ import Foundation
 // Only the bundle access adapter is replaced. Lookup uses the application's real strings files.
 extension String {
     func i18n(_ language: String) -> String {
-        let url = URL(fileURLWithPath: CommandLine.arguments[1]).appendingPathComponent("\(language).lproj/SGLocalizable.strings")
+        let url = URL(fileURLWithPath: CommandLine.arguments[1]).appendingPathComponent("\(language).lproj/RGLocalizable.strings")
         let values = NSDictionary(contentsOf: url) as? [String: String] ?? [:]
         return values[self] ?? self
     }

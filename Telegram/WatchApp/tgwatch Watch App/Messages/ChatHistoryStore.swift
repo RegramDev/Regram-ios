@@ -549,7 +549,7 @@ final class ChatHistoryStore {
             window.applyDelete(ids: upd.messageIds)
             scheduleReproject()
         case .updateUser(let upd):
-            // MARK: Swiftgram
+            // MARK: Regram
             if let photo = upd.user.profilePhoto {
                 primeFile(photo.small)
             }
@@ -651,7 +651,7 @@ final class ChatHistoryStore {
             selfUserId: selfUserId,
             unreadDividerAfterId: window.unreadDividerAfterId,
             lastReadOutboxMessageId: lastReadOutboxMessageId,
-            // MARK: Swiftgram
+            // MARK: Regram
             userAvatars: userNames.avatars
             //
         )

@@ -1632,8 +1632,8 @@
         if (!canSendAsTelescope) {
             UIViewController *parentViewController = [self.delegate parentControllerForPresentation];
             if (parentViewController) {
-                // Define the URL
-                NSURL *url = [NSURL URLWithString:@"sg://resolve?domain=TelescopyBot&start=sgconvertdemo"];
+                // MARK: Regram — use our application scheme; the bot's start payload is external.
+                NSURL *url = [NSURL URLWithString:@"regram://resolve?domain=TelescopyBot&start=sgconvertdemo"];
                 // Create UIAlertController
                 UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Convert in @TelescopyBot" message:@"by Regram" preferredStyle:UIAlertControllerStyleAlert];
                 // Add an OK action with a handler to open the URL and then dismiss the parent view controller

@@ -16,7 +16,7 @@
 			<key>DefaultValue</key>
 			<false/>
 			<key>Key</key>
-			<string>sg_db_reset</string>
+			<string>rg_db_reset</string>
 			<key>Title</key>
 			<string>Reset.Toggle</string>
 			<key>Type</key>
@@ -34,7 +34,7 @@
 			<key>DefaultValue</key>
 			<false/>
 			<key>Key</key>
-			<string>sg_db_hard_reset</string>
+			<string>rg_db_hard_reset</string>
 			<key>Title</key>
 			<string>HardReset.Toggle</string>
 			<key>Type</key>
@@ -52,7 +52,7 @@
 			<key>DefaultValue</key>
 			<false/>
 			<key>Key</key>
-			<string>sg_full_wipe</string>
+			<string>rg_full_wipe</string>
 			<key>Title</key>
 			<string>FullWipe.Toggle</string>
 			<key>Type</key>

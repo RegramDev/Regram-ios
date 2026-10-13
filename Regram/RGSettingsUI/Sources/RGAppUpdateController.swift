@@ -13,7 +13,6 @@ import PresentationDataUtils
     @ObservedObject private var updater = RGAppUpdater.shared
     @StateObject private var filePicker = RGUpdateCredentialFilePicker()
     @Environment(\.lang) private var lang
-    @State private var password = ""
     @State private var credentialBusy = false
     let owner: () -> ViewController?
     let presentMessage: (String) -> Void
@@ -32,36 +31,39 @@ import PresentationDataUtils
                     if updater.hasPreparedUpdate {
                         Button("AppUpdate.Install".i18n(lang)) { updater.install() }.disabled(updater.stage.isBusy)
                     } else {
-                        Button((updater.hasDownloadedUpdate ? "AppUpdate.SignCached" : "AppUpdate.Prepare").i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
+                        Button((updater.installationMethod == .trollStore ? "AppUpdate.DownloadTrollStore" : (updater.hasDownloadedUpdate ? "AppUpdate.SignCached" : "AppUpdate.Prepare")).i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
                     }
                 } else { updateStatus }
                 if updater.stage.isBusy { Button("AppUpdate.Cancel".i18n(lang), role: .cancel) { updater.cancel() } }
             }
-            Section(footer: Text("AppUpdate.AutomaticNotice".i18n(lang))) {
+            Section(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang))) {
+                Picker("AppUpdate.InstallationMethod".i18n(lang), selection: $updater.installationMethod) {
+                    ForEach(RGUpdateInstallationMethod.allCases, id: \.rawValue) { method in Text(method.localizationKey.i18n(lang)).tag(method) }
+                }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
                 Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck)
-                Toggle("AppUpdate.AutomaticPrepare".i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured)
+                Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured)
             }
-            Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
-                if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
-                Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)
-                SecureField("AppUpdate.CertificatePassword".i18n(lang), text: $password)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button("AppUpdate.ImportCertificate".i18n(lang)) { selectFiles(kind: .certificate) }
-                Button("AppUpdate.ImportProfiles".i18n(lang)) { selectFiles(kind: .profiles) }
-                if credentialBusy { ProgressView("AppUpdate.Importing".i18n(lang)) }
-                if !updater.certificateName.isEmpty {
-                    Button("AppUpdate.RemoveCertificate".i18n(lang), role: .destructive) {
-                        do { try updater.clearCertificate() } catch { show(error) }
+            if updater.installationMethod == .certificate {
+                Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
+                    if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
+                    Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)
+                    Button("AppUpdate.ImportSigningMaterials".i18n(lang)) { selectFiles(kind: .signingMaterials) }
+                    Button("AppUpdate.ImportProfiles".i18n(lang)) { selectFiles(kind: .profiles) }
+                    if credentialBusy { ProgressView("AppUpdate.Importing".i18n(lang)) }
+                    if !updater.certificateName.isEmpty {
+                        Button("AppUpdate.RemoveCertificate".i18n(lang), role: .destructive) {
+                            do { try updater.clearCertificate() } catch { show(error) }
+                        }
                     }
-                }
-            }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
-            Section(footer: Text("AppUpdate.ServiceNotice".i18n(lang))) {
-                Picker("AppUpdate.InstallationNode".i18n(lang), selection: $updater.preferredNode) {
-                    Text("AppUpdate.AutomaticNode".i18n(lang)).tag("")
-                    ForEach(updater.availableNodes) { node in Text(node.name).tag(node.code) }
-                }
-                if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(.secondary) }
-            }.disabled(updater.stage.isBusy)
+                }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
+                Section(footer: Text("AppUpdate.ServiceNotice".i18n(lang))) {
+                    Picker("AppUpdate.InstallationNode".i18n(lang), selection: $updater.preferredNode) {
+                        Text("AppUpdate.AutomaticNode".i18n(lang)).tag("")
+                        ForEach(updater.availableNodes) { node in Text(node.name).tag(node.code) }
+                    }
+                    if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(.secondary) }
+                }.disabled(updater.stage.isBusy)
+            }
         }
     }
 
@@ -88,8 +90,10 @@ import PresentationDataUtils
         filePicker.present(kind: kind) { urls in
             guard let urls else { return }
             guard !urls.isEmpty, urls.count <= 16 else { show(RGUpdateCredentialFileError.unreadable); return }
+            if kind == .signingMaterials, urls.filter({ RGUpdateCredentialFileKind.certificate.acceptsExtension($0.pathExtension) }).count != 1 {
+                show(RGUpdateCredentialFileError.certificateSelection); return
+            }
             credentialBusy = true
-            let p12Password = password
             Task { @MainActor in
                 defer { credentialBusy = false }
                 do {
@@ -101,9 +105,11 @@ import PresentationDataUtils
                         try await updater.importProfiles(data)
                         credentialBusy = false
                         presentMessage("AppUpdate.ProfilesImported".i18n(lang, args: String(data.count)))
-                    case .certificate:
-                        try await updater.importCertificate(data[0], password: p12Password)
-                        password = ""
+                    case .certificate, .signingMaterials:
+                        guard let certificateIndex = urls.firstIndex(where: { RGUpdateCredentialFileKind.certificate.acceptsExtension($0.pathExtension) }) else { throw RGUpdateCredentialFileError.certificateSelection }
+                        guard let p12Password = await filePicker.requestPassword(fileName: urls[certificateIndex].lastPathComponent, title: "AppUpdate.ImportSigningMaterials".i18n(lang), placeholder: "AppUpdate.CertificatePassword".i18n(lang), confirm: "AppUpdate.ImportConfirm".i18n(lang), cancel: "AppUpdate.Cancel".i18n(lang)) else { return }
+                        let profiles = data.enumerated().filter { $0.offset != certificateIndex }.map(\.element)
+                        try await updater.importCertificate(data[certificateIndex], password: p12Password, profiles: profiles)
                         credentialBusy = false
                         presentMessage("AppUpdate.CertificateImported".i18n(lang))
                     }

@@ -233,7 +233,63 @@ static NSArray<NSDictionary *> *RGSigningPlan(NSString *app, NSData *cert, NSArr
 }
 @end
 
+static NSString *RGUnpackUpdate(NSString *ipa, NSString *work, NSString *version, NSString *build, NSError **error) {
+    NSArray<SSZipEntry *> *entries = [SSZipArchive getEntriesForFileAtPath:ipa];
+    if (!entries || entries.count == 0 || entries.count > 100000) { RGFail(error, 4); return nil; }
+    uint64_t total = 0;
+    for (SSZipEntry *entry in entries) {
+        NSString *path = entry.path;
+        if ([path hasPrefix:@"/"] || [path containsString:@"\\"] || [path.pathComponents containsObject:@".."] || [path containsString:@"\0"]) { RGFail(error, 4); return nil; }
+        total += entry.uncompressedSize;
+        if (total > 1500ULL * 1024 * 1024) { RGFail(error, 4); return nil; }
+    }
+    RGUpdateArchiveGuard *guard = [RGUpdateArchiveGuard new];
+    if (![SSZipArchive unzipFileAtPath:ipa toDestination:work delegate:guard] || guard.invalid) { RGFail(error, 4); return nil; }
+    NSString *payload = [work stringByAppendingPathComponent:@"Payload"];
+    NSArray *apps = [[NSFileManager.defaultManager contentsOfDirectoryAtPath:payload error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self ENDSWITH '.app'"]];
+    if (apps.count != 1) { RGFail(error, 4); return nil; }
+    NSString *app = [payload stringByAppendingPathComponent:apps[0]];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[app stringByAppendingPathComponent:@"Info.plist"]];
+    if (![info[@"CFBundleShortVersionString"] isEqual:version] || ![[info[@"CFBundleVersion"] description] isEqual:build]) { RGFail(error, 5); return nil; }
+    return app;
+}
+
 @implementation RGUpdateSigner
++ (BOOL)validateTrollStoreIPA:(NSString *)ipa installedApp:(NSString *)installedApp expectedVersion:(NSString *)version expectedBuild:(NSString *)build error:(NSError **)error {
+    std::lock_guard<std::mutex> lock(signerMutex);
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSString *work = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+    if (![fm createDirectoryAtPath:work withIntermediateDirectories:YES attributes:@{NSFileProtectionKey:NSFileProtectionComplete} error:nil]) return RGFail(error, 4);
+    @try {
+        NSString *app = RGUnpackUpdate(ipa, work, version, build, error);
+        if (!app) return NO;
+        NSArray<NSString *> *installed = RGBundles(installedApp), *downloaded = RGBundles(app);
+        if (installed.count != downloaded.count) return RGFail(error, 5);
+        for (NSString *bundle in installed) {
+            NSString *relative = bundle.length == installedApp.length ? @"" : [bundle substringFromIndex:installedApp.length + 1];
+            NSString *target = relative.length ? [app stringByAppendingPathComponent:relative] : app;
+            if (![downloaded containsObject:target]) return RGFail(error, 5);
+            NSDictionary *current = [NSDictionary dictionaryWithContentsOfFile:[bundle stringByAppendingPathComponent:@"Info.plist"]];
+            NSDictionary *next = [NSDictionary dictionaryWithContentsOfFile:[target stringByAppendingPathComponent:@"Info.plist"]];
+            for (NSString *key in @[@"CFBundleIdentifier", @"CFBundleExecutable", @"TelegramApplicationGroupIdentifier"]) {
+                if (![current[key] isEqual:next[key]] && (current[key] || next[key])) return RGFail(error, 5);
+            }
+            for (NSDictionary *info in @[current ?: @{}, next ?: @{}]) {
+                if (![info[@"CFBundleIdentifier"] isKindOfClass:NSString.class] || ![info[@"CFBundleExecutable"] isKindOfClass:NSString.class]) return RGFail(error, 4);
+            }
+            NSData *currentData = RGSignatureSlot([bundle stringByAppendingPathComponent:current[@"CFBundleExecutable"]], 5);
+            NSData *nextData = RGSignatureSlot([target stringByAppendingPathComponent:next[@"CFBundleExecutable"]], 5);
+            NSDictionary *currentRights = currentData ? [NSPropertyListSerialization propertyListWithData:currentData options:NSPropertyListImmutable format:nil error:nil] : nil;
+            NSDictionary *nextRights = nextData ? [NSPropertyListSerialization propertyListWithData:nextData options:NSPropertyListImmutable format:nil error:nil] : nil;
+            if (![currentRights isKindOfClass:NSDictionary.class] || ![nextRights isKindOfClass:NSDictionary.class]) return RGFail(error, 5);
+            for (NSString *key in @[@"com.apple.security.application-groups", @"keychain-access-groups"]) {
+                if (![currentRights[key] isEqual:nextRights[key]] && (currentRights[key] || nextRights[key])) return RGFail(error, 5);
+            }
+        }
+        return YES;
+    } @finally { [fm removeItemAtPath:work error:nil]; }
+}
+
 + (NSArray<NSData *> *)installedProfiles:(NSString *)installedApp certificate:(NSData *)p12 password:(NSString *)password error:(NSError **)error {
     std::lock_guard<std::mutex> lock(signerMutex);
     ZLog::SetLogLever(ZLog::E_NONE);
@@ -302,23 +358,9 @@ static NSArray<NSDictionary *> *RGSigningPlan(NSString *app, NSData *cert, NSArr
     NSFileManager *fm = NSFileManager.defaultManager;
     if (![fm createDirectoryAtPath:work withIntermediateDirectories:YES attributes:@{NSFileProtectionKey:NSFileProtectionComplete} error:nil]) return RGFail(error, 4);
     @try {
-        NSArray<SSZipEntry *> *entries = [SSZipArchive getEntriesForFileAtPath:ipa];
-        if (!entries || entries.count == 0 || entries.count > 100000) return RGFail(error, 4);
-        uint64_t total = 0;
-        for (SSZipEntry *entry in entries) {
-            NSString *path = entry.path;
-            if ([path hasPrefix:@"/"] || [path containsString:@"\\"] || [path.pathComponents containsObject:@".."] || [path containsString:@"\0"]) return RGFail(error, 4);
-            total += entry.uncompressedSize;
-            if (total > 1500ULL * 1024 * 1024) return RGFail(error, 4);
-        }
-        RGUpdateArchiveGuard *guard = [RGUpdateArchiveGuard new];
-        if (![SSZipArchive unzipFileAtPath:ipa toDestination:work delegate:guard] || guard.invalid) return RGFail(error, 4);
+        NSString *app = RGUnpackUpdate(ipa, work, version, build, error);
+        if (!app) return NO;
         NSString *payload = [work stringByAppendingPathComponent:@"Payload"];
-        NSArray *apps = [[fm contentsOfDirectoryAtPath:payload error:nil] filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"self ENDSWITH '.app'"]];
-        if (apps.count != 1) return RGFail(error, 4);
-        NSString *app = [payload stringByAppendingPathComponent:apps[0]];
-        NSDictionary *releaseInfo = [NSDictionary dictionaryWithContentsOfFile:[app stringByAppendingPathComponent:@"Info.plist"]];
-        if (![releaseInfo[@"CFBundleShortVersionString"] isEqual:version] || ![[releaseInfo[@"CFBundleVersion"] description] isEqual:build]) return RGFail(error, 5);
         NSArray<NSString *> *installed = RGBundles(installedApp), *downloaded = RGBundles(app);
         if (installed.count != downloaded.count) return RGFail(error, 5);
         NSArray<NSDictionary *> *plan = RGSigningPlan(installedApp, cert, profiles, error);

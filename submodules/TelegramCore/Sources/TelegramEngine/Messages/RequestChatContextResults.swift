@@ -130,7 +130,7 @@ func _internal_requestChatContextResults(IQTP: Bool = false, account: Account, b
             |> mapError { error -> RequestChatContextResultsError in
                 // MARK: Regram
                 if IQTP {
-                    RGLogger.shared.log("SGIQTP", "Error requesting inline results: \(error.errorDescription ?? "nil")")
+                    RGLogger.shared.log("RGIQTP", "Error requesting inline results: \(error.errorDescription ?? "nil")")
                 }
                 if error.errorDescription == "BOT_INLINE_GEO_REQUIRED" {
                     return .locationRequired

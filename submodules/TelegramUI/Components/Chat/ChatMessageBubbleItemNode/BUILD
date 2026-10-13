@@ -1,25 +1,26 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//submodules/TranslateUI:TranslateUI"
 ]
 
-sgsrc = [
+rgsrc = [
     "//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction"
 ]
 
 swift_library(
     name = "ChatMessageBubbleItemNode",
     module_name = "ChatMessageBubbleItemNode",
-    srcs = sgsrc + glob([
+    srcs = rgsrc + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/AsyncDisplayKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/Display",

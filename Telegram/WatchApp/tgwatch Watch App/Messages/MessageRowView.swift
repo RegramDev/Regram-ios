@@ -11,7 +11,7 @@ struct MessageRowView: View {
     var onEnterTopEdge: (() -> Void)? = nil
     var onEnterBottomEdge: (() -> Void)? = nil
     var onIncomingBubbleVisible: ((Int64) -> Void)? = nil
-    // MARK: Swiftgram
+    // MARK: Regram
     var onAvatarRequestDownload: (Int) -> Void = { _ in }
     var onAvatarCancelDownload: (Int) -> Void = { _ in }
     //
@@ -35,7 +35,7 @@ struct MessageRowView: View {
                 onVideoTap: onVideoTap,
                 onVideoNoteTap: onVideoNoteTap,
                 onPollTap: onPollTap,
-                // MARK: Swiftgram
+                // MARK: Regram
                 onAvatarRequestDownload: onAvatarRequestDownload,
                 onAvatarCancelDownload: onAvatarCancelDownload
                 //

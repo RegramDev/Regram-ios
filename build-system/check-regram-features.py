@@ -48,6 +48,7 @@ def main():
         ('media-experiment-default', [simple+'Sources/'+name+'.swift' for name in ['MediaLoadingPolicy', 'MessageProcessingPolicy', 'VideoLoadingPolicy', 'VideoQualityPolicy', 'NotificationPolicy']] + [simple+'Tests/MediaLoadingPolicyTests.swift'], []),
         ('font-cascade', ['Regram/RGTypography/Sources/RGFontCascade.swift', 'Regram/RGTypography/Tests/FontCascadeTests.swift'], ['Regram/RGTypography/Fonts']),
         ('settings-search', ['Regram/RGStrings/Sources/RGProSearchIndex.swift', 'Regram/RGStrings/Tests/SettingsSearchTests.swift'], ['Regram/RGStrings/Strings']),
+        ('local-app-links', ['Regram/RGSettingsUI/Sources/RGLocalAppLink.swift', 'Regram/RGSettingsUI/Tests/LocalAppLinkTests.swift'], []),
     ]
     for name, sources, arguments in suites:
         binary = output / name
@@ -58,7 +59,7 @@ def main():
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
     run('revoked-history', ['python3', 'Regram/RGProUI/Tests/run-archive-checks.py'])
-    run('localizations', ['plutil', '-lint'] + [f'Regram/RGStrings/Strings/{lang}.lproj/SGLocalizable.strings' for lang in ['en', 'zh-Hans', 'zh-Hant']])
+    run('localizations', ['plutil', '-lint'] + [f'Regram/RGStrings/Strings/{lang}.lproj/RGLocalizable.strings' for lang in ['en', 'zh-Hans', 'zh-Hant']])
     run('release-offline-mocks', ['python3', 'build-system/ci/test_release.py'])
     run('patch-format', ['git', 'diff', '--check'])
     report = {'scope': 'Production Foundation/CoreText/storage paths and offline release mocks; no simulator, device, accounts or uploads.', 'passed': all(result['passed'] for result in results), 'results': results}

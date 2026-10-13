@@ -441,7 +441,57 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
     )
     
     let continueHandling: () -> Void = {
-        if let scheme = parsedUrl.scheme, (scheme == "tg" || scheme == "sg" || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        // MARK: Regram — local routes also work with queries and current scheme names.
+        if let path = rgLocalAppLinkPath(parsedUrl, appSpecificScheme: context.sharedContext.applicationBindings.appSpecificScheme) {
+            switch path {
+                case "debug":
+                    if let debugController = context.sharedContext.makeDebugSettingsController(context: context) {
+                        navigationController?.pushViewController(debugController)
+                        return
+                    }
+                // MARK: Regram — retain old debug links as aliases.
+                case "rgdebug", "rg_debug", "sgdebug", "sg_debug":
+                    navigationController?.pushViewController(rgDebugController(context: context))
+                    return
+                case "settings":
+                    navigationController?.pushViewController(rgSettingsController(context: context))
+                    return
+                case "ios_settings":
+                    context.sharedContext.applicationBindings.openSettings()
+                    return
+                case "contacts":
+                    if let lastViewController = navigationController?.viewControllers.last as? ViewController {
+                        lastViewController.present(ContactsController(context: context), in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+                    }
+                    return
+                case "pro", "premium", "buy":
+                    navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
+                case "restart":
+                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+                    let lang = presentationData.strings.baseLanguageCode
+                    context.sharedContext.presentGlobalController(
+                        UndoOverlayController(
+                            presentationData: presentationData,
+                            content: .info(title: nil,
+                                text: "Common.RestartRequired".i18n(lang),
+                                timeout: nil,
+                                customUndoText: "Common.RestartNow".i18n(lang)
+                            ),
+                            elevatedLayout: false,
+                            action: { action in if action == .undo { exit(0) }; return true }
+                        ),
+                        nil
+                    )
+                // MARK: Regram — old purchase links now open local enhancement settings.
+                case "restore_purchases", "pro_restore", "validate", "restore":
+                    navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
+                default:
+                    break
+            }
+            return
+        }
+        // MARK: Regram — current schemes and the legacy alias share the same resolver.
+        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram", "sg"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             if parsedUrl.host == "tonsite" {
                 if let value = URL(string: "tonsite:/" + parsedUrl.path) {
                     parsedUrl = value
@@ -449,7 +499,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
             }
         }
         
-        if let scheme = parsedUrl.scheme, (scheme == "tg" || scheme == "sg" || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram", "sg"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             var convertedUrl: String?
             let host = parsedUrl.host?.lowercased() ?? ""
             if host == "sendgrams" {
@@ -901,71 +951,6 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
                 switch host {
                 case "stars":
                     handleResolvedUrl(.stars)
-                case "sg":
-                    if let path = parsedUrl.pathComponents.last {
-                        switch path {
-                            case "debug":
-                                if let debugController = context.sharedContext.makeDebugSettingsController(context: context) {
-                                    navigationController?.pushViewController(debugController)
-                                    return
-                                }
-                            case "sgdebug", "sg_debug":
-                                navigationController?.pushViewController(rgDebugController(context: context))
-                                return
-                            case "settings":
-                                navigationController?.pushViewController(rgSettingsController(context: context))
-                                return
-                            case "ios_settings":
-                                context.sharedContext.applicationBindings.openSettings()
-                                return
-                            case "contacts":
-                                if let lastViewController = navigationController?.viewControllers.last as? ViewController {
-                                    lastViewController.present(ContactsController(context: context), in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-                                }
-                                return
-                            case "pro", "premium", "buy":
-                                if context.sharedContext.immediateRGStatus.status > 1 {
-                                    navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
-                                } else {
-                                    if let lastViewController = navigationController?.viewControllers.last as? ViewController {
-                                        if let payWallController = context.sharedContext.makeRGPayWallController(context: context) {
-                                            lastViewController.present(payWallController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-                                        } else {
-                                            lastViewController.present(context.sharedContext.makeRGUpdateIOSController(), animated: true)
-                                        }
-                                    }
-                                }
-                            case "restart":
-                                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                                let lang = presentationData.strings.baseLanguageCode
-                                context.sharedContext.presentGlobalController(
-                                    UndoOverlayController(
-                                        presentationData: presentationData,
-                                        content: .info(title: nil,
-                                            text: "Common.RestartRequired".i18n(lang),
-                                            timeout: nil,
-                                            customUndoText: "Common.RestartNow".i18n(lang)
-                                        ),
-                                        elevatedLayout: false,
-                                        action: { action in if action == .undo { exit(0) }; return true }
-                                    ),
-                                    nil
-                                )
-                            case "restore_purchases", "pro_restore", "validate", "restore":
-                                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                                let lang = presentationData.strings.baseLanguageCode
-                                context.sharedContext.presentGlobalController(UndoOverlayController(
-                                        presentationData: presentationData,
-                                        content: .info(title: nil, text: "PayWall.Button.Restoring".i18n(lang), timeout: nil, customUndoText: nil),
-                                        elevatedLayout: false,
-                                        action: { _ in return false }
-                                    ),
-                                nil)
-                                context.sharedContext.RGIAP?.restorePurchases {}
-                            default:
-                                break
-                        }
-                    }
                 case "ton":
                     handleResolvedUrl(.ton)
                 case "importstickers":

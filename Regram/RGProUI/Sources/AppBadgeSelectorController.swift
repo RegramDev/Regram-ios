@@ -78,7 +78,8 @@ struct AppBadgeSettingsView: View {
     private func onSelectBadge(_ badge: AppBadge) {
         self.selectedBadge = badge
         let image = UIImage(bundleImageName: selectedBadge.assetName) ?? UIImage(bundleImageName: "Components/AppBadge")
-        if self.context.sharedContext.immediateRGStatus.status > 1 {
+        // Regram badges are local assets; selection is always available.
+        do {
             DispatchQueue.main.async {
                 RGSimpleSettings.shared.customAppBadge = selectedBadge.assetName
                 if let window = self.context.sharedContext.mainWindow {

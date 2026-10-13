@@ -403,7 +403,7 @@ public class UserDefaultsBackedDictionary<Key: Hashable, Value>: RGPreferenceCac
 
 
 #if DEBUG
-private let queue = DispatchQueue(label: "app.swiftgram.ios.trace", qos: .utility)
+private let queue = DispatchQueue(label: "app.regram.ios.trace", qos: .utility)
 
 public func RGtrace(_ domain: String, what: @autoclosure() -> String) {
     let string = what()

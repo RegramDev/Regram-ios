@@ -1,3 +1,5 @@
+// MARK: Regram — local enhancement settings, organized into focused pages.
+import RGSettingsUI
 import Foundation
 import UniformTypeIdentifiers
 import RGItemListUI
@@ -18,6 +20,11 @@ import RGSimpleSettings
 import RGLogging
 import RGStrings
 
+public enum RGProSettingsPage: String {
+    case home, messages, privacy, translation, media, appearance, notifications, tools
+    var titleKey: String { "Settings.ProCategory." + self.rawValue }
+}
+
 private enum RGProControllerSection: Int32, RGItemListSection {
     case search
     case base
@@ -25,9 +32,36 @@ private enum RGProControllerSection: Int32, RGItemListSection {
     case appearance
     case notifications
     case footer
+    case translation
+    case media
 }
 
 private enum RGProDisclosureLink: String {
+    case messagesPage
+    case privacyPage
+    case translationPage
+    case mediaPage
+    case appearancePage
+    case notificationsPage
+    case toolsPage
+    case translationSettings
+    case sttSettings
+    case transcriptionSettings
+    case linkPreviewSettings
+    case messageActionsSettings
+    case chatListSettings
+    case folderSettings
+    case profileSettings
+    case storiesSettings
+    case appearanceSettings
+    case mediaSettings
+    case photoSettings
+    case stickerSettings
+    case recordingSettings
+    case appUpdate
+    case llmSettings
+    case allSettingsSearch
+
     case antiFeatures
     case ghostMode
     case messageFilter
@@ -59,31 +93,31 @@ private enum RGProOneFromManySetting: String {
 }
 
 private enum RGProAction: String {
-    case resetIAP
+
     case eraseAllData
 }
 
 private typealias RGProControllerEntry = RGItemListUIEntry<RGProControllerSection, RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>
 
-private func RGProControllerEntries(presentationData: PresentationData, searchQuery: String?) -> [RGProControllerEntry] {
+private func RGProControllerEntries(presentationData: PresentationData, searchQuery: String?, page: RGProSettingsPage) -> [RGProControllerEntry] {
     var entries: [RGProControllerEntry] = []
     let lang = presentationData.strings.baseLanguageCode
     
     let id = RGItemListCounter()
     entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: searchQuery ?? "", placeholder: presentationData.strings.Common_Search))
     
-    entries.append(.disclosure(id: id.count, section: .base, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .base, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .base, settingName: .inputToolbar, value: RGSimpleSettings.shared.inputToolbar, text: "InputToolbar.Title".i18n(lang), enabled: true))
     // MARK: Regram
     entries.append(.toggle(id: id.count, section: .base, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "Mention.UserIdLink.Notice".i18n(lang)))
     // MARK: Regram — local Premium switch.
-    entries.append(.toggle(id: id.count, section: .base, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "LocalPremium.Notice".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .antiFeatures, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .antiFeatures, text: "LocalPremium.Notice".i18n(lang)))
     // MARK: Regram — link previews off.
-    entries.append(.toggle(id: id.count, section: .base, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "LinkPreview.Disable.Notice".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
     // MARK: Regram — pangu spacing.
     entries.append(.toggle(id: id.count, section: .base, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .base, text: "Pangu.Notice".i18n(lang)))
@@ -116,9 +150,52 @@ private func RGProControllerEntries(presentationData: PresentationData, searchQu
     entries.append(.notice(id: id.count, section: .footer, text: "EraseData.Notice".i18n(lang)))
 
     #if DEBUG
-    entries.append(.action(id: id.count, section: .footer, actionType: .resetIAP, text: "Reset Pro", kind: .destructive))
     #endif
     
+    entries.append(.disclosure(id: id.count, section: .base, link: .messageActionsSettings, text: RGSettingsPage.messageActions.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .base, link: .chatListSettings, text: RGSettingsPage.chatList.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .base, link: .folderSettings, text: RGSettingsPage.folders.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .translation, link: .translationSettings, text: RGSettingsPage.translation.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .translation, link: .llmSettings, text: "LLMTranslation.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .translation, link: .transcriptionSettings, text: RGSettingsPage.transcription.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .translation, link: .sttSettings, text: "RG.STTSettings".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .linkPreviewSettings, text: "LinkPreview.Repair".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .photoSettings, text: RGSettingsPage.photos.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .stickerSettings, text: RGSettingsPage.stickers.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .recordingSettings, text: RGSettingsPage.recording.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .media, link: .mediaSettings, text: "Settings.MediaLoading.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .appearance, link: .appearanceSettings, text: RGSettingsPage.appearance.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .appearance, link: .profileSettings, text: RGSettingsPage.profiles.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .storiesSettings, text: RGSettingsPage.stories.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "Updates.Title".i18n(lang)))
+
+    let hasSearch = !(searchQuery ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    if page == .home && !hasSearch {
+        entries = [entries[0]]
+        entries.append(.header(id: id.count, section: .base, text: "Settings.Frequent".i18n(lang), badge: nil))
+        entries.append(.disclosure(id: id.count, section: .base, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
+        entries.append(.disclosure(id: id.count, section: .base, link: .sttSettings, text: "RG.STTSettings".i18n(lang)))
+        entries.append(.disclosure(id: id.count, section: .base, link: .linkPreviewSettings, text: "LinkPreview.Repair".i18n(lang)))
+        for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.toolsPage, .tools)] {
+            entries.append(.disclosure(id: id.count, section: .appearance, link: link, text: destination.titleKey.i18n(lang)))
+        }
+    } else if page != .home {
+        let section: RGProControllerSection
+        switch page {
+        case .home, .messages: section = .base
+        case .privacy: section = .antiFeatures
+        case .translation: section = .translation
+        case .media: section = .media
+        case .appearance: section = .appearance
+        case .notifications: section = .notifications
+        case .tools: section = .footer
+        }
+        entries = entries.filter { $0.section == RGProControllerSection.search.rawValue || $0.section == section.rawValue }
+    }
+    if hasSearch {
+        entries.append(.disclosure(id: id.count, section: .search, link: .allSettingsSearch, text: "Settings.Search.AllOptions".i18n(lang)))
+    }
+
     return filterRGItemListUIEntrires(entries: entries, by: searchQuery, matching: { entry, query in
         let key: String
         switch entry {
@@ -128,6 +205,7 @@ private func RGProControllerEntries(presentationData: PresentationData, searchQu
         case let .action(_, _, action, _, _): key = action.rawValue
         default: return false
         }
+        if key == RGProDisclosureLink.allSettingsSearch.rawValue { return true }
         return RGProSearchIndex.matches(query: query, id: key, lang: lang)
     })
 }
@@ -136,12 +214,13 @@ public func okUndoController(_ text: String, _ presentationData: PresentationDat
     return UndoOverlayController(presentationData: presentationData, content: .succeed(text: text, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false })
 }
 
-public func rgProController(context: AccountContext, initialSearchQuery: String? = nil) -> ViewController {
+public func rgProController(context: AccountContext, initialSearchQuery: String? = nil, page: RGProSettingsPage = .home) -> ViewController {
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var askForRestart: (() -> Void)?
 
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    var currentSearchQuery = initialSearchQuery
     let searchPromise = ValuePromise(initialSearchQuery, ignoreRepeated: true)
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
@@ -217,6 +296,31 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     }, openDisclosureLink: { link in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch (link) {
+            case .messagesPage: pushControllerImpl?(rgProController(context: context, page: .messages))
+            case .privacyPage: pushControllerImpl?(rgProController(context: context, page: .privacy))
+            case .translationPage: pushControllerImpl?(rgProController(context: context, page: .translation))
+            case .mediaPage: pushControllerImpl?(rgProController(context: context, page: .media))
+            case .appearancePage: pushControllerImpl?(rgProController(context: context, page: .appearance))
+            case .notificationsPage: pushControllerImpl?(rgProController(context: context, page: .notifications))
+            case .toolsPage: pushControllerImpl?(rgProController(context: context, page: .tools))
+            case .translationSettings: pushControllerImpl?(rgSettingsController(context: context, page: .translation))
+            case .transcriptionSettings: pushControllerImpl?(rgSettingsController(context: context, page: .transcription))
+            case .messageActionsSettings: pushControllerImpl?(rgSettingsController(context: context, page: .messageActions))
+            case .chatListSettings: pushControllerImpl?(rgSettingsController(context: context, page: .chatList))
+            case .folderSettings: pushControllerImpl?(rgSettingsController(context: context, page: .folders))
+            case .profileSettings: pushControllerImpl?(rgSettingsController(context: context, page: .profiles))
+            case .storiesSettings: pushControllerImpl?(rgSettingsController(context: context, page: .stories))
+            case .appearanceSettings: pushControllerImpl?(rgSettingsController(context: context, page: .appearance))
+            case .mediaSettings: pushControllerImpl?(rgSettingsController(context: context, page: .media))
+            case .photoSettings: pushControllerImpl?(rgSettingsController(context: context, page: .photos))
+            case .stickerSettings: pushControllerImpl?(rgSettingsController(context: context, page: .stickers))
+            case .recordingSettings: pushControllerImpl?(rgSettingsController(context: context, page: .recording))
+            case .sttSettings: pushControllerImpl?(rgSTTSettingsController(context: context))
+            case .llmSettings: pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
+            case .linkPreviewSettings: pushControllerImpl?(rgLinkPreviewSettingsController(context: context))
+            case .appUpdate: pushControllerImpl?(rgAppUpdateController(context: context))
+            case .allSettingsSearch: pushControllerImpl?(rgSettingsController(context: context, initialSearchQuery: currentSearchQuery))
+
             case .antiFeatures:
                 pushControllerImpl?(rgAntiFeaturesController(context: context))
             case .ghostMode:
@@ -256,7 +360,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                             // Arms the launch-time wipe and closes the app: the deletion has to
                             // happen before anything opens the database, which is the one place
                             // rgFullWipeIfNeeded runs.
-                            UserDefaults.standard.set(true, forKey: "sg_full_wipe")
+                            UserDefaults.standard.set(true, forKey: "rg_full_wipe")
                             UserDefaults.standard.synchronize()
                             exit(0)
                         })
@@ -268,31 +372,15 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                     ])
                 ])
                 presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-            case .resetIAP:
-                let updateSettingsSignal = updateRGStatusInteractively(accountManager: context.sharedContext.accountManager, { status in
-                    var status = status
-                    status.status = RGStatus.default.status
-                    RGSimpleSettings.shared.primaryUserId = ""
-                    return status
-                })
-                let _ = (updateSettingsSignal |> deliverOnMainQueue).start(next: {
-                    presentControllerImpl?(UndoOverlayController(
-                        presentationData: presentationData,
-                        content: .info(title: nil, text: "Status reset completed. You can now restore purchases.", timeout: nil, customUndoText: nil),
-                        elevatedLayout: false,
-                        action: { _ in return false }
-                    ),
-                    nil)
-                })
         }
-    }, searchInput: { query in searchPromise.set(query) })
+    }, searchInput: { query in currentSearchQuery = query; searchPromise.set(query) })
     
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
     |> map { presentationData, _, searchQuery ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
-        let entries = RGProControllerEntries(presentationData: presentationData, searchQuery: searchQuery)
+        let entries = RGProControllerEntries(presentationData: presentationData, searchQuery: searchQuery, page: page)
         
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("Regram Pro"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram Pro" : page.titleKey.i18n(presentationData.strings.baseLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: nil /* scrollToItem*/ )
         

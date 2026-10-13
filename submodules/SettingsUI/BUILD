@@ -1,27 +1,28 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
-sgdeps = [
+rgdeps = [
     "//submodules/BuildConfig:BuildConfig",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGStrings:RGStrings"
 ]
 
-sgsrc = [
+rgsrc = [
     "//Regram/RGRecentSessionApiId:RGRecentSessionApiId",
 ]
 
 swift_library(
     name = "SettingsUI",
     module_name = "SettingsUI",
-    srcs = sgsrc + glob([
+    srcs = rgsrc + glob([
 		"Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

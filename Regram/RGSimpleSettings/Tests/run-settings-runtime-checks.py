@@ -12,7 +12,9 @@ with tempfile.TemporaryDirectory(prefix='regram-settings-checks-') as directory:
  }
  for name,source in modules.items():
   path=work/(name+'.swift');path.write_text(source)
-  subprocess.run(['xcrun','swiftc','-swift-version','5','-emit-library','-emit-module','-module-name',name,str(path),'-emit-module-path',str(work/(name+'.swiftmodule')),'-o',str(work/('lib'+name+'.dylib'))],check=True)
+  adapters=[str(path)]
+  if name=='RGAppGroupIdentifier': adapters.append(str(root/'Regram/RGAppGroupIdentifier/Sources/RGLegacyPreferences.swift'))
+  subprocess.run(['xcrun','swiftc','-swift-version','5','-emit-library','-emit-module','-module-name',name]+adapters+['-emit-module-path',str(work/(name+'.swiftmodule')),'-o',str(work/('lib'+name+'.dylib'))],check=True)
  sources=[]
  for path in sorted((root/'Regram/RGSimpleSettings/Sources').glob('*.swift')):
   destination=work/path.name

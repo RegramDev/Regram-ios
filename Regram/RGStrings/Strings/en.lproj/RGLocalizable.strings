@@ -1,0 +1,757 @@
+"Settings.ContentSettings" = "Content Settings";
+
+"Settings.Tabs.Header" = "TABS";
+"Settings.Tabs.HideTabBar" = "Hide Tab bar";
+"Settings.Tabs.ShowContacts" = "Show Contacts Tab";
+"Settings.Tabs.ShowNames" = "Show Tab Names";
+"Settings.Tabs.SearchButton" = "Search Button";
+"Settings.Tabs.WideTabBar" = "Wide Tab bar";
+"Settings.Tabs.WideTabBar.Notice" = "Keeps the full width of Tab bar when some tabs are hidden.";
+
+"Settings.Folders.BottomTab" = "Folders at Bottom";
+"Settings.Folders.BottomTabStyle" = "Bottom Folders Style";
+
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.ios" = "iOS";
+/* Do not translate */
+"Settings.Folders.BottomTabStyle.telegram" = "Telegram";
+/* Example: Hide "All Chats" */
+"Settings.Folders.AllChatsHidden" = "Hide \"%@\"";
+"Settings.Folders.RememberLast" = "Open Last Folder";
+"Settings.Folders.RememberLast.Notice" = "Regram will open the last used folder when you restart the app or switch accounts.";
+
+"Settings.Folders.CompactNames" = "Smaller spacing";
+"Settings.Folders.AllChatsTitle" = "\"All Chats\" title";
+"Settings.Folders.AllChatsTitle.short" = "Short";
+"Settings.Folders.AllChatsTitle.long" = "Long";
+/* Default behaviour for All Chats Folder Title. "All Chats" title: Default */
+"Settings.Folders.AllChatsTitle.none" = "Default";
+
+
+"Settings.ChatList.Header" = "CHAT LIST";
+"Settings.CompactChatList" = "Compact Chat List";
+"Settings.CompactMessagePreview" = "Compact Message Preview";
+"Settings.ChatList.Lines" = "Message Preview Lines";
+"Settings.ChatList.Lines.1" = "1 Line";
+"Settings.ChatList.Lines.2" = "2 Lines";
+"Settings.ChatList.Lines.3" = "3 Lines";
+"Mention.UserIdLink" = "Mention by Name";
+"Mention.UserIdLink.Notice" = "Long-pressing an avatar to mention inserts the user's full name as a mention instead of @username. Tapping it opens their profile.";
+"LocalPremium.Title" = "Local Premium";
+"LocalPremium.Notice" = "Treats your accounts as Premium inside this app, so Premium-only screens, options and limits unlock. Nothing is sent to Telegram: anything the server checks — premium stickers and reactions, emoji status, real limits — still needs a subscription.";
+"LinkPreview.Disable" = "Disable Previews for Sent Links";
+"LinkPreview.Disable.Notice" = "Sends links without webpage previews. The preview can still appear while composing, and messages from other people are unaffected.";
+"Settings.Profiles.DefaultTabGroupsInCommon" = "Open on Groups in Common";
+"Settings.Profiles.DefaultTabGroupsInCommon.Notice" = "Show the Groups tab first when opening a user or bot you share groups with.";
+"Settings.Profiles.Header" = "PROFILES";
+
+"Settings.Stories.Hide" = "Hide Stories";
+"Settings.Stories.WarnBeforeView" = "Ask Before Viewing";
+"Settings.Stories.DisableSwipeToRecord" = "Disable Swipe to Record";
+
+"Settings.Translation.QuickTranslateButton" = "Quick Translate button";
+"Settings.Translation.Backend" = "Service";
+/* Do not translate */
+"Settings.Translation.Backend.default" = "Telegram";
+/* Do not translate */
+"Settings.Translation.Backend.gtranslate" = "GTranslate";
+/* Do not translate */
+"Settings.Translation.Backend.google" = "Google";
+"Settings.Translation.Backend.system" = "System";
+"Settings.Translation.Backend.Notice" = "Regram will fallback to %@ if selected translation service is not available.";
+
+"Settings.Transcription.Header" = "VOICE-TO-TEXT";
+"Settings.Transcription.Backend" = "Service";
+/* Do not translate */
+"Settings.Transcription.Backend.default" = "Telegram";
+/* Do not translate */
+"Settings.Transcription.Backend.apple" = "Apple";
+"Settings.Transcription.Backend.Notice" = "Regram will fallback to %@ if selected transcription service is not available.";
+
+"Stories.Warning.Author" = "Author";
+"Stories.Warning.ViewStory" = "View Story?";
+/* Author will be able to see that you viewed their Story */
+"Stories.Warning.Notice" = "%@ WILL BE ABLE TO SEE that you viewed their Story.";
+"Stories.Warning.NoticeStealth" = "%@ will not be able to see that you viewed their Story.";
+
+"Settings.Photo.Quality.Notice" = "Quality of uploaded photos and stories.";
+"Settings.Photo.SendLarge" = "Send HD Photos";
+"Settings.Photo.SendLarge.Notice" = "Increase the side limit on compressed images to 2560px.";
+
+"Settings.VideoNotes.Header" = "ROUND VIDEOS";
+"Settings.VideoNotes.StartWithRearCam" = "Start with Rear Camera";
+
+"Settings.CustomColors.Header" = "ACCOUNT COLORS";
+"Settings.CustomColors.Saturation" = "SATURATION";
+/* Make sure to escape Percentage sign % */
+"Settings.CustomColors.Saturation.Notice" = "Set to 0%% to disable account colors.";
+
+"Settings.UploadsBoost" = "Upload Boost";
+"Settings.DownloadsBoost" = "Download Boost";
+"Settings.MediaLoadingExperiment" = "Faster Media Loading (Experimental)";
+"Settings.MediaLoadingExperiment.Notice" = "Prepare photos and videos ahead of time and reduce waits when scrolling back. Turn off to compare with the original behavior.";
+"Settings.DownloadsBoost.Notice" = "Increase concurrent downloads and chunk size when enabled.";
+"Settings.DownloadsBoost.none" = "Disabled";
+
+"Settings.ShowProfileID" = "Show Profile ID";
+"Settings.ShowDC" = "Show Data Center";
+"Settings.ShowCreationDate" = "Show Chat Creation Date";
+"Settings.ShowCreationDate.Notice" = "The creation date may be unknown for some chats.";
+
+"Settings.ShowRegDate" = "Show Registration Date";
+"Settings.ShowRegDate.Notice" = "The registration date is approximate.";
+
+"Settings.SendWithReturnKey" = "Send with \"return\" key";
+"Settings.HidePhoneInSettingsUI" = "Hide Phone in Settings";
+"Settings.HidePhoneInSettingsUI.Notice" = "This will only hide your phone number from the settings interface. To hide it from others, go to Privacy and Security.";
+
+"PasscodeSettings.AutoLock.InFiveSeconds" = "If away for 5 seconds";
+
+"ProxySettings.UseSystemDNS" = "Use system DNS";
+"ProxySettings.UseSystemDNS.Notice" = "Use system DNS to bypass timeout if you don't have access to Google DNS";
+
+/* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
+"Common.NoTelegramPremiumNeeded" = "You **don't need** %@!";
+"Common.RestartRequired" = "Restart required";
+"Common.RestartNow" = "Restart Now";
+"Common.OpenTelegram" = "Open Telegram";
+"Common.UseTelegramForPremium" = "Please note that to get Telegram Premium, you must use the official Telegram app. Once you have obtained Telegram Premium, all its features will become available in Regram.";
+"Common.UpdateOS" = "iOS update required";
+"Common.KnowWhatYouDo" = "Please, change these settings only if you know what they do.";
+
+"Message.HoldToShowOrReport" = "Hold to Show or Report.";
+
+"Auth.AccountBackupReminder" = "Make sure you have a backup access method. Keep a SIM for SMS or an additional session logged in to avoid being locked out.";
+"Auth.UnofficialAppCodeTitle" = "You can get the code only with official app";
+
+"Settings.SmallReactions" = "Small Reactions";
+"Settings.HideReactions" = "Hide Reactions";
+
+"ContextMenu.SaveToCloud" = "Save to Cloud";
+"ContextMenu.SelectFromUser" = "Select from Author";
+
+"Settings.ContextMenu" = "CONTEXT MENU";
+"Settings.ContextMenu.Customize" = "Customize Menu";
+"Settings.ContextMenu.Notice" = "Disabled entries will be available in \"Regram\" sub-menu.";
+
+
+"Settings.ChatSwipeOptions" = "Chat List Swipe Options";
+"Settings.DeleteChatSwipeOption" = "Swipe to Delete Chat";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextChannelSameLocationSwipeProgress */
+"Settings.PullToNextChannel" = "Pull to Next Unread Channel";
+/* Re-word like this string on offical app https://translations.telegram.org/en/ios/groups_and_channels/Chat.NextUnreadTopicSwipeProgress */
+"Settings.PullToNextTopic" = "Pull to Next Topic";
+"Settings.GalleryCamera" = "Camera in Gallery";
+"Settings.GalleryCameraPreview" = "Camera Preview in Gallery";
+/* "Send Message As..." button */
+"Settings.SendAsButton" = "\"%@\" Button";
+"Settings.SnapDeletionEffect" = "Message Deletion Effects";
+
+"Settings.Stickers.Size" = "SIZE";
+"Settings.Stickers.Timestamp" = "Show Timestamp";
+"Settings.Stickers.RecentLimit" = "Recent Stickers Limit";
+
+"Settings.RecordingButton" = "Voice Recording Button";
+
+"Settings.DefaultEmojisFirst" = "Standard emojis first";
+"Settings.DefaultEmojisFirst.Notice" = "Show standard emojis before premium in emoji keyboard";
+
+/* Date when chat was created. "created: 24 May 2016" */
+"Chat.Created" = "created: %@";
+
+/* Date when user joined the chat. "Joined Regram Chat" */
+"Chat.JoinedDateTitle" = "Joined %@";
+/* Date when user registered in Telegram. Will be shown like "Registered\n24 May 2016" */
+"Chat.RegDate" = "Registered";
+
+"Settings.messageDoubleTapActionOutgoingEdit" = "Double-tap to edit message";
+
+"Settings.wideChannelPosts" = "Wide posts in channels";
+"Settings.ForceEmojiTab" = "Emoji tab first";
+
+"Settings.forceBuiltInMic" = "Force Device Microphone";
+"Settings.forceBuiltInMic.Notice" = "If enabled, app will use only device microphone even if headphones are connected.";
+
+"Settings.showChannelBottomButton" = "Channel Bottom Panel";
+
+"Settings.secondsInMessages" = "Seconds in Messages";
+
+"Settings.CallConfirmation" = "Call Confirmation";
+"Settings.CallConfirmation.Notice" = "Regram will ask for your confirmation before making a call.";
+
+/* Confirmation before making a Call */
+"CallConfirmation.Audio.Title" = "Make a Call?";
+
+/* Confirmation before making a Video Call */
+"CallConfirmation.Video.Title" = "Make a Video Call?";
+
+"MutualContact.Label" = "mutual contact";
+
+"MessageFilter.Title" = "Message Filter";
+"MessageFilter.SubTitle" = "Remove distractions and hide messages matching the rules below.
+Matching is case-insensitive.";
+"MessageFilter.Keywords.Title" = "Keywords";
+"MessageFilter.InputPlaceholder" = "Enter keyword";
+
+"InputToolbar.Title" = "Formatting Panel";
+
+"Notifications.MentionsAndReplies.Title" = "@Mentions and Replies";
+"Notifications.MentionsAndReplies.value.default" = "Default";
+"Notifications.MentionsAndReplies.value.silenced" = "Muted";
+"Notifications.MentionsAndReplies.value.disabled" = "Disabled";
+"Notifications.PinnedMessages.Title" = "Pinned Messages";
+"Notifications.PinnedMessages.value.default" = "Default";
+"Notifications.PinnedMessages.value.silenced" = "Muted";
+"Notifications.PinnedMessages.value.disabled" = "Disabled";
+
+
+"PayWall.Text" = "Supercharged with Pro features";
+
+"PayWall.MessageFilter.Title" = "Message Filter";
+"PayWall.MessageFilter.Notice" = "Hide SPAM, promotions and annoying messages.";
+"PayWall.MessageFilter.Description" = "Create a list of keywords you don't want to see and Regram will hide messages containing them.";
+
+"PayWall.Notifications.Title" = "Disable @mentions and replies";
+"PayWall.Notifications.Notice" = "Hide or mute non-important notifications.";
+"PayWall.Notifications.Description" = "No more Pinned Messages or @mentions when you need some peace of mind.";
+
+"PayWall.InputToolbar.Title" = "Formatting Panel";
+"PayWall.InputToolbar.Notice" = "Bold, Italic, Links? Formatting with just a single tap.";
+"PayWall.InputToolbar.Description" = "Apply and clear Formatting or insert new lines like a Pro.";
+
+"PayWall.AppIcons.Title" = "Unique App Icons and Badges";
+"PayWall.AppIcons.Notice" = "Customize Regram look on your home screen and screenshots.";
+
+"PayWall.About.Title" = "About Regram Pro";
+"PayWall.About.Notice" = "Free version of Regram provides dozens of features and improvements over Telegram app. Innovating and keeping Regram in sync with monthly Telegram updates is a huge effort that requires a lot of time and expensive hardware.\n\nRegram is an open-source app that respects your privacy and doesn't bother you with ads. Subscribing to Regram Pro you get access to exclusive features and support an independent developer.";
+/* DO NOT TRANSLATE */
+"PayWall.About.Signature" = "@Kylmakalle";
+/* DO NOT TRANSLATE */
+"PayWall.About.SignatureURL" = "https://t.me/Kylmakalle";
+
+"PayWall.ProSupport.Title" = "Troubles with payment?";
+"PayWall.ProSupport.Contact" = "No worries!";
+
+"PayWall.RestorePurchases" = "Restore Purchases";
+"PayWall.Terms" = "Terms of Service";
+"PayWall.Privacy" = "Privacy Policy";
+"PayWall.Notice.Markdown" = "By subscribing to Regram Pro you agree to the [Regram Terms of Service](%1$@) and [Privacy Policy](%2$@).";
+"PayWall.Notice.Raw" = "By subscribing to Regram Pro you agree to the Regram Terms of Service and Privacy Policy.";
+
+"PayWall.Button.OpenPro" = "Use Pro features";
+"PayWall.Button.Purchasing" = "Purchasing...";
+"PayWall.Button.Restoring" = "Restoring Purchases...";
+"PayWall.Button.Validating" = "Validating Purchase...";
+"PayWall.Button.PaymentsUnavailable" = "Payments unavailable";
+"PayWall.Button.BuyInAppStore" = "Subscribe in App Store version";
+"PayWall.Button.Subscribe" = "Subscribe for %@ / month";
+"PayWall.Button.ContactingAppStore" = "Contacting App Store...";
+
+"Paywall.Error.Title" = "Error";
+"PayWall.ValidationError" = "Validation Error";
+"PayWall.ValidationError.TryAgain" = "Something went wrong during purchase validation. No worries! Try to Restore Purchases a bit later.";
+"PayWall.ValidationError.Expired" = "Your subscription expired. Subscribe again to regain access to Pro features.";
+
+"AppBadge.Title" = "App Badge";
+"AppBadge.Notice" = "Customize App Badge shown on screenshots";
+
+"Settings.NY.Header" = "HOLIDAY EFFECTS";
+"Settings.NY.Style" = "Style";
+"Settings.NY.Style.default" = "Disabled";
+"Settings.NY.Style.snow" = "Snow";
+"Settings.NY.Style.lightning" = "Lightning";
+"Settings.NY.Notice" = "Available for a limited time only!";
+
+
+// MARK: Ghost Mode & Anti-deletion
+"AntiFeatures.Header" = "ANTI-DELETION & RESTRICTIONS";
+"AntiFeatures.Notice" = "Only affects what is kept on this device. Messages you delete yourself are still removed.";
+"AntiFeatures.Revoke" = "Keep deleted messages";
+"AntiFeatures.AutoDelete" = "Ignore auto-delete timer";
+"AntiFeatures.SelfDestruct" = "Ignore self-destruct timer";
+"AntiFeatures.Screenshot" = "Don't notify on screenshot";
+"AntiFeatures.SaveProtected" = "Allow saving protected content";
+"AntiFeatures.SaveProtectedStories" = "Allow saving protected stories";
+"AntiFeatures.DisableAds" = "Hide sponsored messages";
+"MessageFilter.InputPlaceholderRegex" = "Enter regular expression";
+"MessageFilter.Regex" = "Regular expression";
+"MessageFilter.Regex.Notice" = "Matching is case-insensitive. Regular expressions use ICU syntax; an invalid pattern cannot be added.";
+"MessageFilter.Export" = "Export Rules";
+"MessageFilter.Import" = "Import Rules";
+"MessageFilter.Transfer" = "Export / Import";
+"MessageFilter.Add" = "Add Keyword";
+"MessageFilter.Rules.Notice" = "Tap a rule to limit it to specific chats. Touch and hold for more options.";
+"MessageFilter.Rule.Regex" = "Regex";
+"MessageFilter.Rule.AllChats" = "All chats";
+"MessageFilter.Rule.SelectedChats" = "Selected chats";
+"MessageFilter.Rule.InvalidRegex" = "Invalid pattern";
+"MessageFilter.Rule.MakeRegex" = "Treat as regular expression";
+"MessageFilter.Rule.MakePlain" = "Treat as plain text";
+"MessageFilter.Rule.Delete" = "Delete";
+"MessageFilter.SelectChats.Title" = "Filter in Chats";
+"MessageFilter.AddToFilter" = "Add to Filter";
+"MessageFilter.Added" = "Added to the message filter.";
+"MessageFilter.AlreadyExists" = "Already in the message filter.";
+"MessageFilter.Imported" = "Imported %@ rules into the message filter.";
+"MessageFilter.ImportFailed" = "No message filter rules could be read from this file.";
+"BlockUser.Block" = "Hide This User's Messages";
+"BlockUser.Notice" = "Messages from this user or bot will be hidden locally in every chat. They will not be notified.";
+"HiddenUsers.Title" = "Hidden Users";
+"HiddenUsers.Notice" = "Messages from these users and bots are hidden everywhere. Swipe left to unhide; tap to open the profile.";
+"HiddenUsers.Empty" = "No hidden users yet. Open a user's or bot's profile and turn on \"Hide This User's Messages\".";
+"MessageFilter.CopyAsKeyword" = "Copy & Add to Filter";
+"Repeat.WithReply" = "Repeat (Forward)";
+"Repeat.Plain" = "Repeat (Copy)";
+"Repeat.ForwardNoQuote" = "Send Copy to Another Chat";
+
+"FreshInstall.Title" = "Data From a Previous Install";
+"FreshInstall.Text" = "Deleting this app does not remove its data — iOS keeps the shared container, so the accounts and settings from the previous install are still here.\n\nKeep using them, or start over?";
+"FreshInstall.Keep" = "Keep Existing Data";
+"FreshInstall.Erase" = "Erase and Start Over";
+"FreshInstall.Ready" = "Ready to Erase";
+"FreshInstall.ReadyText" = "The app will now close. Open it again to confirm and erase everything.";
+
+"MessageFilter.Rule.LimitToChats" = "Limit to Specific Chats";
+"MessageFilter.Rule.EditTitle" = "Edit Keyword";
+"MessageFilter.Rule.EditMessage" = "Messages containing this text will be hidden.";
+"MessageFilter.Rule.EditMessageRegex" = "Messages matching this regular expression will be hidden.";
+"MessageFilter.PerChat.Title" = "Message Filter";
+"MessageFilter.PerChat.Notice" = "When off, the message filter is ignored in this chat.";
+"EraseData.Title" = "Erase All Data";
+"EraseData.Notice" = "Logs out every account and deletes all local data, caches and settings. Use this to start over — deleting the app does not clear its data, because iOS keeps the shared container alive.";
+"EraseData.Confirm" = "This logs out every account and deletes all local data of this app. This cannot be undone.";
+"EraseData.Action" = "Erase Everything and Close";
+"Common.Save" = "Save";
+"Common.Cancel" = "Cancel";
+
+"Ghost.Header" = "GHOST MODE";
+"Ghost.Notice" = "Stops this device from reporting which stories you view, your online status and your typing. Nothing changes on your side: stories still clear. Sending a message still puts you online — that part is decided by the server, not by the app.";
+"Ghost.DontReadStories" = "Don't report story views";
+"Ghost.DontSendOnline" = "Never appear online";
+"Ghost.DontSendTyping" = "Don't send typing status";
+"Pangu.Title" = "Pangu spacing";
+"Pangu.Notice" = "Inserts a space between CJK characters and adjacent Latin letters or digits in messages you send. Code and quote blocks are left untouched.";
+"OutgoingFormatting.Title" = "Default Message Formatting";
+"OutgoingFormatting.none" = "Off";
+"OutgoingFormatting.bold" = "Bold";
+"OutgoingFormatting.italic" = "Italic";
+"OutgoingFormatting.underline" = "Underline";
+"OutgoingFormatting.strikethrough" = "Strikethrough";
+"OutgoingFormatting.spoiler" = "Spoiler";
+"OutgoingFormatting.Notice" = "Applies the selected style to new text messages when sent. Existing manual formatting is kept; code, quotes, and custom emoji are excluded.";
+
+/* Per-chat anti-revoke */
+"AntiRevoke.PerChat.Title" = "Keep Deleted Messages";
+"AntiRevoke.PerChat.Notice" = "When on, messages deleted by the other side in this chat are kept and marked as deleted.";
+"AntiRevoke.PerChat.AllChats" = "Deleted messages are kept in all chats. You can change this in Regram Pro → Anti-Deletion & Restrictions.";
+"AntiRevoke.Chats.Title" = "Chats Keeping Deleted Messages";
+"AntiRevoke.Chats.Notice" = "Messages deleted in these chats are kept and marked as deleted. Swipe left to remove; tap to open the profile.";
+"AntiRevoke.Chats.Empty" = "No chats yet. Open a chat's profile and turn on \"Keep Deleted Messages\".";
+
+// MARK: Regram — default playback quality.
+"Settings.DefaultVideoQuality" = "Default video quality";
+"Settings.DefaultVideoQuality.automatic" = "Automatic";
+"Settings.DefaultVideoQuality.highest" = "Highest available";
+"Settings.DefaultVideoQuality.lowest" = "Lowest available";
+
+// MARK: Regram — Telegram 13 appearance controls.
+"Settings.Tabs.Width" = "Tab Bar Width";
+"Settings.Tabs.Width.Preview" = "Preview";
+"Settings.Tabs.Width.Automatic" = "Automatic";
+"Settings.Tabs.Width.Actual" = "Current width: %@ pt";
+"Settings.Tabs.Width.Notice" = "Choose 50–100% of the available width (up to 500 pt). The bar keeps enough room for each tab. Changes apply immediately.";
+"Settings.Tabs.Width.Hidden" = "The tab bar is currently hidden. Turn off Hide Tab Bar to display it.";
+"Settings.Tabs.Width.Reset" = "Reset to Automatic";
+"Fonts.Title" = "Fonts";
+"Fonts.System" = "System Default";
+"Fonts.Rounded" = "System Rounded";
+"Fonts.Serif" = "System Serif";
+"Fonts.Preview" = "Preview";
+"Fonts.Sample" = "聊天文字 · 中文字体自动回退";
+"Fonts.Areas" = "Apply To";
+"Fonts.Messages" = "Chat Messages";
+"Fonts.Interface" = "Main Interface";
+"Fonts.Areas.Notice" = "Checked areas update immediately. Code, icons and large emoji keep their own fonts.";
+"Fonts.Selected" = "Selected";
+"Fonts.Unselected" = "Not selected";
+"Fonts.NoArea" = "Select an area to apply this font.";
+"Fonts.Family" = "Typeface";
+"Fonts.Fallback" = "Characters outside the selected fonts use system fallback. Code and large emoji keep their own fonts.";
+"Fonts.Reset" = "Restore System Default";
+
+"Fonts.More.Notice" = "Poppins and Lora appear in Anthropic’s published brand-style example. Plex Sans SC and Noto Serif SC include Chinese glyphs; their italic emphasis uses an oblique style.";
+
+"Fonts.Latin.Title" = "English and Latin Font";
+
+"Fonts.Chinese.Title" = "Chinese Font";
+
+"Fonts.Chinese.System" = "System Chinese Font";
+
+"Fonts.Chinese.Sample" = "中文字体示例：你好，世界。";
+
+"Fonts.Scripts.Notice" = "English letters, digits and Latin punctuation use the English font. Han characters and Chinese punctuation use the Chinese font. Both choices apply to the checked areas.";
+
+"Fonts.Cloud.Notice" = "Fonts download on demand from official sources and remain available offline.";
+"Fonts.Import" = "Import Font from Files";
+"Fonts.Imported" = "Imported";
+"Fonts.Import.Notice" = "Supports TTF, OTF and TTC up to 64 MB. Every supported face in a TTC appears in your library. English and Chinese are selected independently.";
+"Fonts.Cancel" = "Cancel Download";
+"Fonts.Download.Error" = "Download failed. Check your connection and try again. Your current font is unchanged.";
+"Fonts.Import.Error" = "Could not import the font. Choose a valid TTF, OTF or TTC file up to 64 MB.";
+"Fonts.Error.Title" = "Fonts";
+"Fonts.OK" = "OK";
+
+"MessageFilter.Rule.Disabled" = "Disabled";
+"MessageFilter.Rule.Disable" = "Disable Rule";
+"MessageFilter.Rule.Enable" = "Enable Rule";
+"MessageFilter.Rule.Keep" = "Keep Matching Messages";
+"MessageFilter.Rule.Hide" = "Hide Matching Messages";
+"MessageFilter.Test.Title" = "Test Rules";
+"MessageFilter.Test.Run" = "Run Test";
+"MessageFilter.Test.Matched" = "Matched";
+"MessageFilter.Test.NotMatched" = "No Match";
+"MessageFilter.Test.TimedOut" = "Stopped: regex took too long";
+"MessageFilter.Test.Notice" = "Tests the current rules without hiding or sending this text. Conversation restrictions are not applied in this preview. Keep rules override hide rules in applicable chats; hidden users remain hidden. Slow regex matches are stopped and keep the message visible.";
+"Fonts.Rename" = "Rename Font";
+"Fonts.Rename.Notice" = "Give this font a name of up to 80 characters. The font file is unchanged.";
+"Fonts.Delete" = "Delete Font";
+"Fonts.Delete.Notice" = "Delete this font from your library? A selected font returns to the system font. Other faces in the same TTC remain available.";
+"Fonts.Management.Error" = "Could not update font storage. Please try again.";
+"Fonts.Storage" = "Font Storage";
+"Fonts.Storage.Downloads" = "Downloaded";
+"Fonts.ClearDownloads" = "Clear Downloaded Fonts";
+"Fonts.ClearDownloads.Notice" = "Clear downloaded fonts and restore built-in selections to the system font? Imported font files are retained.";
+"Settings.Search.Pro" = "Matching Settings in Regram Pro";
+"Fonts.Preview.Download" = "Download to preview this font";
+
+"Backup.Title" = "Configuration Backup";
+"Backup.Export" = "Export Selected Settings";
+"Backup.Import" = "Import Settings File";
+"Backup.Notice" = "Backs up Regram preferences, rules, font selections and related navigation controls. Account sessions and font files are excluded. Import always opens a preview before applying changes.";
+"Backup.Categories" = "Categories";
+"Backup.Category.appearance" = "Appearance & Navigation";
+"Backup.Category.messages" = "Messages & Input";
+"Backup.Category.privacy" = "Privacy & Filtering";
+"Backup.Category.translation" = "Translation & Transcription";
+"Backup.Category.media" = "Media & Transfer";
+"Backup.Category.notifications" = "Notifications";
+"Backup.Preview" = "Import Preview";
+"Backup.Items" = "settings selected";
+"Backup.Fonts.Notice" = "Font files must be downloaded or imported separately. Missing fonts use the system fallback. Rules scoped to accounts/chats keep their original IDs.";
+"Backup.Restore" = "Restore Selected Settings";
+"Backup.CancelPreview" = "Close Preview";
+"Backup.Reset" = "Reset Selected Categories";
+"Backup.Reset.Notice" = "Selected categories return to their defaults. This does not clear messages or account sessions.";
+"Backup.Error" = "Could Not Import or Export Settings";
+"Backup.Error.Notice" = "Choose a valid Regram settings JSON file up to 2 MB. Unsupported versions, invalid types and out-of-range values are rejected.";
+"Backup.Restore.Notice" = "Replace the selected categories with the previewed settings? Other categories are preserved.";
+"Backup.Done" = "Settings updated. Restart to refresh every open screen.";
+"ChatPreferences.Title" = "Per-Chat Settings";
+"ChatPreferences.SelectChat" = "Choose a Chat";
+"ChatPreferences.Notice" = "Overrides apply to this account and the selected chat, including its topics. Explicit send-without-formatting still takes precedence.";
+"ChatPreferences.Inherit" = "Follow Global Setting";
+"ChatPreferences.On" = "On";
+"ChatPreferences.Off" = "Off";
+"ChatPreferences.Reset" = "Remove Chat Overrides";
+"ChatPreferences.Reveal" = "Show Filtered Messages for 5 Minutes";
+"ChatPreferences.Reveal.End" = "Resume Filtering Now";
+"ChatPreferences.Reveal.Notice" = "Temporarily shows keyword-filtered and hidden-sender messages locally in this chat. Rules are retained and resume automatically. Notification filtering is unchanged.";
+"Revoked.Title" = "Retained Revoked Messages";
+"Revoked.Notice" = "Choose a chat to browse revoked messages already retained on this device. Reads bounded local pages; Load More searches older pages. Dates show original message dates.";
+"Revoked.Search" = "Search Loaded Messages";
+"Revoked.Media" = "Media or Service Message";
+"Revoked.Scanned" = "local messages checked";
+"Revoked.LoadMore" = "Load More Local History";
+"Revoked.Empty" = "No matching retained messages in the loaded history.";
+"Revoked.ClearLoaded" = "Clear Loaded Revoked Messages";
+"Revoked.Clear.Notice" = "Permanently remove the loaded retained messages from this device? Only records still marked revoked are removed. Other messages and other users are unaffected.";
+"Diagnostics.Title" = "Performance & Transfer";
+"Diagnostics.Download" = "Telegram Media Download";
+"Diagnostics.Download.Notice" = "Media payload received during this app session across accounts, including re-downloads. Rate is averaged over the last three seconds. Cached/local reads, font downloads and protocol overhead are excluded.";
+"Diagnostics.Speed" = "Transfer Rate (3s Average)";
+"Diagnostics.Received" = "Received This Session";
+"Diagnostics.Boost.On" = "Download acceleration: on";
+"Diagnostics.Boost.Off" = "Download acceleration: off";
+"Diagnostics.Filter" = "Current Filter Rules";
+"Diagnostics.Filter.Notice" = "Tests 100 local synthetic messages against the current rules without chat restrictions and shows average time per message. No messages are sent. The result does not measure scrolling frame rate.";
+"Diagnostics.Filter.Run" = "Test 100 Messages";
+"Diagnostics.Rules" = "configured rules";
+"Diagnostics.Media.Notice" = "Media loading follows Telegram automatic-download and network controls. Compare real transfer behavior when toggling the experiment; no fixed speed gain is promised.";
+"Diagnostics.Media.On" = "Media loading experiment: on";
+"Diagnostics.Media.Off" = "Media loading experiment: off";
+"Notifications.ContentFilter" = "Filter Message Notifications";
+"Notifications.ContentFilter.Notice" = "Applies keyword rules, keep rules and hidden senders after a push message is resolved locally. Requires a shared App Group. Unresolved pushes cannot be matched reliably.";
+"Notifications.ContentFilter.Unavailable" = "Shared preferences are unavailable with this signature. Enable a working App Group when signing to use notification filtering.";
+
+"Diagnostics.Filter.Average" = "Average per Message";
+
+"Settings.UnlimitedPinnedChats" = "Unlimited Pinned Chats";
+"Settings.UnlimitedPinnedChats.Notice" = "Telegram syncs only as many pins as your account allows (5, or 10 with Premium). The topmost ones are synced; pins beyond that stay on this device only.";
+"AntiFeatures.EditHistory" = "Save Edit History";
+"EditHistory.Title" = "Edit History";
+"EditHistory.Notice" = "Earlier versions recorded on this device when an edit arrived. Edits made before this was on, or while this device's copy was replaced by a full reload, cannot be recovered. Long-press a version to copy it.";
+"EditHistory.Current" = "Current";
+"EditHistory.Original" = "Original";
+"EditHistory.Copy" = "Copy";
+"EditHistory.EmptyText" = "(no text)";
+"RecentChats.Title" = "Recent Chats";
+"RecentChats.Notice" = "Chats you opened on this device, newest first. Long-press a chat's back button to jump to one. Swipe to remove.";
+"RecentChats.Empty" = "No recent chats yet.";
+"RecentChats.Clear" = "Clear";
+
+/* MARK: Regram — media information in the photo/video viewer */
+"MediaMetadata.Setting" = "Show Media Info";
+"MediaMetadata.Setting.Notice" = "Adds \"Media Info\" to the photo and video viewer menu: resolution, file size, duration, frame rate, bitrate and codec, read from the downloaded file.";
+"MediaMetadata.MenuItem" = "Media Info";
+"MediaMetadata.Title" = "Media Info";
+"MediaMetadata.Type" = "Type";
+"MediaMetadata.Format" = "Format";
+"MediaMetadata.Resolution" = "Resolution";
+"MediaMetadata.FileSize" = "File Size";
+"MediaMetadata.Duration" = "Duration";
+"MediaMetadata.FrameRate" = "Frame Rate";
+"MediaMetadata.Bitrate" = "Bitrate";
+"MediaMetadata.Codec" = "Codec";
+"MediaMetadata.AudioCodec" = "Audio Codec";
+"MediaMetadata.Image" = "Image";
+"MediaMetadata.Video" = "Video";
+"MediaMetadata.Audio" = "Audio";
+"MediaMetadata.Animation" = "Animation";
+"MediaMetadata.File" = "File";
+"MediaMetadata.Unknown" = "Unknown";
+"MediaMetadata.NotDownloaded" = "Some details are unavailable until the media is fully downloaded.";
+
+"JoinFolder.Setting" = "Choose Folder After Joining";
+"JoinFolder.Setting.Notice" = "After you join a group or channel, Regram offers to add it to one of your chat folders.";
+"JoinFolder.Picker.Title" = "Add “%@” to a folder";
+"JoinFolder.Unavailable" = "This chat could not be added. The folder may have been deleted or reached its chat limit. Tidy up your folders and try again.";
+"DoubleTap.Action" = "Double-Tap on Message";
+"DoubleTap.WithoutEditPermission" = "Messages You Can't Edit";
+"DoubleTap.Action.sameAsUnified" = "Same as Above";
+"DoubleTap.Action.disabled" = "Nothing";
+"DoubleTap.Action.sendReaction" = "Send Reaction";
+"DoubleTap.Action.showReactions" = "Show Reactions";
+"DoubleTap.Action.reply" = "Reply";
+"DoubleTap.Action.repeatMessage" = "Repeat";
+"DoubleTap.Action.repeatWithoutQuote" = "Repeat Without Quote";
+"DoubleTap.Action.translate" = "Translate";
+"DoubleTap.Action.edit" = "Edit";
+"Settings.ShowMessageId" = "Show Message ID";
+"Settings.ShowForwardedMessageDate" = "Show Original Date of Forwards";
+"QrLogin.Button" = "Log in by QR Code";
+"QrLogin.Title" = "Log in by QR Code";
+"QrLogin.Text" = "1. Open Telegram on a device where you are already logged in.\n2. Go to Settings → Devices → Link Desktop Device.\n3. Scan this code to log in.";
+"QrLogin.Accepted.Title" = "Logging In";
+"QrLogin.Accepted.Text" = "The QR code was accepted. Finishing login…";
+"QrLogin.TooManyAttempts" = "Too many attempts. Trying again shortly…";
+
+// Message menu management
+"ContextMenu.saveStickerToCameraRoll" = "Save Sticker to Photos (PNG/GIF)";
+"ContextMenu.viewAuthorMessages" = "View All Messages from This User";
+"ContextMenu.sendMoney" = "Send Money";
+"ContextMenu.sendLogs" = "Send Logs";
+"ContextMenu.stopPoll" = "Stop Poll";
+"ContextMenu.factCheck" = "Fact Check";
+"ContextMenu.selectAll" = "Select All";
+
+"StickerSave.Saving" = "Saving sticker…";
+"StickerSave.Success" = "Sticker saved to Photos";
+"StickerSave.Failed" = "Unable to save sticker. Check Photos permission and try again.";
+"ProfileBadge.developer" = "Developer";
+"ProfileBadge.coreTester" = "Core Tester";
+"ProfileBadge.sponsor" = "Sponsor";
+"ProfileBadge.developer.Info" = "A developer of Regram.";
+"ProfileBadge.coreTester.Info" = "A core tester helping verify Regram.";
+"ProfileBadge.sponsor.Info" = "A supporter of Regram.";
+
+"LLMTranslation.Title" = "LLM Translation";
+"LLMTranslation.Format" = "API Format";
+"LLMTranslation.BaseURL" = "Base URL";
+"LLMTranslation.Endpoint" = "Endpoint";
+"LLMTranslation.Model" = "Model";
+"LLMTranslation.SelectModel" = "Select Model";
+"LLMTranslation.FetchModels" = "Fetch Models";
+"LLMTranslation.TestModel" = "Test Model";
+"LLMTranslation.Prompt" = "Prompt";
+"LLMTranslation.UseContext" = "Use Chat Context";
+"LLMTranslation.Temperature" = "Temperature";
+"LLMTranslation.TestSucceeded" = "Model test succeeded.";
+"LLMTranslation.KeySaveFailed" = "Unable to save the API key in Keychain.";
+"LLMTranslation.ConnectionNotice" = "Requests go to the configured service. The API key is stored only in this device’s Keychain and is excluded from settings backups. Leave URLs empty to use the selected API format’s defaults.";
+"LLMTranslation.PromptNotice" = "Use @text for the message and @toLang for the target language. Chat context includes up to five earlier messages from the same chat/topic (800 characters each), sent only when this option is enabled.";
+"Settings.Translation.Backend.googleCN" = "Google CN";
+"Settings.Translation.Backend.microsoft" = "Microsoft";
+"Settings.Translation.Backend.yandex" = "Yandex";
+"Settings.Translation.Backend.transmart" = "Tencent TranSmart";
+"Settings.Translation.Backend.llm" = "LLM";
+
+"AuthorMessages.Title" = "Messages from %1$@";
+"AuthorMessages.Count" = "%1$@ · %2$@ messages";
+"AuthorMessages.Empty" = "This user has no visible messages in this chat.";
+"AuthorMessages.LoadFailed" = "Messages could not be loaded. Please try again.";
+"AuthorMessages.Retry" = "Retry";
+
+"QrLogin.RetryButton" = "Retry";
+"QrLogin.LoadFailed" = "Unable to load the QR code. Check your network or proxy and retry.";
+"QrLogin.RenderFailed" = "Unable to render the QR code. Please retry.";
+
+// MARK: Regram — QR request diagnostics and certificate updates.
+"QrLogin.RequestTimedOut" = "The login token request timed out. Check your Telegram connection or proxy and retry.";
+"QrLogin.RequestError" = "Telegram rejected the login token request: %1$@";
+"AppUpdate.Title" = "Regram Updates";
+"AppUpdate.CurrentVersion" = "Installed version";
+"AppUpdate.Check" = "Check for Updates";
+"AppUpdate.Checking" = "Checking for updates…";
+"AppUpdate.Available" = "A Regram update is available";
+"AppUpdate.UpToDate" = "You are using the latest version";
+"AppUpdate.Downloading" = "Downloading update…";
+"AppUpdate.Signing" = "Signing with your certificate…";
+"AppUpdate.PreparingInstall" = "Preparing installation…";
+"AppUpdate.Ready" = "The update is ready to install";
+"AppUpdate.InstallRequested" = "Installation requested. Confirm in the iOS prompt, then reopen Regram.";
+"AppUpdate.Prepare" = "Download and Sign Update";
+"AppUpdate.Install" = "Install Update";
+"AppUpdate.Cancel" = "Cancel";
+"AppUpdate.Later" = "Later";
+"AppUpdate.AutomaticCheck" = "Automatically check for updates";
+"AppUpdate.AutomaticPrepare" = "Automatically download and sign";
+"AppUpdate.AutomaticNotice" = "Check GitHub Releases when Regram opens, at most once every six hours. Automatic preparation downloads and signs on this device. LCSign provides the installation manifest; iOS asks you to confirm installation.";
+"AppUpdate.CertificatePassword" = "P12 password";
+"AppUpdate.ImportCertificate" = "Import P12 Certificate";
+"AppUpdate.ImportProfiles" = "Import Provisioning Profiles";
+"AppUpdate.RemoveCertificate" = "Remove Certificate";
+"AppUpdate.CertificateNotice" = "Select one P12/PFX certificate and its provisioning profiles together, then enter the password to verify and save them. Use the same certificate that installed Regram. Matching profiles from the installed app are included automatically. Files and password stay in this device’s Keychain.";
+"AppUpdate.ServiceNotice" = "LCSign provides the HTTPS installation manifest. The signed IPA is delivered through this device’s local loopback connection. Your certificate, password and IPA are not uploaded. If a node fails, Regram tries the next one.";
+"AppUpdate.CertificateImported" = "Certificate saved on this device and matched to the installed app. It remains available after restarting or updating Regram, until you remove it.";
+"AppUpdate.ProfilesImported" = "Imported %1$@ provisioning profiles.";
+"AppUpdate.Validating" = "Checking certificate and provisioning profiles…";
+"AppUpdate.ProfileMissing" = "No provisioning profile is available. Import the profiles used to install this app and its extensions.";
+"AppUpdate.ProfileUnreadable" = "Unable to read this provisioning profile. Import the original .mobileprovision file.";
+"AppUpdate.ProfileExpired" = "The matching provisioning profiles have expired. Import renewed profiles.";
+"AppUpdate.ProfileCertificateMismatch" = "The provisioning profiles do not include the certificate used to install this app.";
+"AppUpdate.ProfileAppIDMismatch" = "The provisioning profiles do not cover this app or extension’s identifier.";
+"AppUpdate.ProfileEntitlementMismatch" = "The provisioning profiles do not allow one of the installed app or extension’s permissions.";
+"AppUpdate.InstalledEntitlementsInvalid" = "Unable to read the installed app or extension’s signing permissions.";
+"AppUpdate.ProfileLimit" = "Up to 64 provisioning profiles can be saved.";
+"AppUpdate.ProfileBundle" = "App or extension: %1$@";
+"AppUpdate.ProfileEntitlement" = "Permission: %1$@";
+"AppUpdate.ReleaseNotes" = "Release notes";
+"AppUpdate.Restoring" = "Restoring the downloaded update…";
+"AppUpdate.SignCached" = "Sign Downloaded Update";
+"AppUpdate.InstallReading" = "iOS is reading the signed update package…";
+"AppUpdate.CacheError" = "Unable to save or verify the update cache. Please try again.";
+"AppUpdate.InstallationNotStarted" = "No update package request was detected. If no iOS installation prompt appeared, tap Install Update to retry with the saved signed package.";
+"AppUpdate.InstallationRejected" = "iOS could not open the installation link. The signed package is saved; you can retry installation.";
+"AppUpdate.InstallationChannelEnded" = "The local installation connection has ended. If the update was not installed, retry with the saved signed package.";
+"AppUpdate.SavedProfiles" = "Saved provisioning profiles: %1$@";
+"AppUpdate.InvalidRelease" = "The release metadata is invalid or missing its SHA-256 checksum.";
+"AppUpdate.InvalidManifest" = "The installation service returned an invalid installation manifest.";
+"AppUpdate.NetworkError" = "Unable to connect. Check your network and installation service, then retry.";
+"AppUpdate.HashMismatch" = "The downloaded package failed verification. Please retry.";
+"AppUpdate.NotConfigured" = "Import the same certificate used to install Regram first.";
+"AppUpdate.KeychainError" = "Unable to save credentials to the device Keychain.";
+"AppUpdate.InvalidCertificate" = "The P12 certificate, password or validity period is incorrect.";
+"AppUpdate.CertificateMismatch" = "Use the same certificate that signed the currently installed Regram.";
+"AppUpdate.InvalidProfile" = "A matching, unexpired profile is required for the app and every extension.";
+"AppUpdate.InvalidArchive" = "Unable to unpack or package this update.";
+"AppUpdate.IdentityMismatch" = "The update’s version or extension layout does not match this installation.";
+"AppUpdate.SigningFailed" = "Signing failed. Check your certificate and provisioning profiles.";
+"AppUpdate.Cancelled" = "Update cancelled";
+
+"AppUpdate.InstallationNode" = "LCSign installation node";
+
+"AppUpdate.AutomaticNode" = "Automatic";
+
+// MARK: Regram — native certificate import results.
+"AppUpdate.Importing" = "Importing and checking…";
+"AppUpdate.ImportWrongType" = "Choose a P12/PFX certificate or a .mobileprovision file for the matching import action.";
+"AppUpdate.ImportTooLarge" = "The selected file exceeds the 256 KB import limit.";
+"AppUpdate.ImportEmpty" = "The selected file is empty.";
+"AppUpdate.ImportUnreadable" = "Unable to read this file. Download it to Files first, then select it again.";
+"QrLogin.Retrying" = "Initializing the connection and retrying…";
+"QrLogin.Reconnecting" = "Reconnecting the pending login session…";
+"QrLogin.NetworkUnavailable" = "No network connection is available. Reconnect to the network and retry.";
+"QrLogin.ConnectionTimedOut" = "Connecting to Telegram timed out. Check your connection or proxy and retry.";
+"QrLogin.InitializationTimedOut" = "Connected to Telegram, but initializing the login connection timed out. Retrying…";
+
+// Regram — speech, link previews and categorized settings.
+"RG.STT.Cancel" = "Cancel Test";
+"RG.STT.Error.Download" = "Unable to download the audio. Please try again.";
+"RG.STT.Error.InvalidAudio" = "Unable to prepare a valid audio file.";
+"RG.STT.Error.FileTooLarge" = "The audio exceeds the 25 MB upload limit.";
+"RG.STT.Error.Cancelled" = "Transcription cancelled. Tap to try again.";
+"RG.STT.Error.Timeout" = "Transcription timed out. Please try again.";
+"RG.STT.Error.InvalidResponse" = "The API response does not contain a valid transcription.";
+"RG.STT.Error.NoSpeech" = "No speech was recognized.";
+"RG.STT.Error.InvalidURL" = "Enter a valid HTTP or HTTPS API URL without embedded credentials. OpenAI requires HTTPS.";
+"RG.STT.Error.MissingModel" = "Enter a speech-to-text model name.";
+"RG.STT.Error.MissingAPIKey" = "An API key is required for api.openai.com.";
+"RG.STT.Error.InvalidLanguage" = "Use a two-letter language code such as zh or en, or leave it empty for automatic detection.";
+"RG.STT.Error.Keychain" = "Unable to access the API key in this device’s Keychain. Please try saving it again.";
+"RG.STTProvider" = "Recognition Provider";
+"RG.STTProvider.default" = "Default";
+"RG.STTProvider.openAICompatible" = "Custom (OpenAI-compatible)";
+"RG.STTSettings" = "Custom STT API";
+"RG.STTBaseURL" = "Base URL";
+"RG.STTEndpoint" = "Endpoint";
+"RG.STTAPIKey" = "API Key";
+"RG.STTAPIKey.Placeholder" = "Required for OpenAI; optional for local services";
+"RG.STTModel" = "Model";
+"RG.STTLanguage" = "Language";
+"RG.STTLanguage.Placeholder" = "Automatic (empty), zh, en…";
+"RG.STTSettings.Footer" = "Changes are saved automatically. Empty Base URL and Endpoint use the OpenAI defaults; Endpoint can also be a full URL. API Key is stored in this device’s Keychain and is not synced with iCloud. Returning to Default stops using the custom provider.";
+"RG.STTPrompt" = "Recognition Hints";
+"RG.STTPrompt.Placeholder" = "Optional names or specialized terms";
+"RG.STTPrompt.Footer" = "Optional hints to help recognize names and terminology. Support depends on the selected transcription model.";
+"RG.STTTest" = "Test Transcription";
+"RG.STTTesting" = "Testing Transcription…";
+"RG.STTTest.Footer" = "Uploads a built-in short audio sample to the configured API to verify transcription. It does not use your chat audio. Your provider may charge for this request.";
+"RG.STTTestSucceeded" = "Transcription Test Succeeded";
+"RG.STTTestFailed" = "Transcription Test Failed";
+"RG.STTSaveFailed" = "API Key Was Not Saved";
+"RG.STTRetranscribe" = "Transcribe Again";
+"RG.STTCancelTranscription" = "Cancel Transcription";
+"Settings.Category.home" = "Settings";
+"Settings.Category.appearance" = "Appearance & Interface";
+"Settings.Category.folders" = "Chat Folders";
+"Settings.Category.chatList" = "Chat List";
+"Settings.Category.profiles" = "Profiles & Accounts";
+"Settings.Category.stories" = "Stories";
+"Settings.Category.translation" = "Translation";
+"Settings.Category.transcription" = "Voice Transcription";
+"Settings.Category.messageActions" = "Message Actions & Display";
+"Settings.Category.media" = "Media & Downloads";
+"Settings.Category.photos" = "Photos & Image Quality";
+"Settings.Category.stickers" = "Stickers & Emoji";
+"Settings.Category.recording" = "Voice & Round Video";
+"Settings.Category.app" = "App & Advanced";
+"Settings.ProCategory.messages" = "Messages & Input";
+"Settings.ProCategory.privacy" = "Privacy & Filters";
+"Settings.ProCategory.translation" = "Translation & Speech";
+"Settings.ProCategory.media" = "Media & Links";
+"Settings.ProCategory.appearance" = "Appearance & Interface";
+"Settings.ProCategory.notifications" = "Notifications & Alerts";
+"Settings.ProCategory.tools" = "Management & Tools";
+"Settings.Frequent" = "Frequently Used";
+"Settings.ProHub.Notice" = "Message tools, privacy, translation, transcription, media and backups are in Regram Pro.";
+"Settings.Search.AllOptions" = "Search all detailed settings";
+"Settings.MediaLoading.Title" = "Downloads & Playback";
+"Settings.Transcription.Backend.openAICompatible" = "Custom API (OpenAI compatible)";
+"RG.STTUsage" = "Recognize a voice message or round video, then translate the resulting text from its message menu.";
+"LinkPreview.Repair" = "Repair Link Previews";
+"LinkPreview.Repair.Notice" = "Use preview services for supported links. Message text and original links remain unchanged.";
+"LinkPreview.Services" = "Custom preview services";
+"LinkPreview.InvalidHost" = "Enter a domain without a scheme, path or port. Invalid input does not replace the saved service.";
+"Common.Reset" = "Reset";
+"AppUpdate.InstallationMethod" = "Installation Method";
+"AppUpdate.MethodCertificate" = "Certificate Signing (LCSign)";
+"AppUpdate.MethodTrollStore" = "TrollStore";
+"AppUpdate.DownloadTrollStore" = "Download Update";
+"AppUpdate.AutomaticDownload" = "Automatically Download Updates";
+"AppUpdate.TrollStoreNotice" = "Download and verify updates from GitHub, then tap Install Update to open TrollStore. No P12 or provisioning profiles are needed. Installation confirmation follows your TrollStore settings. Enable its URL Scheme option first.";
+"AppUpdate.TrollStoreReceived" = "Update delivered to TrollStore. Finish installation there, then reopen Regram to confirm the new version.";
+"AppUpdate.TrollStoreUnavailable" = "Unable to open the TrollStore installer. Make sure TrollStore is installed and its URL Scheme option is enabled.";
+"AppUpdate.TrollStoreNotStarted" = "TrollStore has not requested the update package. Enable its URL Scheme option and retry. Opening Magnifier means the scheme is not handled by TrollStore.";
+"AppUpdate.ImportConfirm" = "Verify and Import";
+"AppUpdate.ImportSigningMaterials" = "Import P12 and Profiles";
+"AppUpdate.CertificateSelection" = "Select exactly one P12/PFX certificate, together with any matching .mobileprovision files.";

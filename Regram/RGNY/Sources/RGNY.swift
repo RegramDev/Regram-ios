@@ -33,7 +33,7 @@ class WallpaperNYNode: ASDisplayNode {
                     cell1.scaleRange = 0.25
                     cell1.birthRate = 10.0
                 default:
-                    cell1.contents = UIImage(bundleImageName: "SGSnowflake")?.cgImage
+                    cell1.contents = UIImage(bundleImageName: "RGSnowflake")?.cgImage
                     cell1.name = "snow"
                     cell1.scale = 0.04
                     cell1.scaleRange = 0.15

@@ -249,7 +249,8 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     
     
     let rgWebSettings = context.currentAppConfiguration.with({ $0 }).rgWebSettings
-    if rgWebSettings.global.paymentsEnabled || context.sharedContext.immediateRGStatus.status > 1 {
+    // MARK: Regram — expose the local settings pages directly.
+    do {
         items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Regram Pro", icon: PresentationResourcesSettings.regramPro, action: {
             interaction.openSettings(.regramPro)
         }))

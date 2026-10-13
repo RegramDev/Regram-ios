@@ -1,6 +1,6 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgDeps = [
+rgDeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGInputToolbar:RGInputToolbar"
 ]
@@ -14,7 +14,7 @@ swift_library(
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgDeps + [
+    deps = rgDeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

@@ -1,3 +1,4 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load(
     "@build_bazel_rules_apple//apple:resources.bzl",
@@ -48,7 +49,7 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGStrings:RGStrings"
 ]
 
@@ -64,7 +65,7 @@ swift_library(
     data = [
         ":PremiumUIBundle",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

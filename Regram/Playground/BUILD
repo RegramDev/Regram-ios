@@ -55,7 +55,7 @@ swift_library(
 
 ios_application(
     name = "Playground",
-    bundle_id = "app.swiftgram.ios.Playground",
+    bundle_id = "app.regram.ios.Playground",
     families = [
         "iphone",
         "ipad",

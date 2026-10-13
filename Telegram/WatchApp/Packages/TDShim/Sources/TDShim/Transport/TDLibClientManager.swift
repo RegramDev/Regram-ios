@@ -23,8 +23,8 @@ public class TDLibClient: TDLibApi, Equatable {
     fileprivate init(updateHandler: @escaping (Data, TDLibClient) -> Void, logger: TDLibLogger? = nil) {
         self.id = td_create_client_id()
         self.updateHandler = updateHandler
-        self.updateHandlerQueue = DispatchQueue(label: "app.swiftgram.TDLibKit.client-\(self.id).update-handler")
-        self.queryQueue = DispatchQueue(label: "app.swiftgram.TDLibKit.client-\(self.id).query", attributes: .concurrent)
+        self.updateHandlerQueue = DispatchQueue(label: "app.regram.TDLibKit.client-\(self.id).update-handler")
+        self.queryQueue = DispatchQueue(label: "app.regram.TDLibKit.client-\(self.id).query", attributes: .concurrent)
         self.logger = logger
         super.init()
     }
@@ -93,9 +93,9 @@ public class TDLibClient: TDLibApi, Equatable {
 
 open class TDLibClientManager {
     /// 'receiveQueue' is a separate queue that calls ``td_receive`` in a loop
-    private let receiveQueue = DispatchQueue(label: "app.swiftgram.TDLibKit.receive")
+    private let receiveQueue = DispatchQueue(label: "app.regram.TDLibKit.receive")
     /// 'queryQueue' is a separate queue that will decode update string and lookup for possible completions in existing ``self.clients``. 'queryQueue' exists to quickly switch back to 'receiveQueue' and call next ``td_receive``
-    private let queryQueue = DispatchQueue(label: "app.swiftgram.TDLibKit.query")
+    private let queryQueue = DispatchQueue(label: "app.regram.TDLibKit.query")
     public private(set) var clients = ConcurrentDictionary<Int32,TDLibClient>()
     private let logger: TDLibLogger?
     

@@ -158,9 +158,8 @@ public struct RGContentFilterState {
     /// every rebuild, where the decoded values are already cached behind one lock.
     public init(accountPeerId: EnginePeer.Id) {
         let settings = RGSimpleSettings.shared
-        let isProUnlocked = settings.ephemeralStatus > 1
-        self.rules = isProUnlocked ? settings.messageFilterRules : []
-        self.hiddenSenderIds = isProUnlocked ? settings.blockedPeerIds : []
+        self.rules = settings.messageFilterRules
+        self.hiddenSenderIds = settings.blockedPeerIds
         self.filterDisabledPeerIds = settings.messageFilterDisabledPeerIds
         self.accountPeerId = accountPeerId
         self.temporarilyVisiblePeerIds = settings.temporarilyVisiblePeerIds(accountId: accountPeerId.toInt64())

@@ -60,15 +60,8 @@ extension PeerInfoScreenNode {
         case .regram:
             self.controller?.push(rgSettingsController(context: self.context))
         case .regramPro:
-            if self.context.sharedContext.immediateRGStatus.status > 1 {
-                self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
-            } else {
-                if let payWallController = self.context.sharedContext.makeRGPayWallController(context: self.context) {
-                    self.controller?.present(payWallController, in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-                } else {
-                    self.controller?.present(self.context.sharedContext.makeRGUpdateIOSController(), animated: true)
-                }
-            }
+            // MARK: Regram — this is a permanent local settings entry.
+            self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()
         case .edit:

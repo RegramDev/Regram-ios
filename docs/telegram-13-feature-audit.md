@@ -21,7 +21,7 @@
 | 补丁 | 对照结果 |
 | --- | --- |
 | iOS 14 Swift concurrency backport | 最低版本已统一为 iOS 15。删除未使用的 FixConcurrencyBackport 模块，移除 StripFramework 中将系统 runtime 重写为 @rpath 的旧逻辑。使用 iOS 15+ 系统 runtime。 |
-| 扩展最低版本改写 | 删除旧 PatchMinOSVersion 脚本及其生成规则。SGActionRequestHandler 仍会把 plist 改为 14，而其 Mach-O 实际按 15 编译；现在随主 App 保持 15。其他已停用的改写规则一起清理。 |
+| 扩展最低版本改写 | 删除旧 PatchMinOSVersion 脚本及其生成规则。RGActionRequestHandler 仍会把 plist 改为 14，而其 Mach-O 实际按 15 编译；现在随主 App 保持 15。其他已停用的改写规则一起清理。 |
 | 旧底栏高度减量 | RGTabBarHeightModifier 已无调用者；新 TabBarComponent 自己返回实际高度。删除旧模块和 TabBarUI 的多余源码依赖。 |
 | ThemeSettingsChatPreviewItem 主线程 | 官方 13 已使用主队列；删除重复的本地修复说明。节点数量检查与缺失同步回调的防护官方仍未覆盖，保留。 |
 | ThemeCarouselThemeItem 主线程 | 官方仍在 caller 的 async 中创建包含 UIKit scroller 的节点，保留主队列修复。 |

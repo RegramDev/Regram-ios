@@ -2,14 +2,14 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
-sgdeps = [
+rgdeps = [
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAPIToken:RGAPIToken",
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
 ]
-sgsrcs = [
+rgsrcs = [
     "//Regram/RGChatListSimpleSettingsSignal:RGChatListSimpleSettingsSignal",
 ]
 
@@ -18,11 +18,11 @@ swift_library(
     module_name = "ChatListUI",
     srcs = glob([
         "Sources/**/*.swift",
-    ]) + sgsrcs,
+    ]) + rgsrcs,
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

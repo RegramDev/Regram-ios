@@ -14,7 +14,7 @@ extension SharedAccountContextImpl {
         if self.didPerformRGUISettingsMigration {
             return
         }
-        let rgMigrationKey = "sg_migrated_sgui_settings_v1"
+        let rgMigrationKey = rgMigratedPreferenceKey("rg_migrated_rgui_settings_v1", legacyKey: "sg_migrated_sgui_settings_v1")
         if UserDefaults.standard.bool(forKey: rgMigrationKey) {
             self.didPerformRGUISettingsMigration = true
             return
@@ -34,19 +34,19 @@ extension SharedAccountContextImpl {
             let rgDomain = rgDefaults.persistentDomain(forName: rgDomainName) ?? [:]
             if rgDomain[RGSimpleSettings.Keys.hideStories.rawValue] == nil {
                 RGSimpleSettings.shared.hideStories = rgSettings.hideStories
-                RGLogger.shared.log("SGSimpleSettings", "Migrated hideStories: \(rgSettings.hideStories)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated hideStories: \(rgSettings.hideStories)")
             }
             if rgDomain[RGSimpleSettings.Keys.warnOnStoriesOpen.rawValue] == nil {
                 RGSimpleSettings.shared.warnOnStoriesOpen = rgSettings.warnOnStoriesOpen
-                RGLogger.shared.log("SGSimpleSettings", "Migrated warnOnStoriesOpen: \(rgSettings.warnOnStoriesOpen)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated warnOnStoriesOpen: \(rgSettings.warnOnStoriesOpen)")
             }
             if rgDomain[RGSimpleSettings.Keys.showProfileId.rawValue] == nil {
                 RGSimpleSettings.shared.showProfileId = rgSettings.showProfileId
-                RGLogger.shared.log("SGSimpleSettings", "Migrated showProfileId: \(rgSettings.showProfileId)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated showProfileId: \(rgSettings.showProfileId)")
             }
             if rgDomain[RGSimpleSettings.Keys.sendWithReturnKey.rawValue] == nil {
                 RGSimpleSettings.shared.sendWithReturnKey = rgSettings.sendWithReturnKey
-                RGLogger.shared.log("SGSimpleSettings", "Migrated sendWithReturnKey: \(rgSettings.sendWithReturnKey)")
+                RGLogger.shared.log("RGSimpleSettings", "Migrated sendWithReturnKey: \(rgSettings.sendWithReturnKey)")
             }
             rgDefaults.set(true, forKey: rgMigrationKey)
         })

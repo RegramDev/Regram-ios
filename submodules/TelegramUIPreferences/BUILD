@@ -1,13 +1,13 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgsrcs = [
-    "//Regram/RGStatus:RGStatus"
+rgsrcs = [
 ]
 
 swift_library(
     name = "TelegramUIPreferences",
     module_name = "TelegramUIPreferences",
-    srcs = sgsrcs + glob([
+    srcs = rgsrcs + glob([
         "Sources/**/*.swift",
     ]),
     copts = [

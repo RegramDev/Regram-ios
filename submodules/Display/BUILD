@@ -1,10 +1,11 @@
+# MARK: Regram — Regram source and dependency names.
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
-sgsrc = [
+rgsrc = [
     "//Regram/RGAppBadgeOffset:RGAppBadgeOffset"
 ]
 
-sgdeps = [
+rgdeps = [
     "//submodules/Utils/DeviceModel",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGTypography:RGTypography",
@@ -13,13 +14,13 @@ sgdeps = [
 swift_library(
     name = "Display",
     module_name = "Display",
-    srcs = sgsrc + glob([
+    srcs = rgsrc + glob([
         "Source/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
-    deps = sgdeps + [
+    deps = rgdeps + [
     	"//submodules/ObjCRuntimeUtils:ObjCRuntimeUtils",
     	"//submodules/UIKitRuntimeUtils:UIKitRuntimeUtils",
         "//submodules/AppBundle:AppBundle",

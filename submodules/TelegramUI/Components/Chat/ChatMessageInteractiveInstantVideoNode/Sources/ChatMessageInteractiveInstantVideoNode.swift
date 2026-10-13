@@ -1,3 +1,5 @@
+// MARK: Regram — managed external transcription requests.
+import RGTranscription
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -624,7 +626,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             }
             
             let currentTime = Int32(Date().timeIntervalSince1970)
-            if transcribedText == nil, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
+            if !RGTranscriptionService.isEnabled, transcribedText == nil, let cooldownUntilTime = item.associatedData.audioTranscriptionTrial.cooldownUntilTime, cooldownUntilTime > currentTime {
                 updatedAudioTranscriptionState = .locked
             }
             
@@ -830,7 +832,11 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                     var displayTranscribe = false
                     if item.message.id.peerId.namespace != Namespaces.Peer.SecretChat && statusDisplayType == .free && !isViewOnceMessage && !item.presentationData.isPreview {
                         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
-                        if item.associatedData.isPremium || item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                        if let result = transcribedText, case .success = result {
+                    displayTranscribe = true
+                } else if RGTranscriptionService.isEnabled {
+                    displayTranscribe = item.message.id.namespace == Namespaces.Message.Cloud
+                } else if item.associatedData.isPremium || item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
                             displayTranscribe = true
                         } else if premiumConfiguration.audioTransciptionTrialCount > 0 {
                             if incoming {
@@ -1813,16 +1819,34 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
         guard let item = self.item, item.message.id.namespace == Namespaces.Message.Cloud else {
             return
         }
+
+        // MARK: Regram — Keep custom uploads within the original supported message boundaries.
+        let useCustomTranscription = RGTranscriptionService.isEnabled
+        let clientTranscription = item.message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute
+        let useManagedTranscription = useCustomTranscription || (clientTranscription?.requestId != nil && (clientTranscription?.source == .local || clientTranscription?.source == .external))
+        if useManagedTranscription {
+            guard item.message.id.peerId.namespace != Namespaces.Peer.SecretChat,
+                  item.message.minAutoremoveOrClearTimeout != viewOnceTimeout,
+                  !item.presentationData.isPreview,
+                  self.media?.isInstantVideo == true else {
+                return
+            }
+        }
         
-        if !item.context.isPremium, case .inProgress = self.audioTranscriptionState {
-            return
+        if !useCustomTranscription && !item.context.isPremium, case .inProgress = self.audioTranscriptionState {
+            // MARK: Regram — An interrupted request remains retryable after restoring message history.
+            let canRetryInterruptedRequest = clientTranscription?.requestId != nil && clientTranscription?.id == 0 && clientTranscription?.isPending == true && self.transcribeDisposable == nil && !RGTranscriptionService.shared.isTranscribing(context: item.context, messageId: item.message.id)
+            if !canRetryInterruptedRequest {
+                return
+            }
         }
         
         let presentationData = item.context.sharedContext.currentPresentationData.with { $0 }
         let premiumConfiguration = PremiumConfiguration.with(appConfiguration: item.context.currentAppConfiguration.with { $0 })
         
         let transcriptionText = transcribedText(message: EngineMessage(item.message))
-        if transcriptionText == nil && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+        // MARK: Regram — Provider selection is resolved before applying Telegram entitlement gates.
+        if !useCustomTranscription && transcriptionText == nil && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
             if premiumConfiguration.audioTransciptionTrialCount > 0 {
                 if !item.associatedData.isPremium {
                     if self.presentAudioTranscriptionTooltip(finished: false) {
@@ -1877,26 +1901,53 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
             }
         }
         
-        // TODO(regram): Transcribe Video Messages
         if shouldBeginTranscription {
             if self.transcribeDisposable == nil {
                 self.audioTranscriptionState = .inProgress
                 self.requestUpdateLayout(true)
                 
-                self.transcribeDisposable = (item.context.engine.messages.transcribeAudio(messageId: item.message.id)
-                |> deliverOnMainQueue).startStrict(next: { [weak self] result in
-                    guard let strongSelf = self else {
-                        return
-                    }
-                    strongSelf.transcribeDisposable?.dispose()
-                    strongSelf.transcribeDisposable = nil
-                    
-                    if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
-                        Queue.mainQueue().after(0.1, {
-                            let _ = strongSelf.presentAudioTranscriptionTooltip(finished: true)
-                        })
-                    }
-                })
+                // MARK: Regram — The shared service also prepares the audio track of round videos.
+                if useManagedTranscription {
+                    let messageId = item.message.id
+                    let disposable = MetaDisposable()
+                    self.transcribeDisposable = disposable
+                    disposable.set((RGTranscriptionService.shared.transcribe(context: item.context, messageId: messageId, force: !useCustomTranscription)
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] state in
+                        guard let self, self.item?.message.id == messageId else {
+                            return
+                        }
+                        switch state {
+                        case .inProgress:
+                            self.audioTranscriptionState = .inProgress
+                        case .completed:
+                            self.transcribeDisposable?.dispose()
+                            self.transcribeDisposable = nil
+                            self.audioTranscriptionState = .expanded
+                        case let .failed(error):
+                            self.transcribeDisposable?.dispose()
+                            self.transcribeDisposable = nil
+                            self.audioTranscriptionState = .collapsed
+                            self.item?.controllerInteraction.displayUndo(.info(title: nil, text: error, timeout: nil, customUndoText: nil))
+                        }
+                        self.requestUpdateLayout(true)
+                        self.updateTranscriptionExpanded?(self.audioTranscriptionState)
+                    }))
+                } else {
+                    self.transcribeDisposable = (item.context.engine.messages.transcribeAudio(messageId: item.message.id)
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] result in
+                        guard let strongSelf = self else {
+                            return
+                        }
+                        strongSelf.transcribeDisposable?.dispose()
+                        strongSelf.transcribeDisposable = nil
+
+                        if let item = strongSelf.item, !item.associatedData.isPremium && !item.associatedData.alwaysDisplayTranscribeButton.providedByGroupBoost {
+                            Queue.mainQueue().after(0.1, {
+                                let _ = strongSelf.presentAudioTranscriptionTooltip(finished: true)
+                            })
+                        }
+                    })
+                }
             }
         }
         

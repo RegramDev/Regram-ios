@@ -1,6 +1,5 @@
 import Foundation
 
-// Assuming NGLogging and AppBundle are custom modules, they are imported here.
 import RGLogging
 import AppBundle
 
@@ -25,7 +24,7 @@ public class RGLocalizationManager {
     
     private init(fetchLocale: String = RGFallbackLocale) {
         self.appBundle = getAppBundle()
-        // Iterating over all the app languages and loading SGLocalizable.strings
+        // Iterating over all the app languages and loading RGLocalizable.strings
         self.appBundle.localizations.forEach { locale in
             if locale != "Base" {
                 localizations[locale] = loadLocalDictionary(for: locale)
@@ -51,7 +50,7 @@ public class RGLocalizationManager {
     }
     
     private func loadLocalDictionary(for locale: String) -> [String: String] {
-        guard let path = self.appBundle.path(forResource: "SGLocalizable", ofType: "strings", inDirectory: nil, forLocalization: locale) else {
+        guard let path = self.appBundle.path(forResource: "RGLocalizable", ofType: "strings", inDirectory: nil, forLocalization: locale) else {
             // RGLogger.shared.log("Localization", "Unable to find path for locale: \(locale)")
             return [:]
         }
@@ -119,7 +118,7 @@ public class RGLocalizationManager {
     }
 
     private func getStringsUrl(for locale: String) -> String {
-        return "https://raw.githubusercontent.com/Swiftgram/Telegram-iOS/master/Swiftgram/SGStrings/Strings/\(locale).lproj/SGLocalizable.strings"
+        return "https://raw.githubusercontent.com/RegramDev/Regram-ios/master/Regram/RGStrings/Strings/\(locale).lproj/RGLocalizable.strings"
     }
 
 }

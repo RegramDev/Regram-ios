@@ -633,13 +633,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                     controller?.replace(with: c)
                 }
                 pushControllerImpl?(controller)
-            // MARK: Regram
-            } else if icon.isRGPro && context.sharedContext.immediateRGStatus.status < 2 {
-                if let payWallController = context.sharedContext.makeRGPayWallController(context: context) {
-                    presentControllerImpl?(payWallController, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
-                } else {
-                    presentControllerImpl?(context.sharedContext.makeRGUpdateIOSController(), nil)
-                }
+            // MARK: Regram — selecting a local icon does not depend on a client subscription.
             } else {
                 context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { success in
                     if success {
@@ -1108,7 +1102,6 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
             ApplicationSpecificSharedDataKeys.chatSettings,
             ApplicationSpecificSharedDataKeys.mediaDisplaySettings,
             SharedDataKeys.chatThemes,
-            ApplicationSpecificSharedDataKeys.rgStatus // MARK: Regram
         ]),
         cloudThemes.get(),
         availableAppIcons,
@@ -1124,8 +1117,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         let mediaSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.mediaDisplaySettings]?.get(MediaDisplaySettings.self) ?? MediaDisplaySettings.defaultSettings
         
         // MARK: Regram
-        let rgStatus = sharedData.entries[ApplicationSpecificSharedDataKeys.rgStatus]?.get(RGStatus.self) ?? RGStatus.default
-        let isPremium = rgStatus.status > 1
+        // Regram icon choices are local; Telegram features retain actual account permissions.
+        let isPremium = accountPeer?.isPremium ?? false
         
         let themeReference: PresentationThemeReference
         if presentationData.autoNightModeTriggered {

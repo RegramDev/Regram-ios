@@ -11,6 +11,7 @@ swift_library(
         #"-Xfrontend", "-debug-time-function-bodies"
     ],
     deps = [
+        "//Regram/RGTranscription:RGTranscription",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",
