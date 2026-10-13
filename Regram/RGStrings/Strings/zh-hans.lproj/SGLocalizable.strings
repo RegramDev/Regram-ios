@@ -604,6 +604,13 @@
 "AppUpdate.ProfileBundle" = "应用或扩展：%1$@";
 "AppUpdate.ProfileEntitlement" = "权限：%1$@";
 "AppUpdate.ReleaseNotes" = "更新说明";
+"AppUpdate.Restoring" = "正在恢复已下载的更新…";
+"AppUpdate.SignCached" = "签名已下载的更新";
+"AppUpdate.InstallReading" = "iOS 正在读取已签名的更新包…";
+"AppUpdate.CacheError" = "无法保存或校验更新缓存，请重试。";
+"AppUpdate.InstallationNotStarted" = "未检测到系统读取更新包。如果没有出现 iOS 安装弹窗，请再次点击「安装更新」，会复用已保存的签名包。";
+"AppUpdate.InstallationRejected" = "iOS 未能打开安装链接。签名包已保存，可重试安装。";
+"AppUpdate.InstallationChannelEnded" = "本机安装通道已结束。如果更新尚未安装，可使用已保存的签名包重试。";
 "AppUpdate.SavedProfiles" = "已保存 %1$@ 份描述文件";
 "AppUpdate.InvalidRelease" = "更新信息不完整或缺少 SHA-256 校验值。";
 "AppUpdate.InvalidManifest" = "安装服务返回了无效的安装清单。";

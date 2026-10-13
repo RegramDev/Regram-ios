@@ -45,6 +45,9 @@ public struct RGLCSignNode: Equatable, Identifiable {
         guard trustedURL(manifest), manifest.path.hasPrefix("/ota/m/"), manifest.query == nil else { throw RGUpdateError.invalidManifest }
         var components = URLComponents()
         components.scheme = "itms-services"
+        // Match LCSign's ManifestBuilder: an empty authority is required to
+        // produce itms-services://? rather than the opaque itms-services:?.
+        components.host = ""
         components.queryItems = [URLQueryItem(name: "action", value: "download-manifest"), URLQueryItem(name: "url", value: manifest.absoluteString)]
         guard let url = components.url else { throw RGUpdateError.invalidManifest }
         return url

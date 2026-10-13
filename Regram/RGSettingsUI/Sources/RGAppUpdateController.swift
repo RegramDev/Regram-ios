@@ -32,7 +32,7 @@ import PresentationDataUtils
                     if updater.hasPreparedUpdate {
                         Button("AppUpdate.Install".i18n(lang)) { updater.install() }.disabled(updater.stage.isBusy)
                     } else {
-                        Button("AppUpdate.Prepare".i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
+                        Button((updater.hasDownloadedUpdate ? "AppUpdate.SignCached" : "AppUpdate.Prepare").i18n(lang)) { updater.prepare() }.disabled(updater.stage.isBusy || !updater.isConfigured || credentialBusy)
                     }
                 } else { updateStatus }
                 if updater.stage.isBusy { Button("AppUpdate.Cancel".i18n(lang), role: .cancel) { updater.cancel() } }

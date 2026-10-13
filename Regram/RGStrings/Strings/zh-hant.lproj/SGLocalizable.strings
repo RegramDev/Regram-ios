@@ -582,6 +582,13 @@
 "AppUpdate.ProfileBundle" = "應用程式或擴充功能：%1$@";
 "AppUpdate.ProfileEntitlement" = "權限：%1$@";
 "AppUpdate.ReleaseNotes" = "更新說明";
+"AppUpdate.Restoring" = "正在還原已下載的更新…";
+"AppUpdate.SignCached" = "簽署已下載的更新";
+"AppUpdate.InstallReading" = "iOS 正在讀取已簽署的更新套件…";
+"AppUpdate.CacheError" = "無法儲存或驗證更新快取，請重試。";
+"AppUpdate.InstallationNotStarted" = "未偵測到系統讀取更新套件。如果沒有出現 iOS 安裝提示，請再次點擊「安裝更新」，會重用已儲存的簽署套件。";
+"AppUpdate.InstallationRejected" = "iOS 未能開啟安裝連結。簽署套件已儲存，可重試安裝。";
+"AppUpdate.InstallationChannelEnded" = "本機安裝連線已結束。如果更新尚未安裝，可使用已儲存的簽署套件重試。";
 "AppUpdate.SavedProfiles" = "已儲存 %1$@ 份描述檔";
 "AppUpdate.InvalidRelease" = "更新資訊不完整或缺少 SHA-256 校驗值。";
 "AppUpdate.InvalidManifest" = "安裝服務傳回了無效的安裝清單。";

@@ -31,6 +31,8 @@ import Foundation
         let url = try RGLCSignNode.installationURL(manifest: manifest)
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!
         assert(url.scheme == "itms-services")
+        assert(url.absoluteString.hasPrefix("itms-services://?action=download-manifest&"))
+        assert(url.host?.isEmpty != false)
         assert(query.first { $0.name == "url" }?.value == manifest.absoluteString)
         for value in ["http://cf-i.lcsignx.com/ota/m/aB1234", "https://another.example.com/ota/m/aB1234", "https://cf-i.lcsignx.com/other/aB1234", "https://user:pass@cf-i.lcsignx.com/ota/m/aB1234", "https://cf-i.lcsignx.com:9443/ota/m/aB1234"] {
             do { _ = try RGLCSignNode.installationURL(manifest: URL(string: value)!); fatalError("Unsafe installation link accepted") } catch {}

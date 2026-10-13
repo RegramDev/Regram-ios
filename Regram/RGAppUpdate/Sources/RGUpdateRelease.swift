@@ -1,7 +1,7 @@
 // MARK: Regram
 import Foundation
 
-public struct RGUpdateRelease: Equatable {
+public struct RGUpdateRelease: Equatable, Codable, Sendable {
     public let version: String
     public let build: Int64
     public let downloadURL: URL
@@ -39,6 +39,18 @@ public struct RGUpdateRelease: Equatable {
         return comparison == .orderedDescending || (comparison == .orderedSame && self.build > installedBuild)
     }
 
+    public func hasSameArtifact(as other: RGUpdateRelease) -> Bool {
+        return version == other.version && build == other.build && downloadURL == other.downloadURL && sha256 == other.sha256 && size == other.size
+    }
+
+    func validateCachedMetadata() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "tag_name": "v\(version)-b\(build)", "draft": false, "prerelease": false, "body": notes,
+            "assets": [["name": "Regram-\(version)-b\(build).ipa", "size": size, "digest": "sha256:" + sha256, "browser_download_url": downloadURL.absoluteString]]
+        ])
+        guard try Self.parseGitHub(data) == self else { throw RGUpdateError.invalidRelease }
+    }
+
     public static func validHTTPS(_ url: URL) -> Bool {
         return url.scheme?.lowercased() == "https" && url.host?.isEmpty == false && url.user == nil && url.password == nil && url.fragment == nil
     }
@@ -49,6 +61,7 @@ public enum RGUpdateError: Error {
     case invalidRelease, invalidManifest, network, hashMismatch, notConfigured, keychain, invalidCertificate, certificateMismatch, invalidProfile, invalidArchive, identityMismatch, signing, cancelled
     case profileMismatch(bundle: String, reason: String, entitlement: String)
     case profileLimit
+    case cache, installationNotStarted, installationRejected, installationChannelEnded
 
     public var profileBundle: String? {
         if case let .profileMismatch(bundle, _, _) = self, !bundle.isEmpty { return bundle }
@@ -87,6 +100,10 @@ public enum RGUpdateError: Error {
             default: return "AppUpdate.InvalidProfile"
             }
         case .profileLimit: return "AppUpdate.ProfileLimit"
+        case .cache: return "AppUpdate.CacheError"
+        case .installationNotStarted: return "AppUpdate.InstallationNotStarted"
+        case .installationRejected: return "AppUpdate.InstallationRejected"
+        case .installationChannelEnded: return "AppUpdate.InstallationChannelEnded"
         }
     }
 }

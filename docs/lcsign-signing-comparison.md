@@ -50,4 +50,8 @@ Regram 当前实现使用本机 zsign 签名，再调用 `/ota/manifest` 创建 
 - Bundle ID 匹配评分：`0x100a063f0`，精确匹配评分与尾部 `*` 匹配分别有独立分支。
 - `ZSignAsset::Init`：`0x100a1ea90`；默认从描述文件生成权限的分支 `0x100a1ed34`–`0x100a1ed60`。
 
+后续针对重复下载与没有系统安装提示的问题，进一步对照了 `IPAInstaller.itmsServicesURL(forManifestAt:)`（`0x100932314`）及 `ManifestBuilder.itmsServicesURL(for:)`（`0x100932a6c`）。后者设置 `itms-services` scheme 后还设置空 host，生成 `itms-services://?…`；Regram 原先只设置 scheme，主机复现为 `itms-services:?…`。LCSign 的 `InstallActionTracker` 还区分交出链接和观察到用户／安装器动作，公开状态接口有 `fetched`／`fetched_at` 字段。Regram 改为由本机 IPA 服务的实际 GET 请求确认系统开始读取，避免把打开链接的回调当作安装完成。
+
+LCSign 的工作区和 `QuickInstallBatchSnapshot.sourcePath` 将签名产物作为磁盘文件引用；Regram 原先在初始化时删除更新目录并只用内存保存签名包路径，因此进程重新启动后无法复用。新的缓存独立保存已校验下载包和签名产物、发布元数据及签名身份指纹，恢复时验证大小与 SHA-256，并保留未签名原包供重试。
+
 符号、反汇编及分析辅助文件保留在被 Git 忽略的本地工作目录。静态分析不能代替真实证书在 iOS 上的覆盖安装验证。

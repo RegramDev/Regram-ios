@@ -12,7 +12,9 @@ final class RGLocalUpdateServer: @unchecked Sendable {
     private var ready: ((Result<URL, Error>) -> Void)?
     private var timeout: DispatchWorkItem?
     private var stopped = false
+    private var reportedPackageRequest = false
     var closed: (@Sendable () -> Void)?
+    var packageRequested: (@Sendable () -> Void)?
 
     init(fileURL: URL) throws {
         self.fileURL = fileURL
@@ -117,6 +119,10 @@ final class RGLocalUpdateServer: @unchecked Sendable {
         do {
             let handle = try FileHandle(forReadingFrom: fileURL)
             try handle.seek(toOffset: lower)
+            if method == "GET", !reportedPackageRequest {
+                reportedPackageRequest = true
+                packageRequested?()
+            }
             var header = "HTTP/1.1 \(partial ? "206 Partial Content" : "200 OK")\r\nContent-Type: application/octet-stream\r\nContent-Length: \(upper - lower + 1)\r\nAccept-Ranges: bytes\r\nConnection: close\r\nCache-Control: no-store\r\n"
             if partial { header += "Content-Range: bytes \(lower)-\(upper)/\(size)\r\n" }
             header += "\r\n"

@@ -1,5 +1,12 @@
 import Foundation
 
+private final class PackageRequests: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+    func record() { lock.lock(); value += 1; lock.unlock() }
+    func count() -> Int { lock.lock(); defer { lock.unlock() }; return value }
+}
+
 @main struct LocalUpdateServerTests {
     static func main() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -9,13 +16,20 @@ import Foundation
         let bytes = Data((0..<900000).map { UInt8($0 % 251) })
         try bytes.write(to: file)
         let server = try RGLocalUpdateServer(fileURL: file)
+        let requests = PackageRequests()
+        server.packageRequested = { requests.record() }
         let url = try await server.start()
         defer { server.stop() }
         assert(url.host == "127.0.0.1")
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }
+        var probe = URLRequest(url: url)
+        probe.httpMethod = "HEAD"
+        _ = try await session.data(for: probe)
+        assert(requests.count() == 0, "HEAD must not be treated as installation starting")
         let (complete, response) = try await session.data(from: url)
         assert((response as? HTTPURLResponse)?.statusCode == 200 && complete == bytes)
+        assert(requests.count() == 1)
         var request = URLRequest(url: url)
         request.setValue("bytes=17-100016", forHTTPHeaderField: "Range")
         let (part, partResponse) = try await session.data(for: request)
@@ -37,6 +51,7 @@ import Foundation
         async let b = session.data(from: url)
         let concurrent = try await (a, b)
         assert(concurrent.0.0 == bytes && concurrent.1.0 == bytes)
-        print("Local delivery checks passed: loopback binding, exact bytes, HEAD, concurrent requests, ranges and invalid routes.")
+        assert(requests.count() == 1, "Repeated Range/GET requests must not produce duplicate installation-start events")
+        print("Local delivery checks passed: actual package request detection, HEAD exclusion, loopback binding, exact bytes, concurrent requests, ranges and invalid routes.")
     }
 }
