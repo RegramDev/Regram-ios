@@ -188,6 +188,8 @@ private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: Presenta
         return "JSON"
     case .editHistory:
         return "EditHistory.Title".i18n(lang)
+    case .bookmark:
+        return "Bookmarks.Add".i18n(lang)
     }
 }
 

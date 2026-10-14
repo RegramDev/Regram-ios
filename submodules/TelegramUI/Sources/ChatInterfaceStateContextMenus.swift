@@ -1704,6 +1704,20 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         }))
         rgCollect(.json, showJsonAction)
 
+        // MARK: Regram — retain an account-scoped reference and optionally add local labels.
+        if messages.count == 1, message.id.namespace == Namespaces.Message.Cloud, message.id.peerId.namespace != Namespaces.Peer.SecretChat, !message.containsSecretMedia {
+            let bookmarkId = RGBookmarkMessageId(peerId: message.id.peerId.toInt64(), namespace: message.id.namespace, id: message.id.id)
+            let saved = RGMessageBookmarks.shared.bookmark(accountId: context.account.peerId.toInt64(), messageId: bookmarkId) != nil
+            rgCollect(.bookmark, .action(ContextMenuActionItem(text: (saved ? "Bookmarks.EditTags" : "Bookmarks.Add").i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
+                return UIImage(systemName: saved ? "bookmark.fill" : "bookmark")?.withTintColor(theme.actionSheet.primaryTextColor, renderingMode: .alwaysOriginal)
+            }, action: { _, f in
+                f(.default)
+                if let controller = rgBookmarkMessageController(context: context, message: message) {
+                    controllerInteraction.navigationController()?.pushViewController(controller)
+                }
+            })))
+        }
+
         // MARK: Regram — earlier versions of this message kept on this device (RGEditHistoryController).
         if messages.count == 1, message.rgEditHistory != nil {
             rgCollect(.editHistory, .action(ContextMenuActionItem(text: "EditHistory.Title".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in

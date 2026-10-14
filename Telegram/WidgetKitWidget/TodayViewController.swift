@@ -84,7 +84,7 @@ private func getCommonTimeline(friends: [Friend]?, in context: TimelineProviderC
     let baseAppBundleId = String(appBundleIdentifier[..<lastDotRange.lowerBound])
     
     let appGroupName = rgAppGroupIdentifier()
-    try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
+    try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension, keychainScope: RGStorageScope.keychainScope))
     let maybeAppGroupUrl = rgDataContainerURL()
     
     guard let appGroupUrl = maybeAppGroupUrl else {

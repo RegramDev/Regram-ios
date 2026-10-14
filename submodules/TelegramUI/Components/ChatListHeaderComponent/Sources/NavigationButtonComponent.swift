@@ -27,6 +27,7 @@ public final class NavigationButtonComponent: Component {
     public enum Content: Equatable {
         case text(title: String, isBold: Bool)
         case more
+        case settings(title: String) // MARK: Regram
         case icon(imageName: String)
         case proxy(status: ChatTitleProxyStatus)
     }
@@ -123,6 +124,10 @@ public final class NavigationButtonComponent: Component {
                 }
             case .more:
                 isMore = true
+            case let .settings(title):
+                isMore = true
+                self.accessibilityLabel = title
+                self.accessibilityIdentifier = "Regram.HiddenTabBar.Settings"
             case let .icon(imageNameValue):
                 imageName = imageNameValue
             case let .proxy(status):
@@ -214,19 +219,18 @@ public final class NavigationButtonComponent: Component {
                     
                     moreButton = MoreHeaderButton(color: theme.chat.inputPanel.panelControlColor)
                     moreButton.isUserInteractionEnabled = true
-                    moreButton.setContent(.more(MoreHeaderButton.optionsCircleImage(color: theme.chat.inputPanel.panelControlColor)))
                     moreButton.onPressed = { [weak self] in
                         guard let self, let component = self.component else {
                             return
                         }
-                        self.moreButton?.play()
+                        if case .more = component.content { self.moreButton?.play() }
                         component.pressed(self)
                     }
                     moreButton.contextAction = { [weak self] sourceNode, gesture in
                         guard let self, let component = self.component else {
                             return
                         }
-                        self.moreButton?.play()
+                        if case .more = component.content { self.moreButton?.play() }
                         component.contextAction?(self, gesture)
                     }
                     self.moreButton = moreButton
@@ -236,7 +240,17 @@ public final class NavigationButtonComponent: Component {
                 let buttonSize = CGSize(width: 44.0, height: 44.0)
                 size.width = 44.0
                 
-                moreButton.setContent(.more(MoreHeaderButton.optionsCircleImage(color: theme.rootController.navigationBar.buttonColor)))
+                // MARK: Regram — update the actual rendered image on every content/theme pass.
+                let image: UIImage?
+                if case let .settings(title) = component.content {
+                    image = UIImage(systemName: "gearshape", withConfiguration: UIImage.SymbolConfiguration(pointSize: 22.0, weight: .regular))?.withTintColor(theme.rootController.navigationBar.buttonColor, renderingMode: .alwaysOriginal) ?? MoreHeaderButton.optionsCircleImage(color: theme.rootController.navigationBar.buttonColor)
+                    self.isAccessibilityElement = true
+                    self.accessibilityTraits = .button
+                    self.accessibilityLabel = title
+                    self.accessibilityIdentifier = "Regram.HiddenTabBar.Settings"
+                    moreButton.view.isAccessibilityElement = false
+                } else { image = MoreHeaderButton.optionsCircleImage(color: theme.rootController.navigationBar.buttonColor) }
+                moreButton.setContent(.more(image))
                 
                 moreButton.frame = CGRect(origin: CGPoint(x: floor((size.width - buttonSize.width) / 2.0), y: floor((size.height - buttonSize.height) / 2.0)), size: buttonSize)
             } else if let moreButton = self.moreButton {

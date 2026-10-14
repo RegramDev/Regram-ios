@@ -20,7 +20,7 @@ extension String {
         func contains(_ query: String, _ page: String, _ item: String) -> Bool {
             RGSettingsCatalog.results(query: query, language: "zh-hans").contains { $0.destination.page == page && $0.destination.item == item }
         }
-        assert(contains("本地会员", "pro.privacy", "localPremium"))
+        assert(contains("本地会员", "pro.tools", "localPremium"))
         assert(contains("温度", "llm", "temperature"))
         assert(contains("OpenAI 模型", "llm", "model"))
         assert(RGSettingsCatalog.results(query: "温度", language: "zh-hans").allSatisfy { $0.destination.item == "temperature" })
@@ -28,7 +28,13 @@ extension String {
         assert(contains("照片 上传", "settings.photos", "outgoingPhotoQuality"))
         assert(contains("分隔线", "settings.chatList", "hideChatListSeparators"))
         assert(contains("检查更新", "updates", "check"))
-        assert(contains("DC1", "diagnostics", "datacenters"))
+        assert(contains("DC1", "datacenters", "start"))
+        assert(contains("书签", "pro.messages", "bookmarks"))
+        assert(contains("盘古", "pro.input", "panguSpacing"))
+        assert(contains("上传", "settings.transfer", "uploadSpeedBoost"))
+        assert(RGSettingsDestination(page: "pro.messages", item: "panguSpacing") == RGSettingsDestination(page: "pro.input", item: "panguSpacing"))
+        assert(RGSettingsDestination(page: "settings.app", item: "enableVoipTcp") == RGSettingsDestination(page: "settings.transfer", item: "enableVoipTcp"))
+        assert(RGSettingsDestination(page: "diagnostics", item: "datacenters") == RGSettingsDestination(page: "datacenters", item: "start"))
         assert(contains("字体", "fonts", "latin"))
         assert(RGSettingsCatalog.results(query: "   ", language: "en").isEmpty)
         assert(RGSettingsCatalog.results(query: "unrecognized setting xyz", language: "en").isEmpty)

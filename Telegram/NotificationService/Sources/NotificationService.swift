@@ -25,7 +25,7 @@ import CoreServices
 import ImageIO
 import UniformTypeIdentifiers
 
-private let groupUserDefaults: UserDefaults? = UserDefaults(suiteName: rgAppGroupIdentifier())
+private let groupUserDefaults: UserDefaults? = rgSharedUserDefaults() // MARK: Regram — match the main app's identity namespace.
 private let LEGACY_NOTIFICATIONS_FIX: Bool = groupUserDefaults?.bool(forKey: "legacyNotificationsFix") ?? false
 
 // MARK: Regram
@@ -962,7 +962,7 @@ private final class NotificationServiceHandler {
 
         // MARK: Regram — resolve the same App Group as the main app.
         let appGroupName = rgAppGroupIdentifier()
-        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
+        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension, keychainScope: RGStorageScope.keychainScope))
         let maybeAppGroupUrl = rgDataContainerURL()
 
         guard let appGroupUrl = maybeAppGroupUrl else {

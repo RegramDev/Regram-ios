@@ -1,20 +1,13 @@
 # Regram CI 构建与发布
 
-应用版本和构建号统一在根目录 `versions.json` 的 `app` 与 `build` 字段声明。当前为 `13.0`、`34588`。开始新的安装包版本时先递增 `build`；单纯重跑工作流或修改文档不会改变构建号。
+版本和构建号由根目录 versions.json 的 app/build 声明，五种安装身份使用同一版本号。Actions 与本地构建均通过 versioning.py 读取，工作流重跑不会递增。
 
-Actions 和 `build.sh` 都通过 `versioning.py` 读取构建号。若环境中残留了与声明不同的 `REGRAM_BUILD_NUMBER`，构建会在读取凭据、下载工具或编译前失败。构建号不再依赖 `GITHUB_RUN_NUMBER` 或 Git 提交数量。
+Build Regram 在同一 macOS/Xcode 27 作业内依次构建五种身份，复用 Bazel 缓存；各包保留主应用与六个扩展，输出五份独立 IPA 和验证报告。串行生成配置，避免多个作业同时改写共享的 configuration-repository。
 
-本地使用 Make 驱动构建时，将以下命令的输出作为 `--buildNumber` 参数，保证与 CI 使用同一数值：
+仓库 Secret `REGRAM_BUILD_VARIANTS_CONFIGURATION` 是以五种身份名称为键的 JSON 对象，每项使用 prepare.py 的 VARIABLES 完整配置结构。凭据仅写入忽略的 build-input/ci，结束时清除。不得把真实 API 凭据、证书或生成的配置加入提交。
 
-```sh
-python3 build-system/ci/versioning.py
-```
+基础包保留 Regram-version-bbuild.ipa 文件名，额外身份使用 Regram-Identity-version-bbuild.ipa。包内身份标记与 Bundle ID／App Group 必须匹配，原始下载、签名、版本和校验信息按身份独立验证。
 
-分支推送和手动运行会构建，发布标签不会额外触发构建。输出为 `Regram-13.0-b34588.ipa` 这样的单个 IPA 文件。发布工作流仍需选择成功的 master 构建和具体 IPA，并明确确认发布；不会因推送自动创建 Release。
+Publish confirmed five-identity release 选择成功的 master 构建、基础 IPA 文件名和发布确认；工作流下载并校验五个对应文件后统一发布，不因代码推送自动发布 Release。
 
-离线检查：
-
-```sh
-python3 build-system/ci/test_versioning.py
-python3 build-system/ci/test_release.py
-```
+离线检查：python3 build-system/ci/test_versioning.py、python3 build-system/ci/test_release.py。

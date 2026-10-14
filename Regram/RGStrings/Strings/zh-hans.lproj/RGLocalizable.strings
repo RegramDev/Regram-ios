@@ -686,12 +686,12 @@
 "Settings.Category.translation" = "翻译";
 "Settings.Category.transcription" = "语音转文字";
 "Settings.Category.messageActions" = "消息动作与显示";
-"Settings.Category.media" = "媒体与下载";
+"Settings.Category.media" = "播放与媒体加载";
 "Settings.Category.photos" = "照片与画质";
 "Settings.Category.stickers" = "贴纸与表情";
 "Settings.Category.recording" = "语音与圆视频";
 "Settings.Category.app" = "应用与高级";
-"Settings.ProCategory.messages" = "消息与输入";
+"Settings.ProCategory.messages" = "聊天与消息";
 "Settings.ProCategory.privacy" = "隐私与过滤";
 "Settings.ProCategory.translation" = "翻译与语音";
 "Settings.ProCategory.media" = "媒体与链接";
@@ -867,3 +867,37 @@
 "EditHistory.PhotoUnavailable" = "无法加载此图片，可能没有保存在本机，或原始文件引用已经失效。";
 "EditHistory.LoadPhoto" = "加载历史图片";
 "EditHistory.LoadOriginal" = "加载原图";
+
+// MARK: Regram — local group names
+"GroupRemark.Title" = "群聊备注";
+"GroupRemark.NotSet" = "未设置";
+"GroupRemark.OriginalName" = "原群名：%@";
+"GroupRemark.Notice" = "仅当前账号在本机可见，显示于聊天列表、聊天标题和本地搜索。留空并保存即可恢复原群名。";
+"GroupRemark.UseOriginalName" = "使用原群名";
+
+// MARK: Regram — bookmarks, focused settings and package identities
+"Settings.ProCategory.input" = "输入与发送";
+"Settings.ProCategory.network" = "网络与传输";
+"Settings.Category.input" = "输入按钮与发送方式";
+"Settings.Category.transfer" = "传输与连接";
+"Settings.Category.privacy" = "隐私选项";
+"Diagnostics.CopyAverages" = "复制平均 Ping 值";
+"AppUpdate.NoVariant" = "此发布没有与当前应用身份匹配的更新包。";
+"Bookmarks.Title" = "消息书签与标签";
+"Bookmarks.Add" = "添加书签";
+"Bookmarks.EditTags" = "编辑书签标签";
+"Bookmarks.Remove" = "移除书签";
+"Bookmarks.All" = "全部书签";
+"Bookmarks.Untagged" = "未加标签";
+"Bookmarks.Filter" = "按标签筛选";
+"Bookmarks.Tags" = "标签";
+"Bookmarks.NewTag" = "新标签";
+"Bookmarks.AddTag" = "添加标签";
+"Bookmarks.Save" = "保存标签";
+"Bookmarks.TagsNotice" = "选择已有标签或添加新标签。每条消息最多 10 个标签，每个标签最多 32 个字符。";
+"Bookmarks.Notice" = "书签和标签仅在本机按账号保存，记录原消息的位置。原消息被删除后不会因此恢复内容。";
+"Bookmarks.Media" = "媒体消息";
+"Bookmarks.Unavailable" = "原消息本机未载入，点按尝试打开。";
+"Bookmarks.Empty" = "当前筛选下没有书签。";
+"Bookmarks.LoadMore" = "加载更多书签";
+"Bookmarks.ChatUnavailable" = "原聊天信息本机不可用，仍可编辑标签或移除此书签。";

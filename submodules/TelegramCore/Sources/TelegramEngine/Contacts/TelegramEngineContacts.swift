@@ -1,6 +1,7 @@
 import Foundation
 import SwiftSignalKit
 import Postbox
+import RGSimpleSettings // MARK: Regram
 
 public extension TelegramEngine {
     final class Contacts {
@@ -61,7 +62,30 @@ public extension TelegramEngine {
         }
 
         public func searchLocalPeers(query: String, scope: TelegramSearchPeersScope = .everywhere, predicate: ChatListFilterPredicate? = nil) -> Signal<[EngineRenderedPeer], NoError> {
-            return self.account.postbox.searchPeers(query: query, predicate: predicate)
+            // MARK: Regram — include local group names while retaining folder and search scopes.
+            let remarkIds = (scope == .everywhere || scope == .groups) ? Set(RGGroupRemarks.shared.matchingPeerIds(accountId: self.account.peerId.toInt64(), query: query)) : []
+            let localPeers: Signal<[RenderedPeer], NoError>
+            if remarkIds.isEmpty {
+                localPeers = self.account.postbox.searchPeers(query: query, predicate: predicate)
+            } else {
+                localPeers = self.account.postbox.transaction { transaction -> [RenderedPeer] in
+                    var peers = transaction.searchPeers(query: query, predicate: predicate)
+                    var seenIds = Set(peers.map { $0.peerId })
+                    let filter: (Peer) -> Bool = { peer in
+                        guard remarkIds.contains(peer.id.toInt64()) else { return false }
+                        if let group = peer as? TelegramGroup { return group.migrationReference == nil }
+                        if let channel = peer as? TelegramChannel, case .group = channel.info { return true }
+                        return false
+                    }
+                    for groupId in [PeerGroupId.root, Namespaces.PeerGroup.archive] {
+                        for peer in transaction.getChatListPeers(groupId: groupId, filterPredicate: predicate, additionalFilter: filter) {
+                            if seenIds.insert(peer.id).inserted { peers.append(RenderedPeer(peer: peer)) }
+                        }
+                    }
+                    return peers
+                }
+            }
+            return localPeers
             |> map { peers in
                 switch scope {
                 case .everywhere:

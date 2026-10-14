@@ -1421,6 +1421,15 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     var dateDisclosureIconView: UIImageView?
     private var rgLayoutHidesSeparator = false
     public func rgRefreshSeparatorVisibility() { separatorNode.isHidden = rgLayoutHidesSeparator || RGSimpleSettings.shared.hideChatListSeparators }
+
+    // MARK: Regram — preserve the row's size, selection and reveal controls while changing its name.
+    func rgRefreshGroupRemark(_ change: RGGroupRemarkChange) {
+        guard let item = self.item, item.context.account.peerId.toInt64() == change.accountId,
+              case let .peer(data) = item.content, data.peer.peerId.toInt64() == change.peerId,
+              let params = self.layoutParams else { return }
+        let (_, apply) = self.asyncLayout()(params.0, params.6, params.1, params.2, params.3, params.4, params.5)
+        apply(false, false)
+    }
     public let separatorNode: ASDisplayNode
     let statusNode: ChatListStatusNode
     let badgeNode: ChatListBadgeNode
@@ -1526,7 +1535,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     if item.context.account.peerId == chatMainPeer.id {
                         result += item.presentationData.strings.DialogList_SavedMessages
                     } else {
-                        result += chatMainPeer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                        // MARK: Regram — VoiceOver uses the same local group name as the row.
+                        result += chatMainPeer.rgGroupDisplayTitle(accountId: item.context.account.peerId.toInt64(), strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                     }
                     if let combinedReadState = peerData.combinedReadState, combinedReadState.count > 0 {
                         result += "\n\(item.presentationData.strings.VoiceOver_Chat_UnreadMessages(combinedReadState.count))"
@@ -3312,7 +3322,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         if customMessageListData.commandPrefix != nil {
                             titleAttributedString = nil
                         } else {
-                            if let displayTitle = itemPeer.chatOrMonoforumMainPeer?.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder) {
+                            // MARK: Regram
+                            if let displayTitle = itemPeer.chatOrMonoforumMainPeer?.rgGroupDisplayTitle(accountId: item.context.account.peerId.toInt64(), strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder) {
                                 let textColor: UIColor
                                 if case let .chatList(index) = item.index, index.messageIndex.id.peerId.namespace == Namespaces.Peer.SecretChat {
                                     textColor = theme.secretTitleColor
@@ -3342,7 +3353,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                          titleAttributedString = NSAttributedString(string: item.presentationData.strings.DialogList_Replies, font: titleFont, textColor: theme.titleColor)
                     } else if let id = itemPeer.chatMainPeer?.id, id.isAnonymousSavedMessages {
                         titleAttributedString = NSAttributedString(string: item.presentationData.strings.ChatList_AuthorHidden, font: titleFont, textColor: theme.titleColor)
-                    } else if let displayTitle = itemPeer.chatOrMonoforumMainPeer?.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder) {
+                    // MARK: Regram
+                    } else if let displayTitle = itemPeer.chatOrMonoforumMainPeer?.rgGroupDisplayTitle(accountId: item.context.account.peerId.toInt64(), strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder) {
                         let textColor: UIColor
                         if case let .chatList(index) = item.index, index.messageIndex.id.peerId.namespace == Namespaces.Peer.SecretChat {
                             textColor = theme.secretTitleColor

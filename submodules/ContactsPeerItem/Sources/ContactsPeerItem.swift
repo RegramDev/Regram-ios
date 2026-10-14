@@ -1,4 +1,5 @@
 import Foundation
+import LocalizedPeerData // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -987,10 +988,11 @@ public class ContactsPeerItemNode: ItemListRevealOptionsItemNode {
                         } else {
                             titleAttributedString = NSAttributedString(string: item.presentationData.strings.User_DeletedAccount, font: titleBoldFont, textColor: textColor)
                         }
-                    } else if case let .legacyGroup(group) = peer {
-                        titleAttributedString = NSAttributedString(string: group.title, font: titleBoldFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor)
-                    } else if case let .channel(channel) = peer {
-                        titleAttributedString = NSAttributedString(string: channel.title, font: titleBoldFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor)
+                    } else if case .legacyGroup = peer {
+                        // MARK: Regram — local search and peer selection display the group remark.
+                        titleAttributedString = NSAttributedString(string: peer.rgGroupDisplayTitle(accountId: item.context.account.peerId.toInt64(), strings: item.presentationData.strings, displayOrder: item.displayOrder), font: titleBoldFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor)
+                    } else if case .channel = peer {
+                        titleAttributedString = NSAttributedString(string: peer.rgGroupDisplayTitle(accountId: item.context.account.peerId.toInt64(), strings: item.presentationData.strings, displayOrder: item.displayOrder), font: titleBoldFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor)
                     } else if case let .community(community) = peer {
                         titleAttributedString = NSAttributedString(string: community.title, font: titleBoldFont, textColor: item.presentationData.theme.list.itemPrimaryTextColor)
                     }

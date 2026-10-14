@@ -2,6 +2,7 @@
 import RGSimpleSettings
 import RGSettingsUI
 import RGStrings
+import LocalizedPeerData // MARK: Regram
 import CountrySelectionUI
 import Foundation
 import UIKit
@@ -1062,6 +1063,17 @@ func infoItems(
     }
     
     
+    // MARK: Regram — a local group name is available without group administration rights.
+    if let peer = data.peer, peer.rgCanSetGroupRemark {
+        let lang = presentationData.strings.rgLanguageCode
+        items[.regram] = items[.regram] ?? []
+        let name = RGGroupRemarks.shared.name(accountId: context.account.peerId.toInt64(), peerId: peer.id.toInt64())
+        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 9510, label: .text(name ?? "GroupRemark.NotSet".i18n(lang)), text: "GroupRemark.Title".i18n(lang), action: {
+            guard let controller = interaction.getController() else { return }
+            (controller.navigationController as? NavigationController)?.pushViewController(rgGroupRemarkController(context: context, peer: peer))
+        }))
+    }
+
     // MARK: Regram — per-chat switch for the keyword filter, offered for every peer type. Rules
     // are global by default, and a group where the keyword is legitimate traffic needs an off switch
     // that does not require editing every rule's scope. Hidden senders are unaffected: hiding a

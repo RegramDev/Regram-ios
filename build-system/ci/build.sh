@@ -32,11 +32,13 @@ fi
 printf '%s  %s\n' "$bazel_sha" "$bazel_path" | shasum -a 256 --check --status
 chmod +x "$bazel_path"
 
-python3 build-system/ci/prepare.py --config build-input/ci/configuration.json \
-  --output build-input/configuration-repository --bazel "$bazel_path"
-
 git -C build-system/bazel-rules/rules_apple apply --check ../../patches/rules_apple-local.patch
 git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-local.patch
+
+for variant in Swiftgram Nicegram OLAI Turrit Nagram; do
+configuration_path="build-input/ci/configurations/$variant.json"
+python3 build-system/ci/prepare.py --config "$configuration_path" \
+  --output build-input/configuration-repository --bazel "$bazel_path"
 
 # Limit parallel compilation for the standard 7 GB arm64 runner; keep cached build configuration
 # and all six extensions. No simulator or personal signing identity is needed.
@@ -55,4 +57,7 @@ git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-loca
   --//Regram/RGSimpleSettings:mediaLoadingExperimentDefault=true
 
 python3 build-system/ci/package.py --ipa bazel-bin/Telegram/Regram.ipa \
-  --symbols bazel-bin/Telegram --output build/artifacts --build-number "$build_number"
+  --symbols bazel-bin/Telegram --output build/artifacts --build-number "$build_number" \
+  --configuration "$configuration_path" --variant "$variant" --report "build-input/ci/BUILD-MANIFEST-$variant.json"
+
+done

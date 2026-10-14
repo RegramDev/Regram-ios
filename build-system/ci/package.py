@@ -41,12 +41,16 @@ def extract(archive, directory):
     return apps[0]
 
 
-def package(ipa, symbols, destination, build_number, configuration, report_path):
+def package(ipa, symbols, destination, build_number, configuration, report_path, variant='Swiftgram'):
     root = Path.cwd()
     config = json.loads(configuration.read_text())
     destination.mkdir(parents=True, exist_ok=True)
     version = json.loads((root / 'versions.json').read_text())['app']
-    filename = f'Regram-{version}-b{build_number}.ipa'
+    identities = {'Swiftgram': 'app.swiftgram.ios', 'Nicegram': 'app.nicegram', 'OLAI': 'com.olcorporation.olai', 'Turrit': 'com.seastar.turrit', 'Nagram': 'xyz.nextalone.nagram'}
+    if variant not in identities or config['telegram_bundle_id'] != identities[variant]:
+        raise RuntimeError('Package identity must match its configuration')
+    prefix = 'Regram' if variant == 'Swiftgram' else 'Regram-' + variant
+    filename = f'{prefix}-{version}-b{build_number}.ipa'
     final = destination / filename
     if final.exists():
         raise RuntimeError('Refusing to replace an existing reference IPA')
@@ -54,6 +58,8 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         work = Path(temporary)
         staging = work / 'staging'
         app = extract(ipa, staging)
+        if info(app).get('RegramUpdateVariant') != variant:
+            raise RuntimeError('Update marker does not match package identity')
         if str(info(app)['CFBundleShortVersionString']) != version:
             raise RuntimeError('App version must match the IPA filename')
         bundles = [app] + sorted((app / 'PlugIns').glob('*.appex'))
@@ -64,6 +70,12 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
             metadata = info(bundle)
             if str(metadata['CFBundleVersion']) != str(build_number) or metadata['MinimumOSVersion'] != '15.0':
                 raise RuntimeError('Unexpected build number or minimum iOS version')
+            entitlements = plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(bundle)]))
+            if entitlements.get('com.apple.security.application-groups') != ['group.' + config['telegram_bundle_id']]:
+                raise RuntimeError('Every bundle must use its own identity App Group')
+            # Extensions retain the same identity even if a signing tool rewrites their bundle IDs.
+            metadata['RegramUpdateVariant'] = variant
+            (bundle / 'Info.plist').write_bytes(plistlib.dumps(metadata, fmt=plistlib.FMT_BINARY))
         for profile in app.rglob('embedded.mobileprovision'):
             profile.unlink()
         for bundle in bundles[1:] + [app]:
@@ -73,6 +85,8 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         run(['zip', '-qry', str(archive), 'Payload'], cwd=staging)
         verified = extract(archive, work / 'verified')
         run(['codesign', '--verify', '--deep', '--strict', str(verified)])
+        if any(info(b).get('RegramUpdateVariant') != variant for b in [verified] + sorted((verified / 'PlugIns').glob('*.appex'))):
+            raise RuntimeError('Main app and extension identity markers disagree')
         if list(verified.rglob('embedded.mobileprovision')):
             raise RuntimeError('Reference package must not contain provisioning profiles')
         catalog = root / 'Regram/RGTypography/RGFontCatalog.json'
@@ -107,10 +121,24 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
                     symbol_uuids.add(line.split()[1])
         if len(uuids) != 12 or len(dsym_sources) != 12 or not set(uuids.values()) <= symbol_uuids:
             raise RuntimeError('All 12 binaries must have matching debug symbols')
+        if archive.stat().st_size >= 105 * 1024 * 1024:
+            raise RuntimeError('Reference IPA is unexpectedly large')
+        for language in ['en', 'zh-hans', 'zh-hant']:
+            source = root / 'Regram/RGStrings/Strings' / (language + '.lproj') / 'RGLocalizable.strings'
+            packed = verified / (language + '.lproj') / 'RGLocalizable.strings'
+            if plistlib.loads(run(['plutil', '-convert', 'xml1', '-o', '-', str(source)])) != plistlib.loads(run(['plutil', '-convert', 'xml1', '-o', '-', str(packed)])):
+                raise RuntimeError('Packaged localization differs from source')
+        symbol_output = destination / f'{prefix}-{version}-b{build_number}.DSYMs.zip'
+        symbol_work = work / 'symbols/DSYMs'
+        symbol_work.mkdir(parents=True)
+        for symbol in dsym_sources: shutil.copytree(symbol, symbol_work / symbol.name)
+        run(['zip', '-qry', str(symbol_output.resolve()), 'DSYMs'], cwd=symbol_work.parent)
         shutil.move(archive, final)
+    Path(str(final) + '.sha256').write_text(checksum(final) + '  ' + filename + '\n')
     manifest = {
         'source_commit': run(['git', 'rev-parse', 'HEAD']).decode().strip(),
-        'build_number': str(build_number), 'version': version, 'minimum_ios': '15.0',
+        'build_number': str(build_number), 'version': version, 'minimum_ios': '15.0', 'variant': variant,
+        'bundle_id': config['telegram_bundle_id'], 'app_group': 'group.' + config['telegram_bundle_id'],
         'extension_count': 6, 'macho_count': 12, 'dsym_count': 12, 'profile_count': 0,
         'signatures_and_architectures_verified': True, 'matching_debug_symbols': True,
         'font_catalog_and_licenses_verified': True, 'device_tested': False,
@@ -132,5 +160,6 @@ if __name__ == '__main__':
     parser.add_argument('--build-number', required=True)
     parser.add_argument('--configuration', type=Path, default=Path('build-input/ci/configuration.json'))
     parser.add_argument('--report', type=Path, default=Path('build-input/ci/BUILD-MANIFEST.json'))
+    parser.add_argument('--variant', choices=['Swiftgram', 'Nicegram', 'OLAI', 'Turrit', 'Nagram'], default='Swiftgram')
     args = parser.parse_args()
-    package(args.ipa, args.symbols, args.output, args.build_number, args.configuration, args.report)
+    package(args.ipa, args.symbols, args.output, args.build_number, args.configuration, args.report, args.variant)

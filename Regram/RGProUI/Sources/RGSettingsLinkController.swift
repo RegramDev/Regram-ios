@@ -10,8 +10,9 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
     // Disclosure entries open their existing destination, keeping one settings route per feature.
     let disclosed: [String: String] = [
-        "messagesPage": "pro.messages", "translationPage": "pro.translation", "privacyPage": "pro.privacy", "mediaPage": "pro.media", "appearancePage": "pro.appearance", "notificationsPage": "pro.notifications", "toolsPage": "pro.tools",
+        "messagesPage": "pro.messages", "inputPage": "pro.input", "networkPage": "pro.network", "translationPage": "pro.translation", "privacyPage": "pro.privacy", "mediaPage": "pro.media", "appearancePage": "pro.appearance", "notificationsPage": "pro.notifications", "toolsPage": "pro.tools",
         "messageActionsSettings": "settings.messageActions", "chatListSettings": "settings.chatList", "folderSettings": "settings.folders", "translationSettings": "settings.translation", "transcriptionSettings": "stt", "photoSettings": "settings.photos", "stickerSettings": "settings.stickers", "recordingSettings": "settings.recording", "mediaSettings": "settings.media", "appearanceSettings": "settings.appearance", "profileSettings": "settings.profiles", "storiesSettings": "settings.stories", "appSettings": "settings.app",
+        "inputSettings": "settings.input", "transferSettings": "settings.transfer", "privacySettings": "settings.privacy", "bookmarks": "bookmarks",
         "llmTranslationSettings": "llm", "bottomBarLayout": "bottomBar", "contextMenuOrder": "contextMenu", "linkPreviewSettings": "linkPreview", "appUpdate": "updates", "antiFeatures": "antiFeatures", "ghostMode": "ghostMode", "messageFilter": "messageFilter", "hiddenUsers": "hiddenUsers", "antiRevokeChats": "antiRevokeChats", "fonts": "fonts", "backup": "backup", "chatPreferences": "chatPreferences", "revokedMessages": "revokedMessages", "diagnostics": "diagnostics", "appIcons": "appIcons", "appBages": "appBadges"
     ]
     if destination.page.hasPrefix("pro.") || destination.page.hasPrefix("settings."), let focus, let page = disclosed[focus], let target = RGSettingsDestination(page: page) {
@@ -29,7 +30,11 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     case "ghostMode": return rgGhostModeController(context: context, focusSetting: focus)
     case "fonts": return rgFontSettingsController(context: context, focusSetting: focus)
     case "backup": return rgSettingsBackupController(context: context, focusSetting: focus)
-    case "diagnostics": return rgDiagnosticsController(context: context, focusSetting: focus)
+    case "diagnostics":
+        if focus == "datacenters" { return rgDatacenterDiagnosticsController(context: context, focusSetting: "start") }
+        return rgDiagnosticsController(context: context, focusSetting: focus)
+    case "datacenters": return rgDatacenterDiagnosticsController(context: context, focusSetting: focus)
+    case "bookmarks": return rgBookmarksController(context: context, focusSetting: focus)
     case "chatPreferences": return rgChatPreferencesController(context: context, focusSetting: focus)
     case "messageFilter": return rgMessageFilterController(context: context, presentationData: presentationData)
     case "hiddenUsers": return rgHiddenUsersController(context: context)

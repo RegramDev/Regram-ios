@@ -1,5 +1,6 @@
 // MARK: Regram
 import RGProfileBadge
+import LocalizedPeerData
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -1239,7 +1240,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             } else if let threadData = threadData {
                 title = threadData.info.title
             } else {
-                title = peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
+                // MARK: Regram — retain topic titles and show the local name for the group itself.
+                title = peer.rgGroupDisplayTitle(accountId: self.context.account.peerId.toInt64(), strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
             }
             title = title.replacingOccurrences(of: "\u{1160}", with: "").replacingOccurrences(of: "\u{3164}", with: "")
             if title.replacingOccurrences(of: "\u{fe0e}", with: "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

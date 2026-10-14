@@ -28,7 +28,7 @@ import UndoUI
 // MARK: Regram — stable category destinations shared with the Pro settings hub.
 public enum RGSettingsPage: String {
     case home, appearance, folders, chatList, profiles, stories, translation, transcription
-    case messageActions, media, photos, stickers, recording, app
+    case messageActions, media, photos, stickers, recording, input, transfer, privacy, app
     public var titleKey: String { "Settings.Category." + self.rawValue }
 }
 
@@ -51,6 +51,8 @@ private enum RGControllerSection: Int32, RGItemListSection {
     case messageActions
     case media
     case recording
+    case input
+    case transfer
 }
 
 private enum RGBoolSetting: String {
@@ -313,8 +315,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.notice(id: id.count, section: .accountColors, text: i18n("Settings.CustomColors.Saturation.Notice", lang)))
     
     id.increment(10000)
-    entries.append(.header(id: id.count, section: .other, text: strings.Appearance_Other.uppercased(), badge: nil))
-    entries.append(.toggle(id: id.count, section: .other, settingName: .hideChannelBottomButton, value: !RGSimpleSettings.shared.hideChannelBottomButton, text: i18n("Settings.showChannelBottomButton", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .hideChannelBottomButton, value: !RGSimpleSettings.shared.hideChannelBottomButton, text: i18n("Settings.showChannelBottomButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .wideChannelPosts, value: RGSimpleSettings.shared.wideChannelPosts, text: i18n("Settings.wideChannelPosts", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .secondsInMessages, value: RGSimpleSettings.shared.secondsInMessages, text: i18n("Settings.secondsInMessages", lang), enabled: true))
     // MARK: Regram — double tap v2 replaces the old "double tap to edit your messages" switch.
@@ -324,33 +325,37 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .automaticallyRevealSpoilers, value: RGSimpleSettings.shared.automaticallyRevealSpoilers, text: "Settings.AutomaticallyRevealSpoilers".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .messageActions, text: "Settings.AutomaticallyRevealSpoilers.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .showForwardedMessageDate, value: RGSimpleSettings.shared.showForwardedMessageDate, text: "Settings.ShowForwardedMessageDate".i18n(lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .hideRecordingButton, value: !RGSimpleSettings.shared.hideRecordingButton, text: i18n("Settings.RecordingButton", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .hideRecordingButton, value: !RGSimpleSettings.shared.hideRecordingButton, text: i18n("Settings.RecordingButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .disableSnapDeletionEffect, value: !RGSimpleSettings.shared.disableSnapDeletionEffect, text: i18n("Settings.SnapDeletionEffect", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .disableSendAsButton, value: !RGSimpleSettings.shared.disableSendAsButton, text: i18n("Settings.SendAsButton", lang, strings.Conversation_SendMesageAs), enabled: true))
-    entries.append(.toggle(id: id.count, section: .media, settingName: .disableGalleryCamera, value: !RGSimpleSettings.shared.disableGalleryCamera, text: i18n("Settings.GalleryCamera", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .media, settingName: .disableGalleryCameraPreview, value: !RGSimpleSettings.shared.disableGalleryCameraPreview, text: i18n("Settings.GalleryCameraPreview", lang), enabled: !RGSimpleSettings.shared.disableGalleryCamera))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .disableSendAsButton, value: !RGSimpleSettings.shared.disableSendAsButton, text: i18n("Settings.SendAsButton", lang, strings.Conversation_SendMesageAs), enabled: true))
+    entries.append(.toggle(id: id.count, section: .recording, settingName: .disableGalleryCamera, value: !RGSimpleSettings.shared.disableGalleryCamera, text: i18n("Settings.GalleryCamera", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .recording, settingName: .disableGalleryCameraPreview, value: !RGSimpleSettings.shared.disableGalleryCameraPreview, text: i18n("Settings.GalleryCameraPreview", lang), enabled: !RGSimpleSettings.shared.disableGalleryCamera))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .disableScrollToNextChannel, value: !RGSimpleSettings.shared.disableScrollToNextChannel, text: i18n("Settings.PullToNextChannel", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .disableScrollToNextTopic, value: !RGSimpleSettings.shared.disableScrollToNextTopic, text: i18n("Settings.PullToNextTopic", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .hideReactions, value: RGSimpleSettings.shared.hideReactions, text: i18n("Settings.HideReactions", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .media, settingName: .uploadSpeedBoost, value: RGSimpleSettings.shared.uploadSpeedBoost, text: i18n("Settings.UploadsBoost", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .media, settingName: .downloadSpeedBoost, value: RGSimpleSettings.shared.downloadSpeedBoost != RGSimpleSettings.DownloadSpeedBoostValues.none.rawValue, text: i18n("Settings.DownloadsBoost", lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .media, text: i18n("Settings.DownloadsBoost.Notice", lang)))
+    entries.append(.header(id: id.count, section: .transfer, text: "Diagnostics.Download".i18n(lang), badge: nil))
+    entries.append(.toggle(id: id.count, section: .transfer, settingName: .uploadSpeedBoost, value: RGSimpleSettings.shared.uploadSpeedBoost, text: i18n("Settings.UploadsBoost", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .transfer, settingName: .downloadSpeedBoost, value: RGSimpleSettings.shared.downloadSpeedBoost != RGSimpleSettings.DownloadSpeedBoostValues.none.rawValue, text: i18n("Settings.DownloadsBoost", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .transfer, text: i18n("Settings.DownloadsBoost.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .media, settingName: .mediaLoadingExperiment, value: RGSimpleSettings.shared.mediaLoadingExperiment, text: i18n("Settings.MediaLoadingExperiment", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: i18n("Settings.MediaLoadingExperiment.Notice", lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .media, settingName: .defaultVideoQuality, text: i18n("Settings.DefaultVideoQuality", lang), value: i18n("Settings.DefaultVideoQuality.\(RGSimpleSettings.shared.defaultVideoQuality)", lang), enabled: true))
     // MARK: Regram — "Media Info" in the photo/video viewer's menu.
     entries.append(.toggle(id: id.count, section: .media, settingName: .showMediaMetadata, value: RGSimpleSettings.shared.showMediaMetadata, text: i18n("MediaMetadata.Setting", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: i18n("MediaMetadata.Setting.Notice", lang)))
-    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .sendWithReturnKey, value: RGSimpleSettings.shared.sendWithReturnKey, text: i18n("Settings.SendWithReturnKey", lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .sendWithReturnKey, value: RGSimpleSettings.shared.sendWithReturnKey, text: i18n("Settings.SendWithReturnKey", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .stickers, settingName: .forceEmojiTab, value: RGSimpleSettings.shared.forceEmojiTab, text: i18n("Settings.ForceEmojiTab", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .stickers, settingName: .defaultEmojisFirst, value: RGSimpleSettings.shared.defaultEmojisFirst, text: i18n("Settings.DefaultEmojisFirst", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .stickers, text: i18n("Settings.DefaultEmojisFirst.Notice", lang)))
-    entries.append(.toggle(id: id.count, section: .profiles, settingName: .hidePhoneInSettings, value: RGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .profiles, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
+    entries.append(.toggle(id: id.count, section: .content, settingName: .hidePhoneInSettings, value: RGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .content, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
     
     let sections: [RGControllerSection]
     switch page {
     case .home, .transcription: sections = []
+    case .input: sections = [.input]
+    case .transfer: sections = [.transfer, .calls]
+    case .privacy: sections = [.content]
     case .appearance: sections = [.tabs, .accountColors, .trending]
     case .folders: sections = [.folders]
     case .chatList: sections = [.chatList]
@@ -362,7 +367,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     case .photos: sections = [.photo]
     case .stickers: sections = [.stickers]
     case .recording: sections = [.recording, .videoNotes]
-    case .app: sections = [.calls, .content, .other]
+    case .app: sections = [.content] // MARK: Regram — legacy page links retain their remaining privacy options.
     }
     let allowed = Set(sections.map(\.rawValue))
     return entries.filter { allowed.contains($0.section) }.sorted { $0.stableId < $1.stableId }

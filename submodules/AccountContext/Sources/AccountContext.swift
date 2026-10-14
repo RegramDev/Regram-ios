@@ -1102,6 +1102,7 @@ public protocol TelegramRootControllerInterface: NavigationController {
     func getNotificationExceptions() -> Promise<NotificationExceptionsList?>?
         
     func openContacts()
+    func openChats() // MARK: Regram — return from root settings when tabs are hidden.
     func openSettings(edit: Bool)
     func openBirthdaySetup()
     func openPhotoSetup(completedWithUploadingImage: @escaping (UIImage, Signal<PeerInfoAvatarUploadStatus, NoError>) -> UIView?)

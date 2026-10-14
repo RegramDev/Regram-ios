@@ -13,7 +13,7 @@ public struct RGSettingsCatalogEntry: Hashable {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
         if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -109,6 +109,9 @@ public enum RGSettingsCatalog {
         .init("pro.tools", "backup", "Backup.Title"),
         .init("pro.tools", "diagnostics", "Diagnostics.Title"),
         .init("pro.tools", "eraseAllData", "EraseData.Title"),
+        .init("pro.messages", "bookmarks", "Bookmarks.Title", keywords: "bookmark label tag 书签 标签 書籤 標籤"),
+        .init("pro.input", "inputSettings", "Settings.Category.input"),
+        .init("pro.network", "transferSettings", "Settings.Category.transfer"),
         .init("pro.messages", "messageActionsSettings", "Settings.Category.messageActions"),
         .init("pro.messages", "chatListSettings", "Settings.Category.chatList"),
         .init("pro.messages", "folderSettings", "Settings.Category.folders"),
@@ -122,7 +125,7 @@ public enum RGSettingsCatalog {
         .init("pro.appearance", "appearanceSettings", "Settings.Category.appearance"),
         .init("pro.appearance", "profileSettings", "Settings.Category.profiles"),
         .init("pro.privacy", "storiesSettings", "Settings.Category.stories"),
-        .init("pro.tools", "appSettings", "Settings.Category.app"),
+        .init("pro.privacy", "privacySettings", "Settings.Category.privacy"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "saveEditHistory", "AntiFeatures.EditHistory"),
@@ -178,10 +181,12 @@ public enum RGSettingsCatalog {
         .init("fonts", "storage", "Fonts.Storage"),
         .init("fonts", "messages", "Fonts.Messages"),
         .init("fonts", "interface", "Fonts.Interface"),
+        .init("bookmarks", "tags", "Bookmarks.Filter"),
         .init("backup", "export", "Backup.Export"),
         .init("backup", "import", "Backup.Import"),
         .init("backup", "reset", "Backup.Reset"),
-        .init("diagnostics", "datacenters", "Diagnostics.DC.Title"),
+        .init("datacenters", "start", "Diagnostics.DC.Title", keywords: "DC1 DC2 DC3 DC4 DC5 ping 数据中心 平均 延迟"),
+        .init("datacenters", "copy", "Diagnostics.CopyAverages"),
         .init("diagnostics", "transfer", "Diagnostics.Download"),
         .init("diagnostics", "filter", "Diagnostics.Filter"),
         .init("chatPreferences", "selectChat", "ChatPreferences.SelectChat"),

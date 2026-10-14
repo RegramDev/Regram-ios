@@ -64,11 +64,14 @@ public func rgDBResetIfNeeded(databasePath: String, present: ((UIViewController)
 public func rgEraseAllLocalData() -> [String] {
     var failures: [String] = []
     let fileManager = FileManager.default
+    let preservedSharedDefaults = rgPreservedSharedDefaultsForOtherIdentities()
 
     // 1. The data container's contents (telegram-data, shared Library/Preferences, caches).
     if let containerPath = rgDataContainerURL()?.path,
        let items = try? fileManager.contentsOfDirectory(atPath: containerPath) {
         for item in items {
+            // MARK: Regram — the legacy base root may also contain other signed app identities.
+            if RGStorageScope.current == "app.swiftgram.ios", item == RGStorageScope.directoryName { continue }
             let path = (containerPath as NSString).appendingPathComponent(item)
             do {
                 try fileManager.removeItem(atPath: path)
@@ -98,16 +101,27 @@ public func rgEraseAllLocalData() -> [String] {
     if let bundleId = Bundle.main.bundleIdentifier {
         UserDefaults.standard.removePersistentDomain(forName: bundleId)
     }
-    if !rgIsSandboxOnlyBuild {
-        let appGroupIdentifier = rgAppGroupIdentifier()
-        UserDefaults(suiteName: appGroupIdentifier)?.removePersistentDomain(forName: appGroupIdentifier)
-    }
+    rgClearSharedUserDefaults(preserving: preservedSharedDefaults)
     UserDefaults.standard.synchronize()
 
     // 4. Keychain items (auth keys, encryption salt) live outside the container and would let the
     //    next install decrypt any leftover data. Remove everything this app can see.
+    // MARK: Regram — remove this identity's shared passcode service explicitly.
+    let passcodeQuery: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrAccessGroup: rgAppGroupIdentifier(), kSecAttrService: RGStorageScope.keychainService("org.telegram.passcode.v1")]
+    _ = SecItemDelete(passcodeQuery as CFDictionary)
     for secClass in [kSecClassGenericPassword, kSecClassInternetPassword, kSecClassCertificate, kSecClassKey, kSecClassIdentity] {
-        let query: [CFString: Any] = [kSecClass: secClass]
+        guard let accessGroup = rgDefaultKeychainAccessGroup(), !accessGroup.contains("*") else { continue }
+        if !accessGroup.hasSuffix("." + rgBaseBundleIdentifier()) {
+            // MARK: Regram — a pooled signing keychain must not erase another installed identity.
+            if secClass == kSecClassGenericPassword {
+                for suffix in [".app-update", ".translation.llm", ".transcription.stt"] {
+                    let query: [CFString: Any] = [kSecClass: secClass, kSecAttrAccessGroup: accessGroup, kSecAttrService: (Bundle.main.bundleIdentifier ?? "Regram") + suffix]
+                    _ = SecItemDelete(query as CFDictionary)
+                }
+            }
+            continue
+        }
+        let query: [CFString: Any] = [kSecClass: secClass, kSecAttrAccessGroup: accessGroup]
         let status = SecItemDelete(query as CFDictionary)
         if status != errSecSuccess && status != errSecItemNotFound {
             NSLog("[RG.FullWipe] keychain class %@ delete status %d", "\(secClass)", status)

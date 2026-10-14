@@ -220,6 +220,8 @@ enum TopicsLimitedReason {
 final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodeProtocol, ASScrollViewDelegate {
     // MARK: Regram
     private var rgAppIconObserver: NSObjectProtocol?
+    private var rgAppIconForegroundObserver: NSObjectProtocol? // MARK: Regram
+    private var rgGroupRemarkObserver: NSObjectProtocol? // MARK: Regram
     weak var controller: PeerInfoScreenImpl?
     
     let context: AccountContext
@@ -440,10 +442,20 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.paneContainerNode = PeerInfoPaneContainerNode(context: context, updatedPresentationData: controller.updatedPresentationData, peerId: peerId, chatLocation: chatLocation, sharedMediaFromForumTopic: sharedMediaFromForumTopic, chatLocationContextHolder: chatLocationContextHolder, isMediaOnly: self.isMediaOnly, initialPaneKey: initialPaneKey, initialStoryFolderId: switchToStoryFolder, initialGiftCollectionId: switchToGiftCollection, switchToMediaTarget: switchToMediaTarget)
         
         super.init()
+        // MARK: Regram — update the profile title and remark row after saving a local name.
+        self.rgGroupRemarkObserver = NotificationCenter.default.addObserver(forName: RGGroupRemarks.didChange, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let change = notification.object as? RGGroupRemarkChange,
+                  change.accountId == self.context.account.peerId.toInt64(), change.peerId == self.peerId.toInt64() else { return }
+            self.requestLayout()
+        }
         // MARK: Regram — refresh an existing settings page after UIKit accepts an icon change.
         if self.isSettings {
             self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.regramAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
-                self?.requestLayout()
+                self?.rgRefreshAppIcon()
+            }
+            // MARK: Regram — resync a retained settings page after returning to the foreground.
+            self.rgAppIconForegroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.rgRefreshAppIcon()
             }
         }
         
@@ -1606,7 +1618,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
             switch key {
             case .back:
-                strongSelf.controller?.dismiss()
+                // MARK: Regram — a root settings tab has no pushed controller to dismiss.
+                if strongSelf.isSettings, RGSimpleSettings.shared.hideTabBar, let root = strongSelf.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface {
+                    root.openChats()
+                } else { strongSelf.controller?.dismiss() }
             case .edit:
                 if case let .replyThread(message) = strongSelf.chatLocation {
                     let threadId = message.threadId
@@ -2659,7 +2674,9 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     
     deinit {
         // MARK: Regram
+        if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = self.rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = self.rgAppIconForegroundObserver { NotificationCenter.default.removeObserver(observer) }
         self.dataDisposable?.dispose()
         self.hiddenMediaDisposable?.dispose()
         self.activeActionDisposable.dispose()
@@ -4549,6 +4566,12 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     
     private func requestLayout(animated: Bool = false) {
         self.headerNode.requestUpdateLayout?(animated)
+    }
+
+    // MARK: Regram — read the installed icon again instead of retaining the old row artwork.
+    func rgRefreshAppIcon() {
+        guard self.isSettings else { return }
+        self.requestLayout()
     }
     
     private func openDeletePeer() {
@@ -7201,6 +7224,12 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         })
     }
     
+    // MARK: Regram — refresh before the settings page's return transition becomes visible.
+    override public func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.controllerNode.rgRefreshAppIcon()
+    }
+
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         

@@ -1768,6 +1768,9 @@ plist_fragment(
     <string>{telegram_bundle_id}</string>
     <key>CFBundleName</key>
     <string>Regram</string>
+    <!-- MARK: Regram — preserve update-package identity when an installer changes Bundle ID. -->
+    <key>RegramUpdateVariant</key>
+    <string>{regram_update_variant}</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -1944,6 +1947,12 @@ plist_fragment(
     <true/>
     """.format(
         telegram_bundle_id = telegram_bundle_id,
+        regram_update_variant = {
+            "app.nicegram": "Nicegram",
+            "com.olcorporation.olai": "OLAI",
+            "com.seastar.turrit": "Turrit",
+            "xyz.nextalone.nagram": "Nagram",
+        }.get(telegram_bundle_id, "Swiftgram"), # MARK: Regram
     )
 )
 

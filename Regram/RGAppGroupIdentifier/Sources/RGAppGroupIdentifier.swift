@@ -122,7 +122,15 @@ private final class RGGrantedEntitlements {
         self.loadIfNeeded()
         return (self.values["com.apple.security.application-groups"] as? [String]) ?? []
     }
+
+    func keychainGroup() -> String? {
+        self.lock.lock(); defer { self.lock.unlock() }
+        self.loadIfNeeded()
+        return (self.values["keychain-access-groups"] as? [String])?.first
+    }
 }
+
+public func rgDefaultKeychainAccessGroup() -> String? { RGGrantedEntitlements.shared.keychainGroup() }
 
 /// Whether the signature this process is running under grants `entitlement`.
 ///
@@ -233,7 +241,24 @@ public func rgSharedUserDefaults() -> UserDefaults? {
     if rgIsSandboxOnlyBuild {
         return .standard
     }
-    return UserDefaults(suiteName: rgAppGroupIdentifier())
+    guard let backing = UserDefaults(suiteName: rgAppGroupIdentifier()) else { return nil }
+    let prefix = RGStorageScope.preferencePrefix(identity: RGStorageScope.current)
+    return prefix.isEmpty ? backing : RGScopedSharedDefaults(backing: backing, prefix: prefix)
+}
+
+/// A full reset only removes this identity's shared settings, even under a pooled signing group.
+public func rgPreservedSharedDefaultsForOtherIdentities() -> [String: Any] {
+    guard !rgIsSandboxOnlyBuild, let backing = UserDefaults(suiteName: rgAppGroupIdentifier()) else { return [:] }
+    let own = RGStorageScope.preferencePrefix(identity: RGStorageScope.current)
+    return backing.dictionaryRepresentation().filter { own.isEmpty ? $0.key.hasPrefix(RGStorageScope.preferencesPrefix) : !$0.key.hasPrefix(own) }
+}
+
+public func rgClearSharedUserDefaults(preserving values: [String: Any]) {
+    guard !rgIsSandboxOnlyBuild, let backing = UserDefaults(suiteName: rgAppGroupIdentifier()) else { return }
+    let prefix = RGStorageScope.preferencePrefix(identity: RGStorageScope.current)
+    for key in backing.dictionaryRepresentation().keys where prefix.isEmpty ? !key.hasPrefix(RGStorageScope.preferencesPrefix) : key.hasPrefix(prefix) { backing.removeObject(forKey: key) }
+    for (key, value) in values { backing.set(value, forKey: key) }
+    backing.synchronize()
 }
 
 private func rgPrivateDataContainerURL() -> URL? {
@@ -272,8 +297,11 @@ public func rgDataContainerURL() -> URL? {
         rgRecordResolvedContainer("unavailable:\(rgOwnAppGroupIdentifier())")
         return nil
     }
-    rgRecordResolvedContainer("group:\(resolved.identifier)")
-    return resolved.url
+    let url = RGStorageScope.dataURL(container: resolved.url, identity: RGStorageScope.current)
+    do { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true) }
+    catch { return nil }
+    rgRecordResolvedContainer("group:\(resolved.identifier)/\(RGStorageScope.current)")
+    return url
 }
 
 // MARK: Regram

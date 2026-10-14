@@ -82,6 +82,27 @@ class ReleaseChecks(unittest.TestCase):
             api.assert_not_called()
 
     @patch.dict(os.environ, {'GITHUB_REPOSITORY': 'RegramDev/Regram-ios'})
+    def test_five_identity_release_verifies_all_files_and_markers(self):
+        packages = []
+        for variant, bundle in release.IDENTITIES.items():
+            prefix = 'Regram' if variant == 'Swiftgram' else 'Regram-' + variant
+            path = self.ipa.parent / (prefix + '-13.0-b40001.ipa')
+            with zipfile.ZipFile(path, 'w') as archive:
+                archive.writestr('Payload/Regram.app/Info.plist', plistlib.dumps({'CFBundleShortVersionString': '13.0', 'CFBundleVersion': '40001', 'CFBundleIdentifier': bundle, 'RegramUpdateVariant': variant}))
+            packages.append(self.request | {'filename': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'variant': variant, 'run_id': '123'})
+        self.request_path.write_text(json.dumps({'packages': packages}))
+        draft = {'draft': True, 'assets': [{'name': p['filename'], 'digest': 'sha256:' + p['sha256']} for p in packages]}
+        with patch.object(release, 'api', side_effect=[[], draft]), patch.object(release, 'command', return_value='') as command:
+            release.publish_all(self.request_path, self.ipa.parent, True)
+            self.assertEqual(command.call_count, 2)
+            self.assertEqual(len([a for a in command.call_args_list[0].args[0] if a.endswith('.ipa')]), 5)
+        wrong = packages[1] | {'variant': 'Nagram'}
+        self.request_path.write_text(json.dumps({'packages': [packages[0], wrong] + packages[2:]}))
+        with patch.object(release, 'api') as api, patch.object(release, 'command') as command:
+            with self.assertRaises(ValueError): release.publish_all(self.request_path, self.ipa.parent, True)
+            api.assert_not_called(); command.assert_not_called()
+
+    @patch.dict(os.environ, {'GITHUB_REPOSITORY': 'RegramDev/Regram-ios'})
     def test_only_publish_after_confirmed_draft_has_the_single_ipa(self):
         with patch.object(release, 'api', return_value=[]), patch.object(release, 'command', side_effect=['', json.dumps({'isDraft': True, 'assets': [{'name': self.ipa.name}]}), '']) as command:
             release.publish(self.request_path, self.ipa.parent, True)

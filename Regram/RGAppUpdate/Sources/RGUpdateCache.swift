@@ -46,9 +46,11 @@ final class RGUpdateCache: @unchecked Sendable {
 
     private static func hash(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
 
-    func load(installedVersion: String, installedBuild: String, signer: String?) throws -> State? {
+    func load(installedVersion: String, installedBuild: String, signer: String?, variant: RGUpdateVariant = .current) throws -> State? {
         lock.lock(); defer { lock.unlock() }
         guard var record = try read() else { return nil }
+        // MARK: Regram — copied or restored caches cannot cross installed package identities.
+        guard record.release.variant == variant else { try clear(); return nil }
         guard record.release.isNewer(version: installedVersion, build: installedBuild) else { try clear(); return nil }
         var changed = false
         var downloaded: URL?

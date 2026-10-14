@@ -10,6 +10,8 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 
 - Unlimited locally pinned chats and ordering in the main list and archive. Pins beyond the Telegram account limit remain local.
 - Recent chats, saved per account, with quick navigation and an option to clear the history.
+- Local group remarks: set a display name from the group profile, saved per account and used in chat lists, titles and local search. Clear it to restore the original name.
+- Message bookmarks and tags: bookmark a message from its menu, filter and edit tags per account, and jump back to the original message.
 - Configurable message double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Message menu visibility and ordering, based on actions available for the message and account.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with navigation to the original message.
@@ -70,7 +72,7 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 - Colored QR login, token refresh, data center migration, two-step verification, and retry handling.
 - No local account-count cap; Telegram server login rules still apply.
 - Category-based JSON settings backup and restore, excluding login sessions, chat databases, certificates, and API keys.
-- DC1–DC5 connection tests: initial connection request, three subsequent samples, average/minimum latency, variation and failures; current proxy type, DC region and connection state, cancellation and a copyable report.
+- DC1–DC5 connection tests on a separate page: initial connection request, three subsequent samples, average/minimum latency, variation and failures. Copied results contain only the five DC average ping values.
 - Media/filter diagnostics, font cache management, and local data cleanup.
 - Update checks and IPA downloads from this repository's GitHub Releases, with size and SHA-256 validation.
 - TrollStore updates: reuse GitHub downloads and verification, then hand the IPA to TrollStore for installation without certificates. Supports automatic checks and optional automatic downloads.
@@ -83,13 +85,15 @@ All Regram preferences are under **Settings → Regram Pro**, whose home page sh
 
 | Category | Contents |
 | --- | --- |
-| Messages & Input | Input tools, formatting, message actions, chat list, folders, and chat preferences |
+| Chats & Messages | Bookmarks and tags, message actions, chat list, and folders |
+| Input & Sending | Input tools, default formatting, send controls, and per-chat input settings |
 | Translation & Speech | Translation providers, LLM configuration, custom recognition, and transcription routes |
 | Privacy & Filters | Rules, hidden senders, anti-revoke, archived messages, ghost mode, and stories |
-| Media & Links | Preview repair, photos, stickers, recording, downloads, and playback |
+| Media & Links | Preview repair, photos, stickers, recording, and playback |
 | Appearance & Interface | Fonts, icons, badges, tab bar, and profile display |
 | Notifications & Alerts | Filtering, pins, mentions, and replies |
-| Management & Tools | Backups, diagnostics, updates, and data cleanup |
+| Network & Transfers | Upload/download parameters, call connections, diagnostics, and DC tests |
+| Management & Tools | Local Premium, backups, updates, and data cleanup |
 
 Each feature has one settings entry. Larger categories use subpages. Only the Regram Pro home page has search across all settings; results open their destination and scroll to the setting. Category pages and subpages do not add settings search or frequently used shortcuts. Long-press a setting to copy its deep link, containing only the page and setting identifier.
 
@@ -156,3 +160,5 @@ The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging g
 - [Contributing](.github/CONTRIBUTING.md)
 
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
+
+Bookmarks are under **Chats & Messages → Message Bookmarks & Tags**. DC testing is under **Network & Transfers → Performance & Transfers → DC1–DC5 Connection Tests**. Each installed identity selects its matching IPA from the shared GitHub Release, with size, SHA-256 and installation identity checks.

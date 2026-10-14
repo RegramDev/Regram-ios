@@ -95,8 +95,11 @@ public final class PasscodeEnvironment: @unchecked Sendable {
             throw PasscodeError.unavailable
         }
         #if !os(macOS)
+        // MARK: Regram — a scoped install can use a pooled container while its private keys stay
+        // under its own signed Bundle ID, rather than under that container's identifier.
+        let expectedSuffix = configuration.keychainScope == nil ? String(configuration.appGroupIdentifier.dropFirst("group.".count)) : (Bundle.main.bundleIdentifier ?? "")
         guard !group.hasPrefix("group."),
-              group.hasSuffix("." + configuration.appGroupIdentifier.dropFirst("group.".count)) else {
+              !expectedSuffix.isEmpty, group.hasSuffix("." + expectedSuffix) else {
             throw PasscodeError.unavailable
         }
         #endif
@@ -134,6 +137,8 @@ final class PasscodeKeychain: PasscodeStorage {
         #if os(macOS)
         return PasscodeKeychainScope.service(service, environment: self.environment)
         #else
+        // MARK: Regram — pooled signing App Groups must not share passcodes between identities.
+        if let scope = self.environment.keychainScope { return "org.telegram.scoped." + scope + "/" + service }
         return service
         #endif
     }

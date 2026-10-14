@@ -664,12 +664,12 @@
 "Settings.Category.translation" = "翻譯";
 "Settings.Category.transcription" = "語音轉文字";
 "Settings.Category.messageActions" = "訊息動作與顯示";
-"Settings.Category.media" = "媒體與下載";
+"Settings.Category.media" = "播放與媒體載入";
 "Settings.Category.photos" = "照片與畫質";
 "Settings.Category.stickers" = "貼圖與表情";
 "Settings.Category.recording" = "語音與圓形影片";
 "Settings.Category.app" = "應用與進階";
-"Settings.ProCategory.messages" = "訊息與輸入";
+"Settings.ProCategory.messages" = "聊天與訊息";
 "Settings.ProCategory.privacy" = "隱私與過濾";
 "Settings.ProCategory.translation" = "翻譯與語音";
 "Settings.ProCategory.media" = "媒體與連結";
@@ -865,3 +865,37 @@
 "EditHistory.PhotoUnavailable" = "無法載入此圖片，可能沒有儲存在本機，或原始檔案參照已經失效。";
 "EditHistory.LoadPhoto" = "載入歷史圖片";
 "EditHistory.LoadOriginal" = "載入原圖";
+
+// MARK: Regram — local group names
+"GroupRemark.Title" = "群組備註";
+"GroupRemark.NotSet" = "未設定";
+"GroupRemark.OriginalName" = "原群組名稱：%@";
+"GroupRemark.Notice" = "僅目前帳號在本機可見，顯示於聊天列表、聊天標題及本機搜尋。留空並儲存即可恢復原群組名稱。";
+"GroupRemark.UseOriginalName" = "使用原群組名稱";
+
+// MARK: Regram — bookmarks, focused settings and package identities
+"Settings.ProCategory.input" = "輸入與傳送";
+"Settings.ProCategory.network" = "網路與傳輸";
+"Settings.Category.input" = "輸入按鈕與傳送方式";
+"Settings.Category.transfer" = "傳輸與連線";
+"Settings.Category.privacy" = "隱私選項";
+"Diagnostics.CopyAverages" = "複製平均 Ping 值";
+"AppUpdate.NoVariant" = "此版本沒有與目前應用程式身分相符的更新套件。";
+"Bookmarks.Title" = "訊息書籤與標籤";
+"Bookmarks.Add" = "加入書籤";
+"Bookmarks.EditTags" = "編輯書籤標籤";
+"Bookmarks.Remove" = "移除書籤";
+"Bookmarks.All" = "全部書籤";
+"Bookmarks.Untagged" = "未加標籤";
+"Bookmarks.Filter" = "依標籤篩選";
+"Bookmarks.Tags" = "標籤";
+"Bookmarks.NewTag" = "新標籤";
+"Bookmarks.AddTag" = "加入標籤";
+"Bookmarks.Save" = "儲存標籤";
+"Bookmarks.TagsNotice" = "選擇已有標籤或加入新標籤。每則訊息最多 10 個標籤，每個標籤最多 32 個字元。";
+"Bookmarks.Notice" = "書籤和標籤僅在本機依帳號儲存，記錄原訊息的位置。原訊息刪除後不會因此恢復內容。";
+"Bookmarks.Media" = "媒體訊息";
+"Bookmarks.Unavailable" = "原訊息尚未在本機載入，點按嘗試開啟。";
+"Bookmarks.Empty" = "目前篩選下沒有書籤。";
+"Bookmarks.LoadMore" = "載入更多書籤";
+"Bookmarks.ChatUnavailable" = "原聊天資訊在本機不可用，仍可編輯標籤或移除此書籤。";

@@ -6882,7 +6882,22 @@ private final class ChatListLocationContext {
     
     var leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
     var rightButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-    var settingsButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+    private var rgSettingsEditing = false // MARK: Regram
+    private var rgSettingsReordering = false
+    // MARK: Regram — evaluate visibility during layout, not only on a network/list event.
+    var settingsButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>? {
+        let isRoot: Bool
+        if case .chatList(.root) = self.location { isRoot = true } else { isRoot = false }
+        guard RGHiddenTabBarPolicy.showSettings(isTabBarVisible: RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible, isRootChatList: isRoot, editing: rgSettingsEditing, reordering: rgSettingsReordering) else { return nil }
+        return AnyComponentWithIdentity(id: "settings", component: AnyComponent(NavigationButtonComponent(
+            content: .settings(title: self.context.sharedContext.currentPresentationData.with { $0 }.strings.Settings_Title),
+            pressed: { [weak self] _ in self?.parentController?.settingsPressed() },
+            contextAction: { [weak self] sourceView, gesture in
+                guard let self, let root = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface else { return }
+                root.accountSettingsController?.tabBarItemContextActionRawUIView(sourceView: sourceView, gesture: gesture)
+            }
+        )))
+    }
     var proxyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
     var storyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
     
@@ -7263,6 +7278,9 @@ private final class ChatListLocationContext {
         presentationData: PresentationData,
         storyPostingAvailable: Bool
     ) {
+        // MARK: Regram — selection and folder reordering retain their existing Done action.
+        rgSettingsEditing = stateAndFilterId.state.editing
+        rgSettingsReordering = isReorderingTabs
         let defaultTitle: String
         switch location {
         case let .chatList(groupId):
@@ -7391,28 +7409,7 @@ private final class ChatListLocationContext {
                     self.storyButton = nil
                 }
                 
-                // MARK: Regram
-                if RGSimpleSettings.shared.hideTabBar {
-                    self.settingsButton = AnyComponentWithIdentity(id: "settings", component: AnyComponent(NavigationButtonComponent(
-                        content: .more,
-                        pressed: { [weak self] _ in
-                            self?.parentController?.settingsPressed()
-                        },
-                        contextAction: { [weak self] sourceView, gesture in
-                            guard let self else {
-                                return
-                            }
-                            if let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface {
-                                if let accountSettingsController = rootController.accountSettingsController {
-                                    accountSettingsController.tabBarItemContextActionRawUIView(sourceView: sourceView, gesture: gesture)
-                                }
-                            }
-                        }
-                    )))
-                } else {
-                    self.settingsButton = nil
-                }
-                
+
             } else {
                 let parentController = self.parentController
                 self.rightButton = AnyComponentWithIdentity(id: "more", component: AnyComponent(NavigationButtonComponent(
@@ -7679,9 +7676,8 @@ extension ChatListControllerImpl {
 
     @objc fileprivate func settingsPressed() {
         if let rootController = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface {
-            if let accountSettingsController = rootController.accountSettingsController {
-                (self.navigationController as? NavigationController)?.pushViewController(accountSettingsController)
-            }
+            // MARK: Regram — select the owned settings tab instead of pushing it a second time.
+            rootController.openSettings(edit: false)
         }
     }
 }

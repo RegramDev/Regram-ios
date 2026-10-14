@@ -41,6 +41,10 @@ public enum RGProSearchIndex {
         "backup": ["Backup.Title", "Backup.Import", "Backup.Export", "backup restore 备份 備份 恢复 還原 配置"],
         "chatPreferences": ["ChatPreferences.Title", "chat settings per chat 会话 對話 格式"],
         "revokedMessages": ["Revoked.Title", "revoked history 撤回 历史 歷史"],
+        "bookmarks": ["Bookmarks.Title", "bookmark tags labels 书签 标签 書籤 標籤"],
+        "inputSettings": ["Settings.Category.input", "send input button 发送 输入 按钮"],
+        "transferSettings": ["Settings.Category.transfer", "network download upload tcp 网络 传输 下载 上传"],
+        "privacySettings": ["Settings.Category.privacy", "phone sensitive 隐私 手机 敏感"],
         "diagnostics": ["Diagnostics.Title", "diagnostics speed performance 速度 性能 诊断 診斷"],
         "filterNotifications": ["Notifications.ContentFilter", "notification filter 通知 过滤 過濾"],
     ]

@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -223,6 +224,7 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
     private var titleStatusIcon: ChatTitleCredibilityIcon = .none
     
     private var presenceManager: PeerPresenceStatusManager?
+    private var rgGroupRemarkObserver: NSObjectProtocol? // MARK: Regram
     
     private var pointerInteraction: PointerInteraction?
     
@@ -299,7 +301,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
                                     if !peerView.isContact, let user = peer as? TelegramUser, !user.flags.contains(.isSupport), user.botInfo == nil, let phone = user.phone, !phone.isEmpty {
                                         segments = [.text(0, NSAttributedString(string: formatPhoneNumber(context: self.context, number: phone), font: titleFont, textColor: titleTheme.rootController.navigationBar.primaryTextColor))]
                                     } else {
-                                        segments = [.text(0, NSAttributedString(string: EnginePeer(peer).displayTitle(strings: self.strings, displayOrder: self.nameDisplayOrder), font: titleFont, textColor: titleTheme.rootController.navigationBar.primaryTextColor))]
+                                        // MARK: Regram — use the account's local group name.
+                                        segments = [.text(0, NSAttributedString(string: EnginePeer(peer).rgGroupDisplayTitle(accountId: self.context.account.peerId.toInt64(), strings: self.strings, displayOrder: self.nameDisplayOrder), font: titleFont, textColor: titleTheme.rootController.navigationBar.primaryTextColor))]
                                     }
                                 }
                                 if peer.id != self.context.account.peerId {
@@ -798,6 +801,14 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         self.button = HighlightTrackingButtonNode()
         
         super.init(frame: CGRect())
+        // MARK: Regram — the underlying cloud peer need not change to refresh its title.
+        self.rgGroupRemarkObserver = NotificationCenter.default.addObserver(forName: RGGroupRemarks.didChange, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let change = notification.object as? RGGroupRemarkChange,
+                  change.accountId == self.context.account.peerId.toInt64(),
+                  let content = self.titleContent, case let .peer(peerData, _, _, _, _, _, _, _, _) = content,
+                  change.peerId == peerData.peerId.toInt64() else { return }
+            self.titleContent = content
+        }
         
         self.isAccessibilityElement = true
         self.accessibilityTraits = .header
@@ -840,6 +851,11 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         self.button.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(self.longPressGesture(_:))))
     }
     
+    deinit {
+        // MARK: Regram
+        if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
+    }
+
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }

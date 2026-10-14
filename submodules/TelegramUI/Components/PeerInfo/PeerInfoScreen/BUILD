@@ -23,6 +23,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = rgdeps + [
+        "//submodules/LocalizedPeerData", # MARK: Regram
         "//submodules/UrlWhitelist",
         "//submodules/AccountContext",
         "//submodules/LottieSettings:LottieSettings",

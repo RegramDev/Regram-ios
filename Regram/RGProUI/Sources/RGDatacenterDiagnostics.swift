@@ -75,20 +75,5 @@ final class RGDatacenterDiagnostics: ObservableObject {
         if running { cancelled = true }
         running = false
     }
-    func report(language: String, filterMilliseconds: Double? = nil) -> String {
-        func ms(_ value: Double?) -> String { value.map { String(format: "%.0f ms", $0) } ?? "—" }
-        var lines = ["Regram \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")", ISO8601DateFormatter().string(from: Date()), routeKey.i18n(language), "\(RGDatacenterLocation.title(currentDatacenter)): \(connectionKey.i18n(language))"]
-        for dc in 1...5 {
-            let result = results[dc]!
-            let initial = result.connectionFailed ? (result.connectionTimedOut ? "Diagnostics.DC.Timeout" : "Diagnostics.DC.Failed").i18n(language) : ms(result.connectionMilliseconds)
-            lines.append("\(RGDatacenterLocation.title(dc)): \("Diagnostics.DC.Connection".i18n(language)) \(initial), \("Diagnostics.DC.Average".i18n(language)) \(ms(result.average)), \("Diagnostics.DC.Minimum".i18n(language)) \(ms(result.minimum)), \("Diagnostics.DC.Variation".i18n(language)) \(ms(result.variation)), \("Diagnostics.DC.Failures".i18n(language)) \(result.failures)/3, \("Diagnostics.DC.Timeouts".i18n(language)) \(result.timeouts), \("Diagnostics.DC.Samples".i18n(language)) \(result.samples.count)/3")
-        }
-        let transfer = RGTransferStatistics.shared.snapshot()
-        lines.append("\("Diagnostics.Speed".i18n(language)): \(transfer.roundedBytesPerSecond) B/s")
-        lines.append("\("Diagnostics.Received".i18n(language)): \(transfer.receivedBytes) B")
-        lines.append("\("Diagnostics.Filter.Average".i18n(language)): \(ms(filterMilliseconds))")
-        lines.append("\("Diagnostics.Rules".i18n(language)): \(RGSimpleSettings.shared.messageFilterRules.count)")
-        if cancelled { lines.append("Diagnostics.DC.Cancelled".i18n(language)) }
-        return lines.joined(separator: "\n")
-    }
+    func report() -> String { RGDatacenterReport.averages(results) }
 }

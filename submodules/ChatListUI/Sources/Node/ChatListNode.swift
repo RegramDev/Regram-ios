@@ -1233,6 +1233,7 @@ public final class ChatListNode: ListViewImpl {
     
     private let fillPreloadItems: Bool
     private var rgSeparatorObserver: NSObjectProtocol?
+    private var rgGroupRemarkObserver: NSObjectProtocol? // MARK: Regram
     private let context: AccountContext
     private let location: ChatListControllerLocation
     private let mode: ChatListNodeMode
@@ -1449,6 +1450,12 @@ public final class ChatListNode: ListViewImpl {
         // MARK: Regram — update existing rows immediately without resetting chat-list state.
         self.rgSeparatorObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.chatListSeparatorSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
             self?.forEachItemNode { node in (node as? ChatListItemNode)?.rgRefreshSeparatorVisibility() }
+        }
+        // MARK: Regram — redraw existing group rows when their local name changes.
+        self.rgGroupRemarkObserver = NotificationCenter.default.addObserver(forName: RGGroupRemarks.didChange, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let change = notification.object as? RGGroupRemarkChange,
+                  change.accountId == self.context.account.peerId.toInt64() else { return }
+            self.forEachItemNode { ($0 as? ChatListItemNode)?.rgRefreshGroupRemark(change) }
         }
         
         if case .internal = context.sharedContext.applicationBindings.appBuildType {
@@ -3265,6 +3272,7 @@ public final class ChatListNode: ListViewImpl {
     }
     
     deinit {
+        if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) } // MARK: Regram
         if let observer = self.rgSeparatorObserver { NotificationCenter.default.removeObserver(observer) }
         self.chatListDisposable.dispose()
         self.activityStatusesDisposable?.dispose()

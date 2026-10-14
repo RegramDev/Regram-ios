@@ -147,7 +147,7 @@ class DefaultIntentHandler: INExtension, INSendMessageIntentHandling, INSearchFo
         let languagesCategory = "ios"
         
         let appGroupName = rgAppGroupIdentifier()
-        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
+        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension, keychainScope: RGStorageScope.keychainScope))
         let maybeAppGroupUrl = rgDataContainerURL()
         
         guard let appGroupUrl = maybeAppGroupUrl else {

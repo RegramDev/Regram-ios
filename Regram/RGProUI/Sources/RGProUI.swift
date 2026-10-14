@@ -22,7 +22,7 @@ import RGLogging
 import RGStrings
 
 public enum RGProSettingsPage: String {
-    case home, messages, privacy, translation, media, appearance, notifications, tools
+    case home, messages, input, privacy, translation, media, appearance, notifications, network, tools
     var titleKey: String { "Settings.ProCategory." + self.rawValue }
 }
 
@@ -35,10 +35,14 @@ private enum RGProControllerSection: Int32, RGItemListSection {
     case footer
     case translation
     case media
+    case input
+    case network
 }
 
 private enum RGProDisclosureLink: String {
     case messagesPage
+    case inputPage
+    case networkPage
     case privacyPage
     case translationPage
     case mediaPage
@@ -60,6 +64,10 @@ private enum RGProDisclosureLink: String {
     case recordingSettings
     case appUpdate
     case appSettings
+    case inputSettings
+    case transferSettings
+    case privacySettings
+    case bookmarks
 
     case antiFeatures
     case ghostMode
@@ -107,7 +115,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
         entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: ""), text: searchQuery, placeholder: presentationData.strings.Common_Search))
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
-            for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.toolsPage, .tools)] {
+            for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.inputPage, .input), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.networkPage, .network), (.toolsPage, .tools)] {
                 entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
             }
         } else {
@@ -122,22 +130,22 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
-    entries.append(.toggle(id: id.count, section: .base, settingName: .inputToolbar, value: RGSimpleSettings.shared.inputToolbar, text: "InputToolbar.Title".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .inputToolbar, value: RGSimpleSettings.shared.inputToolbar, text: "InputToolbar.Title".i18n(lang), enabled: true))
     // MARK: Regram
-    entries.append(.toggle(id: id.count, section: .base, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "Mention.UserIdLink.Notice".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .input, text: "Mention.UserIdLink.Notice".i18n(lang)))
     // MARK: Regram — local Premium switch.
-    entries.append(.toggle(id: id.count, section: .antiFeatures, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .antiFeatures, text: "LocalPremium.Notice".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .footer, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .footer, text: "LocalPremium.Notice".i18n(lang)))
     // MARK: Regram — link previews off.
     entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
     // MARK: Regram — pangu spacing.
-    entries.append(.toggle(id: id.count, section: .base, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "Pangu.Notice".i18n(lang)))
-    entries.append(.oneFromManySelector(id: id.count, section: .base, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .base, text: "OutgoingFormatting.Notice".i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .base, link: .chatPreferences, text: "ChatPreferences.Title".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .input, text: "Pangu.Notice".i18n(lang)))
+    entries.append(.oneFromManySelector(id: id.count, section: .input, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .input, text: "OutgoingFormatting.Notice".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .input, link: .chatPreferences, text: "ChatPreferences.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiFeatures, text: "AntiFeatures.Header".i18n(lang)))
     // MARK: Regram — chats anti-revoke is on for individually (toggled from their profile).
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .antiRevokeChats, text: "AntiRevoke.Chats.Title".i18n(lang)))
@@ -158,7 +166,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
     entries.append(.notice(id: id.count, section: .appearance, text: "AppBadge.Notice".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .backup, text: "Backup.Title".i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .footer, link: .diagnostics, text: "Diagnostics.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .network, link: .diagnostics, text: "Diagnostics.Title".i18n(lang)))
 
     entries.append(.action(id: id.count, section: .footer, actionType: .eraseAllData, text: "EraseData.Title".i18n(lang), kind: .destructive))
     entries.append(.notice(id: id.count, section: .footer, text: "EraseData.Notice".i18n(lang)))
@@ -179,12 +187,18 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appearanceSettings, text: RGSettingsPage.appearance.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .profileSettings, text: RGSettingsPage.profiles.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .storiesSettings, text: RGSettingsPage.stories.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .footer, link: .appSettings, text: RGSettingsPage.app.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .privacySettings, text: RGSettingsPage.privacy.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
+
+    entries.append(.disclosure(id: id.count, section: .base, link: .bookmarks, text: "Bookmarks.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .input, link: .inputSettings, text: RGSettingsPage.input.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .network, link: .transferSettings, text: RGSettingsPage.transfer.titleKey.i18n(lang)))
 
     let section: RGProControllerSection
     switch page {
     case .home, .messages: section = .base
+    case .input: section = .input
+    case .network: section = .network
     case .privacy: section = .antiFeatures
     case .translation: section = .translation
     case .media: section = .media
@@ -282,6 +296,12 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     }, openDisclosureLink: { link in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch (link) {
+            case .inputPage: pushControllerImpl?(rgProController(context: context, page: .input))
+            case .networkPage: pushControllerImpl?(rgProController(context: context, page: .network))
+            case .bookmarks: pushControllerImpl?(rgBookmarksController(context: context))
+            case .inputSettings: pushControllerImpl?(rgSettingsController(context: context, page: .input))
+            case .transferSettings: pushControllerImpl?(rgSettingsController(context: context, page: .transfer))
+            case .privacySettings: pushControllerImpl?(rgSettingsController(context: context, page: .privacy))
             case .messagesPage: pushControllerImpl?(rgProController(context: context, page: .messages))
             case .privacyPage: pushControllerImpl?(rgProController(context: context, page: .privacy))
             case .translationPage: pushControllerImpl?(rgProController(context: context, page: .translation))
