@@ -1,4 +1,4 @@
-name: Publish confirmed five-identity release
+name: Publish confirmed IPA
 
 on:
   workflow_dispatch:
@@ -8,11 +8,11 @@ on:
         required: true
         type: string
       ipa_filename:
-        description: Base filename for the five approved IPAs (Regram-13.0-b34607.ipa)
+        description: Exact approved filename (Regram-13.0-b34608.ipa)
         required: true
         type: string
       confirm_publish:
-        description: I confirm publishing all five matching identity IPAs to Releases
+        description: I confirm publishing this IPA filename and build to Releases
         required: true
         default: false
         type: boolean
@@ -46,14 +46,14 @@ jobs:
           BUILD_RUN_ID: ${{ inputs.build_run_id }}
           IPA_FILENAME: ${{ inputs.ipa_filename }}
         run: |
-          python3 build-system/ci/release.py prepare --all-variants \
+          python3 build-system/ci/release.py prepare \
             --run-id "$BUILD_RUN_ID" --filename "$IPA_FILENAME" \
             --request build-input/release/request.json
 
-      - name: Download the five approved IPAs
+      - name: Download only the approved IPA
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          artifact-ids: ${{ steps.selection.outputs.artifact_ids }}
+          artifact-ids: ${{ steps.selection.outputs.artifact_id }}
           run-id: ${{ inputs.build_run_id }}
           github-token: ${{ github.token }}
           path: build-input/release/ipa
@@ -62,5 +62,5 @@ jobs:
 
       - name: Publish the confirmed IPA to Releases
         run: |
-          python3 build-system/ci/release.py publish --confirmed --all-variants \
+          python3 build-system/ci/release.py publish --confirmed \
             --request build-input/release/request.json --directory build-input/release/ipa

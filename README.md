@@ -160,4 +160,4 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 
 Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及第三方依赖的许可证，并明确标识为非官方客户端。
 
-书签管理位于 **聊天与消息 → 消息书签与标签**；DC 测试位于 **网络与传输 → 性能与传输 → DC1–DC5 连接测试**。不同安装身份从同一 GitHub Release 选择对应 IPA，文件大小、SHA-256 和安装身份均继续校验。
+书签管理位于 **聊天与消息 → 消息书签与标签**；DC 测试位于 **网络与传输 → 性能与传输 → DC1–DC5 连接测试**。发行仅保留一份 Regram IPA，应用内更新使用 `Regram-版本-b构建号.ipa`，继续校验文件大小、SHA-256 和安装身份。

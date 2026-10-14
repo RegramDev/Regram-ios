@@ -20,7 +20,7 @@ def api(path):
 
 
 def filename_parts(filename):
-    match = re.fullmatch(r'Regram-(?:(?:Nicegram|OLAI|Turrit|Nagram)-)?(\d+(?:\.\d+){1,3})-b([1-9]\d*)\.ipa', filename)
+    match = re.fullmatch(r'Regram-(\d+(?:\.\d+){1,3})-b([1-9]\d*)\.ipa', filename)
     if not match:
         raise ValueError('Use the exact Regram-version-bbuild.ipa filename')
     return match.groups()
@@ -109,62 +109,10 @@ def publish(request_path, directory, confirmed):
     print(f"Published {tag}: {request['filename']}")
 
 
-IDENTITIES = {'Swiftgram': 'app.swiftgram.ios', 'Nicegram': 'app.nicegram', 'OLAI': 'com.olcorporation.olai', 'Turrit': 'com.seastar.turrit', 'Nagram': 'xyz.nextalone.nagram'}
-
-
-def prepare_all(repository, run_id, filename, request_path):
-    version, build = filename_parts(filename)
-    if filename != f'Regram-{version}-b{build}.ipa':
-        raise ValueError('Select the base IPA filename to publish all five identities')
-    packages = []
-    for identity in IDENTITIES:
-        prefix = 'Regram' if identity == 'Swiftgram' else 'Regram-' + identity
-        name = f'{prefix}-{version}-b{build}.ipa'
-        request = prepare(repository, run_id, name, request_path.parent / (identity + '.json'))
-        request['variant'] = identity
-        packages.append(request)
-    request_path.write_text(json.dumps({'packages': packages}, indent=2) + '\n')
-    if output := os.environ.get('GITHUB_OUTPUT'):
-        with open(output, 'a') as stream: stream.write('artifact_ids=' + ','.join(str(p['artifact_id']) for p in packages) + '\n')
-    return packages
-
-
-def publish_all(request_path, directory, confirmed):
-    if not confirmed: raise ValueError('Explicit publication confirmation is required')
-    packages = json.loads(request_path.read_text())['packages']
-    if len(packages) != 5 or {p['variant'] for p in packages} != set(IDENTITIES): raise ValueError('All five identities must be approved')
-    repository = os.environ['GITHUB_REPOSITORY']
-    if any(p['repository'] != repository for p in packages): raise ValueError('Repository mismatch')
-    if len({(p['source_commit'], p['build'], p['version'], p['run_id']) for p in packages}) != 1: raise ValueError('Five packages must come from the same build')
-    files = {p.name: p for p in directory.rglob('*') if p.is_file()}
-    if set(files) != {p['filename'] for p in packages}: raise ValueError('Download exactly the five approved IPAs')
-    for package in packages:
-        path = files[package['filename']]
-        verify_ipa(path, package)
-        with zipfile.ZipFile(path) as archive:
-            plist = next(name for name in archive.namelist() if re.fullmatch(r'Payload/[^/]+\.app/Info\.plist', name))
-            metadata = plistlib.loads(archive.read(plist))
-            if metadata['CFBundleIdentifier'] != IDENTITIES[package['variant']] or metadata.get('RegramUpdateVariant') != package['variant']:
-                raise ValueError('Packaged identity differs from its approved filename')
-    first = packages[0]; tag = f"v{first['version']}-b{first['build']}"
-    if any(ref['ref'] == 'refs/tags/' + tag for ref in api(f'repos/{repository}/git/matching-refs/tags/{tag}')): raise ValueError('Preserve existing release tags')
-    notes = request_path.parent / 'notes.md'
-    notes.write_text('Five Regram installation identities, built from `' + first['source_commit'] + '`.\n\n' + '\n'.join(p['filename'] + ': `' + p['sha256'] + '`' for p in packages) + '\n')
-    command(['gh', 'release', 'create', tag] + [str(files[p['filename']]) for p in packages] + ['--repo', repository, '--target', first['source_commit'], '--title', f"Regram {first['version']} (b{first['build']})", '--notes-file', str(notes), '--draft'])
-    release = api(f'repos/{repository}/releases/tags/{tag}')
-    assets = {a['name']: a for a in release['assets']}
-    if not release['draft'] or set(assets) != set(files): raise ValueError('Draft asset set differs from approval')
-    for p in packages:
-        if assets[p['filename']].get('digest') != 'sha256:' + p['sha256']: raise ValueError('Uploaded checksum differs from the approved build')
-    command(['gh', 'release', 'edit', tag, '--repo', repository, '--draft=false'])
-    print('Published ' + tag + ' with five verified installation identities')
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='action', required=True)
     selection = subparsers.add_parser('prepare')
-    selection.add_argument('--all-variants', action='store_true')
     selection.add_argument('--run-id', required=True)
     selection.add_argument('--filename', required=True)
     selection.add_argument('--request', required=True, type=Path)
@@ -172,9 +120,8 @@ if __name__ == '__main__':
     publication.add_argument('--request', required=True, type=Path)
     publication.add_argument('--directory', required=True, type=Path)
     publication.add_argument('--confirmed', action='store_true')
-    publication.add_argument('--all-variants', action='store_true')
     args = parser.parse_args()
     if args.action == 'prepare':
-        (prepare_all if args.all_variants else prepare)(os.environ['GITHUB_REPOSITORY'], args.run_id, args.filename, args.request)
+        prepare(os.environ['GITHUB_REPOSITORY'], args.run_id, args.filename, args.request)
     else:
-        (publish_all if args.all_variants else publish)(args.request, args.directory, args.confirmed)
+        publish(args.request, args.directory, args.confirmed)

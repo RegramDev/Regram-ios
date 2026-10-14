@@ -30,25 +30,24 @@ jobs:
 
       - name: Prepare encrypted configuration
         env:
-          REGRAM_BUILD_VARIANTS_CONFIGURATION: ${{ secrets.REGRAM_BUILD_VARIANTS_CONFIGURATION }}
+          REGRAM_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BUILD_CONFIGURATION }}
         run: |
           set -euo pipefail
           mkdir -p build-input/ci
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          value = os.environ.get('REGRAM_BUILD_VARIANTS_CONFIGURATION', '')
+          value = os.environ.get('REGRAM_BUILD_CONFIGURATION', '')
           if not value:
-              raise SystemExit('Configure the REGRAM_BUILD_VARIANTS_CONFIGURATION repository Secret before building')
+              raise SystemExit('Configure the REGRAM_BUILD_CONFIGURATION repository Secret before building')
           try:
               json.loads(value)
           except ValueError:
               raise SystemExit('The CI build configuration Secret is not valid JSON') from None
-          path = Path('build-input/ci/variants.json')
+          path = Path('build-input/ci/configuration.json')
           path.write_text(value)
           path.chmod(0o600)
           PY
-          python3 build-system/ci/variants.py --config build-input/ci/variants.json --output build-input/ci/configurations
 
       - name: Reclaim simulator disk space
         run: |
@@ -73,10 +72,10 @@ jobs:
             regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-
             regram-xcode27-arm64-
 
-      - name: Build and package all five Regram identity IPAs
+      - name: Build and package Regram arm64 reference IPA
         run: bash build-system/ci/build.sh
 
-      - name: Upload five IPA files
+      - name: Upload the IPA file
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           path: build/artifacts/*.ipa
@@ -84,14 +83,14 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload five package verification reports
+      - name: Upload package verification report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: package-verification
-          path: build-input/ci/BUILD-MANIFEST-*.json
+          path: build-input/ci/BUILD-MANIFEST.json
           if-no-files-found: error
           retention-days: 14
 
       - name: Remove plaintext build inputs
         if: always()
-        run: rm -rf build-input/ci/variants.json build-input/ci/configurations build-input/configuration-repository
+        run: rm -rf build-input/ci/configuration.json build-input/configuration-repository

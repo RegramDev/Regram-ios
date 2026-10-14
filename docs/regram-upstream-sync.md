@@ -17,29 +17,20 @@
 非目标：
 
 - 不追求与 Telegram 每个提交实时同步。
-- 不继续同时跟踪 Telegram 和 Swiftgram 两个活跃上游。
+- 官方 Telegram 作为唯一活跃上游。
 - 不把所有 Regram 改动重新压成一个五万行的大提交。
 
-## 2. Swiftgram 的实际更新方式
+## 2. Regram 补丁组织方式
 
-Swiftgram GitHub 历史表明，它并不是持续将 Telegram merge 到产品分支中，而是在每个版本重新建立产品树：
+在选定的官方 Telegram 基线上，按功能迁移 Regram 改动，并保留独立的验证与回滚点：
 
 1. 选择新的官方 Telegram 提交作为基线。
-2. 在该基线上应用一个完整的 Swiftgram 差异快照。
-3. 提交一个 `Swiftgram Version X` 大提交。
-4. 在其后追加少量修复。
-5. 使用 `release/*` 分支保存旧版本。
+2. 在该基线上逐组应用 Regram 功能补丁。
+3. 每个行为使用独立、可审查的提交。
+4. 每组改动通过构建及相关检查后继续迁移。
+5. 使用发布分支和标签保存已交付版本。
 
-以当前公开的 Swiftgram master 为例：
-
-- 官方 Telegram 基线：`6ad963e5b62d354da79040f388ae2b9132fb17b8`
-- 第一个 Swiftgram 提交：`5ed59da88839fb8cd802e5bf181ce4293044c8c1`
-- Swiftgram master：`cf8b23beaaac4126a396337ac2d5be13f9f76b66`
-- master 只比官方 Telegram 多 6 个提交。
-- 第一个 Swiftgram 提交修改约 1,035 个文件，约 `+53,465/-2,798` 行。
-- Swiftgram 独有历史中没有正常的 Telegram 上游 merge commit。
-
-这证明“在新上游基线上重新应用产品差异”是可行的，但单个巨大快照难以审查、定位和独立回滚。Regram 采用相同的重建方向，但将快照拆成有边界的功能补丁。
+功能补丁应记录上游接触点、构建依赖及验证场景，便于后续版本重放、定位问题和单独回滚。
 
 ## 3. 上游和分支模型
 
@@ -47,7 +38,6 @@ Swiftgram GitHub 历史表明，它并不是持续将 Telegram merge 到产品�
 
 - `telegram`：官方 `TelegramMessenger/Telegram-iOS`，唯一活跃上游。
 - `origin`：Regram 自有仓库。
-- `swiftgram`：只用于历史追溯和行为对照，不再参与日常同步。
 
 ### 3.2 推荐分支
 
@@ -111,7 +101,7 @@ Regram 改动应按以下顺序组织。每一组可以包含多个小提交，�
 ### 5.2 建立新集成树
 
 1. 从选定的官方 Telegram SHA 创建新的集成分支。
-2. 不直接 cherry-pick Swiftgram 的 `Swiftgram Version X` 巨型提交。
+2. 按功能整理旧树中的改动，建立独立的补丁提交。
 3. 按第 4 节顺序，从 legacy 树逐组迁移功能。
 4. 每完成一组立即构建和验证，再迁移下一组。
 5. 旧分支始终保持可构建，用于行为对照和回滚。
@@ -278,8 +268,8 @@ git config rerere.autoupdate true
 ## 11. 禁止事项
 
 - 禁止直接在有未提交改动的工作树中同步上游。
-- 禁止把 Telegram、Swiftgram 同时作为活跃上游进行双向 merge。
-- 禁止继续生成类似 `Swiftgram Version X` 的单个巨大产品快照提交。
+- 官方 Telegram 作为唯一活跃上游，产品补丁由 Regram 维护。
+- 禁止将全部产品改动压成一个无法独立审查和回滚的巨大快照提交。
 - 禁止仅以“编译通过”作为同步完成标准。
 - 禁止隐藏或丢弃无法理解的冲突。
 - 禁止在没有 release/tag 回滚点时重写 `regram/main`。

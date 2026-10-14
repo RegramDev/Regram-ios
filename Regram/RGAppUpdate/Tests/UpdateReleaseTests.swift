@@ -26,6 +26,26 @@ import Foundation
             rejected(try fixture { value in var assets = value["assets"] as! [[String: Any]]; assets[0][mutation.key] = mutation.value; value["assets"] = assets })
         }
         rejected(try fixture { value in var assets = value["assets"] as! [[String: Any]]; assets[0].removeValue(forKey: "digest"); value["assets"] = assets })
+        let withRetiredPackage = try fixture { value in
+            var assets = value["assets"] as! [[String: Any]]
+            var retired = assets[0]
+            retired["name"] = "Regram-Other-13.0-b34592.ipa"
+            retired["browser_download_url"] = "https://github.com/RegramDev/Regram-ios/releases/download/v13.0-b34592/Regram-Other-13.0-b34592.ipa"
+            assets.append(retired)
+            value["assets"] = assets
+        }
+        let selectedBase = try RGUpdateRelease.parseGitHub(withRetiredPackage)
+        assert(selectedBase.downloadURL == release.downloadURL)
+        rejected(try fixture { value in
+            var assets = value["assets"] as! [[String: Any]]
+            assets[0]["name"] = "Regram-Other-13.0-b34592.ipa"
+            value["assets"] = assets
+        })
+        rejected(try fixture { value in
+            var assets = value["assets"] as! [[String: Any]]
+            assets[0]["browser_download_url"] = "https://github.com/RegramDev/Regram-ios/releases/download/v13.0-b1/Regram-13.0-b34592.ipa"
+            value["assets"] = assets
+        })
         let node = RGLCSignNode.fallback[1]
         let manifest = try node.manifestURL(token: "aB1234")
         let url = try RGLCSignNode.installationURL(manifest: manifest)

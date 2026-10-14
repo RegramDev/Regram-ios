@@ -889,7 +889,6 @@ Matching is case-insensitive.";
 "Settings.Category.transfer" = "Transfer & Connection";
 "Settings.Category.privacy" = "Privacy Options";
 "Diagnostics.CopyAverages" = "Copy Average Ping Values";
-"AppUpdate.NoVariant" = "This release has no update package matching this app identity.";
 "Bookmarks.Title" = "Message Bookmarks & Tags";
 "Bookmarks.Add" = "Add Bookmark";
 "Bookmarks.EditTags" = "Edit Bookmark Tags";

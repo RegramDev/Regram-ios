@@ -42,7 +42,6 @@ try:
     with tempfile.TemporaryDirectory(prefix='regram-download-checks-') as temporary:
         binary = Path(temporary) / 'download-checks'
         subprocess.run(['xcrun', 'swiftc', '-warnings-as-errors', '-parse-as-library',
-                        str(SOURCES / 'Sources/RGUpdateVariant.swift'),
                         str(SOURCES / 'Sources/RGUpdateRelease.swift'),
                         str(SOURCES / 'Sources/RGUpdateDownload.swift'),
                         str(SOURCES / 'Tests/DownloadProgressTests.swift'), '-o', str(binary)], check=True)

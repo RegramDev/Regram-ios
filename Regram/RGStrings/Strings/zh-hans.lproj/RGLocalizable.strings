@@ -882,7 +882,6 @@
 "Settings.Category.transfer" = "传输与连接";
 "Settings.Category.privacy" = "隐私选项";
 "Diagnostics.CopyAverages" = "复制平均 Ping 值";
-"AppUpdate.NoVariant" = "此发布没有与当前应用身份匹配的更新包。";
 "Bookmarks.Title" = "消息书签与标签";
 "Bookmarks.Add" = "添加书签";
 "Bookmarks.EditTags" = "编辑书签标签";

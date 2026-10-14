@@ -27,7 +27,7 @@ class NotificationViewController: UIViewController, UNNotificationContentExtensi
             let languagesCategory = "ios"
             
             let appGroupName = rgAppGroupIdentifier()
-            try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension, keychainScope: RGStorageScope.keychainScope))
+            try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: appGroupName, processRole: .appExtension))
             let maybeAppGroupUrl = rgDataContainerURL()
             
             guard let appGroupUrl = maybeAppGroupUrl else {

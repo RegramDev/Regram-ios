@@ -880,7 +880,6 @@
 "Settings.Category.transfer" = "傳輸與連線";
 "Settings.Category.privacy" = "隱私選項";
 "Diagnostics.CopyAverages" = "複製平均 Ping 值";
-"AppUpdate.NoVariant" = "此版本沒有與目前應用程式身分相符的更新套件。";
 "Bookmarks.Title" = "訊息書籤與標籤";
 "Bookmarks.Add" = "加入書籤";
 "Bookmarks.EditTags" = "編輯書籤標籤";

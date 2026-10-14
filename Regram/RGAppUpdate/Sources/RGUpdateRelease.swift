@@ -12,20 +12,17 @@ public struct RGUpdateRelease: Equatable, Codable, Sendable {
         URL(string: "https://github.com/RegramDev/Regram-ios/releases/tag")!.appendingPathComponent("v\(version)-b\(build)")
     }
 
-    public var variant: RGUpdateVariant? { RGUpdateVariant.forAssetName(downloadURL.lastPathComponent) }
-
-    public static func parseGitHub(_ data: Data, variant: RGUpdateVariant = .current) throws -> RGUpdateRelease {
+    public static func parseGitHub(_ data: Data) throws -> RGUpdateRelease {
         struct Asset: Decodable { let name: String; let size: Int64; let digest: String?; let browser_download_url: String }
         struct Release: Decodable { let tag_name: String; let draft: Bool; let prerelease: Bool; let body: String?; let assets: [Asset] }
         let value = try JSONDecoder().decode(Release.self, from: data)
         guard !value.draft, !value.prerelease else { throw RGUpdateError.invalidRelease }
-        let pattern = "^" + NSRegularExpression.escapedPattern(for: variant.assetPrefix) + #"-([0-9]+(?:\.[0-9]+){1,3})-b([1-9][0-9]*)\.ipa$"#
+        let pattern = #"^Regram-([0-9]+(?:\.[0-9]+){1,3})-b([1-9][0-9]*)\.ipa$"#
         let regex = try NSRegularExpression(pattern: pattern)
         let matches = value.assets.compactMap { asset -> (Asset, NSTextCheckingResult)? in
             guard let match = regex.firstMatch(in: asset.name, range: NSRange(asset.name.startIndex..., in: asset.name)) else { return nil }
             return (asset, match)
         }
-        guard !matches.isEmpty else { throw RGUpdateError.incompatibleVariant }
         guard matches.count == 1 else { throw RGUpdateError.invalidRelease }
         let (asset, match) = matches[0]
         let name = asset.name as NSString
@@ -50,12 +47,11 @@ public struct RGUpdateRelease: Equatable, Codable, Sendable {
     }
 
     func validateCachedMetadata() throws {
-        guard let variant else { throw RGUpdateError.invalidRelease }
         let data = try JSONSerialization.data(withJSONObject: [
             "tag_name": "v\(version)-b\(build)", "draft": false, "prerelease": false, "body": notes,
-            "assets": [["name": variant.assetName(version: version, build: build), "size": size, "digest": "sha256:" + sha256, "browser_download_url": downloadURL.absoluteString]]
+            "assets": [["name": "Regram-\(version)-b\(build).ipa", "size": size, "digest": "sha256:" + sha256, "browser_download_url": downloadURL.absoluteString]]
         ])
-        guard try Self.parseGitHub(data, variant: variant) == self else { throw RGUpdateError.invalidRelease }
+        guard try Self.parseGitHub(data) == self else { throw RGUpdateError.invalidRelease }
     }
 
     public static func validHTTPS(_ url: URL) -> Bool {
@@ -65,7 +61,7 @@ public struct RGUpdateRelease: Equatable, Codable, Sendable {
 }
 
 public enum RGUpdateError: Error {
-    case invalidRelease, incompatibleVariant, invalidManifest, network, hashMismatch, notConfigured, keychain, invalidCertificate, certificateMismatch, invalidProfile, invalidArchive, identityMismatch, signing, cancelled
+    case invalidRelease, invalidManifest, network, hashMismatch, notConfigured, keychain, invalidCertificate, certificateMismatch, invalidProfile, invalidArchive, identityMismatch, signing, cancelled
     case profileMismatch(bundle: String, reason: String, entitlement: String)
     case profileLimit
     case cache, installationNotStarted, installationRejected, installationChannelEnded, trollStoreUnavailable, trollStoreNotStarted
@@ -83,7 +79,6 @@ public enum RGUpdateError: Error {
     public var localizationKey: String {
         switch self {
         case .invalidRelease: return "AppUpdate.InvalidRelease"
-        case .incompatibleVariant: return "AppUpdate.NoVariant"
         case .invalidManifest: return "AppUpdate.InvalidManifest"
         case .network: return "AppUpdate.NetworkError"
         case .hashMismatch: return "AppUpdate.HashMismatch"

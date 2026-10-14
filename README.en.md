@@ -161,4 +161,4 @@ The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging g
 
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
 
-Bookmarks are under **Chats & Messages → Message Bookmarks & Tags**. DC testing is under **Network & Transfers → Performance & Transfers → DC1–DC5 Connection Tests**. Each installed identity selects its matching IPA from the shared GitHub Release, with size, SHA-256 and installation identity checks.
+Bookmarks are under **Chats & Messages → Message Bookmarks & Tags**. DC testing is under **Network & Transfers → Performance & Transfers → DC1–DC5 Connection Tests**. Releases provide one Regram IPA. In-app updates use `Regram-version-bbuild.ipa`, with size, SHA-256 and installation identity checks.
