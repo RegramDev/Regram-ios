@@ -153,3 +153,5 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
 
 This branch uses `com.regram.app` and `group.com.regram.app`. The application and six extensions share the declared App Group. Application update downloads, certificate imports and IPA installation are excluded.
+
+The source baseline is [Telegram’s official master branch](https://github.com/TelegramMessenger/Telegram-iOS/tree/master), revision `f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838` (13.0), with Regram changes maintained on top. The `beta` branch in this repository is a separate product branch.

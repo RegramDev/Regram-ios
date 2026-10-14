@@ -152,3 +152,5 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及第三方依赖的许可证，并明确标识为非官方客户端。
 
 本分支使用 `com.regram.app` 和 `group.com.regram.app`，主应用与六个扩展共享声明的 App Group，不包含应用更新下载、证书导入和 IPA 安装功能。
+
+源码基线采用 [Telegram 官方主线 master](https://github.com/TelegramMessenger/Telegram-iOS/tree/master) 的 `f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838`（13.0），在此基础上维护 Regram 功能；本仓库的 `beta` 是独立产品分支名称。
