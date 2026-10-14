@@ -3,6 +3,12 @@ import Foundation
 import Security
 
 public extension RGSimpleSettings {
+    static let glassTintDidChange = Notification.Name("Regram.GlassTintDidChange")
+    static let summarySettingsDidChange = Notification.Name("Regram.SummarySettingsDidChange")
+    var messageSummaryEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "messageSummaryEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "messageSummaryEnabled"); NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil) }
+    }
     var summaryLLMAPIFormat: String { get { UserDefaults.standard.string(forKey: "summaryLLMAPIFormat") ?? "openai" } set { UserDefaults.standard.set(newValue, forKey: "summaryLLMAPIFormat") } }
     var summaryLLMBaseURL: String { get { UserDefaults.standard.string(forKey: "summaryLLMBaseURL") ?? "" } set { UserDefaults.standard.set(newValue, forKey: "summaryLLMBaseURL") } }
     var summaryLLMEndpoint: String { get { UserDefaults.standard.string(forKey: "summaryLLMEndpoint") ?? "" } set { UserDefaults.standard.set(newValue, forKey: "summaryLLMEndpoint") } }
@@ -34,6 +40,9 @@ public extension RGSimpleSettings {
     private static var summaryKeyQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: (Bundle.main.bundleIdentifier ?? "Regram") + ".summary.llm", kSecAttrAccount as String: "api-key", kSecAttrSynchronizable as String: false] }
     var liquidGlassTintPercent: Int32 {
         get { Int32(max(0, min(100, UserDefaults.standard.object(forKey: "liquidGlassTintPercent") as? Int ?? 100))) }
-        set { UserDefaults.standard.set(max(0, min(100, newValue)), forKey: "liquidGlassTintPercent") }
+        set {
+            UserDefaults.standard.set(max(0, min(100, newValue)), forKey: "liquidGlassTintPercent")
+            NotificationCenter.default.post(name: Self.glassTintDidChange, object: nil)
+        }
     }
 }

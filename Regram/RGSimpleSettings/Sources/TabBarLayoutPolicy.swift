@@ -8,7 +8,7 @@ public enum RGTabBarLayoutPolicy {
     public static let maximumWidth: Double = 500.0
     public static let minimumItemWidth: Double = 44.0
 
-    /// Zero selects the upstream automatic width; explicit widths use the supported bar width.
+    /// Zero selects content-based automatic width; explicit widths use the supported bar width.
     public static func normalizedPercent(_ value: Int32) -> Int32 {
         return value <= 0 ? 0 : min(maximumPercent, max(minimumPercent, value))
     }
@@ -17,18 +17,19 @@ public enum RGTabBarLayoutPolicy {
         return legacyWide ? maximumPercent : 0
     }
 
-    public static func width(containerWidth: Double, itemCount: Int, percent: Int32, searchButtonWidth: Double = 0.0, searchActive: Bool = false) -> Double {
+    public static func width(containerWidth: Double, itemCount: Int, percent: Int32, searchButtonWidth: Double = 0.0, searchActive: Bool = false, naturalItemWidths: [Double]? = nil) -> Double {
         guard containerWidth.isFinite, containerWidth > 0.0, itemCount > 0 else { return 0.0 }
         let availableWidth = min(maximumWidth, containerWidth)
         if searchActive { return availableWidth }
         let normalized = normalizedPercent(percent)
         let requestedWidth: Double
         if normalized == 0 {
-            requestedWidth = availableWidth // MARK: Regram — match the upstream automatic width.
+            let widths = naturalItemWidths?.count == itemCount ? naturalItemWidths! : Array(repeating: 64.0, count: itemCount)
+            requestedWidth = widths.reduce(8.0) { $0 + max(64.0, $1.isFinite ? $1 : 64.0) } + max(0, searchButtonWidth) // MARK: Regram — measure content and reserve the separate slot.
         } else {
             requestedWidth = availableWidth * Double(normalized) / 100.0
         }
-        // Reserve a search button only when one actually exists. Keep every tab tappable.
+        // Reserve a separate button only when one actually exists. Keep every tab tappable.
         let reservedSearchWidth = searchButtonWidth.isFinite ? max(0.0, searchButtonWidth) : 0.0
         let minimumWidth = min(availableWidth, Double(itemCount) * minimumItemWidth + 8.0 + reservedSearchWidth)
         return min(availableWidth, max(minimumWidth, requestedWidth))

@@ -3295,7 +3295,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
 
     @objc private func moreButtonPressed() {
-        self.moreBarButton.play()
+        // MARK: Regram — do not start a second Lottie animation while the video/menu transition is rendering.
         self.moreBarButton.contextAction?(self.moreBarButton.containerNode, nil)
     }
 
@@ -3513,19 +3513,10 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             return .single(([], []))
         }
         
-        let peer: Signal<EnginePeer?, NoError>
-        if let (message, _, _) = self.contentInfo() {
-            peer = self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: message.id.peerId))
-        } else {
-            peer = .single(nil)
-        }
-
-        return combineLatest(queue: Queue.mainQueue(),
-            videoNode.status |> take(1),
-            peer,
-            // MARK: Regram — snapshot quality when opening; playback updates must not rebuild the menu.
-            videoNode.videoQualityStateSignal() |> take(1)
-        )
+        // MARK: Regram — menu uses the already-rendered snapshot, without waiting on Postbox or live quality streams.
+        let currentPeer = self.contentInfo().flatMap { $0.0.peers[$0.0.id.peerId] }.map(EnginePeer.init)
+        let statusSnapshot: Signal<MediaPlayerStatus?, NoError> = self.playerStatusValue.map { .single(Optional($0)) } ?? (videoNode.status |> take(1))
+        return combineLatest(queue: Queue.mainQueue(), statusSnapshot, Signal<EnginePeer?, NoError>.single(currentPeer), .single(videoNode.videoQualityState()))
         |> map { [weak self] status, peer, videoQualityState -> (items: [ContextMenuItem], topItems: [ContextMenuItem]) in
             guard let status = status, let strongSelf = self else {
                 return ([], [])
@@ -3667,12 +3658,12 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 // MARK: Regram — all auxiliary playback actions share the header More menu.
                 if strongSelf.settingsButtonState != nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VideoSettings_SpeedControlTitle, textLayout: .secondLineWithValue(String(format: "%.2gx", status.baseRate)), icon: { theme in
-                        UIImage(systemName: "speedometer")?.withTintColor(theme.actionSheet.primaryTextColor, renderingMode: .alwaysOriginal)
+                        generateTintedImage(image: UIImage(systemName: "speedometer"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in
                         guard let self else { return }
                         let settingsItems = self.contextMenuMainItems(isSettings: true, dismiss: dismiss) |> map { value -> ContextController.Items in
                             let back = ContextMenuItem.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Back, icon: { theme in
-                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.contextMenu.primaryColor)
                             }, iconPosition: .left, action: { controller, _ in controller?.popItems() }))
                             let items = [back] + value.items
                             return ContextController.Items(content: value.topItems.isEmpty ? .list(items) : .twoLists(items, value.topItems))
@@ -3680,22 +3671,22 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                         controller?.pushItems(items: settingsItems)
                     })))
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Fullscreen, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.footerContentNode.toggleFullscreen?() }) })))
                 }
                 if strongSelf.hasPictureInPicture && strongSelf.pictureInPictureNode == nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_PictureInPicture, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/PictureInPictureButton"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/PictureInPictureButton"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.pictureInPictureButtonPressed() }) })))
                 }
                 if strongSelf.displayStickersButton {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Stickers, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/Stickers"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/Stickers"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.openStickersButtonPressed() }) })))
                 }
                 if !items.isEmpty { items.append(.separator) }
                 if let (message, maybeFile, _) = strongSelf.contentInfo(), let file = maybeFile, !message.isCopyProtected() && !item.peerIsCopyProtected && message.paidContent == nil {
-                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { c, _ in
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.contextMenu.primaryColor) }, action: { c, _ in
                         guard let self else {
                             c?.dismiss(result: .default, completion: nil)
                             return
@@ -3732,7 +3723,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                                 var items: [ContextMenuItem] = []
                                 
                                 items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Back, icon: { theme in
-                                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+                                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.contextMenu.primaryColor)
                                 }, iconPosition: .left, action: { c, _ in
                                     c?.popItems()
                                 })))
@@ -3874,7 +3865,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     if let video = image.video {
                         videoReference = .message(message: MessageReference(message), media: video)
                     }
-                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_SaveImage, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_SaveImage, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
                         f(.default)
                         
                         let _ = (SaveToCameraRoll.saveToCameraRoll(context: context, userLocation: .peer(message.id.peerId), mediaReference: .message(message: MessageReference(message), media: image), video: videoReference)
@@ -3949,7 +3940,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 if RGMediaMetadata.isEnabled, let rgMediaInfoFileReference {
                     let mediaReference = rgMediaInfoFileReference.abstract
                     let context = strongSelf.context
-                    items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: strongSelf.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: strongSelf.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self, let controller = self.galleryController() else {
                             return

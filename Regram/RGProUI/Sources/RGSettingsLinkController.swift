@@ -2,6 +2,7 @@
 import AccountContext
 import Display
 import RGSettingsUI
+import RGSimpleSettings
 import RGStrings
 import SettingsUI
 
@@ -23,7 +24,9 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     switch destination.page {
     case "bottomBar": return rgBottomBarSettingsController(context: context, focusSetting: focus)
     case "summary": return rgLLMSummarySettingsController(context: context, focusSetting: focus)
-    case "networkPolicy": return rgNetworkPolicyController(context: context, focusSetting: focus)
+    case "networkPolicy":
+        if focus == "test" { return rgDNSDiagnosticsController(context: context, policy: RGSimpleSettings.shared.networkPolicy) }
+        return rgNetworkPolicyController(context: context, focusSetting: focus)
     case "llm": return rgLLMTranslationSettingsController(context: context, focusSetting: focus)
     case "stt": return rgSTTSettingsController(context: context, focusSetting: focus)
     case "updates": return rgAppUpdateController(context: context, focusSetting: focus)

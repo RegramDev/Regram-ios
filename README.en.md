@@ -12,7 +12,7 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 - Recent chats, saved per account, with quick navigation and an option to clear the history.
 - Local group remarks: set a display name from the group profile, saved per account and used in chat lists, titles and local search. Clear it to restore the original name.
 - Message bookmarks and tags: open the manager below Saved Messages on the outer Settings page, filter and edit local tags, and jump back to the original message.
-- Message summaries through a separate OpenAI/Anthropic endpoint, model, prompt and Keychain credential. Review selected text before uploading from a message menu or the selection toolbar.
+- Opt-in message summaries through a separate OpenAI/Anthropic endpoint, model, prompt and Keychain credential. Load text from the current chat or topic over the last hour, today, last day or a custom interval, or summarize selected messages. Review text before uploading.
 - Configurable message double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Message menu visibility and ordering, based on actions available for the message and account.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with navigation to the original message.
@@ -50,7 +50,7 @@ Custom recognition uploads only messages explicitly selected by the user. Secret
 - Preview requests can be repaired without changing the original message links. X/Instagram preview service domains are configurable.
 - Save static stickers as PNG and animated/video stickers as GIF to Photos.
 - Export a sticker pack as ZIP with original WebP/PNG, TGS and WebM files plus ordering and emoji metadata.
-- Capture one displayed message bubble and save or send it through the system share sheet.
+- Capture a single message or selected messages as a chronological image with sender avatars and names, and save or send it through the system share sheet.
 - Inspect media resolution, format/codec, bitrate, frame rate, duration, and file size.
 - Photo quality and large-image sending; pasted photos default to HD, maximum JPEG quality, and up to 2560 px.
 - Sticker sizing and history, recording, and camera options.
@@ -63,7 +63,7 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 
 - App icons, settings entry artwork, and screenshot badges; the Regram Pro entry follows the selected app icon.
 - Bottom bar layout using upstream Telegram glass, animations and gestures, with a live preview, drag ordering, button visibility, standalone buttons, and automatic or manual width. Chats and Settings stay selected, and the complete bar is centered.
-- Liquid Glass tint intensity from 0–100%, preserving blur, refraction and content opacity.
+- Liquid Glass tint intensity from 0–100% in Bottom Bar Layout, with live preview and preserved blur, refraction and content opacity. Automatic width narrows to fit visible icons and labels; manual width uses a percentage.
 - Chat-list separator visibility.
 - Separate Latin and CJK fonts, downloadable fonts, TTF/OTF/TTC import, previews, management, and missing-glyph fallback.
 - Chat list lines, compact layouts, and colors.
@@ -168,6 +168,8 @@ Regram is not affiliated with the official Telegram project. Follow this reposit
 
 Bookmarks are under **Settings → below Saved Messages → Message Bookmarks & Tags**. DC testing is under **Network & Transfers → Performance & Transfers → DC1–DC5 Connection Tests**. Releases provide one Regram IPA. In-app updates use `Regram-version-bbuild.ipa`, with size, SHA-256 and installation identity checks.
 
-Configure summaries under **Regram Pro → Chats & Messages → Message summary API**. Requests are limited to 100 messages and 64 KB text, without attachments or unselected context. Secret chats, ephemeral media and protected messages are excluded. Sticker archives are limited to 500 files, 32 MiB per file and 256 MiB per pack. Temporary files are removed after cancellation, failure or sharing. An archive does not recreate a deleted server-side pack.
+Configure summaries under **Regram Pro → Chats & Messages → Message summary API**. The feature is off by default and its menu and selection-toolbar buttons stay hidden while disabled. Time-range collection is limited to 5000 messages and 64 KB text; exceeding a limit requires a smaller interval instead of silently truncating. Selected-message requests allow at most 100 messages. Attachments are excluded. Secret chats, ephemeral media and protected messages are excluded. Sticker archives are limited to 500 files, 32 MiB per file and 256 MiB per pack. Temporary files are removed after cancellation, failure or sharing. An archive does not recreate a deleted server-side pack.
 
 **Regram Pro → Network & Transfers → DNS and IP policy** configures DoH and IP preference. DoH uses HTTPS DNS wire messages for proxy hostnames; DCs already use numeric IPs. Webpages, HTTP APIs and Web proxies use system DNS. DoH failures do not silently downgrade; bootstrapping the resolver hostname still uses system DNS.
+
+Message screenshots include the sender’s avatar and name above the rendered bubble. Select multiple messages and choose Screenshot from the selection toolbar’s share menu to create a chronological image. Exports allow at most 30 messages and enforce image size limits without silently dropping messages. DC average-copy and summary-copy buttons immediately show a copied confirmation. DNS and IP policy includes an on-demand A/AAAA diagnostic page showing resolved addresses and elapsed lookup time, bypassing the app DNS cache without family fallback. This measures DNS lookup time, not DC Ping. The proxy page’s Use system DNS switch and DoH are mutually exclusive; saving reconnects the native transport immediately.

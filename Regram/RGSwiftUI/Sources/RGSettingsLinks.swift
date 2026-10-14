@@ -1,4 +1,5 @@
 // MARK: Regram — hosted settings copy stable links and scroll to the requested control.
+import TelegramPresentationData
 import Foundation
 import RGStrings
 import SwiftUI

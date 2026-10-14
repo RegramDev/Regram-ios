@@ -961,7 +961,7 @@ struct ctr_state {
         _pendingDataQueue = [[NSMutableArray alloc] init];
         _receivedDataBuffer = [[NSMutableData alloc] init];
         
-        _forceLocalDNS = context.forceLocalDNS;
+        _forceLocalDNS = context.apiEnvironment.rgUseSystemDNS; // MARK: Regram — updated DNS choice applies to each new transport.
     }
     return self;
 }

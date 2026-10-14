@@ -1,3 +1,5 @@
+import AvatarNode // MARK: Regram
+import LocalizedPeerData
 import RGStrings
 import RGSimpleSettings
 import RGProUI
@@ -1706,15 +1708,13 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         // MARK: Regram — text selection is explicit and inspected on a consent page before uploading.
         let summaryIds = chatPresentationInterfaceState.interfaceState.selectionState?.selectedIds
-        if !message.isCopyProtected(), !message.containsSecretMedia, message.id.peerId.namespace != Namespaces.Peer.SecretChat, !message.text.isEmpty || summaryIds?.isEmpty == false {
+        if RGSimpleSettings.shared.messageSummaryEnabled, !message.isCopyProtected(), !message.containsSecretMedia, message.id.peerId.namespace != Namespaces.Peer.SecretChat, !message.text.isEmpty || summaryIds?.isEmpty == false {
             rgCollect(.summarize, .action(ContextMenuActionItem(text: "Summary.Action".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
                 generateTintedImage(image: UIImage(systemName: "text.badge.star"), color: theme.contextMenu.primaryColor)
             }, action: { _, f in
                 f(.default)
-                let ids = summaryIds?.isEmpty == false ? Array(summaryIds!) : messages.map(\.id)
-                let _ = (context.account.postbox.transaction { transaction in ids.compactMap { transaction.getMessage($0) } } |> deliverOnMainQueue).startStandalone(next: { selected in
-                    if let controller = rgMessageSummaryController(context: context, messages: selected) { controllerInteraction.navigationController()?.pushViewController(controller) }
-                })
+                guard RGSimpleSettings.shared.messageSummaryEnabled else { return }
+                if let controller = rgMessageSummaryRangeController(context: context, peerId: message.id.peerId, threadId: chatPresentationInterfaceState.chatLocation.threadId, selectedMessages: messages) { controllerInteraction.navigationController()?.pushViewController(controller) }
             })))
         }
         // MARK: Regram — capture exactly the displayed single message, excluding protected content.
@@ -1732,15 +1732,21 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     renderer.cgContext.translateBy(x: 8 - rect.minX, y: 8 - rect.minY)
                     view.layer.render(in: renderer.cgContext)
                 }
+                let sender = message.author ?? message.peers[message.id.peerId]
+                let name = sender.map { EnginePeer($0).displayTitle(strings: chatPresentationInterfaceState.strings, displayOrder: context.sharedContext.currentPresentationData.with { $0 }.nameDisplayOrder) } ?? "MessageScreenshot.UnknownSender".i18n(chatPresentationInterfaceState.strings.rgLanguageCode)
+                let avatar: Signal<UIImage?, NoError> = sender.map { peerAvatarCompleteImage(account: context.account, peer: EnginePeer($0), size: CGSize(width: 76, height: 76)) |> filter { $0 != nil } |> take(1) |> timeout(2, queue: .mainQueue(), alternate: .single(nil)) } ?? .single(nil)
                 f(.default)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    guard var presenter = controllerInteraction.navigationController()?.view.window?.rootViewController else { return }
-                    while let next = presenter.presentedViewController { presenter = next }
-                    let share = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-                    share.popoverPresentationController?.sourceView = presenter.view
-                    share.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
-                    presenter.present(share, animated: true)
-                }
+                let _ = (avatar |> deliverOnMainQueue).startStandalone(next: { avatar in
+                    let screenshot = rgMessageScreenshot(body: image, senderName: name, avatar: avatar, backgroundColor: chatPresentationInterfaceState.theme.chatList.backgroundColor, textColor: chatPresentationInterfaceState.theme.list.itemPrimaryTextColor)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        guard var presenter = controllerInteraction.navigationController()?.view.window?.rootViewController else { return }
+                        while let next = presenter.presentedViewController { presenter = next }
+                        let share = UIActivityViewController(activityItems: [screenshot], applicationActivities: nil)
+                        share.popoverPresentationController?.sourceView = presenter.view
+                        share.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+                        presenter.present(share, animated: true)
+                    }
+                })
             })))
         }
 

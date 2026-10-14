@@ -14,6 +14,7 @@ import Display
 private struct RGLLMSummarySettingsView: View {
     let presentMessage: (String) -> Void
     @Environment(\.lang) private var lang
+    @State private var enabled = RGSimpleSettings.shared.messageSummaryEnabled
     @State private var format = RGSimpleSettings.shared.summaryLLMAPIFormat
     @State private var baseURL = RGSimpleSettings.shared.summaryLLMBaseURL
     @State private var endpoint = RGSimpleSettings.shared.summaryLLMEndpoint
@@ -32,6 +33,10 @@ private struct RGLLMSummarySettingsView: View {
 
     var body: some View {
         Form {
+            Section(footer: Text("Summary.EnabledNotice".i18n(lang))) {
+                Toggle("Summary.Enabled".i18n(lang), isOn: $enabled).rgSettingsLink("enabled")
+                    .onChange(of: enabled) { RGSimpleSettings.shared.messageSummaryEnabled = $0 }
+            }
             connectionSection
             modelSection
             promptSection

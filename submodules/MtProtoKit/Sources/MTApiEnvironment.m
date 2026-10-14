@@ -839,6 +839,7 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     result->_socksProxySettings = self.socksProxySettings;
@@ -868,6 +869,7 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -894,6 +896,7 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -920,6 +923,7 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -946,6 +950,7 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     

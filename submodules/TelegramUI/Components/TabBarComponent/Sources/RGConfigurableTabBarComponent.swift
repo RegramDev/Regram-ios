@@ -41,8 +41,13 @@ public final class RGConfigurableTabBarComponent: Component {
             if let item = component.externalItem {
                 switch item.content { case let .tabBarItem(value): standaloneId = AnyHashable(ObjectIdentifier(value)); case let .customItem(value): standaloneId = value.id }
             } else { standaloneId = nil }
+            let naturalWidths = component.items.map { item -> Double in
+                let title: String
+                switch item.content { case let .tabBarItem(value): title = value.title ?? ""; case let .customItem(value): title = value.title }
+                return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
+            }
             let percent = component.rgWidthPercent ?? 0
-            let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: component.items.count, percent: percent, searchButtonWidth: component.externalItem == nil ? 0 : 72))
+            let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: component.items.count, percent: percent, searchButtonWidth: component.externalItem == nil ? 0 : 72, naturalItemWidths: naturalWidths))
             let externalWidth: CGFloat = component.externalItem == nil ? 0 : 72
             var height: CGFloat = 0
             for (target, items, x, containerWidth) in [(bar, component.items, CGFloat(0), max(0, width - externalWidth)), (standalone, component.externalItem.map { [$0] } ?? [], max(0, width - 64), CGFloat(64))] {

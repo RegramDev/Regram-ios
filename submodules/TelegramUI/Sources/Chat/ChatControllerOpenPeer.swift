@@ -341,14 +341,14 @@ extension ChatControllerImpl {
         })
     }
     
-    func openBotForumMoreMenu(sourceView: UIView, gesture: ContextGesture?) {
+    func openBotForumMoreMenu(sourceView: UIView, gesture: ContextGesture?, additionalItems: [ContextMenuItem] = []) {
         guard let peerId = self.chatLocation.peerId else {
             return
         }
         
         let strings = self.presentationData.strings
         
-        var items: [ContextMenuItem] = []
+        var items: [ContextMenuItem] = additionalItems // MARK: Regram
         
         if let _ = self.chatLocation.threadId {
         } else {

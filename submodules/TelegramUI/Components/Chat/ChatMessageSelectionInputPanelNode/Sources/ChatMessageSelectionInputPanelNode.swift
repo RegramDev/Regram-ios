@@ -1,3 +1,4 @@
+import RGSimpleSettings
 import RGStrings // MARK: Regram
 import Foundation
 import UIKit
@@ -304,7 +305,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.cloudButton.button.addTarget(self, action: #selector(self.cloudButtonPressed), for: .touchUpInside)
         self.forwardHideNamesButton.button.addTarget(self, action: #selector(self.forwardHideNamesButtonPressed), for: .touchUpInside)
         //
-        self.shareButton.button.addTarget(self, action: #selector(self.shareButtonPressed), for: .touchUpInside)
+        self.shareButton.button.showsMenuAsPrimaryAction = true // MARK: Regram — share and screenshot use one toolbar slot.
         self.tagButton.button.addTarget(self, action: #selector(self.tagButtonPressed), for: .touchUpInside)
         self.tagEditButton.button.addTarget(self, action: #selector(self.tagButtonPressed), for: .touchUpInside)
     }
@@ -366,7 +367,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
     
     // MARK: Regram
     @objc private func summaryButtonPressed() {
-        guard !self.summaryButton.isHidden, self.summaryButton.isEnabled else { return }
+        guard RGSimpleSettings.shared.messageSummaryEnabled, !self.summaryButton.isHidden, self.summaryButton.isEnabled else { return }
         self.interfaceInteraction?.forwardSelectedMessages("summarize")
     }
 
@@ -661,7 +662,16 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             }
         }
         
-        self.summaryButton.isHidden = interfaceState.renderedPeer?.peer is TelegramSecretChat || self.actions?.isCopyProtected != false
+        // MARK: Regram — system menu keeps both export actions accessible on compact screens.
+        let language = RGLocalizationManager.shared.preferredLocale(primary: interfaceState.strings.primaryComponent.languageCode, secondary: interfaceState.strings.secondaryComponent?.languageCode)
+        self.shareButton.button.menu = UIMenu(children: [
+            UIAction(title: interfaceState.strings.VoiceOver_MessageContextShare, image: UIImage(systemName: "square.and.arrow.up"), handler: { [weak self] _ in self?.shareButtonPressed() }),
+            UIAction(title: "MessageScreenshot.Action".i18n(language), image: UIImage(systemName: "camera.viewfinder"), handler: { [weak self] _ in
+                guard let self, !self.shareButton.isImplicitlyDisabled, self.actions?.isCopyProtected == false, !(self.presentationInterfaceState?.renderedPeer?.peer is TelegramSecretChat) else { return }
+                self.interfaceInteraction?.forwardSelectedMessages("screenshot")
+            })
+        ])
+        self.summaryButton.isHidden = !RGSimpleSettings.shared.messageSummaryEnabled || interfaceState.renderedPeer?.peer is TelegramSecretChat || self.actions?.isCopyProtected != false
         self.summaryButton.isEnabled = !selectedMessages.isEmpty && selectedMessages.count <= 100
         let buttonSize = CGSize(width: 40.0, height: 40.0)
 

@@ -1,3 +1,4 @@
+import RGProUI // MARK: Regram
 // MARK: Regram
 import RGJoinedChatFolderPicker
 import RGSimpleSettings
@@ -6508,12 +6509,21 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 return
             }
             
+            // MARK: Regram — no summary action while the feature is disabled.
+            var summaryItems: [ContextMenuItem] = []
+            if RGSimpleSettings.shared.messageSummaryEnabled, peerId.namespace != Namespaces.Peer.SecretChat {
+                summaryItems.append(.action(ContextMenuActionItem(text: "Summary.RangeAction".i18n(self.presentationData.strings.rgLanguageCode), icon: { theme in generateTintedImage(image: UIImage(systemName: "text.badge.star"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
+                    f(.default)
+                    guard let self, let controller = rgMessageSummaryRangeController(context: self.context, peerId: peerId, threadId: self.chatLocation.threadId) else { return }
+                    (self.navigationController as? NavigationController)?.pushViewController(controller)
+                })))
+            }
             if peerId == self.context.account.peerId {
-                PeerInfoScreenImpl.openSavedMessagesMoreMenu(context: self.context, sourceController: self, isViewingAsTopics: false, sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture)
+                PeerInfoScreenImpl.openSavedMessagesMoreMenu(context: self.context, sourceController: self, isViewingAsTopics: false, sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             } else if peerId.namespace == Namespaces.Peer.CloudUser {
-                self.openBotForumMoreMenu(sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture)
+                self.openBotForumMoreMenu(sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             } else {
-                ChatListControllerImpl.openMoreMenu(context: self.context, peerId: peerId, sourceController: self, isViewingAsTopics: false, sourceView: sourceNode.view, gesture: gesture)
+                ChatListControllerImpl.openMoreMenu(context: self.context, peerId: peerId, sourceController: self, isViewingAsTopics: false, sourceView: sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             }
         }
         self.moreBarButton.addTarget(self, action: #selector(self.moreButtonPressed), forControlEvents: .touchUpInside)

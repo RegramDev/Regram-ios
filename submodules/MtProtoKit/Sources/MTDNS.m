@@ -1,3 +1,4 @@
+#import <MtProtoKit/MTRGDNSDiagnostics.h> // MARK: Regram
 #import "MTRGDNSMessage.h" // MARK: Regram
 #import <MtProtoKit/MTAtomic.h>
 #import "MTDNS.h"
@@ -256,14 +257,18 @@
 
 // MARK: Regram — HTTPS wire-format lookup, bounded TTL cache, cancellation and no silent DNS downgrade.
 + (MTSignal *)resolveHostname:(NSString *)hostname port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference {
+    return [self resolveHostname:hostname port:port dohEndpoint:endpoint preference:preference useCache:true strictFamily:false];
+}
+
++ (MTSignal *)resolveHostname:(NSString *)hostname port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference useCache:(bool)useCache strictFamily:(bool)strictFamily {
     struct in_addr v4; struct in6_addr v6;
     if (inet_pton(AF_INET, hostname.UTF8String, &v4) == 1 || inet_pton(AF_INET6, hostname.UTF8String, &v6) == 1) return [MTSignal single:hostname];
-    if (endpoint.length == 0 && preference != 6) return [self resolveHostnameUniversal:hostname port:port];
+    if (endpoint.length == 0 && preference != 6 && !strictFamily) return [self resolveHostnameUniversal:hostname port:port];
     if (endpoint.length == 0) {
         MTSignal *native = [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber) {
             MTAtomic *cancelled = [[MTAtomic alloc] initWithValue:@false];
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-                struct addrinfo hints = {0}, *result = NULL; hints.ai_family = AF_UNSPEC; hints.ai_socktype = SOCK_STREAM;
+                struct addrinfo hints = {0}, *result = NULL; hints.ai_family = strictFamily ? (preference == 6 ? AF_INET6 : AF_INET) : AF_UNSPEC; hints.ai_socktype = SOCK_STREAM;
                 NSString *chosen = nil;
                 if (getaddrinfo(hostname.UTF8String, NULL, &hints, &result) == 0) {
                     for (struct addrinfo *a = result; a != NULL; a = a->ai_next) {
@@ -284,7 +289,7 @@
     dispatch_once(&once, ^{ NSURLSessionConfiguration *c = NSURLSessionConfiguration.ephemeralSessionConfiguration; c.URLCache = nil; c.HTTPCookieStorage = nil; c.timeoutIntervalForRequest = 6; c.timeoutIntervalForResource = 8; session = [NSURLSession sessionWithConfiguration:c]; cache = [[NSCache alloc] init]; cache.countLimit = 128; });
     NSString *key = [NSString stringWithFormat:@"%@|%@|%ld", endpoint, hostname.lowercaseString, (long)preference];
     NSDictionary *cached = [cache objectForKey:key];
-    if ([cached[@"expires"] doubleValue] > NSDate.date.timeIntervalSince1970) return [MTSignal single:cached[@"address"]];
+    if (useCache && [cached[@"expires"] doubleValue] > NSDate.date.timeIntervalSince1970) return [MTSignal single:cached[@"address"]];
     MTSignal *(^query)(uint16_t) = ^MTSignal *(uint16_t type) {
         return [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber) {
             NSData *body = [MTRGDNSMessage queryForHost:hostname type:type]; if (!body) { [subscriber putError:nil]; return nil; }
@@ -294,14 +299,28 @@
                 NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
                 NSDictionary *answer = !error && http.statusCode == 200 && [http.MIMEType.lowercaseString isEqualToString:@"application/dns-message"] ? [MTRGDNSMessage addressFromResponse:data host:hostname type:type] : nil;
                 if (!answer) { [subscriber putError:nil]; return; }
-                double ttl = MIN(3600, [answer[@"ttl"] doubleValue]); if (ttl > 0) [cache setObject:@{@"address": answer[@"address"], @"expires": @(NSDate.date.timeIntervalSince1970 + ttl)} forKey:key];
+                double ttl = MIN(3600, [answer[@"ttl"] doubleValue]); if (useCache && ttl > 0) [cache setObject:@{@"address": answer[@"address"], @"expires": @(NSDate.date.timeIntervalSince1970 + ttl)} forKey:key];
                 [subscriber putNext:answer[@"address"]]; [subscriber putCompletion];
             }];
             [task resume]; return [[MTBlockDisposable alloc] initWithBlock:^{ [task cancel]; }];
         }];
     };
     uint16_t first = preference == 6 ? 28 : 1;
+    if (strictFamily) return [query(first) take:1];
     return [[query(first) catch:^MTSignal *(__unused id error) { return query(first == 28 ? 1 : 28); }] take:1];
 }
 
+@end
+
+// MARK: Regram — fresh A/AAAA lookups, with elapsed time; no fallback disguised as the requested family.
+@implementation MTRGDNSDiagnostics
++ (MTSignal *)queryHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint family:(NSInteger)family {
+    if (family != 4 && family != 6) return [MTSignal fail:nil];
+    struct in_addr v4; struct in6_addr v6;
+    if ((family == 6 && inet_pton(AF_INET, hostname.UTF8String, &v4) == 1) || (family == 4 && inet_pton(AF_INET6, hostname.UTF8String, &v6) == 1)) return [MTSignal fail:nil];
+    CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
+    return [[MTDNS resolveHostname:hostname port:443 dohEndpoint:endpoint preference:family useCache:false strictFamily:true] map:^id(NSString *address) {
+        return @{@"address": address, @"milliseconds": @((CFAbsoluteTimeGetCurrent() - start) * 1000)};
+    }];
+}
 @end

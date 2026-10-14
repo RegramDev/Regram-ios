@@ -1,3 +1,5 @@
+import RGStrings // MARK: Regram
+import RGSwiftUI
 import RGProUI // MARK: Regram
 import Foundation
 import UIKit
@@ -2071,6 +2073,15 @@ extension ChatControllerImpl {
                     // MARK: Regram
                     if let mode = mode {
                         switch (mode) {
+                        case "screenshot":
+                            let _ = (strongSelf.context.account.postbox.transaction { transaction in forwardMessageIds.compactMap { transaction.getMessage($0) } } |> deliverOnMainQueue).startStandalone(next: { [weak self] messages in
+                                guard let self else { return }
+                                guard messages.count == forwardMessageIds.count else {
+                                    let data = self.context.sharedContext.currentPresentationData.with { $0 }
+                                    self.present(textAlertController(context: self.context, title: "MessageScreenshot.Action".i18n(data.strings.rgLanguageCode), text: "MessageScreenshot.Unavailable".i18n(data.strings.rgLanguageCode), actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root)); return
+                                }
+                                rgExportMessageScreenshots(context: self.context, messages: messages, controller: self)
+                            })
                         case "summarize":
                             let _ = (strongSelf.context.account.postbox.transaction { transaction in forwardMessageIds.compactMap { transaction.getMessage($0) } } |> deliverOnMainQueue).startStandalone(next: { [weak self] messages in
                                 guard let self, let controller = rgMessageSummaryController(context: self.context, messages: messages) else { return }

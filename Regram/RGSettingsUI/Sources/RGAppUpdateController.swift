@@ -1,4 +1,5 @@
 // MARK: Regram
+import TelegramPresentationData
 import Foundation
 import UIKit
 import SwiftUI
@@ -13,6 +14,9 @@ import PresentationDataUtils
     @ObservedObject private var updater = RGAppUpdater.shared
     @StateObject private var filePicker = RGUpdateCredentialFilePicker()
     @Environment(\.lang) private var lang
+    @Environment(\.rgPresentationTheme) private var theme
+    private var secondary: Color { Color(uiColor: theme?.list.itemSecondaryTextColor ?? .secondaryLabel) }
+    private var rowBackground: Color { Color(uiColor: theme?.list.itemBlocksBackgroundColor ?? .secondarySystemGroupedBackground) }
     @State private var credentialBusy = false
     let owner: () -> ViewController?
     let presentMessage: (String) -> Void
@@ -37,7 +41,8 @@ import PresentationDataUtils
                 } else { updateStatus }
                 if updater.stage.isBusy { Button("AppUpdate.Cancel".i18n(lang), role: .cancel) { updater.cancel() } }
             }
-            Section(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang))) {
+            .listRowBackground(rowBackground)
+            Section(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang)).foregroundColor(secondary)) {
                 Picker("AppUpdate.InstallationMethod".i18n(lang), selection: $updater.installationMethod) {
                     ForEach(RGUpdateInstallationMethod.allCases, id: \.rawValue) { method in Text(method.localizationKey.i18n(lang)).tag(method) }
                 }
@@ -47,13 +52,14 @@ import PresentationDataUtils
                 Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck).rgSettingsLink("automaticCheck")
                 Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured).rgSettingsLink("automaticDownload")
             }
+            .listRowBackground(rowBackground)
             if updater.installationMethod == .certificate {
-                Section(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang))) {
+                Section(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang)).foregroundColor(secondary)) {
                     Toggle("AppUpdate.AutomaticExit".i18n(lang), isOn: $updater.automaticallyExitAfterInstalling).rgSettingsLink("automaticExit")
-                }.disabled(updater.stage.isBusy)
-                Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang))) {
+                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy)
+                Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang)).foregroundColor(secondary)) {
                     if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
-                    Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(.secondary)
+                    Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(secondary)
                     Button("AppUpdate.ImportSigningMaterials".i18n(lang)) { selectFiles(kind: .signingMaterials) }.rgSettingsLink("certificate")
                     Button("AppUpdate.ImportProfiles".i18n(lang)) { selectFiles(kind: .profiles) }
                     if credentialBusy { ProgressView("AppUpdate.Importing".i18n(lang)) }
@@ -62,22 +68,22 @@ import PresentationDataUtils
                             do { try updater.clearCertificate() } catch { show(error) }
                         }
                     }
-                }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
-                Section(footer: Text("AppUpdate.ServiceNotice".i18n(lang))) {
+                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
+                Section(footer: Text("AppUpdate.ServiceNotice".i18n(lang)).foregroundColor(secondary)) {
                     Picker("AppUpdate.InstallationNode".i18n(lang), selection: $updater.preferredNode) {
                         Text("AppUpdate.AutomaticNode".i18n(lang)).tag("")
                         ForEach(updater.availableNodes) { node in Text(node.name).tag(node.code) }
                     }
                     .pickerStyle(.menu)
-                    if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(.secondary) }
-                }.disabled(updater.stage.isBusy)
+                    if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(secondary) }
+                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy)
             }
         }
     }
 
     private var updateStatus: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(updater.stage.localizationKey.i18n(lang)).foregroundColor(.secondary)
+            Text(updater.stage.localizationKey.i18n(lang)).foregroundColor(secondary)
             if let failure = updater.failure {
                 if let bundle = failure.profileBundle { Text("AppUpdate.ProfileBundle".i18n(lang, args: bundle)).font(.footnote) }
                 if let entitlement = failure.profileEntitlement { Text("AppUpdate.ProfileEntitlement".i18n(lang, args: entitlement)).font(.footnote).textSelection(.enabled) }
@@ -86,7 +92,7 @@ import PresentationDataUtils
                 HStack {
                     Text("\(Int(updater.progress * 100))%").monospacedDigit()
                     Spacer()
-                    Text("\(ByteCountFormatter.string(fromByteCount: updater.downloadedBytes, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: updater.release?.size ?? 0, countStyle: .file))").font(.footnote).foregroundColor(.secondary)
+                    Text("\(ByteCountFormatter.string(fromByteCount: updater.downloadedBytes, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: updater.release?.size ?? 0, countStyle: .file))").font(.footnote).foregroundColor(secondary)
                 }
                 ProgressView(value: updater.progress, total: 1).progressViewStyle(.linear).frame(maxWidth: .infinity)
             } else if updater.stage.isBusy { ProgressView().progressViewStyle(.circular) }
@@ -141,9 +147,11 @@ import PresentationDataUtils
 }
 
 private struct LabeledContentCompat: View {
+    @Environment(\.rgPresentationTheme) private var theme
+    private var secondary: Color { Color(uiColor: theme?.list.itemSecondaryTextColor ?? .secondaryLabel) }
     let title: String
     let value: String
-    var body: some View { HStack { Text(title); Spacer(); Text(value).foregroundColor(.secondary) } }
+    var body: some View { HStack { Text(title); Spacer(); Text(value).foregroundColor(secondary) } }
 }
 
 public func rgAppUpdateController(context: AccountContext, focusSetting: String? = nil) -> ViewController {

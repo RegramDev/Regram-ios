@@ -12,11 +12,13 @@ private struct RGNetworkPolicyView: View {
     @Environment(\.lang) private var lang
     @State private var policy = RGSimpleSettings.shared.networkPolicy
     let saved: () -> Void
+    let openTest: (RGNetworkPolicy) -> Void
     var body: some View {
         Form {
             Section(footer: Text("NetworkPolicy.DoHNotice".i18n(lang))) {
                 Toggle("NetworkPolicy.DoH".i18n(lang), isOn: $policy.dohEnabled).rgSettingsLink("enabled")
                 TextField("NetworkPolicy.Endpoint".i18n(lang), text: $policy.endpoint, prompt: Text("https://example.com/dns-query")).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().rgSettingsLink("endpoint")
+                Text("NetworkPolicy.DNSExclusive".i18n(lang)).font(.footnote).foregroundColor(.secondary)
                 if policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint) { Text("NetworkPolicy.InvalidURL".i18n(lang)).foregroundColor(.secondary) }
             }
             Section(footer: Text("NetworkPolicy.IPNotice".i18n(lang))) {
@@ -26,14 +28,17 @@ private struct RGNetworkPolicyView: View {
                     Text("NetworkPolicy.IPv6".i18n(lang)).tag(RGNetworkPolicy.IPVersion.ipv6)
                 }.pickerStyle(.menu).rgSettingsLink("ipVersion")
             }
+            Button("DNSDiagnostics.Title".i18n(lang)) { openTest(policy) }.rgSettingsLink("test")
             Button("NetworkPolicy.Apply".i18n(lang)) { RGSimpleSettings.shared.networkPolicy = policy; saved() }.disabled(policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint)).rgSettingsLink("apply")
-        }
+        }.onReceive(NotificationCenter.default.publisher(for: RGNetworkPolicy.didChange)) { _ in policy = RGSimpleSettings.shared.networkPolicy }
     }
 }
 public func rgNetworkPolicyController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData); controller.title = "NetworkPolicy.Title".i18n(data.strings.rgLanguageCode)
-    let view = RGSwiftUIView(legacyController: controller, manageSafeArea: true) { RGNetworkPolicyView(saved: { [weak controller] in guard let controller else { return }; rgPresentSettingsMessage(context: context, controller: controller, titleKey: "NetworkPolicy.Title", text: "NetworkPolicy.Applied".i18n(controller.lang)) }) }
+    let view = RGSwiftUIView(legacyController: controller, manageSafeArea: true) { RGNetworkPolicyView(saved: { [weak controller] in guard let controller else { return }; rgPresentSettingsMessage(context: context, controller: controller, titleKey: "NetworkPolicy.Title", text: "NetworkPolicy.Applied".i18n(controller.lang)) }, openTest: { [weak controller] policy in
+        (controller?.navigationController as? NavigationController)?.pushViewController(rgDNSDiagnosticsController(context: context, policy: policy))
+    }) }
     controller.bind(controller: UIHostingController(rootView: view.rgSettingsPage("networkPolicy", focus: focusSetting), ignoreSafeArea: true)); return controller
 }

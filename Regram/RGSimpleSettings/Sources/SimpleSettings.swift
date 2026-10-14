@@ -666,8 +666,22 @@ public class RGSimpleSettings {
     
     public var lastAccountFolders = UserDefaultsBackedDictionary<String, Int32>(userDefaultsKey: Keys.lastAccountFolders.rawValue, threadSafe: false)
     
-    @UserDefault(key: Keys.localDNSForProxyHost.rawValue)
-    public var localDNSForProxyHost: Bool
+    // MARK: Regram — the DNS choices are mutually exclusive and shared with extensions.
+    public var localDNSForProxyHost: Bool {
+        get {
+            let defaults = Bundle.main.bundlePath.hasSuffix(".appex") ? APP_GROUP_USER_DEFAULTS ?? UserDefaults.standard : UserDefaults.standard
+            return defaults.bool(forKey: Keys.localDNSForProxyHost.rawValue) && !defaults.bool(forKey: "customDoHEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
+            APP_GROUP_USER_DEFAULTS?.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
+            if newValue {
+                var policy = self.networkPolicy; policy.dohEnabled = false; policy.save(to: UserDefaults.standard)
+                if let shared = APP_GROUP_USER_DEFAULTS { policy.save(to: shared) }
+            }
+            NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
+        }
+    }
     
     @UserDefault(key: Keys.sendLargePhotos.rawValue)
     public var sendLargePhotos: Bool
@@ -812,9 +826,12 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
         NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
+        NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil)
+        NotificationCenter.default.post(name: Self.glassTintDidChange, object: nil)
         self.synchronizeShared()
         // MARK: Regram — restore/reset transport preferences into the extension store as well.
-        if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared) }
+        if self.networkPolicy.dohEnabled { UserDefaults.standard.set(false, forKey: Keys.localDNSForProxyHost.rawValue) }
+        if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared); shared.set(self.localDNSForProxyHost, forKey: Keys.localDNSForProxyHost.rawValue) }
         NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
     }
 

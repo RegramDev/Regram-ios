@@ -14,6 +14,8 @@ extension UserDefaults {
             UserDefaults(suiteName: suite + "-group")!.removePersistentDomain(forName: suite + "-group")
         }
         UserDefaults.rgTestStandard.set("synthetic", forKey: "api_hash")
+        expect(!settings.messageSummaryEnabled, "Summary actions must be opt-in")
+        settings.messageSummaryEnabled = true
         expect(!settings.automaticallyRevealSpoilers, "Spoilers must remain concealed by default")
         settings.automaticallyRevealSpoilers = true
         settings.panguSpacing = false
@@ -25,6 +27,13 @@ extension UserDefaults {
         expect(RGNetworkPolicy.validEndpoint("https://example.com/dns-query"), "Valid HTTPS DoH endpoint")
         settings.networkPolicy = RGNetworkPolicy(dohEnabled: true, endpoint: "https://example.com/dns-query", ipVersion: .ipv6)
         expect(RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .ipv6, "Transport preference must reach the extension")
+        let group = UserDefaults(suiteName: suite + "-group")!
+        settings.localDNSForProxyHost = true
+        expect(!settings.networkPolicy.dohEnabled && settings.localDNSForProxyHost && !group.bool(forKey: "customDoHEnabled") && group.bool(forKey: "localDNSForProxyHost"), "System DNS must disable DoH in both backing stores")
+        settings.networkPolicy = RGNetworkPolicy(dohEnabled: true, endpoint: "https://example.com/dns-query", ipVersion: .ipv6)
+        expect(!settings.localDNSForProxyHost && !group.bool(forKey: "localDNSForProxyHost"), "DoH must disable system DNS in both backing stores")
+        settings.applyPreferences(["customDoHEnabled": .bool(true), "localDNSForProxyHost": .bool(true)])
+        expect(settings.networkPolicy.dohEnabled && !settings.localDNSForProxyHost && !group.bool(forKey: "localDNSForProxyHost"), "Conflicting imported DNS choices must normalize before reconnect")
         expect(RGNetworkPolicy(dohEnabled: true, endpoint: "bad").effectiveEndpoint == "invalid-doh-endpoint", "Invalid enabled DoH must fail closed, not silently downgrade")
         settings.summaryLLMModel = "independent-model"; settings.summaryLLMPrompt = "summary @text"; settings.liquidGlassTintPercent = 25
         expect(settings.translationLLMModel.isEmpty && settings.translationLLMPrompt != settings.summaryLLMPrompt, "Summary and translation must have independent configuration")
@@ -41,7 +50,7 @@ extension UserDefaults {
         let generation = settings.contentFilterGeneration
         settings.applyPreferences(decoded.values)
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
-        expect(settings.summaryLLMModel == "independent-model" && settings.liquidGlassTintPercent == 25, "Summary and glass preferences must round-trip")
+        expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model" && settings.liquidGlassTintPercent == 25, "Summary and glass preferences must round-trip")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
         expect(settings.messageFilterRules.count == 1 && !settings.messageFilterRules[0].isEnabled && settings.contentFilterGeneration > generation, "Restore must invalidate derived filter caches")
         settings.setChatPreferences(RGChatPreferences(formatting: "bold", panguSpacing: true), accountId: 1, peerId: 5)
@@ -54,6 +63,7 @@ extension UserDefaults {
         settings.applyPreferences([:], resetCategories: [.appearance])
         expect(settings.fontFamily == "system" && settings.defaultOutgoingFormatting == "none", "Category reset must restore its defaults while preserving other categories")
         settings.applyPreferences([:], resetCategories: [.messages])
+        expect(!settings.messageSummaryEnabled, "Reset must remove summary actions")
         expect(!settings.automaticallyRevealSpoilers, "Reset must restore concealed spoilers instead of keeping an automatic reveal")
         let selected = decoded.selectedValues(categories: [.media])
         expect(!selected.isEmpty && selected.keys.allSatisfy { RGSettingsBackup.category(for: $0) == .media }, "Import preview category selection must constrain writes")

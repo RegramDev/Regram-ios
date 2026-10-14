@@ -7415,7 +7415,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         self.controllerNode.deactivateSearch()
     }
     
-    public static func openSavedMessagesMoreMenu(context: AccountContext, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?) {
+    public static func openSavedMessagesMoreMenu(context: AccountContext, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?, additionalItems: [ContextMenuItem] = []) {
         let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
         |> deliverOnMainQueue).startStandalone(next: { [sourceController] peer in
             guard let peer else {
@@ -7424,7 +7424,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             
             let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
             
-            var items: [ContextMenuItem] = []
+            var items: [ContextMenuItem] = additionalItems // MARK: Regram — context-specific extensions.
             
             items.append(.action(ContextMenuActionItem(text: strings.Chat_SavedMessagesModeMenu_ViewAsChats, icon: { theme in
                 if !isViewingAsTopics {

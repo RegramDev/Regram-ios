@@ -22,6 +22,6 @@ public struct RGNetworkPolicy: Equatable {
 public extension RGSimpleSettings {
     var networkPolicy: RGNetworkPolicy {
         get { RGNetworkPolicy(defaults: Bundle.main.bundlePath.hasSuffix(".appex") ? APP_GROUP_USER_DEFAULTS ?? UserDefaults.standard : UserDefaults.standard) }
-        set { newValue.save(to: UserDefaults.standard); if let shared = APP_GROUP_USER_DEFAULTS { newValue.save(to: shared) }; NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil) }
+        set { if newValue.dohEnabled { UserDefaults.standard.set(false, forKey: "localDNSForProxyHost"); APP_GROUP_USER_DEFAULTS?.set(false, forKey: "localDNSForProxyHost") }; newValue.save(to: UserDefaults.standard); if let shared = APP_GROUP_USER_DEFAULTS { newValue.save(to: shared) }; NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil) }
     }
 }

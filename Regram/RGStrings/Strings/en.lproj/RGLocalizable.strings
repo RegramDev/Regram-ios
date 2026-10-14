@@ -108,7 +108,7 @@
 "PasscodeSettings.AutoLock.InFiveSeconds" = "If away for 5 seconds";
 
 "ProxySettings.UseSystemDNS" = "Use system DNS";
-"ProxySettings.UseSystemDNS.Notice" = "Use system DNS to bypass timeout if you don't have access to Google DNS";
+"ProxySettings.UseSystemDNS.Notice" = "Use the system resolver for proxy hostnames. Enabling this disables custom DoH; changes reconnect immediately.";
 
 /* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
 "Common.NoTelegramPremiumNeeded" = "You **don't need** %@!";
@@ -937,3 +937,35 @@ Matching is case-insensitive.";
 "NetworkPolicy.Apply" = "Save and reconnect";
 "NetworkPolicy.Applied" = "Network policy saved. Native Telegram connections will reconnect.";
 "Bookmarks.Loading" = "Loading…";
+
+// MARK: Regram — local UI follow-up
+"Summary.Enabled" = "Enable message summaries";
+"Summary.EnabledNotice" = "When disabled, summary actions are hidden from chat menus, message menus and selection tools. API configuration is retained.";
+"Summary.RangeAction" = "Summarize a time range";
+"Summary.Range" = "Time range";
+"Summary.LastHour" = "Last hour";
+"Summary.Today" = "Today";
+"Summary.LastDay" = "Last 24 hours";
+"Summary.CustomRange" = "Custom interval";
+"Summary.From" = "From";
+"Summary.To" = "To";
+"Summary.LoadRange" = "Load messages in this interval";
+"Summary.LoadingRange" = "Loading message pages…";
+"Summary.ReviewRange" = "Review text and confirm summary";
+"Summary.OnlySelected" = "Summarize selected messages only";
+"Summary.RangeNotice" = "Fetch text in this interval from the current chat or topic, then confirm upload to the summary API. Attachments, ephemeral, secret and protected content are excluded.";
+"Summary.RangeInvalid" = "The start must precede the end.";
+"Summary.RangeFailed" = "Message retrieval did not complete. Check the connection and retry.";
+"Summary.RangeEmpty" = "No usable text in this interval, or messages could not be retrieved.";
+"Summary.RangeTooLarge" = "This interval exceeds the request limit. Choose a shorter interval. Text is not silently truncated and uploaded.";
+"DNSDiagnostics.Title" = "DNS and IP resolution test";
+"DNSDiagnostics.Host" = "Hostname or IP to test";
+"DNSDiagnostics.Start" = "Start resolution test";
+"DNSDiagnostics.SystemDNS" = "System DNS";
+"DNSDiagnostics.Failed" = "No address for this family, or resolution failed";
+"DNSDiagnostics.Notice" = "Test A and AAAA results and resolution duration separately. DoH bypasses the app cache; system DNS may use its cache. Duration is DNS resolution, not DC ping. Tests use this page’s configuration without saving it and cancel on leaving.";
+"NetworkPolicy.DNSExclusive" = "Custom DoH and “Use system DNS” on the proxy page are mutually exclusive. The most recently enabled option takes effect, and saving reconnects transport.";
+"MessageScreenshot.UnknownSender" = "Unknown sender";
+"Common.Copied" = "Copied";
+"MessageScreenshot.Unavailable" = "Some selected messages are unavailable or cannot be exported.";
+"MessageScreenshot.TooLarge" = "Select at most 30 messages, or fewer messages for a shorter image. The image exceeds the export size limit.";

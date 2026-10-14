@@ -83,7 +83,7 @@
 "PasscodeSettings.AutoLock.InFiveSeconds" = "離開5秒後";
 
 "ProxySettings.UseSystemDNS" = "使用系統 DNS";
-"ProxySettings.UseSystemDNS.Notice" = "如果您無法使用 Google DNS，請使用系統 DNS";
+"ProxySettings.UseSystemDNS.Notice" = "使用系統解析器解析代理網域。開啟後會關閉自訂 DoH，變更立即重新連線。";
 
 /* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
 "Common.NoTelegramPremiumNeeded" = "您 **不需要** %@！";
@@ -928,3 +928,35 @@
 "NetworkPolicy.Apply" = "儲存並重新連線";
 "NetworkPolicy.Applied" = "網路策略已儲存。原生 Telegram 連線將重新建立。";
 "Bookmarks.Loading" = "載入中…";
+
+// MARK: Regram — local UI follow-up
+"Summary.Enabled" = "啟用訊息摘要";
+"Summary.EnabledNotice" = "關閉後隱藏聊天選單、訊息選單及多選工具列的摘要按鈕，保留介面設定。";
+"Summary.RangeAction" = "依時間摘要聊天";
+"Summary.Range" = "時間範圍";
+"Summary.LastHour" = "最近一小時";
+"Summary.Today" = "今天";
+"Summary.LastDay" = "最近 24 小時";
+"Summary.CustomRange" = "自訂時段";
+"Summary.From" = "開始時間";
+"Summary.To" = "結束時間";
+"Summary.LoadRange" = "取得此時段的訊息";
+"Summary.LoadingRange" = "正在分頁取得訊息…";
+"Summary.ReviewRange" = "查看文字並確認摘要";
+"Summary.OnlySelected" = "僅摘要所選訊息";
+"Summary.RangeNotice" = "取得目前聊天或話題中此時段的文字，再確認傳送至摘要介面。不傳送附件，排除一次性、秘密及受保護內容。";
+"Summary.RangeInvalid" = "開始時間須早於結束時間。";
+"Summary.RangeFailed" = "訊息取得未完成，請檢查連線後重試。";
+"Summary.RangeEmpty" = "此時段沒有可用文字，或暫時無法取得訊息。";
+"Summary.RangeTooLarge" = "此時段文字超過請求上限，請縮短時段後重試。不會自動截斷並傳送。";
+"DNSDiagnostics.Title" = "DNS 與 IP 解析測試";
+"DNSDiagnostics.Host" = "測試網域或 IP";
+"DNSDiagnostics.Start" = "開始解析測試";
+"DNSDiagnostics.SystemDNS" = "系統 DNS";
+"DNSDiagnostics.Failed" = "沒有此版本的位址，或解析失敗";
+"DNSDiagnostics.Notice" = "分別測試 A／AAAA 位址及解析時間。DoH 繞過應用快取；系統 DNS 可能使用系統快取。時間為解析耗時，非 DC Ping。使用本頁設定且不自動儲存，離開即取消。";
+"NetworkPolicy.DNSExclusive" = "自訂 DoH 與代理頁的「使用系統 DNS」互斥，後啟用者生效。儲存後會重新連線。";
+"MessageScreenshot.UnknownSender" = "未知傳送者";
+"Common.Copied" = "已複製";
+"MessageScreenshot.Unavailable" = "部分選取的訊息無法取得或不允許匯出。";
+"MessageScreenshot.TooLarge" = "最多選擇 30 則訊息；長圖超出尺寸上限時，請減少選取後重試。";

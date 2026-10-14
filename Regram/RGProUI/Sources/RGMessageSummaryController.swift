@@ -33,10 +33,11 @@ private struct RGMessageSummaryView: View {
             }
             if busy { Section { ProgressView(); Button("Common.Cancel".i18n(lang)) { request.set(nil); busy = false } } }
             if !errorText.isEmpty { Text(errorText).foregroundColor(.secondary) }
-            if !result.isEmpty { Section(header: Text("Summary.Result".i18n(lang))) { Text(result).textSelection(.enabled); Button("Summary.Copy".i18n(lang)) { UIPasteboard.general.string = result } } }
+            if !result.isEmpty { Section(header: Text("Summary.Result".i18n(lang))) { Text(result).textSelection(.enabled); RGCopyButton("Summary.Copy", value: { result }) } }
         }.onDisappear { request.set(nil); busy = false }
     }
     private func start() {
+        guard RGSimpleSettings.shared.messageSummaryEnabled else { return }
         let settings = RGSimpleSettings.shared
         let configuration = RGLLMTranslationConfiguration(format: RGLLMAPIFormat(rawValue: settings.summaryLLMAPIFormat) ?? .openai, baseURL: settings.summaryLLMBaseURL, endpoint: settings.summaryLLMEndpoint, apiKey: settings.summaryLLMAPIKey, model: settings.summaryLLMModel, prompt: settings.summaryLLMPrompt, temperature: Double(settings.summaryLLMTemperatureTenthsValue) / 10)
         guard !configuration.model.isEmpty else { configure(); return }
@@ -45,8 +46,8 @@ private struct RGMessageSummaryView: View {
     }
 }
 
-public func rgMessageSummaryController(context: AccountContext, messages: [Message]) -> ViewController? {
-    guard !messages.isEmpty, messages.count <= 100, messages.allSatisfy({ $0.id.peerId.namespace != Namespaces.Peer.SecretChat && !$0.containsSecretMedia && !$0.isCopyProtected() }) else { return nil }
+public func rgMessageSummaryController(context: AccountContext, messages: [Message], permitsTimeRange: Bool = false) -> ViewController? {
+    guard RGSimpleSettings.shared.messageSummaryEnabled, !messages.isEmpty, messages.count <= (permitsTimeRange ? 5000 : 100), messages.allSatisfy({ $0.id.peerId.namespace != Namespaces.Peer.SecretChat && !$0.containsSecretMedia && !$0.isCopyProtected() }) else { return nil }
     let messages = messages.sorted { $0.index < $1.index }.filter { !$0.text.isEmpty }
     guard !messages.isEmpty else { return nil }
     let data = context.sharedContext.currentPresentationData.with { $0 }
