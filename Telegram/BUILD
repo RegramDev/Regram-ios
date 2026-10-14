@@ -631,10 +631,9 @@ official_notification_filtering_fragment = """
 <key>com.apple.developer.usernotifications.filtering</key>
 <true/>
 """
-# MARK: Regram — Apple grants this only on request, so a re-signed build's profile never
-# carries it. A signing tool that copies entitlements through instead of replacing them then
-# produces an IPA iOS refuses to install, so a publicly distributed build must not claim it.
-notification_filtering_fragment = official_notification_filtering_fragment if False else ""  # MARK: Regram — approval-only; no profile available to a re-signed build grants these, so declaring them buys nothing and can make a strict signer refuse the IPA.
+# MARK: Regram — filtering belongs to the notification service extension. Its signing
+# metadata comes from NotificationService.mobileprovision; the main app does not request it.
+notification_filtering_fragment = ""
 
 store_signin_fragment = """
 <key>com.apple.developer.applesignin</key>

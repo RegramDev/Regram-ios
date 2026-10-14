@@ -115,6 +115,10 @@ def prepare(configuration, destination, bazel):
                 'get-task-allow': False,
                 'com.apple.developer.usernotifications.communication': True,
             }
+            # MARK: Regram — request filtering only for the notification service extension.
+            # This is synthetic reference metadata, not an Apple entitlement approval.
+            if name == 'NotificationService':
+                entitlements['com.apple.developer.usernotifications.filtering'] = True
             if config['telegram_enable_siri']:
                 entitlements['com.apple.developer.siri'] = True
             if config['telegram_enable_icloud']:
