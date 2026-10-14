@@ -30,16 +30,16 @@ jobs:
 
       - name: Prepare encrypted configuration
         env:
-          REGRAM_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BUILD_CONFIGURATION }}
+          REGRAM_BETA_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BETA_BUILD_CONFIGURATION }}
         run: |
           set -euo pipefail
           mkdir -p build-input/ci
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          value = os.environ.get('REGRAM_BUILD_CONFIGURATION', '')
+          value = os.environ.get('REGRAM_BETA_BUILD_CONFIGURATION', '')
           if not value:
-              raise SystemExit('Configure the REGRAM_BUILD_CONFIGURATION repository Secret before building')
+              raise SystemExit('Configure the REGRAM_BETA_BUILD_CONFIGURATION repository Secret before building')
           try:
               json.loads(value)
           except ValueError:

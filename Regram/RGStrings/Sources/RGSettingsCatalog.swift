@@ -13,7 +13,7 @@ public struct RGSettingsCatalogEntry: Hashable {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
         if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -126,7 +126,6 @@ public enum RGSettingsCatalog {
         .init("pro.appearance", "profileSettings", "Settings.Category.profiles"),
         .init("pro.privacy", "storiesSettings", "Settings.Category.stories"),
         .init("pro.privacy", "privacySettings", "Settings.Category.privacy"),
-        .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "saveEditHistory", "AntiFeatures.EditHistory"),
         .init("antiFeatures", "antiAutoDelete", "AntiFeatures.AutoDelete"),
@@ -156,14 +155,6 @@ public enum RGSettingsCatalog {
         .init("stt", "language", "RG.STTLanguage"),
         .init("stt", "prompt", "RG.STTPrompt"),
         .init("stt", "test", "RG.STTTest"),
-        .init("updates", "check", "AppUpdate.Check"),
-        .init("updates", "github", "AppUpdate.OpenGitHub"),
-        .init("updates", "installationMethod", "AppUpdate.InstallationMethod"),
-        .init("updates", "automaticCheck", "AppUpdate.AutomaticCheck"),
-        .init("updates", "automaticDownload", "AppUpdate.AutomaticDownload"),
-        .init("updates", "automaticExit", "AppUpdate.AutomaticExit"),
-        .init("updates", "certificate", "AppUpdate.ImportSigningMaterials", keywords: "certificate p12 mobileprovision 证书 描述文件 憑證 描述檔"),
-        .init("updates", "install", "AppUpdate.Install"),
         .init("bottomBar", "hidden", "Settings.Tabs.HideTabBar"),
         .init("bottomBar", "topSearch", "RG.BottomBarLayout.TopSearch"),
         .init("bottomBar", "visibility", "RG.BottomBarLayout.Visibility"),

@@ -52,6 +52,8 @@ def validate_configuration(config):
         raise ValueError('CI configuration must contain exactly the documented build variables')
     if any(type(config[name]) is not kind for name, kind in VARIABLES.items()):
         raise ValueError('CI configuration variable types are invalid')
+    if config['telegram_bundle_id'] != 'com.regram.app':
+        raise ValueError('This branch requires Bundle ID com.regram.app')
     if not re.fullmatch(r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+', config['telegram_bundle_id']):
         raise ValueError('Invalid bundle identifier')
     if not re.fullmatch(r'[A-Z0-9]{10}', config['telegram_team_id']):

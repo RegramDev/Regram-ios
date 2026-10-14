@@ -22,7 +22,6 @@ swift_library(
         "//Regram/RGLogging:RGLogging",
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//Regram/RGTranscription:RGTranscription",
-        "//Regram/RGAppUpdate:RGAppUpdate",
         "//Regram/RGGTranslate:RGGTranslate",
         "//Regram/RGStrings:RGStrings",
 #        "//Regram/RGAPI:RGAPI",

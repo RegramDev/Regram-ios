@@ -25,6 +25,9 @@ class BuildConfiguration:
         enable_icloud
     ):
         self.rg_config = rg_config
+        # MARK: Regram — keep build inputs aligned with the branch identity.
+        if bundle_id != "com.regram.app":
+            raise ValueError("This branch requires Bundle ID com.regram.app")
         self.bundle_id = bundle_id
         self.api_id = api_id
         self.api_hash = api_hash
@@ -268,6 +271,9 @@ class GitCodesigningSource(CodesigningSource):
         self.repo_url = repo_url
         self.private_key = private_key
         self.team_id = team_id
+        # MARK: Regram — keep build inputs aligned with the branch identity.
+        if bundle_id != "com.regram.app":
+            raise ValueError("This branch requires Bundle ID com.regram.app")
         self.bundle_id = bundle_id
         self.codesigning_type = codesigning_type
         self.password = password
@@ -317,6 +323,9 @@ class DirectoryCodesigningSource(CodesigningSource):
     def __init__(self, directory_path, team_id, bundle_id):
         self.directory_path = directory_path
         self.team_id = team_id
+        # MARK: Regram — keep build inputs aligned with the branch identity.
+        if bundle_id != "com.regram.app":
+            raise ValueError("This branch requires Bundle ID com.regram.app")
         self.bundle_id = bundle_id
 
     def load_data(self, working_dir):

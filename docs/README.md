@@ -5,8 +5,7 @@
 - [已加入功能清单](features.md)：按模块汇总当前功能、入口、可用条件、实验状态和已移除项目。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从已构建的 IPA 生成供后续签名的 ad-hoc 参考包，并检查包结构。
 - [语音识别、链接修复与设置分类](speech-links-settings.md)：接口配置、消息识别流程、预览规则、设置入口及验证范围。
-- [自动更新与安装](app-updates.md)：GitHub Release 校验、本地证书签名、证书／TrollStore 两种安装方式及真机验证边界。
-- [二维码登录与证书导入修正](qr-login-and-certificate-import.md)：令牌超时恢复、文件选择回调及验证范围。
+- [二维码登录修正](qr-login-and-certificate-import.md)：令牌超时恢复及验证范围。
 - [上游同步方案](regram-upstream-sync.md)：迁移与版本升级的设计方案；其中的分支模型是建议，不代表当前仓库已全面实施。
 - [UI 测试](ui-testing.md)：测试环境、测试账号和 XCUITest 的使用方式。
 - [富文本输入](richtext-composer.md)与[富文本消息渲染](instantpage-richtext.md)：相关模块的数据流和维护约束。

@@ -8,7 +8,6 @@ load(
 rgdeps = [
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGLinkMetadata:RGLinkMetadata",
-    "//Regram/RGAppUpdate:RGAppUpdate", # MARK: Regram
     "//Regram/RGConfig:RGConfig",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
@@ -45,7 +44,7 @@ filegroup(
     srcs = glob([
         "Sounds/**/*",
         "Resources/**/*",
-    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]) + ["//Regram/RGUpdateSigner:Licenses"], # MARK: Regram
+    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]),
     visibility = ["//visibility:public"],
 )
 
@@ -125,7 +124,6 @@ swift_library(
         "//submodules/BuildConfigExtra:BuildConfigExtra",
         "//submodules/LottieBinding:LottieBinding",
         "//submodules/LottieSettings:LottieSettings",
-        "//submodules/TelegramUpdateUI:TelegramUpdateUI",
         "//submodules/MergeLists:MergeLists",
         "//submodules/ActivityIndicator:ActivityIndicator",
         "//submodules/ProgressNavigationButtonNode:ProgressNavigationButtonNode",

@@ -2,7 +2,7 @@
 
 English · [简体中文](README.md)
 
-Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
+Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization.
 
 ## Features
 
@@ -67,17 +67,13 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 - Rich-text editing and rendering for headings, quotes, code, lists, tables, links, media, and drafts.
 - Profile role badges for developers, core testers, and sponsors.
 
-### Login, backups, and updates
+### Login and backups
 
 - Colored QR login, token refresh, data center migration, two-step verification, and retry handling.
 - No local account-count cap; Telegram server login rules still apply.
 - Category-based JSON settings backup and restore, excluding login sessions, chat databases, certificates, and API keys.
 - DC1–DC5 connection tests on a separate page: initial connection request, three subsequent samples, average/minimum latency, variation and failures. Copied results contain only the five DC average ping values.
 - Media/filter diagnostics, font cache management, and local data cleanup.
-- Update checks and IPA downloads from this repository's GitHub Releases, with size and SHA-256 validation.
-- TrollStore updates: reuse GitHub downloads and verification, then hand the IPA to TrollStore for installation without certificates. Supports automatic checks and optional automatic downloads.
-- Local certificate/profile storage and on-device re-signing, followed by installation through LCSign's manifest service and iOS.
-- Verified downloads and signed packages persist across restarts and can be reused after failures.
 
 ## Settings
 
@@ -93,13 +89,11 @@ All Regram preferences are under **Settings → Regram Pro**, whose home page sh
 | Appearance & Interface | Fonts, icons, badges, tab bar, and profile display |
 | Notifications & Alerts | Filtering, pins, mentions, and replies |
 | Network & Transfers | Upload/download parameters, call connections, diagnostics, and DC tests |
-| Management & Tools | Local Premium, backups, updates, and data cleanup |
+| Management & Tools | Local Premium, backups, and data cleanup |
 
 Each feature has one settings entry. Larger categories use subpages. Only the Regram Pro home page has search across all settings; results open their destination and scroll to the setting. Category pages and subpages do not add settings search or frequently used shortcuts. Long-press a setting to copy its deep link, containing only the page and setting identifier.
 
-Voice-to-text is under **Translation & Speech → Voice-to-Text**; LLM configuration is under **Translation & Speech → Translation → LLM Translation**; link-preview repair is under **Media & Links**; updates are under **Management & Tools → Regram Updates**.
-
-Update checks work without certificates. A separate GitHub Release button opens the release only when tapped. Automatic checks are off by default, and reminders require opting in. Certificate users can enable automatic exit after the system receives the complete installation package.
+Voice-to-text is under **Translation & Speech → Voice-to-Text**; LLM configuration is under **Translation & Speech → Translation → LLM Translation**; link-preview repair is under **Media & Links**.
 
 ## Building
 
@@ -146,19 +140,16 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
   --target=//Telegram:Regram
 ```
 
-The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging guide](docs/lcsign-reference-packaging.md) when preparing an ad-hoc reference IPA for LCSign or another signing tool. Keep the application identity and data container unchanged for an in-place upgrade.
-
 `--overrideXcodeVersion` skips the version check; it does not guarantee toolchain compatibility. Never commit API credentials, certificates, provisioning profiles, IPAs, or real account data.
 
 ## Documentation and contributions
 
 - [Full feature list and limitations](docs/features.md)
 - [Documentation index](docs/README.md)
-- [Updates and installation](docs/app-updates.md)
 - [Rich-text input](docs/richtext-composer.md)
 - [UI testing](docs/ui-testing.md)
 - [Contributing](.github/CONTRIBUTING.md)
 
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
 
-Bookmarks are under **Chats & Messages → Message Bookmarks & Tags**. DC testing is under **Network & Transfers → Performance & Transfers → DC1–DC5 Connection Tests**. Releases provide one Regram IPA. In-app updates use `Regram-version-bbuild.ipa`, with size, SHA-256 and installation identity checks.
+This branch uses `com.regram.app` and `group.com.regram.app`. The application and six extensions share the declared App Group. Application update downloads, certificate imports and IPA installation are excluded.

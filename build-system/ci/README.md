@@ -4,7 +4,7 @@
 
 Build Regram 在 macOS/Xcode 27 作业内构建 Regram，保留主应用与六个扩展，输出一份 IPA 和验证报告。
 
-仓库 Secret `REGRAM_BUILD_CONFIGURATION` 使用 prepare.py 的 VARIABLES 完整配置结构，沿用现有 Bundle ID、App Group 和 API 配置。凭据仅写入忽略的 build-input/ci，结束时清除。不得把真实 API 凭据、证书或生成的配置加入提交。
+仓库 Secret `REGRAM_BETA_BUILD_CONFIGURATION` 使用 prepare.py 的 VARIABLES 完整配置结构，Bundle ID 为 `com.regram.app`，App Group 为 `group.com.regram.app`，API 配置保存在私有构建输入中。凭据仅写入忽略的 build-input/ci，结束时清除。不得把真实 API 凭据、证书或生成的配置加入提交。
 
 安装包使用 `Regram-version-bbuild.ipa` 文件名，原始下载、签名、版本和校验信息继续验证；不再生成多身份包。
 

@@ -1,23 +1,9 @@
 import Foundation
 
-public let FALLBACK_BASE_BUNDLE_ID: String = "app.regram.ios"
+public let FALLBACK_BASE_BUNDLE_ID: String = "com.regram.app"
 
 public func rgBaseBundleIdentifier() -> String {
-    let baseBundleId: String
-    if let bundleId: String = Bundle.main.bundleIdentifier {
-        if Bundle.main.bundlePath.hasSuffix(".appex") {
-            if let lastDotRange: Range<String.Index> = bundleId.range(of: ".", options: [.backwards]) {
-                baseBundleId = String(bundleId[..<lastDotRange.lowerBound])
-            } else {
-                baseBundleId = FALLBACK_BASE_BUNDLE_ID
-            }
-        } else {
-            baseBundleId = bundleId
-        }
-    } else {
-        baseBundleId = FALLBACK_BASE_BUNDLE_ID
-    }
-    return baseBundleId
+    return FALLBACK_BASE_BUNDLE_ID
 }
 
 // MARK: Regram
@@ -31,16 +17,8 @@ public enum RGEntitlement {
     public static let userNotificationsFiltering = "com.apple.developer.usernotifications.filtering"
 }
 
-/// Whether this binary was built for a host such as LiveContainer/LCSign, where the guest app must
-/// keep all persistent data in its own private sandbox and must never adopt an App Group supplied
-/// by a later re-signing step.
-public let rgIsSandboxOnlyBuild: Bool = {
-    #if REGRAM_SANDBOX_ONLY
-    return true
-    #else
-    return false
-    #endif
-}()
+// MARK: Regram — the application and extensions always share their declared App Group.
+public let rgIsSandboxOnlyBuild = false
 
 /// What the signature this process is *actually* running under grants, as opposed to what the build
 /// declared.
@@ -132,38 +110,12 @@ public func rgSignatureGrants(_ entitlement: String) -> Bool {
     return RGGrantedEntitlements.shared.grants(entitlement)
 }
 
-/// The App Group identifier derived from this build's bundle id.
-///
-/// Deriving it at runtime rather than baking in a constant is what makes the build re-signable: a
-/// signing tool that renames the app to `<bundle id>.<team>` registers a matching
-/// `group.<bundle id>.<team>`, and both sides line up without the binary being patched.
 public func rgOwnAppGroupIdentifier() -> String {
-    return "group.\(rgBaseBundleIdentifier())"
+    return "group.com.regram.app"
 }
 
-/// Candidate App Groups, in the order they are tried.
-///
-/// `group.<bundle id>` first: that is what a build signed by its own developer account gets, and a
-/// signing tool that renames the app to `<bundle id>.<team>` registers a matching group, so both
-/// sides line up with no patching.
-///
-/// Then the groups the signature actually grants. A re-signing tool cannot grant `group.<bundle id>`
-/// — an App Group must be registered with Apple under the signing team — so it substitutes
-/// identifiers from its own pre-registered pool and drops the one this build declared. Without this
-/// step the app has no reachable shared container at all, and the extensions (notification service,
-/// share sheet, widgets) are left unable to see the account: notification bodies stay as the
-/// server's generic text and sharing cannot resolve a chat.
-///
-/// Sorted, so that the app and every extension independently arrive at the same choice. They each
-/// read their own signature and get the same list, but not necessarily in the same order — ordering
-/// by contents (say, "whichever already holds telegram-data") is what made them disagree before.
 private func rgAppGroupCandidates() -> [String] {
-    let own = rgOwnAppGroupIdentifier()
-    let granted = RGGrantedEntitlements.shared.appGroups()
-    if granted.contains(own) {
-        return [own]
-    }
-    return [own] + granted.sorted()
+    return [rgOwnAppGroupIdentifier()]
 }
 
 /// Caches only a *successful* resolution.
@@ -179,12 +131,6 @@ private final class RGAppGroupResolution {
     private var resolved: (identifier: String, url: URL)?
 
     func resolve() -> (identifier: String, url: URL)? {
-        // Compile-time policy, not a fallback: a sandbox-only binary must remain private even if a
-        // host later re-signs it with one of the host's own App Group entitlements.
-        guard !rgIsSandboxOnlyBuild else {
-            return nil
-        }
-
         self.lock.lock()
         if let resolved = self.resolved {
             self.lock.unlock()
@@ -227,47 +173,13 @@ public func rgAppGroupIdentifier() -> String {
     return result
 }
 
-/// Defaults shared with extensions in a regular build, and ordinary app-sandbox defaults in the
-/// LCSign sandbox-only variant.
+/// Settings shared by the main application and extensions.
 public func rgSharedUserDefaults() -> UserDefaults? {
-    if rgIsSandboxOnlyBuild {
-        return .standard
-    }
     return UserDefaults(suiteName: rgAppGroupIdentifier())
 }
 
-private func rgPrivateDataContainerURL() -> URL? {
-    guard let applicationSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-        return nil
-    }
-    let result = applicationSupportURL.appendingPathComponent("Regram", isDirectory: true)
-    do {
-        try FileManager.default.createDirectory(at: result, withIntermediateDirectories: true)
-        return result
-    } catch {
-        return nil
-    }
-}
-
-/// Directory holding all of the app's data: the shared App Group container, so that the extensions
-/// (notification service, share sheet, widgets) read and write the same database as the app.
-///
-/// In the explicit sandbox-only build variant this instead returns
-/// `Library/Application Support/Regram` inside the main app sandbox. This is intentionally not an
-/// automatic fallback: regular builds still fail when their shared container is unavailable, and
-/// sandbox-only builds exclude extensions because an extension cannot enter the main app sandbox.
-///
-/// Records the outcome either way, see `rgRecordResolvedContainer`.
+/// The shared application container; no private-container fallback is used.
 public func rgDataContainerURL() -> URL? {
-    if rgIsSandboxOnlyBuild {
-        guard let result = rgPrivateDataContainerURL() else {
-            rgRecordResolvedContainer("unavailable:sandbox")
-            return nil
-        }
-        rgRecordResolvedContainer("sandbox:\(result.path)")
-        return result
-    }
-
     guard let resolved = RGAppGroupResolution.shared.resolve() else {
         rgRecordResolvedContainer("unavailable:\(rgOwnAppGroupIdentifier())")
         return nil

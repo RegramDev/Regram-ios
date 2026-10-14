@@ -51,7 +51,7 @@ git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-loca
   --jobs=2 --local_resources=memory=4096 --local_resources=cpu=2 \
   --@build_bazel_rules_swift//swift:copt=-num-threads --@build_bazel_rules_swift//swift:copt=2 \
   --disk_cache="$PWD/build-input/ci-cache" \
-  --//Telegram:disableExtensions=false --//Regram/RGAppGroupIdentifier:sandboxOnly=false \
+  --//Telegram:disableExtensions=false \
   --//Regram/RGSimpleSettings:mediaLoadingExperimentDefault=true
 
 python3 build-system/ci/package.py --ipa bazel-bin/Telegram/Regram.ipa \

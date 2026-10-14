@@ -11,7 +11,6 @@ import RGLogging
 import RGStrings
 import RGSimpleSettings
 import RGAppGroupIdentifier
-import RGAppUpdate // MARK: Regram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -464,7 +463,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             self.rgLaunchResetCoordinator = resetCoordinator
             return true
         }
-        RGAppUpdater.shared.start()
         //
 
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
@@ -1506,8 +1504,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 
                     self.mainWindow.debugAction = nil
                     self.mainWindow.viewController = context.rootController
-                    // MARK: Regram — a prompt emitted before the account root mounted must not be lost.
-                    Task { @MainActor in RGAppUpdater.shared.refreshPrompt() }
                     
                     if firstTime {
                         let layer = context.rootController.view.layer

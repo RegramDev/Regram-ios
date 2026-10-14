@@ -65,6 +65,8 @@ load(
     "telegram_enable_siri",
 )
 
+# MARK: Regram — reject build inputs for another application identity.
+load("//build-system/bazel-utils:beta_identity.bzl", "require_beta_bundle_id")
 load("@build_bazel_rules_apple//apple:resources.bzl",
     "swift_intent_library",
 )
@@ -72,6 +74,8 @@ load("@build_bazel_rules_apple//apple:resources.bzl",
 load("//build-system/bazel-utils:spm.bzl",
     "generate_spm",
 )
+
+require_beta_bundle_id(telegram_bundle_id)
 
 config_setting(
     name = "debug",
@@ -653,28 +657,6 @@ plist_fragment(
     template = "".join([
         aps_fragment,
         app_groups_fragment,
-        application_identifier_fragment,
-        siri_fragment,
-        associated_domains_fragment,
-        icloud_fragment,
-        apple_pay_merchants_fragment,
-        unrestricted_voip_fragment,
-        carplay_fragment,
-        communication_notifications_fragment,
-        notification_filtering_fragment,
-        signin_fragment,
-        background_gpu_fragment,
-    ])
-)
-
-# The LCSign/LiveContainer variant runs entirely in the app's private sandbox. Keep the app
-# identity and unrelated capabilities, but do not advertise an App Group that the binary is
-# explicitly compiled not to use.
-plist_fragment(
-    name = "TelegramSandboxEntitlements",
-    extension = "entitlements",
-    template = "".join([
-        aps_fragment,
         application_identifier_fragment,
         siri_fragment,
         associated_domains_fragment,
@@ -1776,8 +1758,6 @@ plist_fragment(
     <false/>
     <key>LSApplicationQueriesSchemes</key>
     <array>
-        <!-- MARK: Regram — required for TrollStore installation handoff. -->
-        <string>apple-magnifier</string>
         <string>instagram</string>
         <string>comgooglemaps-x-callback</string>
         <string>foursquare</string>
@@ -1983,10 +1963,7 @@ ios_application(
         ":disableProvisioningProfilesSetting": None,
         "//conditions:default": ":Telegram_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:Telegram.mobileprovision",
     }),
-    entitlements = select({
-        "//Regram/RGAppGroupIdentifier:sandboxOnlySetting": ":TelegramSandboxEntitlements.entitlements",
-        "//conditions:default": ":TelegramEntitlements.entitlements",
-    }),
+    entitlements = ":TelegramEntitlements.entitlements",
     infoplists = [
         ":TelegramInfoPlist",
         ":BuildNumberInfoPlist",

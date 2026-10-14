@@ -13,7 +13,7 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
         "messagesPage": "pro.messages", "inputPage": "pro.input", "networkPage": "pro.network", "translationPage": "pro.translation", "privacyPage": "pro.privacy", "mediaPage": "pro.media", "appearancePage": "pro.appearance", "notificationsPage": "pro.notifications", "toolsPage": "pro.tools",
         "messageActionsSettings": "settings.messageActions", "chatListSettings": "settings.chatList", "folderSettings": "settings.folders", "translationSettings": "settings.translation", "transcriptionSettings": "stt", "photoSettings": "settings.photos", "stickerSettings": "settings.stickers", "recordingSettings": "settings.recording", "mediaSettings": "settings.media", "appearanceSettings": "settings.appearance", "profileSettings": "settings.profiles", "storiesSettings": "settings.stories", "appSettings": "settings.app",
         "inputSettings": "settings.input", "transferSettings": "settings.transfer", "privacySettings": "settings.privacy", "bookmarks": "bookmarks",
-        "llmTranslationSettings": "llm", "bottomBarLayout": "bottomBar", "contextMenuOrder": "contextMenu", "linkPreviewSettings": "linkPreview", "appUpdate": "updates", "antiFeatures": "antiFeatures", "ghostMode": "ghostMode", "messageFilter": "messageFilter", "hiddenUsers": "hiddenUsers", "antiRevokeChats": "antiRevokeChats", "fonts": "fonts", "backup": "backup", "chatPreferences": "chatPreferences", "revokedMessages": "revokedMessages", "diagnostics": "diagnostics", "appIcons": "appIcons", "appBages": "appBadges"
+        "llmTranslationSettings": "llm", "bottomBarLayout": "bottomBar", "contextMenuOrder": "contextMenu", "linkPreviewSettings": "linkPreview", "antiFeatures": "antiFeatures", "ghostMode": "ghostMode", "messageFilter": "messageFilter", "hiddenUsers": "hiddenUsers", "antiRevokeChats": "antiRevokeChats", "fonts": "fonts", "backup": "backup", "chatPreferences": "chatPreferences", "revokedMessages": "revokedMessages", "diagnostics": "diagnostics", "appIcons": "appIcons", "appBages": "appBadges"
     ]
     if destination.page.hasPrefix("pro.") || destination.page.hasPrefix("settings."), let focus, let page = disclosed[focus], let target = RGSettingsDestination(page: page) {
         return rgControllerForSettingsLink(context: context, destination: target)
@@ -24,7 +24,6 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     case "bottomBar": return rgBottomBarSettingsController(context: context, focusSetting: focus)
     case "llm": return rgLLMTranslationSettingsController(context: context, focusSetting: focus)
     case "stt": return rgSTTSettingsController(context: context, focusSetting: focus)
-    case "updates": return rgAppUpdateController(context: context, focusSetting: focus)
     case "linkPreview": return rgLinkPreviewSettingsController(context: context, focusSetting: focus)
     case "antiFeatures": return rgAntiFeaturesController(context: context, focusSetting: focus)
     case "ghostMode": return rgGhostModeController(context: context, focusSetting: focus)

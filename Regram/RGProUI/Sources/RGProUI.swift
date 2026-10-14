@@ -62,7 +62,6 @@ private enum RGProDisclosureLink: String {
     case photoSettings
     case stickerSettings
     case recordingSettings
-    case appUpdate
     case appSettings
     case inputSettings
     case transferSettings
@@ -188,7 +187,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .appearance, link: .profileSettings, text: RGSettingsPage.profiles.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .storiesSettings, text: RGSettingsPage.stories.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .privacySettings, text: RGSettingsPage.privacy.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
 
     entries.append(.disclosure(id: id.count, section: .base, link: .bookmarks, text: "Bookmarks.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .input, link: .inputSettings, text: RGSettingsPage.input.titleKey.i18n(lang)))
@@ -322,7 +320,6 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .stickerSettings: pushControllerImpl?(rgSettingsController(context: context, page: .stickers))
             case .recordingSettings: pushControllerImpl?(rgSettingsController(context: context, page: .recording))
             case .linkPreviewSettings: pushControllerImpl?(rgLinkPreviewSettingsController(context: context))
-            case .appUpdate: pushControllerImpl?(rgAppUpdateController(context: context))
             case .appSettings: pushControllerImpl?(rgSettingsController(context: context, page: .app))
 
             case .antiFeatures:

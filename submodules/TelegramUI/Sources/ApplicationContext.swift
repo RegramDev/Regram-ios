@@ -1,6 +1,5 @@
 // MARK: Regram
 import RGSimpleSettings
-import RGAppUpdate // MARK: Regram
 import RGSettingsUI // MARK: Regram
 import RGStrings // MARK: Regram
 import Foundation
@@ -14,7 +13,6 @@ import TelegramCore
 import Display
 import LegacyComponents
 import DeviceAccess
-import TelegramUpdateUI
 import AccountContext
 import AlertUI
 import PresentationDataUtils
@@ -125,13 +123,11 @@ final class AuthorizedApplicationContext {
     private let termsOfServiceProceedToBotDisposable = MetaDisposable()
     private let watchNavigateToMessageDisposable = MetaDisposable()
     private let permissionsDisposable = MetaDisposable()
-    private let appUpdateInfoDisposable = MetaDisposable()
     
     private var inAppNotificationSettings: InAppNotificationSettings?
     
     var passcodeController: PasscodeEntryController?
     
-    private var currentAppUpdateInfo: AppUpdateInfo?
     private var currentTermsOfServiceUpdate: TermsOfServiceUpdate?
     private var currentPermissionsController: PermissionController?
     private var currentPermissionsState: PermissionState?
@@ -155,7 +151,6 @@ final class AuthorizedApplicationContext {
     private var removeNotificationsDisposable: Disposable?
     
     private var applicationInForegroundDisposable: Disposable?
-    private let rgAppUpdateDisposable = MetaDisposable() // MARK: Regram
     
     private var showContactsTab: Bool
     private var showCallsTab: Bool
@@ -592,67 +587,7 @@ final class AuthorizedApplicationContext {
             }
         }))
         
-        self.appUpdateInfoDisposable.set((context.account.stateManager.appUpdateInfo
-        |> deliverOnMainQueue).start(next: { [weak self] appUpdateInfo in
-            guard let strongSelf = self, strongSelf.currentAppUpdateInfo != appUpdateInfo else {
-                return
-            }
-            
-            strongSelf.currentAppUpdateInfo = appUpdateInfo
-            if let appUpdateInfo = appUpdateInfo {
-                let controller = updateInfoController(context: strongSelf.context, appUpdateInfo: appUpdateInfo)
-                strongSelf.mainWindow.present(controller, on: .update)
-            }
-        }))
-
-        // MARK: Regram — distinguish discovery from installation; the updater owns global deduplication.
-        self.rgAppUpdateDisposable.set((combineLatest(rgAppUpdatePrompt.get(), context.sharedContext.applicationBindings.applicationIsActive)
-        |> deliverOnMainQueue).start(next: { [weak self] prompt, active in
-            guard let self, let prompt, active else { return }
-            Task { @MainActor [weak self] in
-                guard let self, (self.mainWindow.viewController as? TelegramRootController) === self.rootController,
-                      let source = self.rootController.viewControllers.last as? ViewController,
-                      RGAppUpdater.shared.claimPrompt(prompt) else { return }
-                let updater = RGAppUpdater.shared
-                let data = self.context.sharedContext.currentPresentationData.with { $0 }
-                let lang = data.strings.rgLanguageCode
-                let title: String
-                let message: String
-                let actionTitle: String
-                switch prompt.kind {
-                case .available:
-                    title = "AppUpdate.Available".i18n(lang)
-                    message = "Regram \(prompt.release.version) (\(prompt.release.build))"
-                    actionTitle = "AppUpdate.Update".i18n(lang)
-                case .ready:
-                    title = "AppUpdate.Ready".i18n(lang)
-                    message = "AppUpdate.InstallPrompt".i18n(lang, args: "\(prompt.release.version) (\(prompt.release.build))")
-                    actionTitle = "AppUpdate.Install".i18n(lang)
-                case let .failed(key):
-                    title = "AppUpdate.UpdateFailed".i18n(lang)
-                    message = key.i18n(lang)
-                    actionTitle = "AppUpdate.Title".i18n(lang)
-                }
-                let alert = textAlertController(context: self.context, title: title, text: message, actions: [
-                    TextAlertAction(type: .genericAction, title: "AppUpdate.Later".i18n(lang), action: {}),
-                    TextAlertAction(type: .defaultAction, title: actionTitle, action: { [weak self] in
-                        Task { @MainActor [weak self] in
-                            guard let self else { return }
-                            switch prompt.kind {
-                            case .available:
-                                if updater.automaticallyPrepare && updater.isConfigured { updater.acceptAutomaticUpdate(prompt.release) }
-                                else { self.rootController.pushViewController(rgAppUpdateController(context: self.context)) }
-                            case .ready:
-                                if updater.release?.hasSameArtifact(as: prompt.release) == true { updater.install(showFailurePrompt: true) }
-                            case .failed:
-                                self.rootController.pushViewController(rgAppUpdateController(context: self.context))
-                            }
-                        }
-                    })
-                ])
-                source.present(alert, in: .window(.root))
-            }
-        }))
+        // MARK: Regram — this branch has no application update prompts.
 
         if #available(iOS 10.0, *) {
             let permissionsPosition = ValuePromise(0, ignoreRepeated: true)
@@ -928,7 +863,6 @@ final class AuthorizedApplicationContext {
         self.watchNavigateToMessageDisposable.dispose()
         self.permissionsDisposable.dispose()
         self.scheduledCallPeerDisposable.dispose()
-        self.rgAppUpdateDisposable.dispose() // MARK: Regram
     }
     
     func openNotificationSettings() {
