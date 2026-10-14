@@ -131,49 +131,40 @@ public func rgEraseAllLocalData() -> [String] {
 /// toggle `rg_full_wipe`, which lives in `UserDefaults.standard` — not in the container being
 /// deleted — so the flag itself survives long enough to be read and cleared.
 @discardableResult
-public func rgFullWipeIfNeeded(present: ((UIViewController) -> ())?, beforePresent: (() -> ())? = nil) -> Bool {
-    guard UserDefaults.standard.bool(forKey: fullWipeKey) else {
-        return false
-    }
-    UserDefaults.standard.set(false, forKey: fullWipeKey)
-    beforePresent?()
-
+public func rgFullWipeIfNeeded(present: @escaping (UIViewController, @escaping () -> Void) -> Void) -> Bool {
+    guard UserDefaults.standard.bool(forKey: fullWipeKey) else { return false }
+    let lang = RGLocalizationManager.shared.preferredLocale(primary: UserDefaults.standard.string(forKey: "Regram.Reset.Language") ?? Locale.preferredLanguages.first ?? "en", secondary: nil)
     guard rgDataContainerURL() != nil else {
-        NSLog("[RG.FullWipe] ERROR. Data container unavailable")
-        let failAlert = UIAlertController(title: "ERROR. Full wipe failed", message: "Data container unavailable", preferredStyle: .alert)
-        failAlert.addAction(UIAlertAction(title: "Close", style: .cancel) { _ in exit(0) })
-        present?(failAlert)
+        let alert = UIAlertController(title: "EraseData.Title".i18n(lang), message: "EraseData.ContainerUnavailable".i18n(lang), preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "EraseData.Close".i18n(lang), style: .cancel) { _ in exit(0) })
+        present(alert, {})
         return true
     }
-
-    let confirm = UIAlertController(
-        title: "⚠️ Erase All Data",
-        message: "This logs out every account and deletes all local data, caches and settings of this app. The app then behaves like a fresh install.\n\nContinue?",
-        preferredStyle: .alert
-    )
-    confirm.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+    let confirm = UIAlertController(title: "EraseData.Title".i18n(lang), message: "EraseData.Confirm".i18n(lang), preferredStyle: .alert)
+    confirm.addAction(UIAlertAction(title: "Common.Cancel".i18n(lang), style: .cancel) { _ in
+        RGLaunchResetCoordinator.resolve(.fullWipe)
         exit(0)
     })
-    confirm.addAction(UIAlertAction(title: "Erase Everything", style: .destructive) { _ in
-        let progress = UIAlertController(title: "Erasing…\nDO NOT CLOSE THE APP", message: nil, preferredStyle: .alert)
-        confirm.dismiss(animated: false) {
-            present?(progress)
-        }
-
-        let failures = rgEraseAllLocalData()
-        let done = UIAlertController(
-            title: failures.isEmpty ? "All data erased" : "Erased with errors",
-            message: failures.isEmpty ? "The app will now close. Open it again to start fresh." : "Could not remove: \(failures.joined(separator: ", "))",
-            preferredStyle: .alert
-        )
-        done.addAction(UIAlertAction(title: "Close App", style: .cancel) { _ in
-            exit(0)
-        })
-        progress.dismiss(animated: false) {
-            present?(done)
+    confirm.addAction(UIAlertAction(title: "EraseData.Action".i18n(lang), style: .destructive) { [weak confirm] _ in
+        RGLaunchResetCoordinator.resolve(.fullWipe)
+        confirm?.dismiss(animated: false) {
+            // Wait for UIKit's action dismissal before presenting another alert.
+            DispatchQueue.main.async {
+                let progress = UIAlertController(title: "EraseData.Progress".i18n(lang), message: nil, preferredStyle: .alert)
+                present(progress) {
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let failures = rgEraseAllLocalData()
+                        DispatchQueue.main.async {
+                            let done = UIAlertController(title: (failures.isEmpty ? "EraseData.Done" : "EraseData.Errors").i18n(lang), message: failures.isEmpty ? "EraseData.DoneNotice".i18n(lang) : "EraseData.ErrorsNotice".i18n(lang, args: failures.joined(separator: ", ")), preferredStyle: .alert)
+                            done.addAction(UIAlertAction(title: "EraseData.Close".i18n(lang), style: .cancel) { _ in exit(0) })
+                            progress.dismiss(animated: false) { present(done, {}) }
+                        }
+                    }
+                }
+            }
         }
     })
-    present?(confirm)
+    present(confirm, {})
     return true
 }
 
@@ -182,7 +173,6 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
     guard UserDefaults.standard.bool(forKey: dbHardResetKey) else {
         return false
     }
-    UserDefaults.standard.set(false, forKey: dbHardResetKey)
     beforePresent?()
     guard let dataPath = dataPath ?? rgDefaultDataPath() else {
         NSLog("[RG.DBReset] ERROR. Reset All failed: Error 2")
@@ -201,6 +191,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
     )
     
     startAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+        RGLaunchResetCoordinator.resolve(.database)
         exit(0)
     })
     startAlert.addAction(UIAlertAction(title: "RESET", style: .destructive) { _ in
@@ -211,9 +202,11 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
         )
         
         ensureAlert.addAction(UIAlertAction(title: "Cancel", style: .default) { _ in
+            RGLaunchResetCoordinator.resolve(.database)
             exit(0)
         })
         ensureAlert.addAction(UIAlertAction(title: "RESET NOW", style: .destructive) { _ in
+            RGLaunchResetCoordinator.resolve(.database)
             NSLog("[RG.DBReset] Reset All with system settings")
             let alert = UIAlertController(
                 title: "Reset All.\nDO NOT CLOSE THE APP\nPlease wait...",
@@ -305,6 +298,7 @@ public func rgHardReset(dataPath: String? = nil, present: ((UIViewController) ->
             }
         })
         ensureAlert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            RGLaunchResetCoordinator.resolve(.database)
             exit(0)
         })
         

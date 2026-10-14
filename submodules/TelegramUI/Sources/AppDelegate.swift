@@ -361,12 +361,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     private let regularDeviceToken = Promise<Data?>(nil)
     
     private var recaptchaClientsBySiteKey: [String: Promise<RecaptchaClient>] = [:]
+    // MARK: Regram — this branch must not open account/update storage before reset confirmation.
+    private var rgLaunchResetCoordinator: RGLaunchResetCoordinator?
         
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         precondition(!testIsLaunched)
         testIsLaunched = true
-        // MARK: Regram — checks on launch/foreground for certificate installations.
-        RGAppUpdater.shared.start()
         
         let _ = voipTokenPromise.get().start(next: { token in
             self.voipDeviceToken.set(.single(token))
@@ -458,14 +458,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.window = window
         self.nativeWindow = window
         // MARK: Regram
-        // Both run before any database is opened; the wipe must come first since it is the more
-        // destructive of the two and makes the other moot.
-        if rgFullWipeIfNeeded(present: self.mainWindow?.presentNative, beforePresent: { self.window?.makeKeyAndVisible() }) {
+        // Detect the request before opening storage, but present only after Scene activation.
+        let resetCoordinator = RGLaunchResetCoordinator()
+        if resetCoordinator.request != nil {
+            self.rgLaunchResetCoordinator = resetCoordinator
             return true
         }
-        if rgHardReset(present: self.mainWindow?.presentNative, beforePresent: { self.window?.makeKeyAndVisible() }) {
-            return true
-        }
+        RGAppUpdater.shared.start()
         //
 
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
@@ -1131,7 +1130,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
                 }
                 // MARK: Regram — UIKit may finish on a background queue; settings updates use main.
-                DispatchQueue.main.async { completion(error == nil) }
+                DispatchQueue.main.async {
+                    if error == nil { NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil) }
+                    completion(error == nil)
+                }
             })
         }, forceOrientation: { orientation in
             let value = orientation.rawValue
@@ -1504,6 +1506,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 
                     self.mainWindow.debugAction = nil
                     self.mainWindow.viewController = context.rootController
+                    // MARK: Regram — a prompt emitted before the account root mounted must not be lost.
+                    Task { @MainActor in RGAppUpdater.shared.refreshPrompt() }
                     
                     if firstTime {
                         let layer = context.rootController.view.layer
@@ -1915,6 +1919,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.mainWindow?.updateDeviceMetrics()
         self.window?.makeKeyAndVisible()
 
+        // MARK: Regram — reset mode has no account context or URL routing to initialize.
+        if self.rgLaunchResetCoordinator != nil { return }
+
         for context in connectionOptions.urlContexts {
             let url = context.url
             if let buildConfig = self.buildConfig, url.scheme == "tg" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
@@ -2138,6 +2145,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func handleWillResignActive() {
+        // MARK: Regram
+        if self.rgLaunchResetCoordinator != nil { return }
         self.isActiveValue = false
         self.isActivePromise.set(false)
         self.clearNotificationsManager?.commitNow()
@@ -2165,6 +2174,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func handleDidEnterBackground() {
+        // MARK: Regram
+        if self.rgLaunchResetCoordinator != nil { return }
         let _ = (self.sharedContextPromise.get()
         |> take(1)
         |> deliverOnMainQueue).start(next: { sharedApplicationContext in
@@ -2212,6 +2223,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func handleWillEnterForeground() {
+        // MARK: Regram
+        if self.rgLaunchResetCoordinator != nil { return }
         if self.isActiveValue {
             self.isInForegroundValue = true
             self.isInForegroundPromise.set(true)
@@ -2254,6 +2267,21 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
 
     func handleDidBecomeActive() {
+        // MARK: Regram — root replacement in attach(scene:) has finished at this point.
+        if let coordinator = self.rgLaunchResetCoordinator {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let window = self.window, let root = window.rootViewController,
+                      root.viewIfLoaded?.window != nil,
+                      let request = coordinator.claimPresentation(sceneConnected: window.windowScene != nil, active: window.windowScene?.activationState == .foregroundActive) else { return }
+                switch request {
+                case .fullWipe:
+                    rgFullWipeIfNeeded(present: { controller, completion in root.present(controller, animated: false, completion: completion) })
+                case .database:
+                    rgHardReset(present: { controller in root.present(controller, animated: false) })
+                }
+            }
+            return
+        }
         // The extension can be suspended immediately after completing a push. Finish its cleanup
         // when the app resumes, without touching real message notifications.
         UNUserNotificationCenter.current().getDeliveredNotifications { notifications in

@@ -2584,60 +2584,37 @@ public final class AccountViewTracker {
     
     public func unseenPersonalMessagesAndReactionCount(peerId: PeerId, threadId: Int64?) -> Signal<(mentionCount: Int32, reactionCount: Int32, pollVoteCount: Int32), NoError> {
         if let account = self.account {
-            let pendingMentionsKey: PostboxViewKey = .pendingMessageActionsSummary(type: .consumeUnseenPersonalMessage, peerId: peerId, namespace: Namespaces.Message.Cloud)
+            let pendingMentionsKey: PostboxViewKey = .pendingMessageActions(type: .consumeUnseenPersonalMessage)
+            let pendingReactionsKey: PostboxViewKey = .pendingMessageActions(type: .readReactionOrPollVote)
             let summaryMentionsKey: PostboxViewKey = .historyTagSummaryView(tag: .unseenPersonalMessage, peerId: peerId, threadId: threadId, namespace: Namespaces.Message.Cloud, customTag: nil)
-            
-            let pendingReactionsKey: PostboxViewKey = .pendingMessageActionsSummary(type: .readReactionOrPollVote, peerId: peerId, namespace: Namespaces.Message.Cloud)
             let summaryReactionsKey: PostboxViewKey = .historyTagSummaryView(tag: .unseenReaction, peerId: peerId, threadId: threadId, namespace: Namespaces.Message.Cloud, customTag: nil)
-            
-            let pendingPollVotesKey: PostboxViewKey = .pendingMessageActionsSummary(type: .readReactionOrPollVote, peerId: peerId, namespace: Namespaces.Message.Cloud)
             let summaryPollVotesKey: PostboxViewKey = .historyTagSummaryView(tag: .unseenPollVote, peerId: peerId, threadId: threadId, namespace: Namespaces.Message.Cloud, customTag: nil)
-            
-            return account.postbox.combinedView(keys: [pendingMentionsKey, summaryMentionsKey, pendingReactionsKey, summaryReactionsKey, pendingPollVotesKey, summaryPollVotesKey])
-            |> map { views -> (mentionCount: Int32, reactionCount: Int32, pollVoteCount: Int32) in
-                var mentionCount: Int32 = 0
-                if let view = views.views[pendingMentionsKey] as? PendingMessageActionsSummaryView {
-                    mentionCount -= view.count
-                }
-                if let view = views.views[summaryMentionsKey] as? MessageHistoryTagSummaryView {
-                    if let unseenCount = view.count {
-                        mentionCount += unseenCount
+            return account.postbox.combinedView(keys: [pendingMentionsKey, pendingReactionsKey, summaryMentionsKey, summaryReactionsKey, summaryPollVotesKey])
+            |> mapToSignal { _ in
+                account.postbox.transaction { transaction -> (mentionCount: Int32, reactionCount: Int32, pollVoteCount: Int32) in
+                    // MARK: Regram — read all counters from one transaction and subtract only
+                    // pending messages still carrying this tag in this conversation/topic.
+                    // A peer-wide pending count hides mentions from other topics and already-cleared tags.
+                    func pendingCount(type: PendingMessageActionType, tag: MessageTags) -> Int32 {
+                        var count: Int32 = 0
+                        for action in transaction.getPendingMessageActions(type: type) {
+                            guard action.id.peerId == peerId, action.id.namespace == Namespaces.Message.Cloud,
+                                  let message = transaction.getMessage(action.id), message.tags.contains(tag),
+                                  threadId == nil || message.threadId == threadId else { continue }
+                            count += 1
+                        }
+                        return count
                     }
-                }
-                var reactionCount: Int32 = 0
-                if let view = views.views[summaryReactionsKey] as? MessageHistoryTagSummaryView {
-                    if let unseenCount = view.count {
-                        reactionCount += unseenCount
+                    func summary(_ tag: MessageTags) -> Int32 {
+                        transaction.getMessageTagSummary(peerId: peerId, threadId: threadId, tagMask: tag, namespace: Namespaces.Message.Cloud, customTag: nil)?.count ?? 0
                     }
+                    return (max(0, summary(.unseenPersonalMessage) - pendingCount(type: .consumeUnseenPersonalMessage, tag: .unseenPersonalMessage)), max(0, summary(.unseenReaction)), max(0, summary(.unseenPollVote) - pendingCount(type: .readReactionOrPollVote, tag: .unseenPollVote)))
                 }
-                var pollVoteCount: Int32 = 0
-                if let view = views.views[pendingPollVotesKey] as? PendingMessageActionsSummaryView {
-                    pollVoteCount -= view.count
-                }
-                if let view = views.views[summaryPollVotesKey] as? MessageHistoryTagSummaryView {
-                    if let unseenCount = view.count {
-                        pollVoteCount += unseenCount
-                    }
-                }
-                return (max(0, mentionCount), max(0, reactionCount), max(0, pollVoteCount))
             }
-            |> distinctUntilChanged(isEqual: { lhs, rhs in
-                if lhs.mentionCount != rhs.mentionCount {
-                    return false
-                }
-                if lhs.reactionCount != rhs.reactionCount {
-                    return false
-                }
-                if lhs.pollVoteCount != rhs.pollVoteCount {
-                    return false
-                }
-                return true
-            })
-        } else {
-            return .never()
-        }
+            |> distinctUntilChanged(isEqual: { $0.mentionCount == $1.mentionCount && $0.reactionCount == $1.reactionCount && $0.pollVoteCount == $1.pollVoteCount })
+        } else { return .never() }
     }
-    
+
     private func wrappedChatListView(signal: Signal<(ChatListView, ViewUpdateType), NoError>) -> Signal<(ChatListView, ViewUpdateType), NoError> {
         return withState(signal, { [weak self] () -> Int32 in
             if let strongSelf = self {

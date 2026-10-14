@@ -600,6 +600,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     
     // MARK: Regram
     private var rgLinkPreviewSettingsObserver: NSObjectProtocol?
+    private var rgSpoilerSettingsObserver: NSObjectProtocol?
     private var rgShowHiddenPinnedMessagesObserver: NSObjectProtocol?
     public var overlayTitle: String? {
          var title: String?
@@ -7105,6 +7106,15 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
 
         // MARK: Regram
         // MARK: Regram — requery an existing draft when preview rules or services change.
+        self.rgSpoilerSettingsObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.spoilerSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.isNodeLoaded else { return }
+            var messageIds = Set<MessageId>()
+            self.chatDisplayNode.historyNode.forEachItemNode { node in
+                guard let node = node as? ChatMessageItemView, let item = node.item else { return }
+                for message in item.content { messageIds.insert(message.0.id) }
+            }
+            for id in messageIds { self.chatDisplayNode.historyNode.requestMessageUpdate(id) }
+        }
         self.rgLinkPreviewSettingsObserver = NotificationCenter.default.addObserver(forName: RGLinkPreviewRules.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.urlPreviewQueryState?.1.dispose()
@@ -7193,6 +7203,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     deinit {
         // MARK: Regram
         if let observer = rgLinkPreviewSettingsObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = rgSpoilerSettingsObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = rgShowHiddenPinnedMessagesObserver { NotificationCenter.default.removeObserver(observer) }
         let _ = ChatControllerCount.modify { value in
             return value - 1

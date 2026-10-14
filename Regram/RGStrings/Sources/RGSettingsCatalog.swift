@@ -68,6 +68,7 @@ public enum RGSettingsCatalog {
         .init("settings.messageActions", "messageDoubleTapAction", "DoubleTap.Action", keywords: "reaction reply repeat translate edit 回应 回复 复读 翻译 编辑 回應 回覆 複讀 編輯"),
         .init("settings.messageActions", "messageDoubleTapActionWithoutEditPermission", "DoubleTap.WithoutEditPermission", keywords: "reaction reply repeat translate edit 回应 回复 复读 翻译 编辑 回應 回覆 複讀 編輯"),
         .init("settings.messageActions", "showMessageId", "Settings.ShowMessageId"),
+        .init("settings.messageActions", "automaticallyRevealSpoilers", "Settings.AutomaticallyRevealSpoilers", keywords: "spoiler 剧透 劇透 reveal"),
         .init("settings.messageActions", "showForwardedMessageDate", "Settings.ShowForwardedMessageDate"),
         .init("settings.messageActions", "hideRecordingButton", "Settings.RecordingButton"),
         .init("settings.appearance", "disableSnapDeletionEffect", "Settings.SnapDeletionEffect"),

@@ -12,33 +12,47 @@ public final class RGEditHistoryEntry: PostboxCoding, Equatable {
     public let entities: [MessageTextEntity]
     /// When this version was published: the message date for the original, else its edit date.
     public let date: Int32
+    public let image: TelegramMediaImage?
+    public let imageData: Data?
+    public let imageHasSpoiler: Bool
+    public static let maximumImageBytes = 8 * 1024 * 1024
 
-    public init(text: String, entities: [MessageTextEntity], date: Int32) {
+    public init(text: String, entities: [MessageTextEntity], date: Int32, image: TelegramMediaImage? = nil, imageData: Data? = nil, imageHasSpoiler: Bool = false) {
         self.text = text
         self.entities = entities
         self.date = date
+        self.image = image
+        self.imageData = imageData.flatMap { $0.count <= Self.maximumImageBytes ? $0 : nil }
+        self.imageHasSpoiler = imageHasSpoiler
     }
 
     public init(decoder: PostboxDecoder) {
         self.text = decoder.decodeStringForKey("t", orElse: "")
         self.entities = decoder.decodeObjectArrayWithDecoderForKey("e")
         self.date = decoder.decodeInt32ForKey("d", orElse: 0)
+        self.image = decoder.decodeObjectForKey("im") as? TelegramMediaImage
+        self.imageData = decoder.decodeDataForKey("ib").flatMap { $0.count <= Self.maximumImageBytes ? $0 : nil }
+        self.imageHasSpoiler = decoder.decodeInt32ForKey("sp", orElse: 0) != 0
     }
 
     public func encode(_ encoder: PostboxEncoder) {
         encoder.encodeString(self.text, forKey: "t")
         encoder.encodeObjectArray(self.entities, forKey: "e")
         encoder.encodeInt32(self.date, forKey: "d")
+        if let image { encoder.encodeObject(image, forKey: "im") } else { encoder.encodeNil(forKey: "im") }
+        if let imageData { encoder.encodeData(imageData, forKey: "ib") } else { encoder.encodeNil(forKey: "ib") }
+        encoder.encodeInt32(imageHasSpoiler ? 1 : 0, forKey: "sp")
     }
 
     public static func ==(lhs: RGEditHistoryEntry, rhs: RGEditHistoryEntry) -> Bool {
-        return lhs.text == rhs.text && lhs.entities == rhs.entities && lhs.date == rhs.date
+        return lhs.text == rhs.text && lhs.entities == rhs.entities && lhs.date == rhs.date && lhs.image?.imageId == rhs.image?.imageId && lhs.imageData == rhs.imageData && lhs.imageHasSpoiler == rhs.imageHasSpoiler
     }
 }
 
 public class RGEditHistoryMessageAttribute: MessageAttribute {
     /// Bounds the stored history of one message; the oldest versions after the original go first.
     public static let maxEntries = 50
+    public static let maximumImageHistoryBytes = 32 * 1024 * 1024
 
     /// Earlier versions, oldest first. The current text is the message's own.
     public let entries: [RGEditHistoryEntry]
@@ -65,7 +79,25 @@ public class RGEditHistoryMessageAttribute: MessageAttribute {
         if entries.count > RGEditHistoryMessageAttribute.maxEntries {
             entries.remove(at: 1)
         }
+        // Keep the original and recent image previews within a per-message storage budget.
+        var totalBytes = entries.reduce(0) { $0 + ($1.imageData?.count ?? 0) }
+        for index in entries.indices.dropFirst() where totalBytes > Self.maximumImageHistoryBytes {
+            let old = entries[index]
+            guard let data = old.imageData else { continue }
+            totalBytes -= data.count
+            entries[index] = RGEditHistoryEntry(text: old.text, entities: old.entities, date: old.date, image: old.image, imageHasSpoiler: old.imageHasSpoiler)
+        }
         return RGEditHistoryMessageAttribute(entries: entries)
+    }
+
+    public func withImageData(_ data: Data, at index: Int) -> RGEditHistoryMessageAttribute {
+        guard entries.indices.contains(index), data.count <= RGEditHistoryEntry.maximumImageBytes else { return self }
+        var updated = entries
+        let entry = updated.remove(at: index)
+        updated.insert(RGEditHistoryEntry(text: entry.text, entities: entry.entities, date: entry.date, image: entry.image, imageData: data, imageHasSpoiler: entry.imageHasSpoiler), at: index)
+        // Reuse the same budget enforcement without introducing a duplicate version.
+        let last = updated.removeLast()
+        return RGEditHistoryMessageAttribute(entries: updated).withAppendedEntry(last)
     }
 }
 

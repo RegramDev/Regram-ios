@@ -133,6 +133,15 @@ public struct PresentationResourcesSettings {
     // MARK: Regram — preserve the supplied artwork rather than treating it as a monochrome glyph.
     public static let regram = renderRegramSettingsArtwork(name: "RegramSettings")
     public static let regramPro = renderRegramSettingsArtwork(name: "RegramPro")
+    public static let regramAppIconDidChange = Notification.Name("Regram.AppIconDidChange")
+    // MARK: Regram — use the same thumbnail as the app icon picker, preserving its colors.
+    private static let regramAppIconCache = NSCache<NSString, UIImage>()
+    public static func regramProIcon(imageName: String) -> UIImage? {
+        if let image = regramAppIconCache.object(forKey: imageName as NSString) { return image }
+        guard let image = renderRegramSettingsArtwork(name: imageName) else { return regramPro }
+        regramAppIconCache.setObject(image, forKey: imageName as NSString)
+        return image
+    }
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])

@@ -4729,7 +4729,7 @@ func replayFinalState(
                     }
                     
                     // MARK: Regram — keeps the local-only attributes and records the edit history.
-                    updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: updatedAttributes)
+                    updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: updatedAttributes, updatedMedia: message.media, mediaBox: mediaBox)
 
                     if let previousFactCheckAttribute = previousMessage.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute, let updatedFactCheckAttribute = message.attributes.first(where: { $0 is FactCheckMessageAttribute }) as? FactCheckMessageAttribute {
                         if case .Pending = updatedFactCheckAttribute.content, updatedFactCheckAttribute.hash == previousFactCheckAttribute.hash {

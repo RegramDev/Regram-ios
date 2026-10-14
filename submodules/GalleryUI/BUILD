@@ -10,6 +10,9 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGGalleryUI:RGGalleryUI",
+        "//Regram/RGStrings:RGStrings",
+        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/UrlWhitelist",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",

@@ -242,7 +242,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     let rgWebSettings = context.currentAppConfiguration.with({ $0 }).rgWebSettings
     // MARK: Regram — expose the local settings pages directly.
     do {
-        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: PresentationResourcesSettings.regramPro, action: {
+        let appIcons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
+        let selectedName = context.sharedContext.applicationBindings.getAlternateIconName()
+        let selectedIcon = appIcons.first(where: { selectedName == nil ? $0.isDefault : $0.name == selectedName })
+        let proIcon = PresentationResourcesSettings.regramProIcon(imageName: selectedIcon?.imageName ?? "RGAnime")
+        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: proIcon, action: {
             interaction.openSettings(.regramPro)
         }))
     }

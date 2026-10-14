@@ -345,6 +345,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                             // happen before anything opens the database, which is the one place
                             // rgFullWipeIfNeeded runs.
                             UserDefaults.standard.set(true, forKey: "rg_full_wipe")
+                            UserDefaults.standard.set(lang, forKey: "Regram.Reset.Language")
                             UserDefaults.standard.synchronize()
                             exit(0)
                         })

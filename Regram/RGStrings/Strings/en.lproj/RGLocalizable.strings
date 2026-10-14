@@ -489,7 +489,7 @@ Matching is case-insensitive.";
 "Settings.UnlimitedPinnedChats.Notice" = "Telegram syncs only as many pins as your account allows (5, or 10 with Premium). The topmost ones are synced; pins beyond that stay on this device only.";
 "AntiFeatures.EditHistory" = "Save Edit History";
 "EditHistory.Title" = "Edit History";
-"EditHistory.Notice" = "Earlier versions recorded on this device when an edit arrived. Edits made before this was on, or while this device's copy was replaced by a full reload, cannot be recovered. Long-press a version to copy it.";
+"EditHistory.Notice" = "Only versions observed on this device are recorded. Saved photos survive media cache cleanup; uncached originals may no longer be available. Secret, self-destructing and protected photos are not retained.";
 "EditHistory.Current" = "Current";
 "EditHistory.Original" = "Original";
 "EditHistory.Copy" = "Copy";
@@ -615,7 +615,7 @@ Matching is case-insensitive.";
 "AppUpdate.Later" = "Later";
 "AppUpdate.AutomaticCheck" = "Automatically check for updates";
 "AppUpdate.AutomaticPrepare" = "Automatically download and sign";
-"AppUpdate.AutomaticNotice" = "Check GitHub Releases when Regram opens, at most once every six hours. Automatic preparation downloads and signs on this device. LCSign provides the installation manifest; iOS asks you to confirm installation.";
+"AppUpdate.AutomaticNotice" = "Check GitHub Releases when Regram opens, at most once every six hours. With automatic download enabled, tap Update to download and sign in the background, then confirm installation when ready. LCSign provides the installation manifest.";
 "AppUpdate.CertificatePassword" = "P12 password";
 "AppUpdate.ImportCertificate" = "Import P12 Certificate";
 "AppUpdate.ImportProfiles" = "Import Provisioning Profiles";
@@ -748,7 +748,7 @@ Matching is case-insensitive.";
 "AppUpdate.MethodTrollStore" = "TrollStore";
 "AppUpdate.DownloadTrollStore" = "Download Update";
 "AppUpdate.AutomaticDownload" = "Automatically Download Updates";
-"AppUpdate.TrollStoreNotice" = "Download and verify updates from GitHub, then tap Install Update to open TrollStore. No P12 or provisioning profiles are needed. Installation confirmation follows your TrollStore settings. Enable its URL Scheme option first.";
+"AppUpdate.TrollStoreNotice" = "Download and verify the IPA from GitHub Releases, then install through TrollStore without a certificate. With automatic download enabled, tap Update to download in the background, then confirm installation when ready. Enable the URL Scheme in TrollStore settings first.";
 "AppUpdate.TrollStoreReceived" = "Update delivered to TrollStore. Finish installation there, then reopen Regram to confirm the new version.";
 "AppUpdate.TrollStoreUnavailable" = "Unable to open the TrollStore installer. Make sure TrollStore is installed and its URL Scheme option is enabled.";
 "AppUpdate.TrollStoreNotStarted" = "TrollStore has not requested the update package. Enable its URL Scheme option and retry. Opening Magnifier means the scheme is not handled by TrollStore.";
@@ -848,3 +848,29 @@ Matching is case-insensitive.";
 "LinkPreview.InstagramService" = "Instagram Preview Service";
 
 "Fonts.Search" = "Search Fonts";
+
+"Gallery.Player.Play" = "Play";
+"Gallery.Player.Pause" = "Pause";
+"Gallery.Player.Rewind15" = "Rewind 15 Seconds";
+"Gallery.Player.Forward15" = "Forward 15 Seconds";
+
+"Settings.AutomaticallyRevealSpoilers" = "Automatically Reveal Spoilers";
+"Settings.AutomaticallyRevealSpoilers.Notice" = "Show spoiler text, photos and videos without tapping. Disabled by default.";
+
+"EraseData.ContainerUnavailable" = "The data container is unavailable. The request is saved; reopen Regram to retry.";
+"EraseData.Close" = "Close App";
+"EraseData.Progress" = "Erasing data… Please keep Regram open.";
+"EraseData.Done" = "All data erased";
+"EraseData.DoneNotice" = "Close Regram and open it again to start fresh.";
+"EraseData.Errors" = "Erased with errors";
+"EraseData.ErrorsNotice" = "Could not remove: %@";
+"AppUpdate.Update" = "Update";
+"AppUpdate.InstallPrompt" = "Regram %@ has been downloaded and verified. Install the update now?";
+"AppUpdate.UpdateFailed" = "Update failed";
+
+"EditHistory.RevealPhoto" = "Tap to reveal photo";
+"EditHistory.ViewPhoto" = "View Photo";
+"EditHistory.LoadingPhoto" = "Loading photo…";
+"EditHistory.PhotoUnavailable" = "Could not load this photo. Its file reference may have expired or it was not saved locally.";
+"EditHistory.LoadPhoto" = "Load Historical Photo";
+"EditHistory.LoadOriginal" = "Load Original Photo";

@@ -106,6 +106,7 @@ private enum RGBoolSetting: String {
     case hideChatListSeparators
     case unlimitedPinnedChats
     case showMessageId
+    case automaticallyRevealSpoilers
     case showForwardedMessageDate
     case compactFolderNames
     case allChatsHidden
@@ -320,6 +321,8 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.oneFromManySelector(id: id.count, section: .messageActions, settingName: .messageDoubleTapAction, text: "DoubleTap.Action".i18n(lang), value: "DoubleTap.Action.\(RGSimpleSettings.shared.messageDoubleTapAction)".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .messageActions, settingName: .messageDoubleTapActionWithoutEditPermission, text: "DoubleTap.WithoutEditPermission".i18n(lang), value: "DoubleTap.Action.\(RGSimpleSettings.shared.messageDoubleTapActionWithoutEditPermission)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .showMessageId, value: RGSimpleSettings.shared.showMessageId, text: "Settings.ShowMessageId".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .automaticallyRevealSpoilers, value: RGSimpleSettings.shared.automaticallyRevealSpoilers, text: "Settings.AutomaticallyRevealSpoilers".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .messageActions, text: "Settings.AutomaticallyRevealSpoilers.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .showForwardedMessageDate, value: RGSimpleSettings.shared.showForwardedMessageDate, text: "Settings.ShowForwardedMessageDate".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .hideRecordingButton, value: !RGSimpleSettings.shared.hideRecordingButton, text: i18n("Settings.RecordingButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .disableSnapDeletionEffect, value: !RGSimpleSettings.shared.disableSnapDeletionEffect, text: i18n("Settings.SnapDeletionEffect", lang), enabled: true))
@@ -532,6 +535,8 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             RGSimpleSettings.shared.unlimitedPinnedChats = value
         case .showMessageId:
             RGSimpleSettings.shared.showMessageId = value
+        case .automaticallyRevealSpoilers:
+            RGSimpleSettings.shared.automaticallyRevealSpoilers = value
         case .showForwardedMessageDate:
             RGSimpleSettings.shared.showForwardedMessageDate = value
         case .compactFolderNames:

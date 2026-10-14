@@ -1,3 +1,6 @@
+import RGGalleryUI // MARK: Regram — bottom playback capsule.
+import RGStrings
+import RGSimpleSettings // MARK: Regram — automatic spoiler display in gallery captions.
 import Foundation
 import LottieSettings
 import UIKit
@@ -191,6 +194,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
     
     private var codeHighlightState: (id: EngineMessage.Id, specs: [CachedMessageSyntaxHighlight.Spec], disposable: Disposable)?
     
+    // MARK: Regram — video owners use the footer for playback; image galleries keep their own tools.
+    var rgVideoControlsEnabled = false
     var playbackControl: (() -> Void)?
     var seekBackward: ((Double) -> Void)?
     var seekForward: ((Double) -> Void)?
@@ -605,7 +610,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             if let (index, attributes) = textNode.attributesAtPoint(CGPoint(x: location.x - titleFrame.minX, y: location.y - titleFrame.minY)) {
                 let _ = index
                 
-                if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)] {
+                if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)], !RGSimpleSettings.shared.automaticallyRevealSpoilers { // MARK: Regram
                     return false
                 } else if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.URL)] as? String {
                     return false
@@ -1114,7 +1119,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
     }
     
     private func updateSpoilers(textFrame: CGRect) {
-        if let textLayout = self.textNode.cachedLayout, !textLayout.spoilers.isEmpty {
+        // MARK: Regram — gallery captions follow the same spoiler display preference.
+        if !RGSimpleSettings.shared.automaticallyRevealSpoilers, let textLayout = self.textNode.cachedLayout, !textLayout.spoilers.isEmpty {
             if self.spoilerTextNode == nil {
                 let spoilerTextNode = ImmediateTextNodeWithEntities()
                 spoilerTextNode.displaySpoilerEffect = false
@@ -1212,6 +1218,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             let textBottomInset: CGFloat = 8.0 + 14.0
             
             let constrainSize = CGSize(width: width - sideInset * 2.0, height: CGFloat.greatestFiniteMagnitude)
+            // MARK: Regram
+            self.textNode.displaySpoilers = RGSimpleSettings.shared.automaticallyRevealSpoilers
             let textSize = self.textNode.updateLayout(constrainSize)
             
             var textOffset: CGFloat = 0.0
@@ -1350,6 +1358,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     }
                 ))
             }
+            // MARK: Regram — picture-in-picture, speed and quality live in the header's More menu.
+            if !self.rgVideoControlsEnabled {
             if buttonsState.displayPictureInPictureButton {
                 centerControlItems.append(GlassControlGroupComponent.Item(
                     id: AnyHashable("pip"),
@@ -1382,6 +1392,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     }
                 ))
             }
+            }
             if buttonsState.displayEditButton {
                 centerControlItems.append(GlassControlGroupComponent.Item(
                     id: AnyHashable("edit"),
@@ -1406,7 +1417,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     }
                 ))
             }
-            if buttonsState.displayStickersButton {
+            if buttonsState.displayStickersButton && !self.rgVideoControlsEnabled {
                 centerControlItems.append(GlassControlGroupComponent.Item(
                     id: AnyHashable("stickers"),
                     content: .icon("Media Gallery/Stickers"),
@@ -1418,7 +1429,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     }
                 ))
             }
-            if buttonsState.displayFullscreenButton && !metrics.isTablet {
+            if buttonsState.displayFullscreenButton && !metrics.isTablet && !self.rgVideoControlsEnabled {
                 centerControlItems.append(GlassControlGroupComponent.Item(
                     id: AnyHashable("fullscreen"),
                     content: .icon(isLandscape ? "Chat/Context Menu/Collapse" : "Chat/Context Menu/Expand"),
@@ -1444,7 +1455,27 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
             }
         }
         
-        if !centerControlItems.isEmpty && rightControlItems.isEmpty {
+        // MARK: Regram — one bottom capsule owns rewind, play/pause and forward.
+        if self.rgVideoControlsEnabled {
+            let canPlay: Bool
+            let isPaused: Bool
+            switch self.content {
+            case let .playback(paused, _): canPlay = true; isPaused = paused
+            case let .fetch(status, seekable): canPlay = status == .Local || seekable; isPaused = true
+            case .info: canPlay = false; isPaused = true
+            }
+            if canPlay {
+                if self.hasSeekControls {
+                    centerControlItems.append(GlassControlGroupComponent.Item(id: "rg-rewind", content: .customIcon(id: "rg-rewind", component: AnyComponent(RGGalleryPlaybackIconComponent(.backward)), insets: .zero), action: { [weak self] in self?.backwardButtonPressed() }))
+                }
+                centerControlItems.append(GlassControlGroupComponent.Item(id: "rg-playback", content: .customIcon(id: "rg-playback", component: AnyComponent(RGGalleryPlaybackIconComponent(isPaused ? .play : .pause)), insets: .zero), action: { [weak self] in self?.playbackControlPressed() }))
+                if self.hasSeekControls {
+                    centerControlItems.append(GlassControlGroupComponent.Item(id: "rg-forward", content: .customIcon(id: "rg-forward", component: AnyComponent(RGGalleryPlaybackIconComponent(.forward)), insets: .zero), action: { [weak self] in self?.forwardButtonPressed() }))
+                }
+            }
+        }
+
+        if !self.rgVideoControlsEnabled && !centerControlItems.isEmpty && rightControlItems.isEmpty {
             rightControlItems = centerControlItems
             centerControlItems = []
         }
@@ -1476,6 +1507,18 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                 self.contentNode.view.addSubview(buttonPanelView)
             }
             ComponentTransition(transition).setFrame(view: buttonPanelView, frame: buttonPanelFrame)
+            if self.rgVideoControlsEnabled, let panel = buttonPanelView as? GlassControlPanelComponent.View {
+                let language = RGLocalizationManager.shared.preferredLocale(primary: self.strings.primaryComponent.languageCode, secondary: self.strings.secondaryComponent?.languageCode)
+                let labels = [("rg-rewind", "Gallery.Player.Rewind15"), ("rg-playback", self.currentIsPaused ? "Gallery.Player.Play" : "Gallery.Player.Pause"), ("rg-forward", "Gallery.Player.Forward15")]
+                for (id, key) in labels {
+                    if let button = panel.centerItemView?.itemView(id: AnyHashable(id)) {
+                        button.isAccessibilityElement = true
+                        button.accessibilityTraits = .button
+                        button.accessibilityLabel = key.i18n(language)
+                        button.accessibilityIdentifier = "regram.gallery." + id
+                    }
+                }
+            }
         }
 
         if let image = self.backwardButton.backgroundIconNode.image {

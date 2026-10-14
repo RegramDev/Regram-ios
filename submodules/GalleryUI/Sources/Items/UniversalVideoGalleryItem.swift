@@ -1018,6 +1018,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         self.footerContentNode = ChatItemGalleryFooterContentNode(context: context, presentationData: presentationData, present: present)
         self.hasExpandedCaptionPromise.set(self.footerContentNode.hasExpandedCaption)
         
+        // MARK: Regram — playback belongs to the bottom footer, not the video overlay.
+        self.footerContentNode.rgVideoControlsEnabled = true
         self.footerContentNode.performAction = performAction
         self.footerContentNode.openActionOptions = openActionOptions
         
@@ -1075,7 +1077,13 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 if !strongSelf.isPaused {
                     strongSelf.didPause = true
                 }
-                strongSelf.videoNode?.togglePlayPause()
+                // MARK: Regram — the relocated Play button can also start an unopened video with sound.
+                if !strongSelf.hasStartedOnce {
+                    strongSelf.initiallyActivated = true
+                    strongSelf.videoNode?.playOnceWithSound(playAndRecord: false, seek: .none, actionAtEnd: strongSelf.actionAtEnd)
+                } else {
+                    strongSelf.videoNode?.togglePlayPause()
+                }
             }
         }
         self.footerContentNode.seekBackward = { [weak self] delta in
@@ -1265,59 +1273,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         transition.updateFrame(node: self.statusButtonNode, frame: statusFrame)
         transition.updateFrame(node: self.statusNode, frame: CGRect(origin: CGPoint(), size: statusFrame.size))
         
-        let hideControls = self.item?.hideControls ?? true
-        
-        var playbackControlsIsPlaying: Bool = false
-        var playbackControlsIsSeekable: Bool = false
-        var playbackControlsIsVisible: Bool = false
-        if case let .playback(paused, seekable) = self.footerContentNode.content {
-            playbackControlsIsVisible = true
-            playbackControlsIsSeekable = seekable
-            playbackControlsIsPlaying = !paused
-        }
-        if !self.controlsVisibility() || hideControls {
-            playbackControlsIsVisible = false
-        }
-        
-        let playbackControlsSize = self.playbackControls.update(
-            transition: ComponentTransition(transition),
-            component: AnyComponent(VideoPlaybackControlsComponent(
-                layoutParams: VideoPlaybackControlsComponent.LayoutParams(
-                    sideButtonSize: 64.0,
-                    centerButtonSize: 92.0,
-                    spacing: 30.0
-                ),
-                isVisible: playbackControlsIsVisible,
-                isPlaying: playbackControlsIsPlaying,
-                displaySeekControls: playbackControlsIsSeekable,
-                togglePlayback: { [weak self] in
-                    guard let self else {
-                        return
-                    }
-                    self.footerContentNode.playbackControlPressed()
-                },
-                seek: { [weak self] isForward in
-                    guard let self else {
-                        return
-                    }
-                    if isForward {
-                        self.footerContentNode.seekForward?(15.0)
-                    } else {
-                        self.footerContentNode.seekBackward?(15.0)
-                    }
-                }
-            )),
-            environment: {},
-            containerSize: CGSize(width: 1000.0, height: 1000.0)
-        )
-        let playbackControlsFrame = CGRect(origin: CGPoint(x: floor((layout.size.width - playbackControlsSize.width) / 2.0), y: floor((layout.size.height - playbackControlsSize.height) / 2.0)), size: playbackControlsSize)
-        if let playbackControlsView = self.playbackControls.view {
-            if playbackControlsView.superview == nil {
-                self.view.addSubview(playbackControlsView)
-            }
-            let transition = ComponentTransition(transition)
-            transition.setFrame(view: playbackControlsView, frame: playbackControlsFrame)
-        }
+        // MARK: Regram — remove the duplicate center controls; the footer follows the same player status.
+        self.playbackControls.view?.removeFromSuperview()
 
         if let pictureInPictureNode = self.pictureInPictureNode {
             if let item = self.item {
@@ -1860,7 +1817,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     } else if isPaused && !strongSelf.ignorePauseStatus && strongSelf.isCentral == true {
                         if hasStarted || strongSelf.didPause {
                             footerContent = .playback(paused: true, seekable: seekable)
-                        } else if let fetchStatus = fetchStatus, !strongSelf.requiresDownload {
+                        } else if let fetchStatus = fetchStatus, !strongSelf.requiresDownload || fetchStatus == .Local {
                             if item.content is HLSVideoContent {
                                 footerContent = .playback(paused: true, seekable: seekable)
                             } else {
@@ -1873,6 +1830,20 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                         footerContent = .playback(paused: false, seekable: seekable)
                     }
                     
+                    // MARK: Regram — keep download/buffering feedback, but remove the duplicate center Play icon.
+                    if !isAnimated && !disablePlayerControls && !initialBuffering && !fetching {
+                        let bottomPlayAvailable: Bool
+                        switch footerContent {
+                        case .playback: bottomPlayAvailable = true
+                        case let .fetch(status, seekable): bottomPlayAvailable = status == .Local || seekable
+                        case .info: bottomPlayAvailable = false
+                        }
+                        if bottomPlayAvailable {
+                            strongSelf.statusNodeShouldBeHidden = true
+                            strongSelf.statusButtonNode.isHidden = true
+                        }
+                    }
+
                     if strongSelf.footerContentNode.content != footerContent {
                         strongSelf.footerContentNode.content = footerContent
                         
@@ -1985,6 +1956,13 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 }
             }
 
+            // MARK: Regram — relocated player tools must also be reachable for non-message video sources.
+            if !isAnimated && !disablePlayerControls { hasSettingsButton = true }
+            if barButtonItems.isEmpty && (hasSettingsButton || self.hasPictureInPicture || self.displayStickersButton) {
+                let moreMenuItem = UIBarButtonItem(customDisplayNode: self.moreBarButton)!
+                moreMenuItem.accessibilityLabel = self.presentationData.strings.Common_More
+                barButtonItems.append(moreMenuItem)
+            }
             if hasSettingsButton {
                 self.settingsButtonState = ChatItemGalleryFooterContentNode.SettingsButtonState(
                     speed: nil,
@@ -3685,6 +3663,36 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     }
                 }
             } else {
+                // MARK: Regram — all auxiliary playback actions share the header More menu.
+                if strongSelf.settingsButtonState != nil {
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VideoSettings_SpeedControlTitle, textLayout: .secondLineWithValue(String(format: "%.2gx", status.baseRate)), icon: { theme in
+                        UIImage(systemName: "speedometer")?.withTintColor(theme.actionSheet.primaryTextColor, renderingMode: .alwaysOriginal)
+                    }, action: { [weak self] controller, _ in
+                        guard let self else { return }
+                        let settingsItems = self.contextMenuMainItems(isSettings: true, dismiss: dismiss) |> map { value -> ContextController.Items in
+                            let back = ContextMenuItem.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Back, icon: { theme in
+                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+                            }, iconPosition: .left, action: { controller, _ in controller?.popItems() }))
+                            let items = [back] + value.items
+                            return ContextController.Items(content: value.topItems.isEmpty ? .list(items) : .twoLists(items, value.topItems))
+                        }
+                        controller?.pushItems(items: settingsItems)
+                    })))
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Fullscreen, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.footerContentNode.toggleFullscreen?() }) })))
+                }
+                if strongSelf.hasPictureInPicture && strongSelf.pictureInPictureNode == nil {
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_PictureInPicture, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/PictureInPictureButton"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.pictureInPictureButtonPressed() }) })))
+                }
+                if strongSelf.displayStickersButton {
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Stickers, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/Stickers"), color: theme.actionSheet.primaryTextColor)
+                    }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.openStickersButtonPressed() }) })))
+                }
+                if !items.isEmpty { items.append(.separator) }
                 if let (message, maybeFile, _) = strongSelf.contentInfo(), let file = maybeFile, !message.isCopyProtected() && !item.peerIsCopyProtected && message.paidContent == nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { c, _ in
                         guard let self else {

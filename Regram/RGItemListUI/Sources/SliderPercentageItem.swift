@@ -325,6 +325,10 @@ class SliderPercentageItemNode: ListViewItemNode {
                             sliderView.knobImage = PresentationResourcesItemList.knobImage(item.theme)
                         }
                         
+                        // MARK: Regram — didLoad can precede the first layout apply; always sync the saved value.
+                        if !sliderView.isTracking {
+                            sliderView.value = rescalePercentageValueToSlider(CGFloat(item.value) / 100.0)
+                        }
                         sliderView.frame = CGRect(origin: CGPoint(x: params.leftInset + 18.0, y: 36.0), size: CGSize(width: params.width - params.leftInset - params.rightInset - 18.0 * 2.0, height: 44.0))
                     }
                     
@@ -349,6 +353,6 @@ class SliderPercentageItemNode: ListViewItemNode {
         guard let sliderView = self.sliderView else {
             return
         }
-        self.item?.updated(Int32(rescaleSliderValueToPercentageValue(sliderView.value) * 100.0))
+        self.item?.updated(Int32((rescaleSliderValueToPercentageValue(sliderView.value) * 100.0).rounded()))
     }
 }

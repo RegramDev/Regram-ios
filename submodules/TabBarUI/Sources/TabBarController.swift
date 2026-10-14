@@ -184,19 +184,12 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                 if let validLayout = strongSelf.validLayout {
                     var updatedLayout = validLayout
                     
-                    var tabBarHeight: CGFloat
-                    var options: ContainerViewLayoutInsetOptions = []
-                    if validLayout.metrics.widthClass == .regular {
-                        options.insert(.input)
+                    // MARK: Regram — use the same measured bottom bar as a full layout pass.
+                    let bottomInset = strongSelf.tabBarControllerNode.containerLayoutUpdated(validLayout, toolbar: strongSelf.currentController?.toolbar, transition: .immediate)
+                    if !strongSelf.tabBarControllerNode.tabBarHidden {
+                        updatedLayout.intrinsicInsets.bottom = bottomInset
                     }
-                    let bottomInset: CGFloat = validLayout.insets(options: options).bottom
-                    if !validLayout.safeInsets.left.isZero {
-                        tabBarHeight = 34.0 + bottomInset
-                    } else {
-                        tabBarHeight = 49.0 + bottomInset
-                    }
-                    updatedLayout.intrinsicInsets.bottom = tabBarHeight
-                    
+
                     strongSelf.controllers[index].containerLayoutUpdated(updatedLayout, transition: .immediate)
                 }
                 let startTime = CFAbsoluteTimeGetCurrent()
@@ -397,21 +390,12 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             
             var updatedLayout = layout
             
-            var tabBarHeight: CGFloat
-            var options: ContainerViewLayoutInsetOptions = []
-            if updatedLayout.metrics.widthClass == .regular {
-                options.insert(.input)
-            }
-            let bottomInset: CGFloat = updatedLayout.insets(options: options).bottom
-            if !updatedLayout.safeInsets.left.isZero {
-                tabBarHeight = 34.0 + bottomInset
-            } else {
-                tabBarHeight = 49.0 + bottomInset
-            }
+            // MARK: Regram — a child relayout must not replace the measured glass bar with 49/34.
+            let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: .immediate)
             if !self.tabBarControllerNode.tabBarHidden {
-                updatedLayout.intrinsicInsets.bottom = tabBarHeight
+                updatedLayout.intrinsicInsets.bottom = bottomInset
             }
-            
+
             currentController.containerLayoutUpdated(updatedLayout, transition: .immediate)
         }
     }

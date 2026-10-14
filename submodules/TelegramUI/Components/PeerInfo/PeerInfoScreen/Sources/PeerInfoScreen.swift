@@ -218,6 +218,8 @@ enum TopicsLimitedReason {
 }
 
 final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodeProtocol, ASScrollViewDelegate {
+    // MARK: Regram
+    private var rgAppIconObserver: NSObjectProtocol?
     weak var controller: PeerInfoScreenImpl?
     
     let context: AccountContext
@@ -438,6 +440,12 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.paneContainerNode = PeerInfoPaneContainerNode(context: context, updatedPresentationData: controller.updatedPresentationData, peerId: peerId, chatLocation: chatLocation, sharedMediaFromForumTopic: sharedMediaFromForumTopic, chatLocationContextHolder: chatLocationContextHolder, isMediaOnly: self.isMediaOnly, initialPaneKey: initialPaneKey, initialStoryFolderId: switchToStoryFolder, initialGiftCollectionId: switchToGiftCollection, switchToMediaTarget: switchToMediaTarget)
         
         super.init()
+        // MARK: Regram — refresh an existing settings page after UIKit accepts an icon change.
+        if self.isSettings {
+            self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.regramAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
+                self?.requestLayout()
+            }
+        }
         
         self.paneContainerNode.parentController = controller
         
@@ -2650,6 +2658,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     }
     
     deinit {
+        // MARK: Regram
+        if let observer = self.rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
         self.dataDisposable?.dispose()
         self.hiddenMediaDisposable?.dispose()
         self.activeActionDisposable.dispose()

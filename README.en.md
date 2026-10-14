@@ -13,7 +13,8 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 - Configurable message double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Message menu visibility and ordering, based on actions available for the message and account.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with navigation to the original message.
-- Locally observed edit history for text, captions, and entities.
+- Locally observed edit history for text, captions, entities, and replaced photos, with image preview and zoom.
+- Optional automatic reveal of spoiler text, photos and videos in chats and gallery captions; disabled by default.
 - Message IDs in groups/channels, seconds in timestamps, and the original time of forwarded messages.
 - Folder selection after joining a group/channel, remembered folders, and chat list customization.
 
@@ -49,12 +50,13 @@ Custom recognition uploads only messages explicitly selected by the user. Secret
 - Photo quality and large-image sending; pasted photos default to HD, maximum JPEG quality, and up to 2560 px.
 - Sticker sizing and history, recording, and camera options.
 - Upload, download, playback, default video quality, and experimental media loading settings.
+- Bottom video controls for rewind/forward by 15 seconds and play/pause; picture-in-picture, speed and quality are available in the top-right menu.
 
 Preview availability depends on Telegram and the preview services. Unavailable media fields are shown as unknown.
 
 ### Appearance and input
 
-- App icons, settings entry artwork, and screenshot badges.
+- App icons, settings entry artwork, and screenshot badges; the Regram Pro entry follows the selected app icon.
 - Bottom bar layout with a live preview, drag ordering, button visibility, standalone buttons, and automatic or manual width. Chats and Settings stay selected, and the complete bar is centered.
 - Chat-list separator visibility.
 - Separate Latin and CJK fonts, downloadable fonts, TTF/OTF/TTC import, previews, management, and missing-glyph fallback.

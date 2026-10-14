@@ -254,10 +254,8 @@ func managedReadReactionOrPollVoteActions(postbox: Postbox, network: Network, st
 private func synchronizeConsumeMessageContents(transaction: Transaction, postbox: Postbox, network: Network, stateManager: AccountStateManager, id: MessageId) -> Signal<Void, NoError> {
     if id.peerId.namespace == Namespaces.Peer.CloudUser || id.peerId.namespace == Namespaces.Peer.CloudGroup {
         return network.request(Api.functions.messages.readMessageContents(id: [id.id]))
-            |> map(Optional.init)
-            |> `catch` { _ -> Signal<Api.messages.AffectedMessages?, NoError> in
-                return .single(nil)
-            }
+            // MARK: Regram — transient failures must not consume and delete the pending read.
+            |> retryRequestIfNotFrozen
             |> mapToSignal { result -> Signal<Void, NoError> in
                 if let result = result {
                     switch result {
@@ -289,9 +287,9 @@ private func synchronizeConsumeMessageContents(transaction: Transaction, postbox
     } else if id.peerId.namespace == Namespaces.Peer.CloudChannel {
         if let peer = transaction.getPeer(id.peerId), let inputChannel = apiInputChannel(peer) {
             return network.request(Api.functions.channels.readMessageContents(channel: inputChannel, id: [id.id]))
-                |> `catch` { _ -> Signal<Api.Bool, NoError> in
-                    return .single(.boolFalse)
-                } |> mapToSignal { result -> Signal<Void, NoError> in
+                // MARK: Regram — keep the acknowledgement pending until the server responds.
+                |> retryRequestIfNotFrozen
+                |> mapToSignal { result -> Signal<Void, NoError> in
                     return postbox.transaction { transaction -> Void in
                         transaction.setPendingMessageAction(type: .consumeUnseenPersonalMessage, id: id, action: nil)
                         transaction.updateMessage(id, update: { currentMessage in

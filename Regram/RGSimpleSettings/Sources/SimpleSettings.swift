@@ -316,6 +316,7 @@ public class RGSimpleSettings {
         case messageDoubleTapAction
         case messageDoubleTapActionWithoutEditPermission
         case showMessageId
+        case automaticallyRevealSpoilers // MARK: Regram
         case showForwardedMessageDate
     }
     
@@ -549,6 +550,7 @@ public class RGSimpleSettings {
         Keys.messageDoubleTapAction.rawValue: MessageDoubleTapActionV2.sendReaction.rawValue,
         Keys.messageDoubleTapActionWithoutEditPermission.rawValue: RGSimpleSettings.messageDoubleTapSameAsUnified,
         Keys.showMessageId.rawValue: false,
+        Keys.automaticallyRevealSpoilers.rawValue: false,
         Keys.showForwardedMessageDate.rawValue: false,
         Keys.chatPreferences.rawValue: "{}"
     ]
@@ -809,6 +811,7 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil)
         NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
+        NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
         self.synchronizeShared()
     }
 
@@ -1462,6 +1465,18 @@ public class RGSimpleSettings {
     // MARK: Regram — append the message id to the timestamp of group and channel messages.
     @UserDefault(key: Keys.showMessageId.rawValue)
     public var showMessageId: Bool
+
+    // MARK: Regram — automatic reveal is separate from each message's manual reveal state.
+    public static let spoilerSettingsDidChange = Notification.Name("Regram.SpoilerSettingsDidChange")
+
+    @UserDefault(key: Keys.automaticallyRevealSpoilers.rawValue)
+    public var automaticallyRevealSpoilers: Bool {
+        didSet {
+            if automaticallyRevealSpoilers != oldValue {
+                NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
+            }
+        }
+    }
 
     // MARK: Regram — show when a forwarded message was originally sent, next to its source.
     @UserDefault(key: Keys.showForwardedMessageDate.rawValue)

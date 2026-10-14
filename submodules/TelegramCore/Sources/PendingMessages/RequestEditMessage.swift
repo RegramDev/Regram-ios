@@ -298,7 +298,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 }
 
                                                 // MARK: Regram — keeps the local-only attributes and records the edit history.
-                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes, updatedMedia: message.media, mediaBox: postbox.mediaBox)
                                                 return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
@@ -326,7 +326,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 }
 
                                                 // MARK: Regram — keeps the local-only attributes and records the edit history.
-                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes, updatedMedia: message.media, mediaBox: postbox.mediaBox)
                                                 return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
@@ -354,7 +354,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 }
 
                                                 // MARK: Regram — keeps the local-only attributes and records the edit history.
-                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes, updatedMedia: message.media, mediaBox: postbox.mediaBox)
                                                 return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }
@@ -382,7 +382,7 @@ private func requestEditMessageInternal(accountPeerId: PeerId, postbox: Postbox,
                                                 }
                                                 
                                                 // MARK: Regram — keeps the local-only attributes and records the edit history.
-                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes)
+                                                let updatedAttributes = rgCarryOverLocalMessageAttributes(previousMessage: previousMessage, updatedText: message.text, updatedAttributes: message.attributes, updatedMedia: message.media, mediaBox: postbox.mediaBox)
                                                 return .update(message.withUpdatedLocalTags(updatedLocalTags).withUpdatedFlags(updatedFlags).withUpdatedMedia(updatedMedia).withUpdatedAttributes(updatedAttributes))
                                             })
                                         }

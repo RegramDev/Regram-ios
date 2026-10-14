@@ -1,4 +1,6 @@
 import Foundation
+// MARK: Regram
+import RGSimpleSettings
 import LottieSettings
 import UIKit
 import AsyncDisplayKit
@@ -118,6 +120,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     private var expandedBlockIds: Set<Int> = Set()
     private var appliedExpandedBlockIds: Set<Int>?
     private var displayContentsUnderSpoilers: (value: Bool, location: CGPoint?) = (false, nil)
+    // MARK: Regram — never persist automatic reveal as a manual tap.
+    private var rgDisplayContentsUnderSpoilers: Bool {
+        self.displayContentsUnderSpoilers.value || RGSimpleSettings.shared.automaticallyRevealSpoilers
+    }
     
     private var isSummaryApplied = false
 
@@ -222,7 +228,8 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         
         let currentCachedChatMessageText = self.cachedChatMessageText
         let expandedBlockIds = self.expandedBlockIds
-        let displayContentsUnderSpoilers = self.displayContentsUnderSpoilers
+        // MARK: Regram
+        let displayContentsUnderSpoilers = self.rgDisplayContentsUnderSpoilers
         let currentMaxGlyphCount: Int? = self.textRevealController?.currentGlyphCount
         let previousGlyphCount = self.textNode.textNode.cachedLayout?.attributedString?.length ?? 0
         
@@ -670,7 +677,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     cutout: nil,
                     insets: textInsets,
                     lineColor: messageTheme.accentControlColor,
-                    displayContentsUnderSpoilers: displayContentsUnderSpoilers.value,
+                    displayContentsUnderSpoilers: displayContentsUnderSpoilers,
                     customTruncationToken: customTruncationToken,
                     expandedBlocks: expandedBlockIds,
                     computeCharacterRects: true
@@ -1182,7 +1189,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
             }
             
             
-            if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)], !self.displayContentsUnderSpoilers.value {
+            if let _ = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.Spoiler)], !self.rgDisplayContentsUnderSpoilers {
                 return ChatMessageBubbleContentTapAction(content: .none)
             } else if let tonAddress = attributes[NSAttributedString.Key(rawValue: TelegramTextAttributes.TonAddress)] as? TelegramTonAddress {
                 guard tonAddress.range.length == 48, tonAddress.address.utf8.count == 48,
@@ -1363,7 +1370,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 }
             }
             
-            if let spoilerRects = spoilerRects, !spoilerRects.isEmpty, !self.displayContentsUnderSpoilers.value {
+            if let spoilerRects = spoilerRects, !spoilerRects.isEmpty, !self.rgDisplayContentsUnderSpoilers {
             } else if let rects = rects {
                 let linkHighlightingNode: LinkHighlightingNode
                 if let current = self.linkHighlightingNode {
@@ -1632,7 +1639,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     guard let strongSelf = self else {
                         return
                     }
-                    if !strongSelf.displayContentsUnderSpoilers.value, let textLayout = strongSelf.textNode.textNode.cachedLayout, textLayout.segments.contains(where: { !$0.spoilers.isEmpty }), let selectionRange {
+                    if !strongSelf.rgDisplayContentsUnderSpoilers, let textLayout = strongSelf.textNode.textNode.cachedLayout, textLayout.segments.contains(where: { !$0.spoilers.isEmpty }), let selectionRange {
                         for segment in textLayout.segments {
                             for (spoilerRange, _) in segment.spoilers {
                                 if let intersection = selectionRange.intersection(spoilerRange), intersection.length > 0 {

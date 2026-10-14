@@ -1007,7 +1007,8 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                 }
             }
             
-            let hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+            // MARK: Regram — actual secret/paid media guards remain independent of spoilers.
+            let hasSpoiler = !RGSimpleSettings.shared.automaticallyRevealSpoilers && message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
             var isExtendedMediaPreview = false
             var isInlinePlayableVideo = false
             var isSticker = false
@@ -2223,8 +2224,13 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                                 }
                             }
                             
-                            if message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }), strongSelf.extendedMediaOverlayNode == nil {
-                                strongSelf.internallyVisible = false
+                            if message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
+                                // MARK: Regram — automatic display must also permit inline playback.
+                                if RGSimpleSettings.shared.automaticallyRevealSpoilers && !isSecretMedia && !isExtendedMediaPreview && (!message.isSensitiveContent(platform: "ios") || strongSelf.showSensitiveContent) {
+                                    strongSelf.internallyVisible = true
+                                } else if strongSelf.extendedMediaOverlayNode == nil {
+                                    strongSelf.internallyVisible = false
+                                }
                             }
                                                         
                             if let videoNode = strongSelf.videoNode {
@@ -3151,7 +3157,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                 icon = .lock
             }
             displaySpoiler = true
-        } else if message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
+        } else if !RGSimpleSettings.shared.automaticallyRevealSpoilers && message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) { // MARK: Regram
             displaySpoiler = true
         } else if isSecretMedia {
             displaySpoiler = true

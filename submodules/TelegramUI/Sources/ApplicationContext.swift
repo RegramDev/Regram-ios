@@ -605,25 +605,55 @@ final class AuthorizedApplicationContext {
             }
         }))
 
-        // MARK: Regram — foreground-only update prompt, shared across account contexts.
-        self.rgAppUpdateDisposable.set((combineLatest(rgAvailableAppUpdate.get(), context.sharedContext.applicationBindings.applicationIsActive)
-        |> deliverOnMainQueue).start(next: { [weak self] release, active in
-            guard let self, let release, active else { return }
+        // MARK: Regram — distinguish discovery from installation; the updater owns global deduplication.
+        self.rgAppUpdateDisposable.set((combineLatest(rgAppUpdatePrompt.get(), context.sharedContext.applicationBindings.applicationIsActive)
+        |> deliverOnMainQueue).start(next: { [weak self] prompt, active in
+            guard let self, let prompt, active else { return }
             Task { @MainActor [weak self] in
-                guard let self, RGAppUpdater.shared.claimPrompt(for: release), let source = self.rootController.viewControllers.last as? ViewController else { return }
+                guard let self, (self.mainWindow.viewController as? TelegramRootController) === self.rootController,
+                      let source = self.rootController.viewControllers.last as? ViewController,
+                      RGAppUpdater.shared.claimPrompt(prompt) else { return }
+                let updater = RGAppUpdater.shared
                 let data = self.context.sharedContext.currentPresentationData.with { $0 }
-                let lang = data.strings.baseLanguageCode
-                let alert = textAlertController(context: self.context, title: "AppUpdate.Available".i18n(lang), text: "Regram \(release.version) (\(release.build))", actions: [
-                    TextAlertAction(type: .defaultAction, title: "AppUpdate.Later".i18n(lang), action: {}),
-                    TextAlertAction(type: .defaultAction, title: "AppUpdate.Title".i18n(lang), action: { [weak self] in
-                        guard let self else { return }
-                        self.rootController.pushViewController(rgAppUpdateController(context: self.context))
+                let lang = data.strings.rgLanguageCode
+                let title: String
+                let message: String
+                let actionTitle: String
+                switch prompt.kind {
+                case .available:
+                    title = "AppUpdate.Available".i18n(lang)
+                    message = "Regram \(prompt.release.version) (\(prompt.release.build))"
+                    actionTitle = "AppUpdate.Update".i18n(lang)
+                case .ready:
+                    title = "AppUpdate.Ready".i18n(lang)
+                    message = "AppUpdate.InstallPrompt".i18n(lang, args: "\(prompt.release.version) (\(prompt.release.build))")
+                    actionTitle = "AppUpdate.Install".i18n(lang)
+                case let .failed(key):
+                    title = "AppUpdate.UpdateFailed".i18n(lang)
+                    message = key.i18n(lang)
+                    actionTitle = "AppUpdate.Title".i18n(lang)
+                }
+                let alert = textAlertController(context: self.context, title: title, text: message, actions: [
+                    TextAlertAction(type: .genericAction, title: "AppUpdate.Later".i18n(lang), action: {}),
+                    TextAlertAction(type: .defaultAction, title: actionTitle, action: { [weak self] in
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            switch prompt.kind {
+                            case .available:
+                                if updater.automaticallyPrepare && updater.isConfigured { updater.acceptAutomaticUpdate(prompt.release) }
+                                else { self.rootController.pushViewController(rgAppUpdateController(context: self.context)) }
+                            case .ready:
+                                if updater.release?.hasSameArtifact(as: prompt.release) == true { updater.install(showFailurePrompt: true) }
+                            case .failed:
+                                self.rootController.pushViewController(rgAppUpdateController(context: self.context))
+                            }
+                        }
                     })
                 ])
                 source.present(alert, in: .window(.root))
             }
         }))
-        
+
         if #available(iOS 10.0, *) {
             let permissionsPosition = ValuePromise(0, ignoreRepeated: true)
             self.permissionsDisposable.set((combineLatest(queue: .mainQueue(), requiredPermissions(context: context), permissionUISplitTest(postbox: context.account.postbox), permissionsPosition.get(), context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .notifications)!), context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .cellularData)!))

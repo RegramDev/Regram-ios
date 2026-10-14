@@ -455,7 +455,7 @@
 "Settings.UnlimitedPinnedChats.Notice" = "Telegram 只同步账户上限内的置顶（普通账户 5 个，Premium 10 个）。排在最前的置顶会同步，超出部分只保存在本机。";
 "AntiFeatures.EditHistory" = "保存消息编辑历史";
 "EditHistory.Title" = "编辑历史";
-"EditHistory.Notice" = "本机收到编辑时记录的旧版本。开启前的编辑，或本机记录被整段重新加载替换时的编辑，无法找回。长按某个版本可复制。";
+"EditHistory.Notice" = "仅记录此设备已收到的版本。已保存的图片不依赖媒体缓存；未缓存的原图可能已无法获取。不保留秘密聊天、阅后即焚和受保护的图片。";
 "EditHistory.Current" = "当前版本";
 "EditHistory.Original" = "原始版本";
 "EditHistory.Copy" = "复制";
@@ -581,7 +581,7 @@
 "AppUpdate.Later" = "稍后";
 "AppUpdate.AutomaticCheck" = "自动检查更新";
 "AppUpdate.AutomaticPrepare" = "自动下载并签名";
-"AppUpdate.AutomaticNotice" = "打开 Regram 时检查 GitHub Releases，每六小时最多一次。自动准备会在手机上下载并签名，LCSign 提供安装清单，安装时仍需确认 iOS 提示。";
+"AppUpdate.AutomaticNotice" = "打开 Regram 时检查 GitHub Releases，每六小时最多一次。开启自动下载后，点击更新即可在后台下载并签名，准备完成后再确认安装。LCSign 提供安装清单。";
 "AppUpdate.CertificatePassword" = "P12 证书密码";
 "AppUpdate.ImportCertificate" = "导入 P12 证书";
 "AppUpdate.ImportProfiles" = "导入描述文件";
@@ -714,7 +714,7 @@
 "AppUpdate.MethodTrollStore" = "TrollStore（巨魔）";
 "AppUpdate.DownloadTrollStore" = "下载更新";
 "AppUpdate.AutomaticDownload" = "自动下载更新";
-"AppUpdate.TrollStoreNotice" = "从 GitHub 下载并校验更新，点击安装更新后交给 TrollStore，无需证书或描述文件。安装确认遵循 TrollStore 的设置，请先开启其 URL Scheme 选项。";
+"AppUpdate.TrollStoreNotice" = "从 GitHub Releases 下载并校验 IPA，再通过 TrollStore 安装，无需证书。开启自动下载后，点击更新即可后台下载，准备完成后再确认安装。请先在 TrollStore 设置中开启 URL Scheme。";
 "AppUpdate.TrollStoreReceived" = "更新包已交给 TrollStore，请在其中完成安装，再打开 Regram 确认新版本。";
 "AppUpdate.TrollStoreUnavailable" = "无法打开 TrollStore 安装器，请确认已安装 TrollStore 并开启 URL Scheme 选项。";
 "AppUpdate.TrollStoreNotStarted" = "TrollStore 尚未读取更新包，请开启其 URL Scheme 选项后重试。如果打开的是放大镜，说明链接未交给 TrollStore。";
@@ -841,3 +841,29 @@
 "LinkPreview.InstagramService" = "Instagram 预览服务";
 
 "Fonts.Search" = "搜索字体";
+
+"Gallery.Player.Play" = "播放";
+"Gallery.Player.Pause" = "暂停";
+"Gallery.Player.Rewind15" = "后退 15 秒";
+"Gallery.Player.Forward15" = "快进 15 秒";
+
+"Settings.AutomaticallyRevealSpoilers" = "自动显示剧透内容";
+"Settings.AutomaticallyRevealSpoilers.Notice" = "直接显示剧透文字、图片和视频，无需点击展开。默认关闭。";
+
+"EraseData.ContainerUnavailable" = "无法访问数据容器。清除任务已保留，请重新打开 Regram 重试。";
+"EraseData.Close" = "关闭应用";
+"EraseData.Progress" = "正在清除数据… 请保持 Regram 打开。";
+"EraseData.Done" = "数据已全部清除";
+"EraseData.DoneNotice" = "关闭 Regram 后重新打开，即可从零开始。";
+"EraseData.Errors" = "清除完成，但有部分错误";
+"EraseData.ErrorsNotice" = "未能删除：%@";
+"AppUpdate.Update" = "更新";
+"AppUpdate.InstallPrompt" = "Regram %@ 已下载并通过校验，现在安装更新吗？";
+"AppUpdate.UpdateFailed" = "更新失败";
+
+"EditHistory.RevealPhoto" = "点击显示图片";
+"EditHistory.ViewPhoto" = "查看图片";
+"EditHistory.LoadingPhoto" = "正在加载图片…";
+"EditHistory.PhotoUnavailable" = "无法加载此图片，可能没有保存在本机，或原始文件引用已经失效。";
+"EditHistory.LoadPhoto" = "加载历史图片";
+"EditHistory.LoadOriginal" = "加载原图";
