@@ -20,6 +20,14 @@ extension UserDefaults {
         settings.defaultOutgoingFormatting = "none"
         settings.fontFamily = "inter"
         settings.messageFilterRules = [RGMessageFilterRule(pattern: "spam", isEnabled: false)]
+        expect(!settings.networkPolicy.dohEnabled && settings.networkPolicy.ipVersion == .automatic, "Custom DNS must be opt-in")
+        expect(!RGNetworkPolicy.validEndpoint("http://example.com/dns-query") && !RGNetworkPolicy.validEndpoint("https://name:password@example.com/dns-query") && !RGNetworkPolicy.validEndpoint("https://example.com/dns-query#fragment"), "DoH requires a credential-free HTTPS endpoint")
+        expect(RGNetworkPolicy.validEndpoint("https://example.com/dns-query"), "Valid HTTPS DoH endpoint")
+        settings.networkPolicy = RGNetworkPolicy(dohEnabled: true, endpoint: "https://example.com/dns-query", ipVersion: .ipv6)
+        expect(RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .ipv6, "Transport preference must reach the extension")
+        expect(RGNetworkPolicy(dohEnabled: true, endpoint: "bad").effectiveEndpoint == "invalid-doh-endpoint", "Invalid enabled DoH must fail closed, not silently downgrade")
+        settings.summaryLLMModel = "independent-model"; settings.summaryLLMPrompt = "summary @text"; settings.liquidGlassTintPercent = 25
+        expect(settings.translationLLMModel.isEmpty && settings.translationLLMPrompt != settings.summaryLLMPrompt, "Summary and translation must have independent configuration")
         let backup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
         expect(backup.values["api_hash"] == nil && backup.values["status"] == nil && backup.values["primaryUserId"] == nil, "Export must include allowlisted preferences only")
         expect(backup.selectedValues(categories: [.messages])["automaticallyRevealSpoilers"] == .bool(true), "Spoiler display must persist in message settings backups")
@@ -33,6 +41,7 @@ extension UserDefaults {
         let generation = settings.contentFilterGeneration
         settings.applyPreferences(decoded.values)
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
+        expect(settings.summaryLLMModel == "independent-model" && settings.liquidGlassTintPercent == 25, "Summary and glass preferences must round-trip")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
         expect(settings.messageFilterRules.count == 1 && !settings.messageFilterRules[0].isEnabled && settings.contentFilterGeneration > generation, "Restore must invalidate derived filter caches")
         settings.setChatPreferences(RGChatPreferences(formatting: "bold", panguSpacing: true), accountId: 1, peerId: 5)
@@ -51,6 +60,8 @@ extension UserDefaults {
         let bad = RGSettingsBackup(values: ["tabBarWidthPercent": .integer(Int64.max)])
         do { _ = try RGSettingsBackup.decode(bad.encoded()); fatalError("Out-of-range settings must be rejected") } catch {}
         do { _ = try RGSettingsBackup.decode(Data(repeating: 0, count: RGSettingsBackup.maximumBytes + 1)); fatalError("Oversized backup must be rejected") } catch {}
+        settings.applyPreferences([:], resetCategories: [.media])
+        expect(!settings.networkPolicy.dohEnabled && RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .automatic, "Transport reset must update the extension too")
         let hide = RGMessageFilterRule(pattern: "spam")
         let keep = RGMessageFilterRule(pattern: "approved", isException: true)
         expect(RGNotificationFilterPolicy.shouldHide(text: "spam", senderId: 3, peerId: 5, isIncoming: true, rules: [hide], hiddenSenders: [], disabledChats: []), "Notifications must use the same keyword rules")

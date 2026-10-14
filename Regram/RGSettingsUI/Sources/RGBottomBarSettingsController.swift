@@ -1,4 +1,4 @@
-// MARK: Regram — layout adapted from NextAlone/Nagram-iOS (96ae08c), under the repository GPL license.
+// MARK: Regram — layout settings for the upstream Telegram tab bar.
 import AccountContext
 import AsyncDisplayKit
 import ComponentFlow
@@ -11,6 +11,7 @@ import RGStrings
 import RGSwiftUI
 import PresentationDataUtils
 import SwiftSignalKit
+import SearchBarNode // MARK: Regram
 import TabBarComponent
 import TelegramCore
 import TelegramUIPreferences
@@ -190,7 +191,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                 }
             }, tag: self.tag)
         case let .visibility(_, section, title, settings, itemTitles):
-            let chips = RGBottomBarItemId.allCases.map { id in
+            let chips = RGBottomBarItemId.allCases.filter(\.isNavigationItem).map { id in
                 let isSelected = settings.isVisible(id)
                 let isEnabled = settings.canHide(id)
                 return RGBottomBarChipRowItem.Chip(id: id.rawValue, title: itemTitles[id] ?? id.rawValue, isSelected: isSelected, isEnabled: isEnabled)
@@ -586,16 +587,16 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
         button.setTitle(chip.title, for: .normal)
         button.isEnabled = chip.isEnabled
         if chip.isSelected {
-            let selectedColor = theme.rootController.tabBar.selectedTextColor
+            let selectedColor = theme.list.itemCheckColors.fillColor // MARK: Regram — paired theme colors stay legible.
             button.backgroundColor = selectedColor
             button.layer.borderColor = selectedColor.cgColor
-            button.setTitleColor(.white, for: .normal)
+            button.setTitleColor(theme.list.itemCheckColors.foregroundColor, for: .normal)
         } else {
             button.backgroundColor = theme.list.itemInputField.backgroundColor
             button.layer.borderColor = theme.list.itemBlocksSeparatorColor.cgColor
             button.setTitleColor(theme.list.itemSecondaryTextColor, for: .normal)
         }
-        button.alpha = chip.isEnabled ? 1.0 : 0.35
+        button.alpha = chip.isEnabled ? 1.0 : 0.75
     }
 
     @objc private func buttonPressed(_ button: RGBottomBarChipButton) {
@@ -673,7 +674,8 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
     private let bottomBarTitleLabel = UILabel()
     private let emptyBottomLabel = UILabel()
     private let backgroundView = UIView()
-    private lazy var topSearchView = NavigationSearchView(action: {}, closeAction: {})
+    private let topSearchView = UIView()
+    private var topSearchNode: SearchBarNode?
     private let tabBarComponentView = ComponentView<Empty>()
     private let externalDropView = UIView()
     private var itemFrames: [RGBottomBarItemId: CGRect] = [:]
@@ -747,7 +749,17 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
 
         let topSearchFrame = CGRect(x: controlLeftInset, y: 36.0, width: controlWidth, height: 42.0)
         self.topSearchView.frame = topSearchFrame
-        self.topSearchView.update(size: topSearchFrame.size, theme: theme, strings: item.strings, isActive: false, isExpanded: true, transition: .immediate)
+        // MARK: Regram — the preview uses the same search field as the upstream chat header.
+        let searchTheme = SearchBarNodeTheme(theme: theme, hasBackground: false, hasSeparator: false, inline: true)
+        let searchNode: SearchBarNode
+        if let current = self.topSearchNode { searchNode = current; searchNode.updateThemeAndStrings(theme: searchTheme, presentationTheme: theme, strings: item.strings) }
+        else {
+            searchNode = SearchBarNode(theme: searchTheme, presentationTheme: theme, strings: item.strings, fieldStyle: .inlineNavigation, displayBackground: false)
+            self.topSearchNode = searchNode; self.topSearchView.addSubview(searchNode.view)
+        }
+        searchNode.placeholderString = NSAttributedString(string: item.strings.Common_Search, font: Font.regular(17), textColor: searchTheme.placeholder)
+        searchNode.frame = CGRect(origin: .zero, size: topSearchFrame.size)
+        searchNode.updateLayout(boundingSize: topSearchFrame.size, leftInset: 0, rightInset: 0, transition: .immediate)
         self.topSearchView.alpha = item.settings.topSearchVisible ? 1.0 : 0.35
 
         self.topSearchHintLabel.frame = CGRect(x: controlLeftInset, y: 80.0, width: controlWidth, height: 16.0)
@@ -819,19 +831,10 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             externalComponentItem = nil
         }
 
-        let searchIsVisible = previewSettings.isVisible(.search)
-        let search = searchIsVisible ? TabBarComponent.Search(
-            isActive: false,
-            showsButton: previewSettings.searchMode != .bar,
-            activate: {},
-            deactivate: {}
-        ) : nil
-
         let selectedId = self.componentIdsByItemId[.chats] ?? visibleBottomItems.compactMap { self.componentIdsByItemId[$0] }.first ?? previewSettings.externalItem.flatMap { self.componentIdsByItemId[$0] }
-        let layoutItemCount = max(visibleComponentItems.count, RGBottomBarSettings.defaultBottomItems.count)
         let previewSideInset: CGFloat = 12.0
         let availableWidth = max(120.0, contentWidth - previewSideInset * 2.0)
-        let allButtonsHidden = visibleComponentItems.isEmpty && externalComponentItem == nil && !searchIsVisible
+        let allButtonsHidden = visibleComponentItems.isEmpty && externalComponentItem == nil
         if allButtonsHidden {
             self.emptyBottomLabel.isHidden = false
             self.emptyBottomLabel.frame = CGRect(x: previewSideInset, y: 130.0, width: availableWidth, height: 64.0)
@@ -845,20 +848,15 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
         }
         let tabBarSize = self.tabBarComponentView.update(
             transition: .immediate,
-            component: AnyComponent(TabBarComponent(
+            component: AnyComponent(RGConfigurableTabBarComponent(
                 theme: theme,
                 strings: item.strings,
                 items: visibleComponentItems,
                 externalItem: externalComponentItem,
-                search: search,
+                search: nil,
                 selectedId: selectedId,
                 outerInsets: .zero,
-                layoutItemCount: layoutItemCount,
-                isAdaptiveWidth: false,
-                alignItemsToLeft: false,
-                centerItemsInAvailableWidth: true,
                 showItemTitles: previewSettings.showLabels,
-                buttonWidthFillRatio: nil,
                 rgWidthPercent: previewSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(previewSettings.buttonWidthFillRatio)
             )),
             environment: {},
@@ -878,7 +876,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             tabBarView.alpha = item.settings.isBottomBarVisible ? 1.0 : 0.45
 
             for (componentId, itemId) in self.itemIdsByComponentId {
-                if let componentView = tabBarView as? TabBarComponent.View, let frame = componentView.frameForItem(id: componentId) {
+                if let componentView = tabBarView as? RGConfigurableTabBarComponent.View, let frame = componentView.frameForItem(id: componentId) {
                     self.itemFrames[itemId] = self.backgroundView.convert(frame, from: componentView)
                 }
             }
@@ -894,13 +892,12 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             let fixedExternalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
             if let externalItem = previewSettings.externalItem, externalItem != .search, let frame = self.itemFrames[externalItem] {
                 self.externalFrame = frame
-            } else if searchIsVisible {
-                self.externalFrame = fixedExternalFrame
+
             } else {
                 self.externalFrame = fixedExternalFrame
             }
 
-            let hasExternalSlotContent = searchIsVisible || externalComponentItem != nil
+            let hasExternalSlotContent = externalComponentItem != nil
             self.externalDropView.isHidden = true
             self.externalDropView.frame = self.externalFrame
             self.externalDropView.layer.cornerRadius = 32.0

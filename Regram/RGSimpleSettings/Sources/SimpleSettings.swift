@@ -813,6 +813,9 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
         NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
         self.synchronizeShared()
+        // MARK: Regram — restore/reset transport preferences into the extension store as well.
+        if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared) }
+        NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
     }
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {

@@ -139,6 +139,7 @@ private enum RGOneFromManySetting: String {
 
 private enum RGSliderSetting: String {
     case accountColorsSaturation
+    case liquidGlassTintPercent // MARK: Regram
     case outgoingPhotoQuality
     case stickerSize
 }
@@ -286,6 +287,8 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     
     entries.append(.header(id: id.count, section: .accountColors, text: i18n("Settings.CustomColors.Header", lang), badge: nil))
     entries.append(.header(id: id.count, section: .accountColors, text: i18n("Settings.CustomColors.Saturation", lang), badge: nil))
+    entries.append(.header(id: id.count, section: .tabs, text: "Glass.TintIntensity".i18n(lang), badge: nil))
+    entries.append(.percentageSlider(id: id.count, section: .tabs, settingName: .liquidGlassTintPercent, value: RGSimpleSettings.shared.liquidGlassTintPercent))
     let accountColorSaturation = RGSimpleSettings.shared.accountColorsSaturation
     entries.append(.percentageSlider(id: id.count, section: .accountColors, settingName: .accountColorsSaturation, value: accountColorSaturation))
 //    let nameColor: PeerNameColor
@@ -584,6 +587,9 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         }
     }, updateSliderValue: { setting, value in
         switch (setting) {
+            case .liquidGlassTintPercent:
+                RGSimpleSettings.shared.liquidGlassTintPercent = value
+                simplePromise.set(true)
             case .accountColorsSaturation:
                 if RGSimpleSettings.shared.accountColorsSaturation != value {
                     RGSimpleSettings.shared.accountColorsSaturation = value

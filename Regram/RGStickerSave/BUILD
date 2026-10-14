@@ -6,6 +6,7 @@ swift_library(
     srcs = glob(["Sources/**/*.swift"]),
     copts = ["-warnings-as-errors"],
     deps = [
+        "//third-party/ZipArchive",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/AccountContext:AccountContext",

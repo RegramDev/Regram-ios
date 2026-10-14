@@ -514,6 +514,10 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)
             apiEnvironment.accessHostOverride = networkSettings?.backupHostOverride
+            // MARK: Regram — DoH applies to proxy hostnames; Telegram DCs already use numeric addresses.
+            let policy = RGSimpleSettings.shared.networkPolicy
+            apiEnvironment.rgDoHEndpoint = policy.effectiveEndpoint
+            apiEnvironment.rgIPVersionPreference = policy.ipVersion.rawValue
             
             var appDataUpdatedImpl: ((Data?) -> Void)?
             let syncValue = Atomic<Data?>(value: nil)
@@ -876,6 +880,7 @@ public final class Network: NSObject {
     public let useBetaFeatures: Bool
     public let useExperimentalFeatures: Bool
     
+    private var rgNetworkPolicyObserver: NSObjectProtocol? // MARK: Regram
     private let appDataDisposable: Disposable
     
     private var _multiplexedRequestManager: MultiplexedRequestManager?
@@ -963,6 +968,17 @@ public final class Network: NSObject {
         super.init()
         
         mainSessionDelegate.network = self
+        // MARK: Regram — native transport reconnects on an explicitly saved policy change.
+        self.rgNetworkPolicyObserver = NotificationCenter.default.addObserver(forName: RGNetworkPolicy.didChange, object: nil, queue: nil) { [weak self] _ in
+            let policy = RGSimpleSettings.shared.networkPolicy
+            self?.context.updateApiEnvironment { environment in
+                guard let environment, let result = environment.copy() as? MTApiEnvironment else { return nil }
+                result.rgDoHEndpoint = policy.effectiveEndpoint
+                result.rgIPVersionPreference = policy.ipVersion.rawValue
+                return result
+            }
+        }
+
         
         let _contextProxyId = self._contextProxyId
         let networkHelper = NetworkHelper(requestPublicKeys: { [weak self] id in
@@ -1108,6 +1124,7 @@ public final class Network: NSObject {
     }
     
     deinit {
+        if let observer = self.rgNetworkPolicyObserver { NotificationCenter.default.removeObserver(observer) } // MARK: Regram
         self.shouldKeepConnectionDisposable.dispose()
         self.isUserOnlineDisposable.dispose()
         self.webProxyCarrierDemandDisposable.dispose()

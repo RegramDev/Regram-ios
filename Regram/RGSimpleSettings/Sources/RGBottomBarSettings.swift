@@ -1,4 +1,4 @@
-// MARK: Regram — layout adapted from NextAlone/Nagram-iOS (96ae08c), under the repository GPL license.
+// MARK: Regram — settings for the upstream Telegram tab bar.
 import Foundation
 
 public enum RGBottomBarItemId: String, CaseIterable, Hashable {
@@ -72,7 +72,7 @@ public struct RGBottomBarSettings: Equatable {
         automaticWidth: Bool = true,
         isBottomBarVisible: Bool = true,
         bottomItems: [RGBottomBarItemId] = RGBottomBarSettings.defaultBottomItems,
-        externalItem: RGBottomBarItemId? = .search,
+        externalItem: RGBottomBarItemId? = nil,
         hiddenItems: Set<RGBottomBarItemId> = [],
         topSearchVisible: Bool = true,
         showLabels: Bool = true,
@@ -105,6 +105,7 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public var visibleNavigationItems: [RGBottomBarItemId] {
+        guard self.isBottomBarVisible else { return [] }
         var result = self.visibleBottomItems.filter(\.isNavigationItem)
         if let externalItem = self.externalItem, externalItem.isNavigationItem, !self.hiddenItems.contains(externalItem) {
             result.append(externalItem)
@@ -280,22 +281,10 @@ public struct RGBottomBarSettings: Equatable {
 
         self.bottomItems.removeAll(where: { $0 == .search })
 
-        if self.searchMode == .hidden || self.hiddenItems.contains(.search) {
-            self.searchMode = .hidden
-            self.hiddenItems.insert(.search)
-            if self.externalItem == .search {
-                self.externalItem = nil
-            }
-        } else {
-            if self.searchMode != .bar {
-                self.searchMode = .button
-            }
-            self.hiddenItems.remove(.search)
-            if let externalItem = self.externalItem, externalItem != .search, !self.hiddenItems.contains(externalItem), !self.bottomItems.contains(externalItem) {
-                self.bottomItems.append(externalItem)
-            }
-            self.externalItem = self.searchMode == .bar ? nil : .search
-        }
+        // Search is a legacy storage value only; never render it in the tab bar.
+        self.searchMode = .hidden
+        self.hiddenItems.insert(.search)
+        if self.externalItem == .search { self.externalItem = nil }
 
         var seen = Set<RGBottomBarItemId>()
         self.bottomItems = self.bottomItems.compactMap { item in

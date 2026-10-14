@@ -8,7 +8,7 @@ public enum RGTabBarLayoutPolicy {
     public static let maximumWidth: Double = 500.0
     public static let minimumItemWidth: Double = 44.0
 
-    /// Zero selects the item-count-based default; explicit widths use the supported bar width.
+    /// Zero selects the upstream automatic width; explicit widths use the supported bar width.
     public static func normalizedPercent(_ value: Int32) -> Int32 {
         return value <= 0 ? 0 : min(maximumPercent, max(minimumPercent, value))
     }
@@ -24,14 +24,7 @@ public enum RGTabBarLayoutPolicy {
         let normalized = normalizedPercent(percent)
         let requestedWidth: Double
         if normalized == 0 {
-            let reducer: Double
-            switch itemCount {
-            case 1: reducer = 1.75
-            case 2: reducer = 1.5
-            case 3: reducer = 1.25
-            default: reducer = 1.0
-            }
-            requestedWidth = availableWidth / reducer
+            requestedWidth = availableWidth // MARK: Regram — match the upstream automatic width.
         } else {
             requestedWidth = availableWidth * Double(normalized) / 100.0
         }

@@ -190,6 +190,10 @@ private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: Presenta
         return "EditHistory.Title".i18n(lang)
     case .bookmark:
         return "Bookmarks.Add".i18n(lang)
+    case .summarize:
+        return "Summary.Action".i18n(lang)
+    case .messageScreenshot:
+        return "MessageScreenshot.Action".i18n(lang)
     }
 }
 

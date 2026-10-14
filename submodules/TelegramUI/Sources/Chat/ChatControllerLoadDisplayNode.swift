@@ -1,3 +1,4 @@
+import RGProUI // MARK: Regram
 import Foundation
 import UIKit
 import Postbox
@@ -2070,6 +2071,11 @@ extension ChatControllerImpl {
                     // MARK: Regram
                     if let mode = mode {
                         switch (mode) {
+                        case "summarize":
+                            let _ = (strongSelf.context.account.postbox.transaction { transaction in forwardMessageIds.compactMap { transaction.getMessage($0) } } |> deliverOnMainQueue).startStandalone(next: { [weak self] messages in
+                                guard let self, let controller = rgMessageSummaryController(context: self.context, messages: messages) else { return }
+                                (self.navigationController as? NavigationController)?.pushViewController(controller)
+                            })
                         case "toCloud":
                             strongSelf.forwardMessagesToCloud(messageIds: forwardMessageIds, removeNames: false, openCloud: false, resetCurrent: true)
                         case "hideNames":

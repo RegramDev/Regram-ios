@@ -814,6 +814,8 @@ struct ctr_state {
 
 @interface MTTcpConnection () <MTTcpConnectionInterfaceDelegate>
 {
+    NSString *_rgDoHEndpoint; // MARK: Regram
+    NSInteger _rgIPVersionPreference;
     id<EncryptionProvider> _encryptionProvider;
     
     id<MTTcpConnectionInterface> _socket;
@@ -902,6 +904,8 @@ struct ctr_state {
         _encryptionProvider = context.encryptionProvider;
         
         _scheme = scheme;
+        _rgDoHEndpoint = context.apiEnvironment.rgDoHEndpoint; // MARK: Regram
+        _rgIPVersionPreference = context.apiEnvironment.rgIPVersionPreference;
         
         _interface = interface;
         _usageCalculationInfo = usageCalculationInfo;
@@ -1069,7 +1073,7 @@ struct ctr_state {
                 
                 if (isHostname) {
                     int32_t port = _socksPort;
-                    resolveSignal = [( _forceLocalDNS ? [MTDNS resolveHostnameNative:_socksIp port:port] : [MTDNS resolveHostnameUniversal:_socksIp port:port]) map:^id(NSString *resolvedIp) {
+                    resolveSignal = [(_rgDoHEndpoint.length || _rgIPVersionPreference != 0 ? [MTDNS resolveHostname:_socksIp port:port dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference] : (_forceLocalDNS ? [MTDNS resolveHostnameNative:_socksIp port:port] : [MTDNS resolveHostnameUniversal:_socksIp port:port])) map:^id(NSString *resolvedIp) {
                         return [[MTTcpConnectionData alloc] initWithIp:resolvedIp port:port isSocks:true];
                     }];
                 } else {
@@ -1087,7 +1091,7 @@ struct ctr_state {
                 
                 if (isHostname) {
                     int32_t port = _mtpPort;
-                    resolveSignal = [( _forceLocalDNS ? [MTDNS resolveHostnameNative:_mtpIp port:port] : [MTDNS resolveHostnameUniversal:_mtpIp port:port]) map:^id(NSString *resolvedIp) {
+                    resolveSignal = [(_rgDoHEndpoint.length || _rgIPVersionPreference != 0 ? [MTDNS resolveHostname:_mtpIp port:port dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference] : (_forceLocalDNS ? [MTDNS resolveHostnameNative:_mtpIp port:port] : [MTDNS resolveHostnameUniversal:_mtpIp port:port])) map:^id(NSString *resolvedIp) {
                         return [[MTTcpConnectionData alloc] initWithIp:resolvedIp port:port isSocks:false];
                     }];
                 } else {

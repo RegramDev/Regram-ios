@@ -4873,6 +4873,11 @@ extension SharedAccountContextImpl {
         return rgRecentChatsController(context: context)
     }
 
+    // MARK: Regram
+    public func makeRGBookmarksController(context: AccountContext) -> ViewController {
+        return rgBookmarksController(context: context)
+    }
+
     // MARK: Regram — cross-page settings search.
     public func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController {
         return rgProController(context: context, initialSearchQuery: searchQuery)

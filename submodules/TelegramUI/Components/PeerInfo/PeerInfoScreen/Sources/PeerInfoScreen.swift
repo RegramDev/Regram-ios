@@ -173,6 +173,7 @@ enum PeerInfoSettingsSection {
     case proxy
     case stories
     case savedMessages
+    case messageBookmarks // MARK: Regram
     case recentCalls
     case devices
     case chatFolders

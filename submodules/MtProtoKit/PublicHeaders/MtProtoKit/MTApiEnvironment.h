@@ -70,6 +70,9 @@
 
 @property (nonatomic, strong, readonly) NSString * _Nullable apiInitializationHash;
 
+// MARK: Regram — copied with the environment, scoped to this Telegram transport.
+@property (nonatomic, copy) NSString * _Nullable rgDoHEndpoint;
+@property (nonatomic) NSInteger rgIPVersionPreference; // 0 automatic, 4 prefer IPv4, 6 prefer IPv6
 @property (nonatomic) bool disableUpdates;
 @property (nonatomic) NSData * _Nullable tcpPayloadPrefix;
 @property (nonatomic) NSDictionary * _Nullable datacenterAddressOverrides;

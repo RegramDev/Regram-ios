@@ -29,6 +29,7 @@ swift_library(
         "//Regram/RGAPIToken:RGAPIToken",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",
+        "//submodules/SearchBarNode", # MARK: Regram
         "//submodules/Postbox:Postbox",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/MtProtoKit:MtProtoKit",

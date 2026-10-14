@@ -1430,6 +1430,8 @@ public protocol SharedAccountContext: AnyObject {
     func makeRGUpdateIOSController() -> ViewController
     // MARK: Regram — recently opened chats (RGProUI's rgRecentChatsController).
     func makeRGRecentChatsController(context: AccountContext) -> ViewController
+    // MARK: Regram — the bookmarks manager has one entry on the outer Settings page.
+    func makeRGBookmarksController(context: AccountContext) -> ViewController
 
     var currentInAppNotificationSettings: Atomic<InAppNotificationSettings> { get }
     var currentMediaInputSettings: Atomic<MediaInputSettings> { get }

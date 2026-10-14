@@ -1,3 +1,5 @@
+import RGStickerSave // MARK: Regram
+import RGStrings
 import Foundation
 import LottieSettings
 import UIKit
@@ -172,6 +174,7 @@ private final class StickerPackContainer: ASDisplayNode {
     
     private var itemsDisposable: Disposable?
     private var currentContents: [LoadedStickerPack]?
+    private let rgBackupDisposable = MetaDisposable() // MARK: Regram
     private(set) var currentStickerPack: (StickerPackCollectionInfo, [StickerPackItem], Bool)?
     private(set) var currentStickerPacks: [(StickerPackCollectionInfo, [StickerPackItem], Bool)] = []
     private var didReceiveStickerPackResult = false
@@ -472,6 +475,7 @@ private final class StickerPackContainer: ASDisplayNode {
     }
     
     deinit {
+        self.rgBackupDisposable.dispose() // MARK: Regram
         self.itemsDisposable?.dispose()
     }
     
@@ -1131,6 +1135,33 @@ private final class StickerPackContainer: ASDisplayNode {
             }
         })))
         
+        // MARK: Regram — original-format pack archive, with cancelable download and disk limits.
+        if let (info, packItems, _) = self.currentStickerPack, self.currentStickerPacks.count <= 1 {
+            items.append(.action(ContextMenuActionItem(text: "StickerBackup.Action".i18n(RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode)), icon: { theme in
+                generateTintedImage(image: UIImage(systemName: "square.and.arrow.down"), color: theme.contextMenu.primaryColor)
+            }, action: { [weak self] menu, _ in
+                menu?.dismiss(completion: {
+                    guard let self, let controller = self.controller else { return }
+                    let progress = OverlayStatusController(theme: self.presentationData.theme, type: .loading(cancelled: { [weak self] in self?.rgBackupDisposable.set(nil) }))
+                    controller.present(progress, in: .window(.root))
+                    self.rgBackupDisposable.set((rgBackupStickerPack(context: self.context, info: info, items: packItems, progress: { _, _ in }) |> deliverOnMainQueue).start(next: { [weak controller] file in
+                        progress.dismiss()
+                        guard let controller, var presenter = controller.view.window?.rootViewController else { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()); return }
+                        while let next = presenter.presentedViewController { presenter = next }
+                        let share = UIActivityViewController(activityItems: [file], applicationActivities: nil)
+                        share.popoverPresentationController?.sourceView = presenter.view
+                        share.popoverPresentationController?.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1)
+                        share.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+                        presenter.present(share, animated: true)
+                    }, error: { [weak self] _ in
+                        progress.dismiss()
+                        guard let self else { return }
+                        self.controller?.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: "StickerBackup.Failed".i18n(RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode)), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in false }), in: .window(.root))
+                    }))
+                })
+            })))
+        }
+
         let copyTitle = self.currentStickerPacks.count > 1 ? strings.StickerPack_CopyLinks : strings.StickerPack_CopyLink
         let copyText = self.currentStickerPacks.count > 1 ? strings.Conversation_LinksCopied : strings.Conversation_LinkCopied
         items.append(.action(ContextMenuActionItem(text: copyTitle, icon: { theme in

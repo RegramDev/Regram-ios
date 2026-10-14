@@ -66,6 +66,8 @@ private enum RGProDisclosureLink: String {
     case appSettings
     case inputSettings
     case transferSettings
+    case networkPolicy
+    case summarySettings
     case privacySettings
     case bookmarks
 
@@ -174,6 +176,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     #if DEBUG
     #endif
     
+    entries.append(.disclosure(id: id.count, section: .base, link: .summarySettings, text: "Summary.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .messageActionsSettings, text: RGSettingsPage.messageActions.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .chatListSettings, text: RGSettingsPage.chatList.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .base, link: .folderSettings, text: RGSettingsPage.folders.titleKey.i18n(lang)))
@@ -190,8 +193,8 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .privacySettings, text: RGSettingsPage.privacy.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
 
-    entries.append(.disclosure(id: id.count, section: .base, link: .bookmarks, text: "Bookmarks.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .input, link: .inputSettings, text: RGSettingsPage.input.titleKey.i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .network, link: .networkPolicy, text: "NetworkPolicy.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .network, link: .transferSettings, text: RGSettingsPage.transfer.titleKey.i18n(lang)))
 
     let section: RGProControllerSection
@@ -300,6 +303,8 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .networkPage: pushControllerImpl?(rgProController(context: context, page: .network))
             case .bookmarks: pushControllerImpl?(rgBookmarksController(context: context))
             case .inputSettings: pushControllerImpl?(rgSettingsController(context: context, page: .input))
+            case .summarySettings: pushControllerImpl?(rgLLMSummarySettingsController(context: context))
+            case .networkPolicy: pushControllerImpl?(rgNetworkPolicyController(context: context))
             case .transferSettings: pushControllerImpl?(rgSettingsController(context: context, page: .transfer))
             case .privacySettings: pushControllerImpl?(rgSettingsController(context: context, page: .privacy))
             case .messagesPage: pushControllerImpl?(rgProController(context: context, page: .messages))

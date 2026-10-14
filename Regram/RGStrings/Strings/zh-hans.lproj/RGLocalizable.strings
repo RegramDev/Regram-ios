@@ -900,3 +900,33 @@
 "Bookmarks.Empty" = "当前筛选下没有书签。";
 "Bookmarks.LoadMore" = "加载更多书签";
 "Bookmarks.ChatUnavailable" = "原聊天信息本机不可用，仍可编辑标签或移除此书签。";
+
+// MARK: Regram — message tools, theme and network policy
+"Summary.Title" = "消息总结接口";
+"Summary.Action" = "总结消息";
+"Summary.ConnectionNotice" = "消息总结使用独立接口与密钥，不读取翻译接口配置。密钥只保存在本机钥匙串。";
+"Summary.PromptNotice" = "@text 为所选消息，@toLang 为应用语言。只发送主动选择的文字，不自动附带聊天上下文或媒体。";
+"Summary.UploadNotice" = "点击「发送并总结」后，会将上方所选消息的文字发送到你配置的接口。不额外附带图片、语音、账号信息和未选中的消息。服务可能收费。";
+"Summary.Selected" = "所选文字消息数：";
+"Summary.Configure" = "配置总结接口";
+"Summary.Start" = "发送并总结";
+"Summary.TooLarge" = "所选文字超过 64 KB，请减少选择的消息。";
+"Summary.Result" = "总结结果";
+"Summary.Copy" = "复制总结";
+"MessageScreenshot.Action" = "消息截图";
+"StickerBackup.Action" = "导出贴纸包备份";
+"StickerBackup.Failed" = "贴纸包备份失败。请确认文件能下载及设备有足够空间，然后重试。";
+"Glass.TintIntensity" = "Liquid Glass 色调强度";
+"NetworkPolicy.Title" = "DNS 与 IP 策略";
+"NetworkPolicy.DoH" = "自定义 DoH";
+"NetworkPolicy.Endpoint" = "HTTPS DNS 地址";
+"NetworkPolicy.InvalidURL" = "请输入有效的 HTTPS 地址，不能包含用户名、密码或片段。";
+"NetworkPolicy.DoHNotice" = "DoH 用于 Telegram 连接中的代理域名解析，使用 DNS 报文格式。DC 已使用数字 IP；网页、HTTP 接口和 Web 代理由系统解析。DoH 失败不会自动改用系统 DNS；解析 DoH 服务器自身域名仍需系统 DNS。";
+"NetworkPolicy.IP" = "IP 版本策略";
+"NetworkPolicy.Automatic" = "自动";
+"NetworkPolicy.IPv4" = "优先 IPv4";
+"NetworkPolicy.IPv6" = "优先 IPv6";
+"NetworkPolicy.IPNotice" = "优先策略用于原生 Telegram 传输与代理域名地址选择。保留另一个版本作为回退，不影响系统浏览器与其他 HTTP 服务。";
+"NetworkPolicy.Apply" = "保存并重新连接";
+"NetworkPolicy.Applied" = "网络策略已保存。原生 Telegram 连接会重新建立。";
+"Bookmarks.Loading" = "加载中…";

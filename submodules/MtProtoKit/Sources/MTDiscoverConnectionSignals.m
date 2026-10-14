@@ -332,6 +332,9 @@
     MTSignal *optimalTcp4Match = [[[[MTSignal mergeSignals:bestTcp4Signals] then:optimalDelaySignal] restart] take:1];
     MTSignal *optimalTcp6Match = [[[[MTSignal mergeSignals:bestTcp6Signals] then:optimalDelaySignal] restart] take:1];
     
+    // MARK: Regram — prefer one family without disabling the reachable fallback.
+    if (context.apiEnvironment.rgIPVersionPreference == 6 && bestTcp6Signals.count > 0) firstTcp4Match = [firstTcp4Match delay:0.35 onQueue:retryQueue];
+    if (context.apiEnvironment.rgIPVersionPreference == 4 && bestTcp4Signals.count > 0) firstTcp6Match = [firstTcp6Match delay:0.35 onQueue:retryQueue];
     MTSignal *anySignal = [[MTSignal mergeSignals:@[firstTcp4Match, firstTcp6Match, firstHttpMatch]] take:1];
     MTSignal *optimalSignal = [[MTSignal mergeSignals:@[optimalTcp4Match, optimalTcp6Match]] take:1];
     

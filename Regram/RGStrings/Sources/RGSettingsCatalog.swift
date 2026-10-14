@@ -13,7 +13,7 @@ public struct RGSettingsCatalogEntry: Hashable {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
         if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -109,7 +109,6 @@ public enum RGSettingsCatalog {
         .init("pro.tools", "backup", "Backup.Title"),
         .init("pro.tools", "diagnostics", "Diagnostics.Title"),
         .init("pro.tools", "eraseAllData", "EraseData.Title"),
-        .init("pro.messages", "bookmarks", "Bookmarks.Title", keywords: "bookmark label tag 书签 标签 書籤 標籤"),
         .init("pro.input", "inputSettings", "Settings.Category.input"),
         .init("pro.network", "transferSettings", "Settings.Category.transfer"),
         .init("pro.messages", "messageActionsSettings", "Settings.Category.messageActions"),
@@ -138,6 +137,22 @@ public enum RGSettingsCatalog {
         .init("ghostMode", "ghostDontReadStories", "Ghost.DontReadStories"),
         .init("ghostMode", "ghostDontSendOnline", "Ghost.DontSendOnline"),
         .init("ghostMode", "ghostDontSendTyping", "Ghost.DontSendTyping"),
+        .init("pro.messages", "summarySettings", "Summary.Title", keywords: "AI summary summarize 总结 摘要 總結"),
+        .init("pro.network", "networkPolicy", "NetworkPolicy.Title", keywords: "DNS DoH IP IPv4 IPv6"),
+        .init("settings.appearance", "liquidGlassTintPercent", "Glass.TintIntensity"),
+        .init("networkPolicy", "enabled", "NetworkPolicy.DoH"),
+        .init("networkPolicy", "endpoint", "NetworkPolicy.Endpoint"),
+        .init("networkPolicy", "ipVersion", "NetworkPolicy.IP"),
+        .init("networkPolicy", "apply", "NetworkPolicy.Apply"),
+        .init("summary", "format", "LLMTranslation.Format"),
+        .init("summary", "baseURL", "LLMTranslation.BaseURL"),
+        .init("summary", "endpoint", "LLMTranslation.Endpoint"),
+        .init("summary", "apiKey", "LLMTranslation.APIKey"),
+        .init("summary", "model", "LLMTranslation.Model"),
+        .init("summary", "fetchModels", "LLMTranslation.FetchModels"),
+        .init("summary", "testModel", "LLMTranslation.TestModel"),
+        .init("summary", "prompt", "LLMTranslation.Prompt"),
+        .init("summary", "temperature", "LLMTranslation.Temperature"),
         .init("llm", "format", "LLMTranslation.Format"),
         .init("llm", "baseURL", "LLMTranslation.BaseURL"),
         .init("llm", "endpoint", "LLMTranslation.Endpoint"),
@@ -181,7 +196,6 @@ public enum RGSettingsCatalog {
         .init("fonts", "storage", "Fonts.Storage"),
         .init("fonts", "messages", "Fonts.Messages"),
         .init("fonts", "interface", "Fonts.Interface"),
-        .init("bookmarks", "tags", "Bookmarks.Filter"),
         .init("backup", "export", "Backup.Export"),
         .init("backup", "import", "Backup.Import"),
         .init("backup", "reset", "Backup.Reset"),
@@ -198,7 +212,7 @@ public enum RGSettingsCatalog {
         let tokens = query.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language)).split(whereSeparator: { $0.isWhitespace })
         guard !tokens.isEmpty else { return [] }
         return entries.filter { entry in
-            let pageContext = ["llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
+            let pageContext = ["summary": "LLM OpenAI Anthropic AI summary summarize 大模型 总结 摘要 總結", "llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
             let aliases = (entry.destination.item.flatMap { RGProSearchIndex.keys[$0] } ?? []) + [pageContext[entry.destination.page] ?? ""]
             let values = [entry.titleKey.i18n(language), entry.titleKey.i18n("en"), entry.pageTitleKey.i18n(language), entry.pageTitleKey.i18n("en"), entry.keywords, entry.destination.item ?? ""] + aliases.map { $0.contains(".") ? $0.i18n(language) : $0 }
             let text = values.joined(separator: " ").folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language))

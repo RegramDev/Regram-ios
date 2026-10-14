@@ -1,5 +1,3 @@
-// MARK: Regram — layout adapted from NextAlone/Nagram-iOS (96ae08c), under the repository GPL license.
-import RGSimpleSettings // MARK: Regram
 import Foundation
 import LottieSettings
 import UIKit
@@ -24,14 +22,12 @@ public final class NavigationSearchView: UIView {
         let theme: PresentationTheme
         let strings: PresentationStrings
         let isActive: Bool
-        let isExpanded: Bool
 
-        init(size: CGSize, theme: PresentationTheme, strings: PresentationStrings, isActive: Bool, isExpanded: Bool) {
+        init(size: CGSize, theme: PresentationTheme, strings: PresentationStrings, isActive: Bool) {
             self.size = size
             self.theme = theme
             self.strings = strings
             self.isActive = isActive
-            self.isExpanded = isExpanded
         }
 
         static func ==(lhs: Params, rhs: Params) -> Bool {
@@ -47,9 +43,6 @@ public final class NavigationSearchView: UIView {
             if lhs.isActive != rhs.isActive {
                 return false
             }
-            if lhs.isExpanded != rhs.isExpanded {
-                return false
-            }
             return true
         }
     }
@@ -59,7 +52,6 @@ public final class NavigationSearchView: UIView {
 
     private let backgroundView: GlassBackgroundView
     private let iconView: UIImageView
-    private let placeholderLabel: UILabel
     private(set) var searchBarNode: SearchBarNode?
     
     private var close: (background: GlassBackgroundView, icon: UIImageView)?
@@ -73,13 +65,11 @@ public final class NavigationSearchView: UIView {
         self.backgroundView = GlassBackgroundView()
         self.backgroundView.contentView.clipsToBounds = true
         self.iconView = UIImageView()
-        self.placeholderLabel = UILabel()
 
         super.init(frame: CGRect())
 
         self.addSubview(self.backgroundView)
         self.backgroundView.contentView.addSubview(self.iconView)
-        self.backgroundView.contentView.addSubview(self.placeholderLabel)
 
         self.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(self.onTapGesture(_:))))
     }
@@ -100,8 +90,8 @@ public final class NavigationSearchView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    public func update(size: CGSize, theme: PresentationTheme, strings: PresentationStrings, isActive: Bool, isExpanded: Bool = false, transition: ComponentTransition) {
-        let params = Params(size: size, theme: theme, strings: strings, isActive: isActive, isExpanded: isExpanded)
+    public func update(size: CGSize, theme: PresentationTheme, strings: PresentationStrings, isActive: Bool, transition: ComponentTransition) {
+        let params = Params(size: size, theme: theme, strings: strings, isActive: isActive)
         if self.params == params {
             return
         }
@@ -111,11 +101,13 @@ public final class NavigationSearchView: UIView {
 
     private func update(params: Params, transition: ComponentTransition) {
         let backgroundSize: CGSize
-        if params.isActive && !params.isExpanded {
+        if params.isActive {
             backgroundSize = CGSize(width: params.size.width - 48.0 - 8.0, height: params.size.height)
         } else {
             backgroundSize = CGSize(width: params.size.width, height: params.size.height)
         }
+
+        let previousBackgroundFrame = self.backgroundView.frame
         
         transition.setFrame(view: self.backgroundView, frame: CGRect(origin: CGPoint(), size: backgroundSize))
         let alphaTransition: ComponentTransition = transition.animation.isImmediate ? .immediate : .easeInOut(duration: 0.25)
@@ -125,13 +117,12 @@ public final class NavigationSearchView: UIView {
         if self.iconView.image == nil {
             self.iconView.image = UIImage(bundleImageName: "Navigation/Search")?.withRenderingMode(.alwaysTemplate)
         }
-        let iconColor = params.isActive ? params.theme.rootController.navigationSearchBar.inputIconColor : (params.isExpanded ? params.theme.chat.inputPanel.inputPlaceholderColor : params.theme.chat.inputPanel.panelControlColor)
-        transition.setTintColor(view: self.iconView, color: iconColor)
+        transition.setTintColor(view: self.iconView, color: params.isActive ? params.theme.rootController.navigationSearchBar.inputIconColor : params.theme.chat.inputPanel.panelControlColor)
         
         if let image = self.iconView.image {
             let imageSize: CGSize
             let iconFrame: CGRect
-            if params.isActive || params.isExpanded {
+            if params.isActive {
                 let iconFraction: CGFloat = 0.8
                 imageSize = CGSize(width: image.size.width * iconFraction, height: image.size.height * iconFraction)
                 iconFrame = CGRect(origin: CGPoint(x: 12.0, y: floor((params.size.height - imageSize.height) * 0.5)), size: imageSize)
@@ -141,13 +132,6 @@ public final class NavigationSearchView: UIView {
             transition.setPosition(view: self.iconView, position: iconFrame.center)
             transition.setBounds(view: self.iconView, bounds: CGRect(origin: CGPoint(), size: iconFrame.size))
         }
-
-        self.placeholderLabel.text = params.strings.Common_Search
-        self.placeholderLabel.font = Font.regular(17.0)
-        self.placeholderLabel.textColor = params.theme.chat.inputPanel.inputPlaceholderColor
-        let placeholderFrame = CGRect(origin: CGPoint(x: 44.0, y: 0.0), size: CGSize(width: max(0.0, backgroundSize.width - 56.0), height: params.size.height))
-        transition.setFrame(view: self.placeholderLabel, frame: placeholderFrame)
-        alphaTransition.setAlpha(view: self.placeholderLabel, alpha: (!params.isActive && params.isExpanded) ? 1.0 : 0.0)
 
         if params.isActive {
             let searchBarNode: SearchBarNode
@@ -195,7 +179,7 @@ public final class NavigationSearchView: UIView {
             }
         }
         
-        if params.isActive && !params.isExpanded {
+        if params.isActive {
             let closeFrame = CGRect(origin: CGPoint(x: params.size.width - 48.0, y: 0.0), size: CGSize(width: 48.0, height: 48.0))
             
             let close: (background: GlassBackgroundView, icon: UIImageView)
@@ -231,7 +215,7 @@ public final class NavigationSearchView: UIView {
                     close.icon.frame = image.size.centered(in: CGRect(origin: CGPoint(), size: closeFrame.size))
                 }
                 
-                close.background.frame = closeFrame
+                close.background.frame = closeFrame.size.centered(in: previousBackgroundFrame)
                 close.background.update(size: close.background.bounds.size, cornerRadius: close.background.bounds.height * 0.5, isDark: params.theme.overallDarkAppearance, tintColor: .init(kind: .panel), isInteractive: true, transition: .immediate)
                 ComponentTransition.immediate.setScale(view: close.background, scale: 0.001)
             }
@@ -251,11 +235,11 @@ public final class NavigationSearchView: UIView {
             if let close = self.close {
                 self.close = nil
                 let closeBackground = close.background
-                let closeFrame = CGRect(origin: CGPoint(x: params.size.width - 48.0, y: 0.0), size: CGSize(width: 48.0, height: 48.0))
+                let closeFrame = CGSize(width: 48.0, height: 48.0).centered(in: CGRect(origin: CGPoint(x: 0.0, y: 0.0), size: params.size))
                 transition.setPosition(view: closeBackground, position: closeFrame.center)
                 transition.setBounds(view: closeBackground, bounds: CGRect(origin: CGPoint(), size: closeFrame.size))
                 closeBackground.update(size: closeFrame.size, cornerRadius: closeFrame.height * 0.5, isDark: params.theme.overallDarkAppearance, tintColor: .init(kind: .panel), isInteractive: true, transition: transition)
-                transition.setAlpha(view: closeBackground, alpha: 0.0, completion: { [weak closeBackground] _ in
+                transition.setScale(view: closeBackground, scale: 0.001, completion: { [weak closeBackground] _ in
                     closeBackground?.removeFromSuperview()
                 })
             }
@@ -346,23 +330,17 @@ public final class TabBarComponent: Component {
 
     public final class Search: Equatable {
         public let isActive: Bool
-        // MARK: Regram — search can be active while its standalone button is hidden.
-        public let showsButton: Bool
         public let activate: () -> Void
         public let deactivate: () -> Void
 
-        public init(isActive: Bool, showsButton: Bool = true, activate: @escaping () -> Void, deactivate: @escaping () -> Void) {
+        public init(isActive: Bool, activate: @escaping () -> Void, deactivate: @escaping () -> Void) {
             self.isActive = isActive
-            self.showsButton = showsButton
             self.activate = activate
             self.deactivate = deactivate
         }
 
         public static func ==(lhs: Search, rhs: Search) -> Bool {
             if lhs.isActive != rhs.isActive {
-                return false
-            }
-            if lhs.showsButton != rhs.showsButton {
                 return false
             }
             return true
@@ -374,28 +352,10 @@ public final class TabBarComponent: Component {
     public let isLiftedStateEnabled: Bool
     public let strings: PresentationStrings
     public let items: [Item]
-    // MARK: Regram — one item can live in the right-side standalone slot.
-    public let externalItem: Item?
     public let search: Search?
     public let selectedId: AnyHashable?
     public let outerInsets: UIEdgeInsets
-    // MARK: Regram — layout controls for hidden slots, adaptive width, alignment and labels.
-    public let layoutItemCount: Int?
-    public let isAdaptiveWidth: Bool
-    public let alignItemsToLeft: Bool
-    public let centerItemsInAvailableWidth: Bool // MARK: Regram
-    public let showItemTitles: Bool
-    public let buttonWidthFillRatio: CGFloat?
-    public let rgWidthPercent: Int32?
-
-    // MARK: Regram — gestures need to address both bottom items and the standalone item.
-    fileprivate var interactiveItems: [Item] {
-        if let externalItem {
-            return self.items + [externalItem]
-        } else {
-            return self.items
-        }
-    }
+    public let showItemTitles: Bool // MARK: Regram
     
     public init(
         theme: PresentationTheme,
@@ -403,34 +363,20 @@ public final class TabBarComponent: Component {
         isLiftedStateEnabled: Bool = true,
         strings: PresentationStrings,
         items: [Item],
-        externalItem: Item? = nil,
         search: Search?,
         selectedId: AnyHashable?,
         outerInsets: UIEdgeInsets,
-        layoutItemCount: Int? = nil,
-        isAdaptiveWidth: Bool = false,
-        alignItemsToLeft: Bool = false,
-        centerItemsInAvailableWidth: Bool = false, // MARK: Regram
-        showItemTitles: Bool = true,
-        buttonWidthFillRatio: CGFloat? = nil,
-        rgWidthPercent: Int32? = nil
+        showItemTitles: Bool = true
     ) {
         self.theme = theme
         self.tintSelectedItem = tintSelectedItem
         self.isLiftedStateEnabled = isLiftedStateEnabled
         self.strings = strings
         self.items = items
-        self.externalItem = externalItem
         self.search = search
         self.selectedId = selectedId
         self.outerInsets = outerInsets
-        self.layoutItemCount = layoutItemCount
-        self.isAdaptiveWidth = isAdaptiveWidth
-        self.alignItemsToLeft = alignItemsToLeft
-        self.centerItemsInAvailableWidth = centerItemsInAvailableWidth
         self.showItemTitles = showItemTitles
-        self.buttonWidthFillRatio = buttonWidthFillRatio
-        self.rgWidthPercent = rgWidthPercent
     }
     
     public static func ==(lhs: TabBarComponent, rhs: TabBarComponent) -> Bool {
@@ -449,35 +395,14 @@ public final class TabBarComponent: Component {
         if lhs.items != rhs.items {
             return false
         }
-        if lhs.externalItem != rhs.externalItem {
-            return false
-        }
         if lhs.search != rhs.search {
             return false
         }
         if lhs.selectedId != rhs.selectedId {
             return false
         }
+        if lhs.showItemTitles != rhs.showItemTitles { return false } // MARK: Regram
         if lhs.outerInsets != rhs.outerInsets {
-            return false
-        }
-        if lhs.layoutItemCount != rhs.layoutItemCount {
-            return false
-        }
-        if lhs.isAdaptiveWidth != rhs.isAdaptiveWidth {
-            return false
-        }
-        if lhs.alignItemsToLeft != rhs.alignItemsToLeft {
-            return false
-        }
-        if lhs.centerItemsInAvailableWidth != rhs.centerItemsInAvailableWidth {
-            return false
-        }
-        if lhs.showItemTitles != rhs.showItemTitles {
-            return false
-        }
-        if lhs.rgWidthPercent != rhs.rgWidthPercent { return false }
-        if lhs.buttonWidthFillRatio != rhs.buttonWidthFillRatio {
             return false
         }
         return true
@@ -511,9 +436,8 @@ public final class TabBarComponent: Component {
         public override init(frame: CGRect) {
             self.backgroundContainer = GlassBackgroundContainerView()
             self.liquidLensView = LiquidLensView(kind: .externalContainer)
+            self.liquidLensView.displaysShadow = false // MARK: Regram — preserve the existing shadow-free bar.
             
-            // MARK: Regram — preserve the shadow-free bottom capsule.
-            self.liquidLensView.displaysShadow = false
             self.contextGestureContainerView = ContextControllerSourceView()
             self.contextGestureContainerView.isGestureEnabled = true
             
@@ -527,7 +451,7 @@ public final class TabBarComponent: Component {
             self.addSubview(self.backgroundContainer)
             self.backgroundContainer.contentView.addSubview(self.contextGestureContainerView)
             
-            // MARK: Regram — attach the glass lens only while bottom items exist.
+            self.contextGestureContainerView.addSubview(self.liquidLensView)
             let tabSelectionRecognizer = TabSelectionRecognizer(target: self, action: #selector(self.onTabSelectionGesture(_:)))
             self.tabSelectionRecognizer = tabSelectionRecognizer
             self.contextGestureContainerView.addGestureRecognizer(tabSelectionRecognizer)
@@ -538,7 +462,7 @@ public final class TabBarComponent: Component {
                 }
                 
                 if let itemId = self.item(at: point) {
-                    guard let item = component.interactiveItems.first(where: { $0.id == itemId }) else {
+                    guard let item = component.items.first(where: { $0.id == itemId }) else {
                             return false
                         }
                         if item.contextAction == nil {
@@ -585,7 +509,7 @@ public final class TabBarComponent: Component {
                     tabSelectionRecognizer.state = .cancelled
                 }
                 
-                guard let item = component.interactiveItems.first(where: { $0.id == itemWithActiveContextGesture }) else {
+                guard let item = component.items.first(where: { $0.id == itemWithActiveContextGesture }) else {
                     return
                 }
                 item.contextAction?(gesture, itemView.contextContainerView)
@@ -637,7 +561,7 @@ public final class TabBarComponent: Component {
                 } else if let selectionGestureState = self.selectionGestureState {
                     self.selectionGestureState = nil
                     if case .ended = recognizer.state, let component = self.component {
-                        guard let item = component.interactiveItems.first(where: { $0.id == selectionGestureState.itemId }) else {
+                        guard let item = component.items.first(where: { $0.id == selectionGestureState.itemId }) else {
                             return
                         }
                         
@@ -655,15 +579,14 @@ public final class TabBarComponent: Component {
                         if !handledDoubleTap {
                             if item.doubleTapAction != nil {
                                 let timer = Foundation.Timer.scheduledTimer(withTimeInterval: 0.18, repeats: false, block: { [weak self] timer in
-                                    // MARK: Regram — resolve delayed taps against the current button configuration.
-                                    guard let self, let component = self.component else {
+                                    guard let self else {
                                         return
                                     }
                                     if let pendingDoubleTapItemValue = self.pendingDoubleTapItem, pendingDoubleTapItemValue.timer === timer {
                                         self.pendingDoubleTapItem = nil
                                         
                                         self.overrideSelectedItemId = pendingDoubleTapItemValue.id
-                                        if let item = component.interactiveItems.first(where: { $0.id == pendingDoubleTapItemValue.id }) {
+                                        if let item = component.items.first(where: { $0.id == pendingDoubleTapItemValue.id }) {
                                             item.action(false)
                                         }
                                         
@@ -697,11 +620,7 @@ public final class TabBarComponent: Component {
             if index < 0 || index >= component.items.count {
                 return nil
             }
-            return self.frameForItem(id: component.items[index].id)
-        }
-
-        public func frameForItem(id: AnyHashable) -> CGRect? {
-            guard let itemView = self.itemViews[id]?.view else {
+            guard let itemView = self.itemViews[component.items[index].id]?.view else {
                 return nil
             }
             return self.convert(itemView.bounds, from: itemView)
@@ -713,11 +632,10 @@ public final class TabBarComponent: Component {
                 guard let itemView = itemView.view else {
                     continue
                 }
-                let itemFrame = self.convert(itemView.bounds, from: itemView)
-                if itemFrame.contains(point) {
+                if itemView.frame.contains(point) {
                     return id
                 } else {
-                    let distance = abs(point.x - itemFrame.midX)
+                    let distance = abs(point.x - itemView.center.x)
                     if let closestItemValue = closestItem {
                         if closestItemValue.1 > distance {
                             closestItem = (id, distance)
@@ -741,41 +659,25 @@ public final class TabBarComponent: Component {
             let _ = alphaTransition
 
             let innerInset: CGFloat = 4.0
-            // MARK: Regram — automatic width matches the earlier item-count based layout.
-            let width: CGFloat
-            if let percent = component.rgWidthPercent {
-                let count = component.items.count + (component.externalItem == nil ? 0 : 1)
-                width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: count, percent: percent, searchButtonWidth: component.search?.showsButton == true ? 72 : 0, searchActive: component.search?.isActive == true))
-            } else { width = min(500.0, availableSize.width) }
-            let availableSize = CGSize(width: width, height: availableSize.height)
+            let availableSize = CGSize(width: min(500.0, availableSize.width), height: availableSize.height)
             
             let previousComponent = self.component
             self.component = component
             self.state = state
 
-            // MARK: Regram — keep optimistic selection only until the controller or button configuration changes.
-            if let previousComponent {
-                let itemsChanged = previousComponent.items.map { $0.id } != component.items.map { $0.id } || previousComponent.externalItem?.id != component.externalItem?.id
-                let selectionChanged = previousComponent.selectedId != component.selectedId
-                if let overrideSelectedItemId = self.overrideSelectedItemId, component.selectedId == overrideSelectedItemId || selectionChanged || itemsChanged {
-                    self.overrideSelectedItemId = nil
-                }
-                if let pendingDoubleTapItem = self.pendingDoubleTapItem, itemsChanged || (selectionChanged && component.selectedId != pendingDoubleTapItem.id) {
-                    self.pendingDoubleTapItem = nil
-                    pendingDoubleTapItem.timer.invalidate()
-                }
+            // MARK: Regram — controller selection also covers the configured standalone tab.
+            if let previousComponent, previousComponent.selectedId != component.selectedId || previousComponent.items.map(\.id) != component.items.map(\.id) {
+                self.overrideSelectedItemId = nil
+                self.pendingDoubleTapItem?.timer.invalidate()
+                self.pendingDoubleTapItem = nil
             }
-            
+
             self.overrideUserInterfaceStyle = component.theme.overallDarkAppearance ? .dark : .light
 
             let barHeight: CGFloat = 56.0 + innerInset * 2.0
 
-            let hasSearchButton = component.search?.showsButton == true
-            let hasExternalItem = component.externalItem != nil
-            let hasStandaloneSlot = hasSearchButton || hasExternalItem
             var availableItemsWidth: CGFloat = availableSize.width - innerInset * 2.0
-            // MARK: Regram — reserve the right-side slot for search or a custom external item.
-            if hasStandaloneSlot {
+            if component.search != nil {
                 availableItemsWidth -= barHeight + 8.0
             }
             
@@ -803,8 +705,7 @@ public final class TabBarComponent: Component {
                         isCompact: false,
                         isSelected: false,
                         tintSelectedItem: true,
-                        isUnconstrained: true,
-                        showsTitle: component.showItemTitles
+                        isUnconstrained: true, showTitle: component.showItemTitles
                     )),
                     environment: {},
                     containerSize: CGSize(width: 200.0, height: 56.0)
@@ -817,29 +718,11 @@ public final class TabBarComponent: Component {
             let itemWidths: [CGFloat]
             let totalItemsWidth: CGFloat
 
-            let layoutItemCount = component.rgWidthPercent == nil ? max(component.items.count, component.layoutItemCount ?? component.items.count) : component.items.count
-            let equalWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, layoutItemCount)))
-            // MARK: Regram — support adaptive content width instead of forced equal-width slots.
-            if let buttonWidthFillRatio = component.buttonWidthFillRatio {
-                let minLayoutItemCount = max(component.items.count, component.layoutItemCount ?? component.items.count)
-                let minWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, minLayoutItemCount)))
-                let maxWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, component.items.count)))
-                let clampedRatio = max(0.0, min(1.0, buttonWidthFillRatio))
-                let buttonWidth = floorToScreenPixels(minWidth + (maxWidth - minWidth) * clampedRatio)
-                itemWidths = unboundItemWidths.map { max(buttonWidth, $0) }
-                totalItemsWidth = itemWidths.reduce(0.0, +)
-            } else if component.isAdaptiveWidth {
-                itemWidths = unboundItemWidths.map { max(48.0, $0) }
-                totalItemsWidth = itemWidths.reduce(0.0, +)
-            } else if unboundItemWidths.allSatisfy({ $0 <= equalWidth }) {
+            let equalWidth = floorToScreenPixels(availableItemsWidth / CGFloat(max(1, component.items.count))) // MARK: Regram
+            if unboundItemWidths.allSatisfy({ $0 <= equalWidth }) {
                 // All items fit in equal width — use equal widths for optical alignment
                 itemWidths = Array(repeating: equalWidth, count: component.items.count)
                 totalItemsWidth = equalWidth * CGFloat(component.items.count)
-            } else if component.layoutItemCount != nil {
-                // MARK: Regram
-                // Keep hidden-tab layouts on the original slot width instead of expanding remaining items.
-                itemWidths = unboundItemWidths.map { max(equalWidth, $0) }
-                totalItemsWidth = itemWidths.reduce(0.0, +)
             } else {
                 // Some items need more space — use weighted fit
                 let itemWeightNorm: CGFloat = availableItemsWidth / unboundItemWidthSum
@@ -857,23 +740,6 @@ public final class TabBarComponent: Component {
             let itemHeight: CGFloat = 56.0
             let contentWidth: CGFloat = innerInset * 2.0 + totalItemsWidth
             let tabsSize = CGSize(width: min(availableSize.width, contentWidth), height: itemHeight + innerInset * 2.0)
-            let hasItems = !component.items.isEmpty
-            // MARK: Regram — an external item remains tappable even when all bottom items are hidden.
-            let hasInteractiveItems = hasItems || hasExternalItem
-
-            // MARK: Regram — do not collapse native glass to an empty 8-point capsule.
-            let lensTransition: ComponentTransition
-            if hasItems {
-                if self.liquidLensView.superview == nil {
-                    lensTransition = .immediate
-                    self.contextGestureContainerView.addSubview(self.liquidLensView)
-                } else {
-                    lensTransition = transition
-                }
-            } else {
-                lensTransition = .immediate
-                self.liquidLensView.removeFromSuperview()
-            }
 
             var selectionFrame: CGRect?
             var nextItemX: CGFloat = innerInset
@@ -916,8 +782,7 @@ public final class TabBarComponent: Component {
                         isCompact: component.search?.isActive == true,
                         isSelected: false,
                         tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false,
-                        showsTitle: component.showItemTitles
+                        isUnconstrained: false, showTitle: component.showItemTitles
                     )),
                     environment: {},
                     containerSize: itemSize
@@ -930,8 +795,7 @@ public final class TabBarComponent: Component {
                         isCompact: component.search?.isActive == true,
                         isSelected: true,
                         tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false,
-                        showsTitle: component.showItemTitles
+                        isUnconstrained: false, showTitle: component.showItemTitles
                     )),
                     environment: {},
                     containerSize: itemSize
@@ -950,13 +814,11 @@ public final class TabBarComponent: Component {
                 if let itemComponentView = itemView.view as? ItemComponent.View, let selectedItemComponentView = selectedItemView.view as? ItemComponent.View {
                     let itemAlphaTransition: ComponentTransition = transition.animation.isImmediate ? .immediate : .easeInOut(duration: 0.25)
 
-                    if itemComponentView.superview !== self.liquidLensView.contentView {
+                    if itemComponentView.superview == nil {
                         itemComponentView.isUserInteractionEnabled = false
                         selectedItemComponentView.isUserInteractionEnabled = false
 
                         self.liquidLensView.contentView.addSubview(itemComponentView)
-                    }
-                    if selectedItemComponentView.superview !== self.liquidLensView.selectedContentView {
                         self.liquidLensView.selectedContentView.addSubview(selectedItemComponentView)
                     }
 
@@ -992,85 +854,6 @@ public final class TabBarComponent: Component {
                 }
             }
 
-            // MARK: Regram — render the configured standalone item in the right-side slot.
-            if let externalItem = component.externalItem {
-                validIds.append(externalItem.id)
-
-                let externalSize = CGSize(width: barHeight, height: barHeight)
-                let externalFrame = CGRect(origin: CGPoint(x: availableSize.width - externalSize.width, y: 0.0), size: externalSize)
-
-                let itemView: ComponentView<Empty>
-                var itemTransition = transition
-                if let current = self.itemViews[externalItem.id] {
-                    itemView = current
-                } else {
-                    itemTransition = itemTransition.withAnimation(.none)
-                    itemView = ComponentView()
-                    self.itemViews[externalItem.id] = itemView
-                }
-
-                let selectedItemView: ComponentView<Empty>
-                if let current = self.selectedItemViews[externalItem.id] {
-                    selectedItemView = current
-                } else {
-                    selectedItemView = ComponentView()
-                    self.selectedItemViews[externalItem.id] = selectedItemView
-                }
-
-                let isItemSelected: Bool
-                if let overrideSelectedItemId = self.overrideSelectedItemId {
-                    isItemSelected = overrideSelectedItemId == externalItem.id
-                } else {
-                    isItemSelected = component.selectedId == externalItem.id
-                }
-
-                let _ = itemView.update(
-                    transition: itemTransition,
-                    component: AnyComponent(ItemComponent(
-                        item: externalItem,
-                        theme: component.theme,
-                        isCompact: false,
-                        isSelected: false,
-                        tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false,
-                        showsTitle: false
-                    )),
-                    environment: {},
-                    containerSize: externalSize
-                )
-                let _ = selectedItemView.update(
-                    transition: itemTransition,
-                    component: AnyComponent(ItemComponent(
-                        item: externalItem,
-                        theme: component.theme,
-                        isCompact: false,
-                        isSelected: true,
-                        tintSelectedItem: component.tintSelectedItem,
-                        isUnconstrained: false,
-                        showsTitle: false
-                    )),
-                    environment: {},
-                    containerSize: externalSize
-                )
-
-                if let itemComponentView = itemView.view as? ItemComponent.View, let selectedItemComponentView = selectedItemView.view as? ItemComponent.View {
-                    if itemComponentView.superview !== self.backgroundContainer.contentView {
-                        itemComponentView.isUserInteractionEnabled = false
-                        selectedItemComponentView.isUserInteractionEnabled = false
-                        self.backgroundContainer.contentView.addSubview(itemComponentView)
-                    }
-                    if selectedItemComponentView.superview !== self.backgroundContainer.contentView {
-                        self.backgroundContainer.contentView.addSubview(selectedItemComponentView)
-                    }
-
-                    itemTransition.setFrame(view: itemComponentView, frame: externalFrame)
-                    itemTransition.setPosition(view: selectedItemComponentView, position: externalFrame.center)
-                    itemTransition.setBounds(view: selectedItemComponentView, bounds: CGRect(origin: CGPoint(), size: externalFrame.size))
-                    itemTransition.setAlpha(view: itemComponentView, alpha: isItemSelected ? 0.0 : 1.0)
-                    itemTransition.setAlpha(view: selectedItemComponentView, alpha: isItemSelected ? 1.0 : 0.0)
-                }
-            }
-            
             var removeIds: [AnyHashable] = []
             for (id, itemView) in self.itemViews {
                 if !validIds.contains(id) {
@@ -1086,41 +869,14 @@ public final class TabBarComponent: Component {
             }
             
             var tabsFrame = CGRect(origin: CGPoint(), size: tabsSize)
-            // MARK: Regram — align adaptive bottom items inside the area left of the standalone slot.
-            if component.isAdaptiveWidth || component.buttonWidthFillRatio != nil {
-                if hasStandaloneSlot {
-                    let availableTabsWidth = max(0.0, availableSize.width - (barHeight + 8.0))
-                    if component.alignItemsToLeft {
-                        tabsFrame.origin.x = 0.0
-                    } else if component.centerItemsInAvailableWidth {
-                        tabsFrame.origin.x = floor((availableSize.width - tabsFrame.width) * 0.5)
-                    } else {
-                        tabsFrame.origin.x = floor((availableTabsWidth - tabsFrame.width) * 0.5)
-                    }
-                } else {
-                    tabsFrame.origin.x = 0.0
-                }
-            }
             if let search = component.search, search.isActive {
                 tabsFrame.size = CGSize(width: 48.0, height: 48.0)
                 tabsFrame.origin.y = tabsSize.height - 48.0
                 tabsFrame.origin.x = -component.outerInsets.left - tabsFrame.width
             }
 
-            let contextFrame: CGRect
-            let lensFrame: CGRect
-            // MARK: Regram — keep the lens on bottom items while hit-testing the standalone slot.
-            if component.externalItem != nil {
-                contextFrame = CGRect(origin: CGPoint(), size: CGSize(width: availableSize.width, height: tabsSize.height))
-                lensFrame = tabsFrame
-            } else {
-                contextFrame = tabsFrame
-                lensFrame = CGRect(origin: CGPoint(), size: tabsSize)
-            }
-            transition.setFrame(view: self.contextGestureContainerView, frame: contextFrame)
-            // MARK: Regram — structural visibility must not fade ancestors of native glass.
-            self.contextGestureContainerView.isHidden = !hasInteractiveItems
-            self.contextGestureContainerView.isUserInteractionEnabled = hasInteractiveItems
+            transition.setFrame(view: self.contextGestureContainerView, frame: tabsFrame)
+            transition.setFrame(view: self.liquidLensView, frame: CGRect(origin: CGPoint(), size: tabsSize))
             
             var lensSelection: (x: CGFloat, width: CGFloat)
             if let selectionGestureState = self.selectionGestureState {
@@ -1141,46 +897,20 @@ public final class TabBarComponent: Component {
             
             lensSelection.x = max(0.0, min(lensSelection.x, lensSize.width - lensSelection.width))
             
-            // MARK: Regram — an empty bar has no lens or selection to lay out.
-            if hasItems {
-                lensTransition.setFrame(view: self.liquidLensView, frame: lensFrame)
-                self.liquidLensView.update(size: lensSize, selectionOrigin: CGPoint(x: lensSelection.x, y: 0.0), selectionSize: CGSize(width: lensSelection.width, height: lensSize.height), inset: 4.0, isDark: component.theme.overallDarkAppearance, isLifted: self.selectionGestureState != nil && component.isLiftedStateEnabled, isCollapsed: isLensCollapsed, transition: lensTransition.withUserData(LiquidLensView.TransitionInfo(disableAnimationWorkarounds: !component.isLiftedStateEnabled)))
-            }
+            self.liquidLensView.update(size: lensSize, selectionOrigin: CGPoint(x: lensSelection.x, y: 0.0), selectionSize: CGSize(width: lensSelection.width, height: lensSize.height), inset: 4.0, isDark: component.theme.overallDarkAppearance, isLifted: self.selectionGestureState != nil && component.isLiftedStateEnabled, isCollapsed: isLensCollapsed, transition: transition.withUserData(LiquidLensView.TransitionInfo(disableAnimationWorkarounds: !component.isLiftedStateEnabled)))
 
             var size = tabsSize
-            // MARK: Regram — external item layout uses the full component width.
-            if component.externalItem != nil {
-                size.width = availableSize.width
-            }
 
             if let search = component.search {
                 let searchSize: CGSize
                 let searchFrame: CGRect
-                let onlySearchBar = !hasItems && component.externalItem == nil && !search.showsButton && !search.isActive
-                let onlySearchButton = !hasItems && component.externalItem == nil && search.showsButton && !search.isActive
                 if search.isActive {
                     size.width = availableSize.width
                     searchSize = CGSize(width: availableSize.width, height: 48.0)
                     searchFrame = CGRect(origin: CGPoint(x: 0.0, y: size.height - searchSize.height), size: searchSize)
-                } else if onlySearchBar {
-                    size.width = availableSize.width
-                    searchSize = CGSize(width: availableSize.width, height: 48.0)
-                    searchFrame = CGRect(origin: CGPoint(x: 0.0, y: 0.0), size: searchSize)
-                } else if onlySearchButton {
-                    size = CGSize(width: barHeight, height: barHeight)
-                    searchSize = size
-                    searchFrame = CGRect(origin: CGPoint(x: 0.0, y: 0.0), size: searchSize)
-                // MARK: Regram — bottom-embedded search should not render a second right-side button.
-                } else if !search.showsButton {
-                    searchSize = CGSize(width: 0.0, height: 0.0)
-                    searchFrame = CGRect(origin: CGPoint(x: availableSize.width + 50.0, y: 0.0), size: searchSize)
                 } else {
                     searchSize = CGSize(width: barHeight, height: barHeight)
-                    if component.layoutItemCount != nil {
-                        size.width = availableSize.width // MARK: Regram — keep right-side search anchored.
-                    } else {
-                        size.width += barHeight + 8.0
-                    }
+                    size.width += barHeight + 8.0
                     searchFrame = CGRect(origin: CGPoint(x: availableSize.width - searchSize.width, y: 0.0), size: searchSize)
                 }
 
@@ -1208,9 +938,8 @@ public final class TabBarComponent: Component {
                     self.backgroundContainer.contentView.addSubview(searchView)
                     searchView.frame = CGRect(origin: CGPoint(x: availableSize.width + 50.0, y: 0.0), size: searchSize)
                 }
-                searchView.update(size: searchSize, theme: component.theme, strings: component.strings, isActive: search.isActive, isExpanded: onlySearchBar, transition: searchViewTransition)
+                searchView.update(size: searchSize, theme: component.theme, strings: component.strings, isActive: search.isActive, transition: searchViewTransition)
                 transition.setFrame(view: searchView, frame: searchFrame)
-                transition.setAlpha(view: searchView, alpha: search.showsButton || search.isActive || onlySearchBar ? 1.0 : 0.0)
             } else {
                 if let searchView = self.searchView {
                     self.searchView = nil
@@ -1246,17 +975,16 @@ private final class ItemComponent: Component {
     let isSelected: Bool
     let tintSelectedItem: Bool
     let isUnconstrained: Bool
-    // MARK: Regram — labels can be hidden while keeping icon layout stable.
-    let showsTitle: Bool
+    let showTitle: Bool // MARK: Regram
     
-    init(item: TabBarComponent.Item, theme: PresentationTheme, isCompact: Bool, isSelected: Bool, tintSelectedItem: Bool, isUnconstrained: Bool, showsTitle: Bool) {
+    init(item: TabBarComponent.Item, theme: PresentationTheme, isCompact: Bool, isSelected: Bool, tintSelectedItem: Bool, isUnconstrained: Bool, showTitle: Bool = true) {
         self.item = item
         self.theme = theme
         self.isCompact = isCompact
         self.isSelected = isSelected
         self.tintSelectedItem = tintSelectedItem
         self.isUnconstrained = isUnconstrained
-        self.showsTitle = showsTitle
+        self.showTitle = showTitle
     }
     
     static func ==(lhs: ItemComponent, rhs: ItemComponent) -> Bool {
@@ -1275,10 +1003,8 @@ private final class ItemComponent: Component {
         if lhs.tintSelectedItem != rhs.tintSelectedItem {
             return false
         }
+        if lhs.showTitle != rhs.showTitle { return false } // MARK: Regram
         if lhs.isUnconstrained != rhs.isUnconstrained {
-            return false
-        }
-        if lhs.showsTitle != rhs.showsTitle {
             return false
         }
         return true
@@ -1432,8 +1158,7 @@ private final class ItemComponent: Component {
                         environment: {},
                         containerSize: CGSize(width: 48.0, height: 48.0)
                     )
-                    let iconY = component.showsTitle ? -4.0 : floor((availableSize.height - iconSize.height) * 0.5)
-                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: iconY), size: iconSize).offsetBy(dx: tabBarItem.animationOffset.x, dy: tabBarItem.animationOffset.y)
+                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: component.showTitle ? -4.0 : floor((availableSize.height - iconSize.height) * 0.5)), size: iconSize).offsetBy(dx: tabBarItem.animationOffset.x, dy: tabBarItem.animationOffset.y)
                     if let animationIconView = animationIcon.view {
                         if animationIconView.superview == nil {
                             if let badgeView = self.badge?.view {
@@ -1470,8 +1195,7 @@ private final class ItemComponent: Component {
                         environment: {},
                         containerSize: CGSize(width: 100.0, height: 100.0)
                     )
-                    let iconY = component.showsTitle ? 3.0 : floor((availableSize.height - iconSize.height) * 0.5)
-                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: iconY), size: iconSize)
+                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: component.showTitle ? 3.0 : floor((availableSize.height - iconSize.height) * 0.5)), size: iconSize)
                     if let imageIconView = imageIcon.view {
                         if imageIconView.superview == nil {
                             if let badgeView = self.badge?.view {
@@ -1520,8 +1244,7 @@ private final class ItemComponent: Component {
                         environment: {},
                         containerSize: CGSize(width: 48.0, height: 48.0)
                     )
-                    let iconY = component.showsTitle ? -4.0 : floor((availableSize.height - iconSize.height) * 0.5)
-                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: iconY), size: iconSize).offsetBy(dx: offset.x, dy: offset.y)
+                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: component.showTitle ? -4.0 : floor((availableSize.height - iconSize.height) * 0.5)), size: iconSize).offsetBy(dx: offset.x, dy: offset.y)
                     if let animationIconView = animationIcon.view {
                         if animationIconView.superview == nil {
                             if let badgeView = self.badge?.view {
@@ -1557,8 +1280,7 @@ private final class ItemComponent: Component {
                         environment: {},
                         containerSize: CGSize(width: 100.0, height: 100.0)
                     )
-                    let iconY = component.showsTitle ? 8.0 : floor((availableSize.height - iconSize.height) * 0.5)
-                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: iconY), size: iconSize)
+                    let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: component.showTitle ? 8.0 : floor((availableSize.height - iconSize.height) * 0.5)), size: iconSize)
                     if let imageIconView = imageIcon.view {
                         if imageIconView.superview == nil {
                             if let badgeView = self.badge?.view {
@@ -1586,7 +1308,7 @@ private final class ItemComponent: Component {
                     self.contextContainerView.contentView.addSubview(titleView)
                 }
                 titleView.frame = titleFrame
-                alphaTransition.setAlpha(view: titleView, alpha: component.isCompact || !component.showsTitle ? 0.0 : 1.0)
+                alphaTransition.setAlpha(view: titleView, alpha: component.isCompact || !component.showTitle ? 0.0 : 1.0)
             }
 
             if let badgeText = badgeValue, !badgeText.isEmpty {
@@ -1630,10 +1352,7 @@ private final class ItemComponent: Component {
             self.contextContainerView.contentRect = CGRect(origin: CGPoint(), size: availableSize)
 
             if component.isUnconstrained {
-                if !component.showsTitle {
-                    return CGSize(width: 48.0, height: availableSize.height)
-                }
-                return CGSize(width: titleSize.width + 10.0 * 2.0, height: availableSize.height)
+                return CGSize(width: component.showTitle ? titleSize.width + 10.0 * 2.0 : 44.0, height: availableSize.height) // MARK: Regram
             } else {
                 return availableSize
             }

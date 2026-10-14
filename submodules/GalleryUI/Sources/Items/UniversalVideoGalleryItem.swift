@@ -3523,7 +3523,8 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         return combineLatest(queue: Queue.mainQueue(),
             videoNode.status |> take(1),
             peer,
-            videoNode.videoQualityStateSignal()
+            // MARK: Regram — snapshot quality when opening; playback updates must not rebuild the menu.
+            videoNode.videoQualityStateSignal() |> take(1)
         )
         |> map { [weak self] status, peer, videoQualityState -> (items: [ContextMenuItem], topItems: [ContextMenuItem]) in
             guard let status = status, let strongSelf = self else {

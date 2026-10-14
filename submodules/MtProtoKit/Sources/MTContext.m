@@ -1052,7 +1052,7 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
         __block int32_t earliestFailure = INT32_MAX;
         
         int32_t timestamp = (int32_t)CFAbsoluteTimeGetCurrent();
-        __block bool scanIpv6 = false;
+        __block bool scanIpv6 = _apiEnvironment.rgIPVersionPreference == 6; // MARK: Regram
         for (MTTransportScheme *scheme in schemes) {
             if (scheme.address.isIpv6) {
                 [self _withTransportSchemeStatsForDatacenterId:datacenterId transportScheme:scheme process:^MTTransportSchemeStats *(MTTransportSchemeStats *current) {
@@ -1072,7 +1072,7 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
                 if (schemeWithEarliestFailure == nil) {
                     schemeWithEarliestFailure = scheme;
                     earliestFailure = current.lastFailureTimestamp;
-                } else if (earliestFailure > current.lastFailureTimestamp) {
+                } else if (earliestFailure > current.lastFailureTimestamp || (earliestFailure == current.lastFailureTimestamp && ((_apiEnvironment.rgIPVersionPreference == 6 && scheme.address.isIpv6) || (_apiEnvironment.rgIPVersionPreference == 4 && !scheme.address.isIpv6)))) {
                     earliestFailure = current.lastFailureTimestamp;
                     schemeWithEarliestFailure = scheme;
                 }

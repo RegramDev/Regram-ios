@@ -1,3 +1,5 @@
+#import "MTRGDNSMessage.h" // MARK: Regram
+#import <MtProtoKit/MTAtomic.h>
 #import "MTDNS.h"
 
 #import <arpa/inet.h>
@@ -249,6 +251,57 @@
     // would reach MTTcpConnection as a second address and make it call connectToHost:
     // again on a socket that is already connecting.
     return [[[self resolveHostnameNative:hostname port:port] timeout:10.0 onQueue:[MTQueue concurrentDefaultQueue] orSignal:[MTSignal single:hostname]] take:1];
+}
+
+
+// MARK: Regram — HTTPS wire-format lookup, bounded TTL cache, cancellation and no silent DNS downgrade.
++ (MTSignal *)resolveHostname:(NSString *)hostname port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference {
+    struct in_addr v4; struct in6_addr v6;
+    if (inet_pton(AF_INET, hostname.UTF8String, &v4) == 1 || inet_pton(AF_INET6, hostname.UTF8String, &v6) == 1) return [MTSignal single:hostname];
+    if (endpoint.length == 0 && preference != 6) return [self resolveHostnameUniversal:hostname port:port];
+    if (endpoint.length == 0) {
+        MTSignal *native = [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber) {
+            MTAtomic *cancelled = [[MTAtomic alloc] initWithValue:@false];
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                struct addrinfo hints = {0}, *result = NULL; hints.ai_family = AF_UNSPEC; hints.ai_socktype = SOCK_STREAM;
+                NSString *chosen = nil;
+                if (getaddrinfo(hostname.UTF8String, NULL, &hints, &result) == 0) {
+                    for (struct addrinfo *a = result; a != NULL; a = a->ai_next) {
+                        char ip[INET6_ADDRSTRLEN]; void *address = a->ai_family == AF_INET6 ? (void *)&((struct sockaddr_in6 *)a->ai_addr)->sin6_addr : a->ai_family == AF_INET ? (void *)&((struct sockaddr_in *)a->ai_addr)->sin_addr : NULL;
+                        if (address && inet_ntop(a->ai_family, address, ip, sizeof(ip))) { if (!chosen || a->ai_family == AF_INET6) chosen = [NSString stringWithUTF8String:ip]; if (a->ai_family == AF_INET6) break; }
+                    }
+                    freeaddrinfo(result);
+                }
+                if (![[cancelled value] boolValue]) { if (chosen) { [subscriber putNext:chosen]; [subscriber putCompletion]; } else [subscriber putError:nil]; }
+            });
+            return [[MTBlockDisposable alloc] initWithBlock:^{ [cancelled swap:@true]; }];
+        }];
+        return [native timeout:10.0 onQueue:[MTQueue concurrentDefaultQueue] orSignal:[MTSignal fail:nil]];
+    }
+    NSURLComponents *components = [NSURLComponents componentsWithString:endpoint];
+    if (![components.scheme.lowercaseString isEqualToString:@"https"] || !components.host.length || components.user || components.password || components.fragment) return [MTSignal fail:nil];
+    static NSURLSession *session; static NSCache *cache; static dispatch_once_t once;
+    dispatch_once(&once, ^{ NSURLSessionConfiguration *c = NSURLSessionConfiguration.ephemeralSessionConfiguration; c.URLCache = nil; c.HTTPCookieStorage = nil; c.timeoutIntervalForRequest = 6; c.timeoutIntervalForResource = 8; session = [NSURLSession sessionWithConfiguration:c]; cache = [[NSCache alloc] init]; cache.countLimit = 128; });
+    NSString *key = [NSString stringWithFormat:@"%@|%@|%ld", endpoint, hostname.lowercaseString, (long)preference];
+    NSDictionary *cached = [cache objectForKey:key];
+    if ([cached[@"expires"] doubleValue] > NSDate.date.timeIntervalSince1970) return [MTSignal single:cached[@"address"]];
+    MTSignal *(^query)(uint16_t) = ^MTSignal *(uint16_t type) {
+        return [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber) {
+            NSData *body = [MTRGDNSMessage queryForHost:hostname type:type]; if (!body) { [subscriber putError:nil]; return nil; }
+            NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:components.URL]; request.HTTPMethod = @"POST"; request.HTTPBody = body;
+            [request setValue:@"application/dns-message" forHTTPHeaderField:@"Content-Type"]; [request setValue:@"application/dns-message" forHTTPHeaderField:@"Accept"];
+            NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class] ? (NSHTTPURLResponse *)response : nil;
+                NSDictionary *answer = !error && http.statusCode == 200 && [http.MIMEType.lowercaseString isEqualToString:@"application/dns-message"] ? [MTRGDNSMessage addressFromResponse:data host:hostname type:type] : nil;
+                if (!answer) { [subscriber putError:nil]; return; }
+                double ttl = MIN(3600, [answer[@"ttl"] doubleValue]); if (ttl > 0) [cache setObject:@{@"address": answer[@"address"], @"expires": @(NSDate.date.timeIntervalSince1970 + ttl)} forKey:key];
+                [subscriber putNext:answer[@"address"]]; [subscriber putCompletion];
+            }];
+            [task resume]; return [[MTBlockDisposable alloc] initWithBlock:^{ [task cancel]; }];
+        }];
+    };
+    uint16_t first = preference == 6 ? 28 : 1;
+    return [[query(first) catch:^MTSignal *(__unused id error) { return query(first == 28 ? 1 : 28); }] take:1];
 }
 
 @end

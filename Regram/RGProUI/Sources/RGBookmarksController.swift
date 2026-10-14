@@ -12,6 +12,9 @@ import TelegramCore
 import Postbox
 import SwiftSignalKit
 import UndoUI
+import TelegramPresentationData
+import PresentationDataUtils
+import AsyncDisplayKit
 
 private func rgBookmarkId(_ id: MessageId) -> RGBookmarkMessageId {
     RGBookmarkMessageId(peerId: id.peerId.toInt64(), namespace: id.namespace, id: id.id)
@@ -28,17 +31,18 @@ private struct RGBookmarkRow: Identifiable {
     let peer: EnginePeer?
 }
 
-private final class RGBookmarkList: ObservableObject {
-    @Published var rows: [RGBookmarkRow] = []
-    @Published var tags: [String] = []
-    @Published var loading = false
-    @Published var hasMore = false
+private final class RGBookmarkList {
+    var rows: [RGBookmarkRow] = []
+    var tags: [String] = []
+    var loading = false
+    var hasMore = false
     private let context: AccountContext
     private let disposable = MetaDisposable()
     private var observer: NSObjectProtocol?
     private var generation = UUID()
+    var didUpdate: (() -> Void)?
     private var limit = 100
-    @Published var selectedTag: String?
+    var selectedTag: String?
     init(context: AccountContext) {
         self.context = context
         observer = NotificationCenter.default.addObserver(forName: RGMessageBookmarks.didChange, object: nil, queue: .main) { [weak self] notification in
@@ -61,54 +65,15 @@ private final class RGBookmarkList: ObservableObject {
         hasMore = filtered.count > limit
         let visible = Array(filtered.prefix(limit))
         let id = UUID(); generation = id; loading = true
+        didUpdate?()
         disposable.set((context.account.postbox.transaction { transaction -> [RGBookmarkRow] in
             visible.map { bookmark in
                 RGBookmarkRow(bookmark: bookmark, message: transaction.getMessage(rgMessageId(bookmark.id)), peer: transaction.getPeer(PeerId(bookmark.id.peerId)).map(EnginePeer.init))
             }
         } |> deliverOnMainQueue).start(next: { [weak self] values in
             guard let self, self.generation == id else { return }
-            self.rows = values; self.loading = false
+            self.rows = values; self.loading = false; self.didUpdate?()
         }))
-    }
-}
-
-private struct RGBookmarksView: View {
-    @Environment(\.lang) private var lang
-    @ObservedObject var list: RGBookmarkList
-    let context: AccountContext
-    let open: (RGBookmarkRow) -> Void
-    let edit: (RGMessageBookmark) -> Void
-    var body: some View {
-        List {
-            Section(footer: Text("Bookmarks.Notice".i18n(lang))) {
-                Menu {
-                    Button("Bookmarks.All".i18n(lang)) { list.select(nil) }
-                    Button("Bookmarks.Untagged".i18n(lang)) { list.select("") }
-                    ForEach(list.tags, id: \.self) { tag in Button(tag) { list.select(tag) } }
-                } label: {
-                    HStack { Text("Bookmarks.Filter".i18n(lang)); Spacer(); Text(list.selectedTag.map { $0.isEmpty ? "Bookmarks.Untagged".i18n(lang) : $0 } ?? "Bookmarks.All".i18n(lang)).foregroundColor(.secondary) }
-                }.rgSettingsLink("tags")
-            }
-            if list.rows.isEmpty && !list.loading { Text("Bookmarks.Empty".i18n(lang)).foregroundColor(.secondary) }
-            ForEach(list.rows) { row in
-                Button { open(row) } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let peer = row.peer {
-                            let data = context.sharedContext.currentPresentationData.with { $0 }
-                            Text(peer.rgGroupDisplayTitle(accountId: context.account.peerId.toInt64(), strings: data.strings, displayOrder: data.nameDisplayOrder)).font(.headline)
-                        }
-                        Text(row.message.map { $0.text.isEmpty ? "Bookmarks.Media".i18n(lang) : $0.text } ?? "Bookmarks.Unavailable".i18n(lang)).lineLimit(3)
-                        if !row.bookmark.tags.isEmpty { Text(row.bookmark.tags.map { "#" + $0 }.joined(separator: "  ")).font(.caption).foregroundColor(.accentColor) }
-                        Text(Date(timeIntervalSince1970: row.bookmark.addedAt), style: .date).font(.caption).foregroundColor(.secondary)
-                    }.foregroundColor(.primary).padding(.vertical, 4)
-                }.contextMenu {
-                    Button("Bookmarks.EditTags".i18n(lang)) { edit(row.bookmark) }
-                    Button("Bookmarks.Remove".i18n(lang), role: .destructive) { RGMessageBookmarks.shared.remove(accountId: context.account.peerId.toInt64(), messageId: row.id) }
-                }
-            }
-            if list.loading { ProgressView() }
-            else if list.hasMore { Button("Bookmarks.LoadMore".i18n(lang)) { list.loadMore() } }
-        }.onAppear { list.reload() }
     }
 }
 
@@ -174,32 +139,119 @@ public func rgBookmarkMessageController(context: AccountContext, message: Messag
     return rgBookmarkEditorController(context: context, bookmark: bookmark)
 }
 
-func rgBookmarksController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
-    let data = context.sharedContext.currentPresentationData.with { $0 }
-    let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
-    controller.bindAppearance(context.sharedContext.presentationData)
-    controller.title = "Bookmarks.Title".i18n(data.strings.rgLanguageCode)
-    let list = RGBookmarkList(context: context)
-    let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
-        RGBookmarksView(list: list, context: context, open: { [weak controller] row in
-            guard let navigation = controller?.navigationController as? NavigationController else { return }
-            guard let peer = row.peer else {
-                let data = context.sharedContext.currentPresentationData.with { $0 }
-                controller?.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "Bookmarks.ChatUnavailable".i18n(data.strings.rgLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in false }), in: .current)
-                return
-            }
-            let location: NavigateToChatControllerParams.Location
-            if let threadId = row.bookmark.threadId {
-                let isForum: Bool
-                let isMonoforum: Bool
-                if case let .channel(channel) = peer { isForum = channel.flags.contains(.isForum); isMonoforum = channel.flags.contains(.isMonoforum) } else { isForum = false; isMonoforum = false }
-                location = .replyThread(ChatReplyThreadMessage(peerId: peer.id, threadId: threadId, channelMessageId: nil, isChannelPost: false, isForumPost: isForum, isMonoforumPost: isMonoforum, maxMessage: nil, maxReadIncomingMessageId: nil, maxReadOutgoingMessageId: nil, unreadCount: 0, initialFilledHoles: IndexSet(), initialAnchor: .automatic, isNotAvailable: false))
-            } else { location = .peer(peer) }
-            context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigation, context: context, chatLocation: location, subject: .message(id: .id(rgMessageId(row.id)), highlight: nil, timecode: nil, setupReply: false)))
-        }, edit: { [weak controller] bookmark in
-            (controller?.navigationController as? NavigationController)?.pushViewController(rgBookmarkEditorController(context: context, bookmark: bookmark))
+// MARK: Regram — native table navigation avoids the hosted SwiftUI List/button transition path.
+private final class RGBookmarksNativeController: ViewController, UITableViewDataSource, UITableViewDelegate {
+    private let context: AccountContext
+    private let list: RGBookmarkList
+    private let table = UITableView(frame: .zero, style: .insetGrouped)
+    private let dateFormatter = DateFormatter()
+    private let appearance = MetaDisposable()
+    private let navigationRequest = MetaDisposable()
+    private var opening = false
+    private var data: PresentationData
+    private var lang: String { data.strings.rgLanguageCode }
+    init(context: AccountContext) {
+        self.context = context; list = RGBookmarkList(context: context); data = context.sharedContext.currentPresentationData.with { $0 }
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: data))
+        title = "Bookmarks.Title".i18n(lang)
+        navigationItem.backBarButtonItem = UIBarButtonItem(title: data.strings.Common_Back, style: .plain, target: nil, action: nil)
+        list.didUpdate = { [weak self] in self?.table.reloadData() }
+        appearance.set((context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
+            guard let self else { return }; self.data = data; self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data), transition: .immediate); self.applyTheme(); self.table.reloadData()
+        }))
+    }
+    required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { appearance.dispose(); navigationRequest.dispose() }
+    override func loadDisplayNode() {
+        displayNode = ASDisplayNode(); displayNodeDidLoad()
+        table.dataSource = self; table.delegate = self; table.contentInsetAdjustmentBehavior = .never; table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 80
+        displayNode.view.addSubview(table); applyTheme(); list.reload()
+    }
+    private func applyTheme() {
+        dateFormatter.locale = Locale(identifier: lang); dateFormatter.dateStyle = .short
+        table.overrideUserInterfaceStyle = data.theme.overallDarkAppearance ? .dark : .light
+        table.backgroundColor = data.theme.list.blocksBackgroundColor; table.separatorColor = data.theme.list.itemBlocksSeparatorColor; table.tintColor = data.theme.list.itemAccentColor
+        statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
+    }
+    override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
+        super.containerLayoutUpdated(layout, transition: transition)
+        let top = navigationLayout(layout: layout).navigationFrame.maxY
+        transition.updateFrame(view: table, frame: CGRect(x: 0, y: top, width: layout.size.width, height: max(0, layout.size.height - top)))
+        table.contentInset.bottom = layout.insets(options: []).bottom
+    }
+    func numberOfSections(in tableView: UITableView) -> Int { 3 }
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : section == 1 ? max(1, list.rows.count) : (list.loading || list.hasMore ? 1 : 0) }
+    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { section == 0 ? "Bookmarks.Notice".i18n(lang) : nil }
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
+        cell.backgroundColor = data.theme.list.itemBlocksBackgroundColor; cell.textLabel?.textColor = data.theme.list.itemPrimaryTextColor; cell.detailTextLabel?.textColor = data.theme.list.itemSecondaryTextColor
+        cell.textLabel?.font = Font.regular(data.listsFontSize.baseDisplaySize); cell.detailTextLabel?.font = Font.regular(max(12, data.listsFontSize.baseDisplaySize - 2)); cell.detailTextLabel?.numberOfLines = 4
+        if indexPath.section == 0 {
+            cell.textLabel?.text = "Bookmarks.Filter".i18n(lang); cell.detailTextLabel?.text = list.selectedTag.map { $0.isEmpty ? "Bookmarks.Untagged".i18n(lang) : $0 } ?? "Bookmarks.All".i18n(lang); cell.accessoryType = .disclosureIndicator
+        } else if indexPath.section == 1 {
+            guard list.rows.indices.contains(indexPath.row) else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.Empty").i18n(lang); cell.selectionStyle = .none; return cell }
+            let row = list.rows[indexPath.row]
+            cell.textLabel?.text = row.peer?.rgGroupDisplayTitle(accountId: context.account.peerId.toInt64(), strings: data.strings, displayOrder: data.nameDisplayOrder) ?? "Bookmarks.Unavailable".i18n(lang)
+            let preview = row.message.map { $0.text.isEmpty ? "Bookmarks.Media".i18n(lang) : $0.text } ?? "Bookmarks.Unavailable".i18n(lang)
+            let metadata = dateFormatter.string(from: Date(timeIntervalSince1970: row.bookmark.addedAt)) + (row.bookmark.tags.isEmpty ? "" : " · " + row.bookmark.tags.map { "#" + $0 }.joined(separator: "  "))
+            cell.detailTextLabel?.text = metadata + "\n" + preview
+            cell.accessoryType = .disclosureIndicator
+        } else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.LoadMore").i18n(lang) }
+        return cell
+    }
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        if indexPath.section == 0 {
+            let sheet = ActionSheetController(presentationData: data)
+            let choices: [(String, String?)] = [("Bookmarks.All".i18n(lang), nil), ("Bookmarks.Untagged".i18n(lang), "")] + list.tags.map { ($0, Optional($0)) }
+            sheet.setItemGroups([ActionSheetItemGroup(items: choices.map { title, tag in ActionSheetButtonItem(title: title, color: .accent, action: { [weak self, weak sheet] in sheet?.dismissAnimated(); self?.list.select(tag) }) }), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: data.strings.Common_Cancel, action: { [weak sheet] in sheet?.dismissAnimated() })])])
+            present(sheet, in: .window(.root))
+        } else if indexPath.section == 1, list.rows.indices.contains(indexPath.row) { open(list.rows[indexPath.row]) }
+        else if indexPath.section == 2, !list.loading { list.loadMore() }
+    }
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        guard indexPath.section == 1, list.rows.indices.contains(indexPath.row) else { return nil }
+        let row = list.rows[indexPath.row]
+        return UISwipeActionsConfiguration(actions: [UIContextualAction(style: .destructive, title: "Bookmarks.Remove".i18n(lang), handler: { [weak self] _, _, finish in guard let self else { finish(false); return }; RGMessageBookmarks.shared.remove(accountId: self.context.account.peerId.toInt64(), messageId: row.id); finish(true) }), UIContextualAction(style: .normal, title: "Bookmarks.EditTags".i18n(lang), handler: { [weak self] _, _, finish in
+            guard let self else { finish(false); return }; (self.navigationController as? NavigationController)?.pushViewController(rgBookmarkEditorController(context: self.context, bookmark: row.bookmark)); finish(true)
+        })])
+    }
+    override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); opening = false }
+    func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
+        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = data.theme.list.itemSecondaryTextColor
+    }
+    func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
+        if indexPath.section == 0 {
+            return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
+                guard let self else { return nil }
+                return UIMenu(children: [UIAction(title: "Settings.Link.Copy".i18n(self.lang), image: UIImage(systemName: "link"), handler: { _ in
+                    UIPasteboard.general.string = RGSettingsDestination(page: "bookmarks", item: "tags")?.url.absoluteString
+                })])
+            })
+        }
+        guard indexPath.section == 1, list.rows.indices.contains(indexPath.row) else { return nil }
+        let bookmark = list.rows[indexPath.row].bookmark
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
+            guard let self else { return nil }
+            return UIMenu(children: [UIAction(title: "Bookmarks.EditTags".i18n(self.lang), image: UIImage(systemName: "tag"), handler: { [weak self] _ in
+                guard let self else { return }; (self.navigationController as? NavigationController)?.pushViewController(rgBookmarkEditorController(context: self.context, bookmark: bookmark))
+            }), UIAction(title: "Bookmarks.Remove".i18n(self.lang), image: UIImage(systemName: "trash"), attributes: .destructive, handler: { [weak self] _ in
+                guard let self else { return }; RGMessageBookmarks.shared.remove(accountId: self.context.account.peerId.toInt64(), messageId: bookmark.id)
+            })])
         })
-    })
-    controller.bind(controller: UIHostingController(rootView: content.rgSettingsPage("bookmarks", focus: focusSetting), ignoreSafeArea: true))
-    return controller
+    }
+    private func open(_ row: RGBookmarkRow) {
+        guard !opening else { return }
+        guard let navigation = navigationController as? NavigationController else { return }
+        guard let peer = row.peer else { present(textAlertController(context: context, title: title, text: "Bookmarks.ChatUnavailable".i18n(lang), actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root)); return }
+        opening = true
+        let messageId = rgMessageId(row.id)
+        let navigate: (NavigateToChatControllerParams.Location) -> Void = { [weak self, weak navigation] location in
+            DispatchQueue.main.async { guard let self, let navigation else { return }; self.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigation, context: self.context, chatLocation: location, subject: .message(id: .id(messageId), highlight: nil, timecode: nil, setupReply: false), useExisting: false)) }
+        }
+        if let threadId = row.bookmark.threadId, case let .channel(channel) = peer, channel.flags.contains(.isForum) || channel.flags.contains(.isMonoforum), threadId > 0, threadId <= Int64(Int32.max) {
+            navigationRequest.set((context.engine.messages.fetchChannelReplyThreadMessage(messageId: MessageId(peerId: peer.id, namespace: Namespaces.Message.Cloud, id: Int32(threadId)), atMessageId: messageId) |> deliverOnMainQueue).start(next: { thread in navigate(.replyThread(thread)) }, error: { _ in navigate(.peer(peer)) }))
+        } else { navigate(.peer(peer)) }
+    }
 }
+public func rgBookmarksController(context: AccountContext, focusSetting: String? = nil) -> ViewController { RGBookmarksNativeController(context: context) }
