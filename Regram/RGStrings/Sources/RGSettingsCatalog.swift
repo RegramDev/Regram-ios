@@ -139,7 +139,6 @@ public enum RGSettingsCatalog {
         .init("ghostMode", "ghostDontSendTyping", "Ghost.DontSendTyping"),
         .init("pro.messages", "summarySettings", "Summary.Title", keywords: "AI summary summarize 总结 摘要 總結"),
         .init("pro.network", "networkPolicy", "NetworkPolicy.Title", keywords: "DNS DoH IP IPv4 IPv6"),
-        .init("bottomBar", "tint", "Glass.TintIntensity"),
         .init("networkPolicy", "enabled", "NetworkPolicy.DoH"),
         .init("networkPolicy", "endpoint", "NetworkPolicy.Endpoint"),
         .init("networkPolicy", "ipVersion", "NetworkPolicy.IP"),

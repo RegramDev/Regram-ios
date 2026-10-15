@@ -1,15 +1,19 @@
-// MARK: Regram — share one rendered bubble with sender identity, without changing the message contents.
+// MARK: Regram — compact, flat single-message export with exactly one sender name.
 import UIKit
 import Display
 public func rgMessageScreenshot(body: UIImage, senderName: String, avatar: UIImage?, backgroundColor: UIColor, textColor: UIColor) -> UIImage {
-    let width = max(260, body.size.width + 24), header: CGFloat = 62
-    let size = CGSize(width: width, height: header + body.size.height + 12)
+    let padding: CGFloat = 12, contentX: CGFloat = 60
+    let nameFont = Font.semibold(15)
+    let nameWidth = min(240, ceil((senderName as NSString).size(withAttributes: [.font: nameFont]).width))
+    let contentWidth = max(body.size.width, nameWidth)
+    let nameHeight: CGFloat = 26
+    let size = CGSize(width: contentX + contentWidth + padding, height: padding * 2 + max(38, nameHeight + body.size.height))
     let format = UIGraphicsImageRendererFormat()
-    format.scale = min(body.scale, sqrt(12_000_000 / (size.width * size.height)))
+    format.scale = min(body.scale, sqrt(12_000_000 / (size.width * size.height)), 16_384 / size.height)
     format.opaque = true
     return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
         backgroundColor.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
-        let avatarRect = CGRect(x: 12, y: 12, width: 38, height: 38)
+        let avatarRect = CGRect(x: padding, y: padding, width: 38, height: 38)
         renderer.cgContext.saveGState(); renderer.cgContext.addEllipse(in: avatarRect); renderer.cgContext.clip()
         if let avatar { avatar.draw(in: avatarRect) }
         else {
@@ -19,23 +23,10 @@ public func rgMessageScreenshot(body: UIImage, senderName: String, avatar: UIIma
             letter.draw(at: CGPoint(x: avatarRect.midX - dimensions.width / 2, y: avatarRect.midY - dimensions.height / 2), withAttributes: [.font: font, .foregroundColor: textColor])
         }
         renderer.cgContext.restoreGState()
-        let paragraph = NSMutableParagraphStyle(); paragraph.lineBreakMode = .byTruncatingTail
-        (senderName as NSString).draw(in: CGRect(x: 60, y: 12, width: width - 72, height: 38), withAttributes: [.font: Font.semibold(15), .foregroundColor: textColor, .paragraphStyle: paragraph])
-        body.draw(at: CGPoint(x: 12, y: header))
-    }
-}
-
-public func rgMessageScreenshotStack(_ screenshots: [UIImage], backgroundColor: UIColor) -> UIImage? {
-    guard !screenshots.isEmpty, screenshots.count <= 30 else { return nil }
-    let width = screenshots.map { $0.size.width }.max() ?? 0
-    let height = screenshots.reduce(CGFloat(0)) { $0 + $1.size.height } + CGFloat(screenshots.count - 1) * 12
-    guard width > 0, height > 0, width.isFinite, height.isFinite else { return nil }
-    let scale = min(2, sqrt(12_000_000 / (width * height)), 16_384 / height)
-    guard scale >= 1 else { return nil }
-    let format = UIGraphicsImageRendererFormat(); format.scale = scale; format.opaque = true
-    return UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { renderer in
-        backgroundColor.setFill(); renderer.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        var y: CGFloat = 0
-        for image in screenshots { image.draw(at: CGPoint(x: (width - image.size.width) / 2, y: y)); y += image.size.height + 12 }
+        do {
+            let paragraph = NSMutableParagraphStyle(); paragraph.lineBreakMode = .byTruncatingTail
+            (senderName as NSString).draw(in: CGRect(x: contentX, y: padding, width: contentWidth, height: 22), withAttributes: [.font: nameFont, .foregroundColor: textColor, .paragraphStyle: paragraph])
+        }
+        body.draw(at: CGPoint(x: contentX, y: padding + nameHeight))
     }
 }

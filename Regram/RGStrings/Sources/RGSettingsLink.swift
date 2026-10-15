@@ -12,7 +12,7 @@ public struct RGSettingsDestination: Hashable {
     ]
     public init?(page: String, item: String? = nil) {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }
-        if page == "settings.appearance", item == "liquidGlassTintPercent" { self.page = "bottomBar"; self.item = "tint"; return }
+        if (page == "settings.appearance" && item == "liquidGlassTintPercent") || (page == "bottomBar" && item == "tint") { self.page = "bottomBar"; self.item = nil; return }
         // MARK: Regram — old copied links follow moved controls without another visible entry.
         if page == "diagnostics", item == "datacenters" { self.page = "datacenters"; self.item = "start"; return }
         let moves: [String: String] = [

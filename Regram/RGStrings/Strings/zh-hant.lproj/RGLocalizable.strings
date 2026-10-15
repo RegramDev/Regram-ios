@@ -914,7 +914,6 @@
 "MessageScreenshot.Action" = "訊息截圖";
 "StickerBackup.Action" = "匯出貼圖包備份";
 "StickerBackup.Failed" = "貼圖包備份失敗。請確認檔案可下載及裝置有足夠空間後重試。";
-"Glass.TintIntensity" = "Liquid Glass 色調強度";
 "NetworkPolicy.Title" = "DNS 與 IP 策略";
 "NetworkPolicy.DoH" = "自訂 DoH";
 "NetworkPolicy.Endpoint" = "HTTPS DNS 位址";
@@ -959,4 +958,3 @@
 "MessageScreenshot.UnknownSender" = "未知傳送者";
 "Common.Copied" = "已複製";
 "MessageScreenshot.Unavailable" = "部分選取的訊息無法取得或不允許匯出。";
-"MessageScreenshot.TooLarge" = "最多選擇 30 則訊息；長圖超出尺寸上限時，請減少選取後重試。";

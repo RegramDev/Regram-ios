@@ -1,4 +1,3 @@
-import RGSimpleSettings // MARK: Regram
 import Foundation
 import UIKit
 import Display
@@ -456,7 +455,6 @@ public class GlassBackgroundView: UIView {
         public let tintColor: TintColor
         public let isInteractive: Bool
         public let isVisible: Bool
-        public let tintIntensity: CGFloat // MARK: Regram
         
         init(shape: Shape, isDark: Bool, tintColor: TintColor, isInteractive: Bool, isVisible: Bool) {
             self.shape = shape
@@ -464,12 +462,9 @@ public class GlassBackgroundView: UIView {
             self.tintColor = tintColor
             self.isInteractive = isInteractive
             self.isVisible = isVisible
-            self.tintIntensity = CGFloat(RGSimpleSettings.shared.liquidGlassTintPercent) / 100
         }
     }
     
-    private var rgTintObserver: NSObjectProtocol? // MARK: Regram
-    private var rgTintUpdatePending = false
     private let legacyView: LegacyGlassView?
     private let legacyHighlightContainerView: UIView?
     private let legacyHighlightClippingContext: ClippingShapeContext?
@@ -572,14 +567,7 @@ public class GlassBackgroundView: UIView {
         self.contentContainer = ContentContainer(maskContentView: self.maskContentView)
         
         super.init(frame: frame)
-        // MARK: Regram — coalesce visible glass refreshes; no global screen rebuild during dragging.
-        self.rgTintObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.glassTintDidChange, object: nil, queue: .main) { [weak self] _ in
-            guard let self, self.window != nil, !self.rgTintUpdatePending else { return }
-            self.rgTintUpdatePending = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }; self.rgTintUpdatePending = false; self.rgRefreshTint()
-            }
-        }
+
         if let shadowView = self.shadowView {
             self.addSubview(shadowView)
         }
@@ -608,13 +596,6 @@ public class GlassBackgroundView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    deinit { if let observer = self.rgTintObserver { NotificationCenter.default.removeObserver(observer) } }
-    public override func didMoveToWindow() { super.didMoveToWindow(); self.rgRefreshTint() }
-    private func rgRefreshTint() {
-        guard self.window != nil, let params = self.params, self.bounds.width > 0, self.bounds.height > 0 else { return }
-        self.update(size: self.bounds.size, shape: params.shape, isDark: params.isDark, tintColor: params.tintColor, isInteractive: params.isInteractive, isVisible: params.isVisible, transition: .immediate)
-    }
-
     @objc private func onHighlightGesture(_ recognizer: GlassHighlightGestureRecognizer) {
     }
     
@@ -697,7 +678,6 @@ public class GlassBackgroundView: UIView {
             self.legacyHighlightClippingContext?.update(shape: shape, size: size, transition: transition)
         }
         
-        let tintIntensity = CGFloat(RGSimpleSettings.shared.liquidGlassTintPercent) / 100 // MARK: Regram
         let shadowInset: CGFloat = 32.0
         
         if let innerColor = tintColor.innerColor {
@@ -720,7 +700,7 @@ public class GlassBackgroundView: UIView {
                 animateIn = true
             }
             
-            innerBackgroundView.backgroundColor = innerColor.withAlphaComponent(innerColor.cgColor.alpha * tintIntensity)
+            innerBackgroundView.backgroundColor = innerColor
             innerBackgroundTransition.setFrame(view: innerBackgroundView, frame: innerBackgroundFrame)
             innerBackgroundTransition.setCornerRadius(layer: innerBackgroundView.layer, cornerRadius: innerBackgroundRadius)
             
@@ -778,9 +758,9 @@ public class GlassBackgroundView: UIView {
                 }
                 switch shape {
                 case let .roundedRect(cornerRadius):
-                    foregroundView.image = GlassBackgroundView.generateLegacyGlassImage(size: CGSize(width: cornerRadius * 2.0, height: cornerRadius * 2.0), inset: shadowInset, borderWidthFactor: borderWidthFactor, isDark: isDark, fillColor: fillColor.withAlphaComponent(fillColor.cgColor.alpha * tintIntensity))
+                    foregroundView.image = GlassBackgroundView.generateLegacyGlassImage(size: CGSize(width: cornerRadius * 2.0, height: cornerRadius * 2.0), inset: shadowInset, borderWidthFactor: borderWidthFactor, isDark: isDark, fillColor: fillColor)
                 case let .customRoundedRect(cornerRadii):
-                    foregroundView.image = GlassBackgroundView.generateLegacyGlassImage(cornerRadii: GlassBackgroundView.clampedCornerRadii(size: size, cornerRadii: cornerRadii), inset: shadowInset, borderWidthFactor: borderWidthFactor, isDark: isDark, fillColor: fillColor.withAlphaComponent(fillColor.cgColor.alpha * tintIntensity))
+                    foregroundView.image = GlassBackgroundView.generateLegacyGlassImage(cornerRadii: GlassBackgroundView.clampedCornerRadii(size: size, cornerRadii: cornerRadii), inset: shadowInset, borderWidthFactor: borderWidthFactor, isDark: isDark, fillColor: fillColor)
                 }
                 #if DEBUG
                 //foregroundView.image = nil
@@ -819,8 +799,6 @@ public class GlassBackgroundView: UIView {
                                     glassEffectValue.tintColor = nil
                                 }
                             }
-                            // MARK: Regram — adjust tint only; retain native blur, refraction and content opacity.
-                            if let color = glassEffectValue.tintColor { glassEffectValue.tintColor = color.withAlphaComponent(color.cgColor.alpha * tintIntensity) }
                             glassEffectValue.isInteractive = isInteractive
                             glassEffect = glassEffectValue
                         }

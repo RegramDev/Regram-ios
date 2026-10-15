@@ -3,7 +3,6 @@ import Foundation
 import Security
 
 public extension RGSimpleSettings {
-    static let glassTintDidChange = Notification.Name("Regram.GlassTintDidChange")
     static let summarySettingsDidChange = Notification.Name("Regram.SummarySettingsDidChange")
     var messageSummaryEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: "messageSummaryEnabled") }
@@ -38,11 +37,4 @@ public extension RGSimpleSettings {
         return status == errSecSuccess
     }
     private static var summaryKeyQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: (Bundle.main.bundleIdentifier ?? "Regram") + ".summary.llm", kSecAttrAccount as String: "api-key", kSecAttrSynchronizable as String: false] }
-    var liquidGlassTintPercent: Int32 {
-        get { Int32(max(0, min(100, UserDefaults.standard.object(forKey: "liquidGlassTintPercent") as? Int ?? 100))) }
-        set {
-            UserDefaults.standard.set(max(0, min(100, newValue)), forKey: "liquidGlassTintPercent")
-            NotificationCenter.default.post(name: Self.glassTintDidChange, object: nil)
-        }
-    }
 }

@@ -916,7 +916,6 @@
 "MessageScreenshot.Action" = "消息截图";
 "StickerBackup.Action" = "导出贴纸包备份";
 "StickerBackup.Failed" = "贴纸包备份失败。请确认文件能下载及设备有足够空间，然后重试。";
-"Glass.TintIntensity" = "Liquid Glass 色调强度";
 "NetworkPolicy.Title" = "DNS 与 IP 策略";
 "NetworkPolicy.DoH" = "自定义 DoH";
 "NetworkPolicy.Endpoint" = "HTTPS DNS 地址";
@@ -961,4 +960,3 @@
 "MessageScreenshot.UnknownSender" = "未知发送者";
 "Common.Copied" = "已复制";
 "MessageScreenshot.Unavailable" = "部分选中消息不可用或不允许导出。";
-"MessageScreenshot.TooLarge" = "最多选择 30 条消息；长图超出尺寸上限时，请减少选择后重试。";

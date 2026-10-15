@@ -7,7 +7,10 @@ work=root/args.output;work.mkdir(parents=True,exist_ok=True)
 env=dict(os.environ,DEVELOPER_DIR='/Applications/Xcode-27.0.app/Contents/Developer')
 uid=args.simulator
 s=(root/'Regram/RGProUI/Sources/RGMessageScreenshot.swift').read_text().replace('import Display', 'private enum Font { static func semibold(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .semibold) } }')
-(work/'Production.swift').write_text(s)
+capture=(root/'submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift').read_text()
+a=capture.index('    public func rgMessageScreenshotBody(');b=capture.index('    override public func makeContentSnapshot()',a)
+adapter='\nclass ASDisplayNode {\n let view:UIView\n init(_ view:UIView=UIView()){self.view=view}\n var isHidden:Bool{get{view.isHidden}set{view.isHidden=newValue}}\n var alpha:CGFloat{view.alpha}\n}\nclass Source {let contentNode:ASDisplayNode;var contentRect:CGRect;init(_ view:UIView){contentNode=ASDisplayNode(view);contentRect=view.bounds}}\nclass Container {var backgroundWallpaperNode:ASDisplayNode?;var backgroundNode:ASDisplayNode?;var selectionBackgroundNode:ASDisplayNode?}\nclass Capture {\n let source:Source;let backgroundWallpaperNode=ASDisplayNode();let backgroundNode=ASDisplayNode();let shadowNode=ASDisplayNode()\n var nameAvatarNode:ASDisplayNode?;var rankBadgeNode:ASDisplayNode?;var rankBackgroundNode:ASDisplayNode?;var credibilityIconView:UIView?;var boostBadgeNode:ASDisplayNode?;var boostIconNode:UIImageView?;var nameNode:ASDisplayNode?;var contentContainers:[Container]=[]\n init(){let view=UIView(frame:CGRect(x:0,y:0,width:180,height:76));source=Source(view)\n for node in [backgroundWallpaperNode,backgroundNode,shadowNode]{node.view.frame=view.bounds;node.view.backgroundColor = .magenta;view.addSubview(node.view)}\n let text=UILabel(frame:CGRect(x:8,y:34,width:164,height:30));text.text="早上好";text.textColor = .blue;view.addSubview(text)\n let name=UILabel(frame:CGRect(x:8,y:4,width:164,height:26));name.text="示例群员";name.textColor = .green;view.addSubview(name);nameNode=ASDisplayNode(name)\n }\n func getMessageContextSourceNode(stableId:UInt32)->Source?{source}\n'
+(work/'Production.swift').write_text(s+adapter+capture[a:b]+'\n}\n')
 (work/'App.swift').write_text('''import UIKit
 import CoreImage
 @main final class App: UIResponder, UIApplicationDelegate {
@@ -18,33 +21,33 @@ import CoreImage
  }
  func check() {
   var results:[String:Bool]=[:]
-  let body=UIGraphicsImageRenderer(size:CGSize(width:160,height:80)).image { c in UIColor.blue.setFill();c.fill(CGRect(x:0,y:0,width:160,height:80)) }
-  let avatar=UIGraphicsImageRenderer(size:CGSize(width:76,height:76)).image { c in UIColor.red.setFill();c.fill(CGRect(x:0,y:0,width:76,height:76)) }
-  func pixel(_ image:UIImage, x:CGFloat, y:CGFloat) -> (UInt8,UInt8,UInt8) {
+  func pixel(_ image:UIImage,x:CGFloat,y:CGFloat)->(UInt8,UInt8,UInt8,UInt8){
    var bytes=[UInt8](repeating:0,count:4)
    let context=CGContext(data:&bytes,width:1,height:1,bitsPerComponent:8,bytesPerRow:4,space:CGColorSpaceCreateDeviceRGB(),bitmapInfo:CGImageAlphaInfo.premultipliedLast.rawValue|CGBitmapInfo.byteOrder32Big.rawValue)!
-   context.translateBy(x:-x*image.scale,y:-(image.size.height-y)*image.scale)
-   context.draw(image.cgImage!,in:CGRect(x:0,y:0,width:image.cgImage!.width,height:image.cgImage!.height))
-   return (bytes[0],bytes[1],bytes[2])
+   context.translateBy(x:-x*image.scale,y:-(image.size.height-y)*image.scale);context.draw(image.cgImage!,in:CGRect(x:0,y:0,width:image.cgImage!.width,height:image.cgImage!.height));return(bytes[0],bytes[1],bytes[2],bytes[3])
   }
-  let image=rgMessageScreenshot(body:body,senderName:"Alice 示例",avatar:avatar,backgroundColor:.black,textColor:.white)
-  results["header_included"]=image.size.width==260 && image.size.height==154
-  let a=pixel(image,x:31,y:31);results["avatar_visible"]=a.0>240 && a.1<10 && a.2<10
-  let corner=pixel(image,x:13,y:13);results["avatar_clipped_circle"]=corner.0<10 && corner.1<10 && corner.2<10
-  let b=pixel(image,x:30,y:85);results["bubble_preserved"]=b.2>240 && b.0<10 && b.1<10
-  var namePixels=0
-  for y in 12..<50 {for x in 60..<245 {let p=pixel(image,x:CGFloat(x),y:CGFloat(y));if p.0>100 && p.1>100 && p.2>100 {namePixels+=1}}}
-  results["name_visible_dark_mode"]=namePixels>20
-  let fallback=rgMessageScreenshot(body:body,senderName:"Alice",avatar:nil,backgroundColor:.black,textColor:.white)
-  var initialPixels=0
-  for y in 18..<44 {for x in 20..<44 {let p=pixel(fallback,x:CGFloat(x),y:CGFloat(y));if p.0>100 {initialPixels+=1}}}
-  results["missing_avatar_initial"]=initialPixels>10
-  let long=rgMessageScreenshot(body:body,senderName:String(repeating:"示例 Long ",count:100),avatar:avatar,backgroundColor:.white,textColor:.black)
-  results["long_name_bounded"]=long.size==image.size
-  let combined=rgMessageScreenshotStack([image,fallback],backgroundColor:.black)!
-  results["multiple_messages_in_order"]=combined.size==CGSize(width:260,height:320) && pixel(combined,x:31,y:31).0>240 && pixel(combined,x:30,y:251).2>240
-  results["no_empty_or_silent_truncation"]=rgMessageScreenshotStack([],backgroundColor:.black)==nil && rgMessageScreenshotStack(Array(repeating:image,count:31),backgroundColor:.black)==nil
-  try! image.pngData()!.write(to:FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("preview.png"))
+  func redCount(_ image:UIImage)->Int {var n=0;for y in 12..<38 {for x in 60..<Int(image.size.width)-12 {let p=pixel(image,x:CGFloat(x),y:CGFloat(y));if p.0>120 && p.1<50 && p.2<50{n+=1}}};return n}
+  let capture=Capture();let original=capture.rgMessageScreenshotBody(stableId:1)!
+  results["native_name_row_removed"]=original.size.height==50
+  results["bubble_background_excluded"]=pixel(original,x:1,y:1).3==0
+  results["chat_background_visibility_restored"] = !capture.backgroundWallpaperNode.isHidden && !capture.backgroundNode.isHidden && !capture.shadowNode.isHidden
+  let avatar=UIGraphicsImageRenderer(size:CGSize(width:76,height:76)).image{c in UIColor.red.setFill();c.fill(CGRect(x:0,y:0,width:76,height:76))}
+  let present=rgMessageScreenshot(body:original,senderName:"示例群员",avatar:avatar,backgroundColor:.white,textColor:.red)
+  results["uniform_sender_header"]=redCount(present)>20 && present.size.height==100
+  results["avatar_retained"]=pixel(present,x:31,y:31).0>240 && pixel(present,x:31,y:31).1<10
+  let detached=UIView();detached.addSubview(capture.nameNode!.view)
+  for view in capture.source.contentNode.view.subviews {if let label=view as? UILabel,label.text=="早上好" {label.frame.origin.y=8}}
+  capture.source.contentRect.size.height=50
+  let hidden=capture.rgMessageScreenshotBody(stableId:1)!
+  let absent=rgMessageScreenshot(body:hidden,senderName:"示例群员",avatar:avatar,backgroundColor:.white,textColor:.red)
+  results["omitted_sender_added_with_same_layout"]=redCount(absent)>20 && absent.size==present.size
+  results["body_positions_identical"]=present.pngData()==absent.pngData()
+  capture.source.contentRect = .zero
+  results["invalid_capture_safe"]=capture.rgMessageScreenshotBody(stableId:1)==nil
+  let dark=rgMessageScreenshot(body:hidden,senderName:"示例群员",avatar:nil,backgroundColor:.black,textColor:.white)
+  results["dark_mode_and_initial"]=pixel(dark,x:15,y:15).3==255 && dark.size.height==100
+  let outputFolder=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0]
+  try! present.pngData()!.write(to:outputFolder.appendingPathComponent("preview.png"));try! absent.pngData()!.write(to:outputFolder.appendingPathComponent("missing-name.png"))
   let output=FileManager.default.urls(for:.documentDirectory,in:.userDomainMask)[0].appendingPathComponent("results.json")
   try! JSONSerialization.data(withJSONObject:results,options:[.sortedKeys,.prettyPrinted]).write(to:output)
   print("Screenshot fixture finished")
@@ -54,7 +57,7 @@ import CoreImage
 app=work/'ScreenshotChecks.app';app.mkdir(exist_ok=True)
 (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleExecutable':'ScreenshotChecks','CFBundleIdentifier':'test.regram.screenshotchecks','CFBundleName':'ScreenshotChecks','CFBundleVersion':'1','CFBundleShortVersionString':'1.0','CFBundlePackageType':'APPL','CFBundleSupportedPlatforms':['iPhoneSimulator'],'MinimumOSVersion':'15.0','UIDeviceFamily':[1],'LSRequiresIPhoneOS':True,'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait']}))
 sdk=subprocess.check_output(['xcrun','--sdk','iphonesimulator','--show-sdk-path'],text=True,env=env).strip()
-subprocess.run(['xcrun','--sdk','iphonesimulator','swiftc','-swift-version','5','-target','arm64-apple-ios15.0-simulator','-sdk',sdk,str(work/'Production.swift'),str(work/'App.swift'),'-o',str(app/'ScreenshotChecks')],env=env,check=True,capture_output=True,timeout=90)
+subprocess.run(['xcrun','--sdk','iphonesimulator','swiftc','-swift-version','5','-target','arm64-apple-ios15.0-simulator','-sdk',sdk,str(work/'Production.swift'),str(work/'App.swift'),'-o',str(app/'ScreenshotChecks')],env=env,check=True,timeout=90)
 subprocess.run(['codesign','--force','--sign','-',str(app)],env=env,check=True,capture_output=True)
 subprocess.run(['xcrun','simctl','install',uid,str(app)],env=env,check=True,capture_output=True,timeout=60)
 subprocess.run(['xcrun','simctl','terminate',uid,'test.regram.screenshotchecks'],env=env,capture_output=True,timeout=15)
@@ -68,6 +71,8 @@ for _ in range(40):
 if not result.exists():raise RuntimeError('Drawing fixture did not produce a report')
 preview=container/'Documents/preview.png'
 if preview.exists():(work/'preview.png').write_bytes(preview.read_bytes())
+missing=container/'Documents/missing-name.png'
+if missing.exists():(work/'missing-name.png').write_bytes(missing.read_bytes())
 report=json.loads(result.read_text());(work/'results.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,ensure_ascii=False))
 assert all(report.values()),'Production screenshot drawing regression'

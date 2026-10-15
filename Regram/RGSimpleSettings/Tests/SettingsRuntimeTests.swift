@@ -35,7 +35,7 @@ extension UserDefaults {
         settings.applyPreferences(["customDoHEnabled": .bool(true), "localDNSForProxyHost": .bool(true)])
         expect(settings.networkPolicy.dohEnabled && !settings.localDNSForProxyHost && !group.bool(forKey: "localDNSForProxyHost"), "Conflicting imported DNS choices must normalize before reconnect")
         expect(RGNetworkPolicy(dohEnabled: true, endpoint: "bad").effectiveEndpoint == "invalid-doh-endpoint", "Invalid enabled DoH must fail closed, not silently downgrade")
-        settings.summaryLLMModel = "independent-model"; settings.summaryLLMPrompt = "summary @text"; settings.liquidGlassTintPercent = 25
+        settings.summaryLLMModel = "independent-model"; settings.summaryLLMPrompt = "summary @text"
         expect(settings.translationLLMModel.isEmpty && settings.translationLLMPrompt != settings.summaryLLMPrompt, "Summary and translation must have independent configuration")
         let backup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
         expect(backup.values["api_hash"] == nil && backup.values["status"] == nil && backup.values["primaryUserId"] == nil, "Export must include allowlisted preferences only")
@@ -50,7 +50,7 @@ extension UserDefaults {
         let generation = settings.contentFilterGeneration
         settings.applyPreferences(decoded.values)
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
-        expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model" && settings.liquidGlassTintPercent == 25, "Summary and glass preferences must round-trip")
+        expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model", "Summary preferences must round-trip")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
         expect(settings.messageFilterRules.count == 1 && !settings.messageFilterRules[0].isEnabled && settings.contentFilterGeneration > generation, "Restore must invalidate derived filter caches")
         settings.setChatPreferences(RGChatPreferences(formatting: "bold", panguSpacing: true), accountId: 1, peerId: 5)

@@ -1722,22 +1722,18 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             rgCollect(.messageScreenshot, .action(ContextMenuActionItem(text: "MessageScreenshot.Action".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
                 generateTintedImage(image: UIImage(systemName: "camera.viewfinder"), color: theme.contextMenu.primaryColor)
             }, action: { _, f in
-                let view = (messageNode as? ChatMessageBubbleItemNode)?.mainContextSourceNode.contentNode.view ?? messageNode.view
-                let rect = (messageNode as? ChatMessageBubbleItemNode)?.mainContextSourceNode.contentRect ?? view.bounds
-                let size = CGSize(width: rect.width + 16, height: rect.height + 16)
-                guard rect.width > 0, rect.height > 0, size.width * size.height * UIScreen.main.scale * UIScreen.main.scale <= 12000000 else { f(.default); return }
-                let format = UIGraphicsImageRendererFormat(); format.scale = UIScreen.main.scale; format.opaque = true
-                let image = UIGraphicsImageRenderer(size: size, format: format).image { renderer in
-                    chatPresentationInterfaceState.theme.chatList.backgroundColor.setFill(); renderer.fill(CGRect(origin: .zero, size: size))
-                    renderer.cgContext.translateBy(x: 8 - rect.minX, y: 8 - rect.minY)
-                    view.layer.render(in: renderer.cgContext)
-                }
+                let body: UIImage
+                if let bubble = messageNode as? ChatMessageBubbleItemNode, let snapshot = bubble.rgMessageScreenshotBody(stableId: message.stableId) {
+                    body = snapshot
+                } else if !(messageNode is ChatMessageBubbleItemNode), let snapshot = messageNode.makeContentSnapshot() {
+                    body = snapshot.0
+                } else { f(.default); return }
                 let sender = message.author ?? message.peers[message.id.peerId]
                 let name = sender.map { EnginePeer($0).displayTitle(strings: chatPresentationInterfaceState.strings, displayOrder: context.sharedContext.currentPresentationData.with { $0 }.nameDisplayOrder) } ?? "MessageScreenshot.UnknownSender".i18n(chatPresentationInterfaceState.strings.rgLanguageCode)
                 let avatar: Signal<UIImage?, NoError> = sender.map { peerAvatarCompleteImage(account: context.account, peer: EnginePeer($0), size: CGSize(width: 76, height: 76)) |> filter { $0 != nil } |> take(1) |> timeout(2, queue: .mainQueue(), alternate: .single(nil)) } ?? .single(nil)
                 f(.default)
                 let _ = (avatar |> deliverOnMainQueue).startStandalone(next: { avatar in
-                    let screenshot = rgMessageScreenshot(body: image, senderName: name, avatar: avatar, backgroundColor: chatPresentationInterfaceState.theme.chatList.backgroundColor, textColor: chatPresentationInterfaceState.theme.list.itemPrimaryTextColor)
+                    let screenshot = rgMessageScreenshot(body: body, senderName: name, avatar: avatar, backgroundColor: chatPresentationInterfaceState.theme.chatList.backgroundColor, textColor: chatPresentationInterfaceState.theme.list.itemPrimaryTextColor)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         guard var presenter = controllerInteraction.navigationController()?.view.window?.rootViewController else { return }
                         while let next = presenter.presentedViewController { presenter = next }

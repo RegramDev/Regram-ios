@@ -827,7 +827,6 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
         NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
         NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil)
-        NotificationCenter.default.post(name: Self.glassTintDidChange, object: nil)
         self.synchronizeShared()
         // MARK: Regram — restore/reset transport preferences into the extension store as well.
         if self.networkPolicy.dohEnabled { UserDefaults.standard.set(false, forKey: Keys.localDNSForProxyHost.rawValue) }

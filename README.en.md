@@ -50,7 +50,7 @@ Custom recognition uploads only messages explicitly selected by the user. Secret
 - Preview requests can be repaired without changing the original message links. X/Instagram preview service domains are configurable.
 - Save static stickers as PNG and animated/video stickers as GIF to Photos.
 - Export a sticker pack as ZIP with original WebP/PNG, TGS and WebM files plus ordering and emoji metadata.
-- Capture a single message or selected messages as a chronological image with sender avatars and names, and save or send it through the system share sheet.
+- Capture a single message with its avatar, text and media on a flat background. Keep an existing sender name once, or add it when consecutive messages omit it. Save or send through the system share sheet.
 - Inspect media resolution, format/codec, bitrate, frame rate, duration, and file size.
 - Photo quality and large-image sending; pasted photos default to HD, maximum JPEG quality, and up to 2560 px.
 - Sticker sizing and history, recording, and camera options.
@@ -63,7 +63,6 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 
 - App icons, settings entry artwork, and screenshot badges; the Regram Pro entry follows the selected app icon.
 - Bottom bar layout using upstream Telegram glass, animations and gestures, with a live preview, drag ordering, button visibility, standalone buttons, and automatic or manual width. Chats and Settings stay selected, and the complete bar is centered.
-- Liquid Glass tint intensity from 0–100% in Bottom Bar Layout, with live preview and preserved blur, refraction and content opacity. Automatic width narrows to fit visible icons and labels; manual width uses a percentage.
 - Chat-list separator visibility.
 - Separate Latin and CJK fonts, downloadable fonts, TTF/OTF/TTC import, previews, management, and missing-glyph fallback.
 - Chat list lines, compact layouts, and colors.
@@ -172,4 +171,6 @@ Configure summaries under **Regram Pro → Chats & Messages → Message summary 
 
 **Regram Pro → Network & Transfers → DNS and IP policy** configures DoH and IP preference. DoH uses HTTPS DNS wire messages for proxy hostnames; DCs already use numeric IPs. Webpages, HTTP APIs and Web proxies use system DNS. DoH failures do not silently downgrade; bootstrapping the resolver hostname still uses system DNS.
 
-Message screenshots include the sender’s avatar and name above the rendered bubble. Select multiple messages and choose Screenshot from the selection toolbar’s share menu to create a chronological image. Exports allow at most 30 messages and enforce image size limits without silently dropping messages. DC average-copy and summary-copy buttons immediately show a copied confirmation. DNS and IP policy includes an on-demand A/AAAA diagnostic page showing resolved addresses and elapsed lookup time, bypassing the app DNS cache without family fallback. This measures DNS lookup time, not DC Ping. The proxy page’s Use system DNS switch and DoH are mutually exclusive; saving reconnects the native transport immediately.
+DC average-copy and summary-copy buttons immediately show a copied confirmation. DNS and IP policy includes an on-demand A/AAAA diagnostic page showing resolved addresses and elapsed lookup time, bypassing the app DNS cache without family fallback. This measures DNS lookup time, not DC Ping. The proxy page’s Use system DNS switch and DoH are mutually exclusive; saving reconnects the native transport immediately.
+
+Automatic bottom-bar width balances readable labels, native selection effects and comfortable tap targets. More tabs use the available width; the bar remains centered. Manual percentage width is preserved.

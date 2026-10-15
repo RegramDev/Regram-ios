@@ -46,7 +46,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
     case header(stableId: Int32, section: Int32, text: String)
     case toggle(stableId: Int32, section: Int32, title: String, value: Bool, option: RGBottomBarSwitchOption)
     case visibility(stableId: Int32, section: Int32, title: String, settings: RGBottomBarSettings, itemTitles: [RGBottomBarItemId: String])
-    case tintSlider(stableId: Int32, section: Int32, title: String, value: Int32)
     case slider(stableId: Int32, section: Int32, title: String, value: Int32)
     case disclosure(stableId: Int32, section: Int32, title: String, label: String, option: RGBottomBarOption)
     case reset(stableId: Int32, section: Int32, title: String)
@@ -62,7 +61,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
             return section
         case let .visibility(_, section, _, _, _):
             return section
-        case let .tintSlider(_, section, _, _), let .slider(_, section, _, _):
+        case let .slider(_, section, _, _):
             return section
         case let .disclosure(_, section, _, _, _):
             return section
@@ -83,7 +82,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
             return stableId
         case let .visibility(stableId, _, _, _, _):
             return stableId
-        case let .tintSlider(stableId, _, _, _), let .slider(stableId, _, _, _):
+        case let .slider(stableId, _, _, _):
             return stableId
         case let .disclosure(stableId, _, _, _, _):
             return stableId
@@ -116,9 +115,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                 return lId == rId && lSection == rSection && lTitle == rTitle && lSettings == rSettings && lItemTitles == rItemTitles
             }
             return false
-        case let .tintSlider(lId, lSection, lTitle, lValue):
-            if case let .tintSlider(rId, rSection, rTitle, rValue) = rhs { return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue }
-            return false
         case let .slider(lId, lSection, lTitle, lValue):
             if case let .slider(rId, rSection, rTitle, rValue) = rhs {
                 return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue
@@ -150,7 +146,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         switch self {
         case let .toggle(_, _, _, _, option): return String(describing: option)
         case .visibility: return "visibility"
-        case .tintSlider: return "tint"
         case .slider: return "width"
         case .reset: return "reset"
         default: return nil
@@ -217,10 +212,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                     }
                 }
             })
-        case let .tintSlider(_, section, title, value):
-            return RGSliderItem(theme: presentationData.theme, minValue: 0, maxValue: 100, value: value, title: title, sectionId: section, updated: { value in
-                RGSimpleSettings.shared.liquidGlassTintPercent = value
-            }, tag: self.tag)
         case let .slider(_, section, title, value):
             return RGSliderItem(theme: presentationData.theme, minValue: 50, maxValue: 100, value: value, title: title, sectionId: section, updated: { value in
                 arguments.update { settings in
@@ -340,7 +331,6 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
         ])
         presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, reset: {
-        RGSimpleSettings.shared.liquidGlassTintPercent = 100
         saveSettings(RGBottomBarSettings())
         bump()
     })
@@ -396,13 +386,12 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
             .header(stableId: 5, section: 2, text: i18n("RG.BottomBarLayout.Options", lang)),
             .toggle(stableId: 6, section: 2, title: i18n("Settings.Tabs.Width.Automatic", lang), value: settings.automaticWidth, option: .automaticWidth),
             .toggle(stableId: 7, section: 2, title: i18n("RG.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
-            .tintSlider(stableId: 9, section: 2, title: "Glass.TintIntensity".i18n(lang), value: RGSimpleSettings.shared.liquidGlassTintPercent),
             .reset(stableId: 10, section: 3, title: i18n("RG.BottomBarLayout.Reset", lang)),
             .footer(stableId: 11, section: 3, text: i18n("RG.BottomBarLayout.Footer", lang))
         ]
 
         if !settings.automaticWidth {
-            entries.insert(.slider(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.firstIndex(where: { $0.stableId == 9 }) ?? entries.count)
+            entries.insert(.slider(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
         }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("RG.BottomBarLayout", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting == "width" && settings.automaticWidth ? "automaticWidth" : focusSetting), animateChanges: false)

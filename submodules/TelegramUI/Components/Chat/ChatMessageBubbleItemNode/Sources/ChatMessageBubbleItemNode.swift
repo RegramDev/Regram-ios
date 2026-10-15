@@ -7936,6 +7936,51 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         return self.backgroundNode.frame
     }
     
+    // MARK: Regram — flat single-message export; the shared card draws one consistent sender header.
+    public func rgMessageScreenshotBody(stableId: UInt32) -> UIImage? {
+        guard let source = self.getMessageContextSourceNode(stableId: stableId) else { return nil }
+        let view = source.contentNode.view, rect = source.contentRect
+        guard rect.width.isFinite, rect.height.isFinite, rect.width > 0, rect.height > 0 else { return nil }
+        var authorRow: CGRect?
+        if let name = self.nameNode, !name.isHidden, name.alpha > 0, name.view.isDescendant(of: view), name.view.convert(name.view.bounds, to: view).intersects(rect) {
+            let authorViews: [UIView?] = [name.view, self.nameAvatarNode?.view, self.rankBadgeNode?.view, self.rankBackgroundNode?.view, self.credibilityIconView, self.boostBadgeNode?.view, self.boostIconNode]
+            for case let author? in authorViews where !author.isHidden && author.alpha > 0 && author.isDescendant(of: view) {
+                let frame = author.convert(author.bounds, to: view).intersection(rect)
+                if !frame.isNull { authorRow = authorRow.map { $0.union(frame) } ?? frame }
+            }
+        }
+        let removedHeight = authorRow?.height ?? 0
+        let size = CGSize(width: rect.width, height: rect.height - removedHeight)
+        guard size.height > 0 else { return nil }
+        let scale = min(UIScreen.main.scale, sqrt(12_000_000 / (size.width * size.height)), 16_384 / size.height)
+        guard scale >= 1 else { return nil }
+        var backgrounds: [ASDisplayNode] = [self.backgroundWallpaperNode, self.backgroundNode, self.shadowNode]
+        for container in self.contentContainers {
+            if let node = container.backgroundWallpaperNode { backgrounds.append(node) }
+            if let node = container.backgroundNode { backgrounds.append(node) }
+            if let node = container.selectionBackgroundNode { backgrounds.append(node) }
+        }
+        let hidden = backgrounds.map { $0.isHidden }
+        backgrounds.forEach { $0.isHidden = true }
+        defer { for (node, wasHidden) in zip(backgrounds, hidden) { node.isHidden = wasHidden } }
+        let format = UIGraphicsImageRendererFormat(); format.scale = scale; format.opaque = false
+        return UIGraphicsImageRenderer(size: size, format: format).image { renderer in
+            func draw(_ sourceY: CGFloat, at targetY: CGFloat, height: CGFloat) {
+                guard height > 0 else { return }
+                renderer.cgContext.saveGState()
+                renderer.cgContext.clip(to: CGRect(x: 0, y: targetY, width: size.width, height: height))
+                renderer.cgContext.translateBy(x: -rect.minX, y: targetY - sourceY)
+                view.layer.render(in: renderer.cgContext)
+                renderer.cgContext.restoreGState()
+            }
+            if let row = authorRow {
+                let topHeight = row.minY - rect.minY
+                draw(rect.minY, at: 0, height: topHeight)
+                draw(row.maxY, at: topHeight, height: rect.maxY - row.maxY)
+            } else { draw(rect.minY, at: 0, height: size.height) }
+        }
+    }
+
     override public func makeContentSnapshot() -> (UIImage, CGRect)? {
         UIGraphicsBeginImageContextWithOptions(self.backgroundNode.view.bounds.size, false, 0.0)
         let context = UIGraphicsGetCurrentContext()!
