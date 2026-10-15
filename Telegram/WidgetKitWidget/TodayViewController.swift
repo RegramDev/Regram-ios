@@ -943,6 +943,8 @@ struct AllWidgets: WidgetBundle {
    var body: some Widget {
         Static_Widget()
         Static_AvatarsWidget()
+        // MARK: Regram
+        if #available(iOSApplicationExtension 16.1, iOS 16.1, *) { RGUpdateLiveActivity() }
    }
 }
 

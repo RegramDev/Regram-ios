@@ -2,5 +2,6 @@
 #import <Foundation/Foundation.h>
 @interface MTRGDNSMessage : NSObject
 + (NSData *)queryForHost:(NSString *)host type:(uint16_t)type;
++ (NSDictionary *)addressesFromResponse:(NSData *)data host:(NSString *)host type:(uint16_t)type;
 + (NSDictionary *)addressFromResponse:(NSData *)data host:(NSString *)host type:(uint16_t)type;
 @end

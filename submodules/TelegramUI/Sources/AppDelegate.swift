@@ -462,6 +462,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let resetCoordinator = RGLaunchResetCoordinator()
         if resetCoordinator.request != nil {
             self.rgLaunchResetCoordinator = resetCoordinator
+            RGAppUpdater.cancelForDataReset()
             return true
         }
         RGAppUpdater.shared.start()
@@ -3382,7 +3383,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
     
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
-        Logger.shared.log("App \(self.episodeId)", "handleEventsForBackgroundURLSession \(identifier)")
+        // MARK: Regram — keep the system completion until the transfer delegate has persisted its result.
+        if self.rgLaunchResetCoordinator != nil {
+            RGAppUpdater.cancelForDataReset()
+            completionHandler()
+            return
+        }
+        if RGAppUpdater.shared.handleBackgroundDownloadEvents(identifier: identifier, completion: completionHandler) { return }
         completionHandler()
     }
     

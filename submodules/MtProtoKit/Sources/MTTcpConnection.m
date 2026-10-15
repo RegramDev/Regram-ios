@@ -25,6 +25,7 @@
 #import <MtProtoKit/MTEncryption.h>
 #import <MtProtoKit/MTSignal.h>
 #import "MTDNS.h"
+#import "MTRGProxyConnection.h" // MARK: Regram
 
 #import <EncryptionProvider/EncryptionProvider.h>
 
@@ -890,6 +891,18 @@ struct ctr_state {
 
 - (instancetype)initWithContext:(MTContext *)context datacenterId:(NSInteger)datacenterId scheme:(MTTransportScheme *)scheme interface:(NSString *)interface usageCalculationInfo:(MTNetworkUsageCalculationInfo *)usageCalculationInfo getLogPrefix:(NSString *(^)())getLogPrefix
 {
+    // MARK: Regram — hostname proxies rotate complete connections; literal addresses and WEB carriers keep their native path.
+    MTSocksProxySettings *proxy = context.apiEnvironment.socksProxySettings;
+    struct in_addr v4; struct in6_addr v6;
+    if (self.class == MTTcpConnection.class && proxy != nil && !proxy.webProxy
+        && inet_pton(AF_INET, proxy.ip.UTF8String, &v4) != 1 && inet_pton(AF_INET6, proxy.ip.UTF8String, &v6) != 1) {
+        return [[MTRGProxyConnection alloc] initWithContext:context datacenterId:datacenterId scheme:scheme interface:interface usageCalculationInfo:usageCalculationInfo getLogPrefix:getLogPrefix];
+    }
+    return [self initRGWithContext:context datacenterId:datacenterId scheme:scheme interface:interface usageCalculationInfo:usageCalculationInfo getLogPrefix:getLogPrefix proxyOverride:nil];
+}
+
+- (instancetype)initRGWithContext:(MTContext *)context datacenterId:(NSInteger)datacenterId scheme:(MTTransportScheme *)scheme interface:(NSString *)interface usageCalculationInfo:(MTNetworkUsageCalculationInfo *)usageCalculationInfo getLogPrefix:(NSString *(^)())getLogPrefix proxyOverride:(MTSocksProxySettings *)proxyOverride
+{
 #ifdef DEBUG
     NSAssert(scheme != nil, @"scheme should not be nil");
 #endif
@@ -922,17 +935,18 @@ struct ctr_state {
             _mtpSecret = [MTProxySecret parseData:_scheme.address.secret];
         }
         
-        if (context.apiEnvironment.socksProxySettings != nil) {
-            _isWebProxy = context.apiEnvironment.socksProxySettings.webProxy;
-            if (context.apiEnvironment.socksProxySettings.secret != nil) {
-                _mtpIp = context.apiEnvironment.socksProxySettings.ip;
-                _mtpPort = context.apiEnvironment.socksProxySettings.port;
-                _mtpSecret = [MTProxySecret parseData:context.apiEnvironment.socksProxySettings.secret];
+        MTSocksProxySettings *effectiveProxy = proxyOverride ?: context.apiEnvironment.socksProxySettings;
+        if (effectiveProxy != nil) {
+            _isWebProxy = effectiveProxy.webProxy;
+            if (effectiveProxy.secret != nil) {
+                _mtpIp = effectiveProxy.ip;
+                _mtpPort = effectiveProxy.port;
+                _mtpSecret = [MTProxySecret parseData:effectiveProxy.secret];
             } else {
-                _socksIp = context.apiEnvironment.socksProxySettings.ip;
-                _socksPort = context.apiEnvironment.socksProxySettings.port;
-                _socksUsername = context.apiEnvironment.socksProxySettings.username;
-                _socksPassword = context.apiEnvironment.socksProxySettings.password;
+                _socksIp = effectiveProxy.ip;
+                _socksPort = effectiveProxy.port;
+                _socksUsername = effectiveProxy.username;
+                _socksPassword = effectiveProxy.password;
             }
         }
         
@@ -1120,12 +1134,12 @@ struct ctr_state {
                             if (strongSelf->_socksUsername.length == 0) {
                                 MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d via %@:%d]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port, strongSelf->_socksIp, (int)strongSelf->_socksPort);
                             } else {
-                                MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d via %@:%d using %@:%@]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port, strongSelf->_socksIp, (int)strongSelf->_socksPort, strongSelf->_socksUsername, strongSelf->_socksPassword);
+                                MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d via authenticated SOCKS5 %@:%d]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port, strongSelf->_socksIp, (int)strongSelf->_socksPort);
                             }
                         } else if (strongSelf->_mtpIp != nil && strongSelf->_isWebProxy) {
                             MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting via WEB proxy %@:%d]", (intptr_t)strongSelf, strongSelf->_mtpIp, (int)strongSelf->_mtpPort);
                         } else if (strongSelf->_mtpIp != nil) {
-                            MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d via mtp://%@:%d:%@]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port, strongSelf->_mtpIp, (int)strongSelf->_mtpPort, strongSelf->_mtpSecret);
+                            MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d via mtp://%@:%d]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port, strongSelf->_mtpIp, (int)strongSelf->_mtpPort);
                         } else {
                             MTLog(@"[MTTcpConnection#%" PRIxPTR " connecting to %@:%d]", (intptr_t)strongSelf, strongSelf->_scheme.address.ip, (int)strongSelf->_scheme.address.port);
                         }

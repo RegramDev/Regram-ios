@@ -958,3 +958,8 @@
 "MessageScreenshot.UnknownSender" = "未知傳送者";
 "Common.Copied" = "已複製";
 "MessageScreenshot.Unavailable" = "部分選取的訊息無法取得或不允許匯出。";
+
+"AppUpdate.LiveActivity" = "在靈動島與鎖定畫面顯示更新進度";
+"AppUpdate.ActivityOpen" = "開啟更新頁面";
+"AppUpdate.ActivityStale" = "等待 Regram 恢復執行後更新進度";
+"AppUpdate.ActivityDownloaded" = "已下載，開啟 Regram 完成更新準備";

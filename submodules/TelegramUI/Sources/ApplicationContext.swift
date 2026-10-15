@@ -616,6 +616,7 @@ final class AuthorizedApplicationContext {
                 let updater = RGAppUpdater.shared
                 let data = self.context.sharedContext.currentPresentationData.with { $0 }
                 let lang = data.strings.rgLanguageCode
+                updater.setActivityLanguageCode(lang)
                 let title: String
                 let message: String
                 let actionTitle: String

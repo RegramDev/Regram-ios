@@ -77,11 +77,13 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 - Category-based JSON settings backup and restore, excluding login sessions, chat databases, certificates, and API keys.
 - DC1–DC5 connection tests on a separate page: initial connection request, three subsequent samples, average/minimum latency, variation and failures. Copied results contain only the five DC average ping values.
 - Opt-in custom DoH for proxy hostnames in the native Telegram transport, with automatic/prefer IPv4/prefer IPv6 strategies and reachable fallback.
+- Hostname proxies retain multiple IPv4/IPv6 candidates, try them in policy order and rotate after failure or four seconds without a response. Each attempt starts a fresh handshake; successful addresses are remembered briefly.
 - Media/filter diagnostics, font cache management, and local data cleanup.
 - Update checks and IPA downloads from this repository's GitHub Releases, with size and SHA-256 validation.
 - TrollStore updates: reuse GitHub downloads and verification, then hand the IPA to TrollStore for installation without certificates. Supports automatic checks and optional automatic downloads.
 - Local certificate/profile storage and on-device re-signing, followed by installation through LCSign's manifest service and iOS.
 - Verified downloads and signed packages persist across restarts and can be reused after failures.
+- Updates use system background downloads and support Lock Screen and Dynamic Island Live Activities for download, validation, signing and installation readiness. Tap to return to the update page; this display can be disabled in update settings.
 
 ## Settings
 

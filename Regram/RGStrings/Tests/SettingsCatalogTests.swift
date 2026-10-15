@@ -42,6 +42,7 @@ extension String {
         assert(RGSettingsDestination(page: "settings.app", item: "enableVoipTcp") == RGSettingsDestination(page: "settings.transfer", item: "enableVoipTcp"))
         assert(RGSettingsDestination(page: "diagnostics", item: "datacenters") == RGSettingsDestination(page: "datacenters", item: "start"))
         assert(contains("字体", "fonts", "latin"))
+        assert(contains("灵动岛", "updates", "liveActivity"))
         assert(RGSettingsCatalog.results(query: "   ", language: "en").isEmpty)
         assert(RGSettingsCatalog.results(query: "unrecognized setting xyz", language: "en").isEmpty)
         for url in ["https://rg/settings?page=pro.privacy", "tg://user:secret@rg/settings?page=llm", "tg://rg/settings?page=llm&page=updates", "tg://rg/settings?page=unknown", "tg://rg/settings?page=llm&item=../apiKey", "tg://rg/settings?page=llm&apiKey=secret", "tg://rg/settings?page=llm#value", "tg://rg/settings?page=llm&item="] {

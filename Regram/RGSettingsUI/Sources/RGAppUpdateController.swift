@@ -49,6 +49,9 @@ import PresentationDataUtils
                 // MARK: Regram — avoid pushing SwiftUI selection pages into Telegram's navigation stack.
                 .pickerStyle(.menu).rgSettingsLink("installationMethod")
                 .disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
+                if #available(iOS 16.1, *) {
+                    Toggle("AppUpdate.LiveActivity".i18n(lang), isOn: $updater.showsUpdateActivity).rgSettingsLink("liveActivity")
+                }
                 Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck).rgSettingsLink("automaticCheck")
                 Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured).rgSettingsLink("automaticDownload")
             }
@@ -156,6 +159,7 @@ private struct LabeledContentCompat: View {
 
 public func rgAppUpdateController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
+    RGAppUpdater.shared.setActivityLanguageCode(data.strings.rgLanguageCode)
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "AppUpdate.Title".i18n(data.strings.rgLanguageCode)

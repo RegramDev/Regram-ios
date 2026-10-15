@@ -1285,6 +1285,7 @@ swift_library(
         ":WidgetAssets",
     ],
     deps = [
+        "//Regram/RGUpdateActivity", # MARK: Regram
         "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/WidgetItems:WidgetItems_iOS14",

@@ -175,6 +175,7 @@ public enum RGSettingsCatalog {
         .init("updates", "check", "AppUpdate.Check"),
         .init("updates", "github", "AppUpdate.OpenGitHub"),
         .init("updates", "installationMethod", "AppUpdate.InstallationMethod"),
+        .init("updates", "liveActivity", "AppUpdate.LiveActivity", keywords: "ActivityKit 灵动岛 靈動島 实时活动 即時動態"),
         .init("updates", "automaticCheck", "AppUpdate.AutomaticCheck"),
         .init("updates", "automaticDownload", "AppUpdate.AutomaticDownload"),
         .init("updates", "automaticExit", "AppUpdate.AutomaticExit"),

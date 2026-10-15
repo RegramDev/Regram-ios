@@ -32,6 +32,11 @@ static NSString *rgName(const uint8_t *b, NSUInteger length, NSUInteger *offset)
     uint8_t tail[5] = {0, (uint8_t)(type >> 8), (uint8_t)type, 0, 1}; [data appendBytes:tail length:5]; return data;
 }
 + (NSDictionary *)addressFromResponse:(NSData *)data host:(NSString *)host type:(uint16_t)type {
+    NSDictionary *result = [self addressesFromResponse:data host:host type:type];
+    NSString *first = [result[@"addresses"] firstObject];
+    return first ? @{@"address": first, @"ttl": result[@"ttl"]} : nil;
+}
++ (NSDictionary *)addressesFromResponse:(NSData *)data host:(NSString *)host type:(uint16_t)type {
     if (data.length < 12 || data.length > 65535) return nil;
     const uint8_t *b = data.bytes;
     if (rgRead16(b) != 0 || (b[2] & 0x80) == 0 || (b[2] & 0x7a) != 0 || (b[3] & 0x0f) != 0 || rgRead16(b + 4) != 1) return nil;
@@ -52,7 +57,11 @@ static NSString *rgName(const uint8_t *b, NSUInteger length, NSUInteger *offset)
     }
     uint32_t ttl = UINT32_MAX; NSMutableSet *seen = [NSMutableSet set];
     for (NSUInteger i = 0; i < 16 && ![seen containsObject:name]; i++) {
-        [seen addObject:name]; for (NSDictionary *answer in answers) if ([answer[@"owner"] isEqualToString:name]) return @{@"address": answer[@"address"], @"ttl": @(MIN(ttl, [answer[@"ttl"] unsignedIntValue]))};
+        [seen addObject:name]; NSMutableOrderedSet *addresses = [NSMutableOrderedSet orderedSet];
+        for (NSDictionary *answer in answers) if ([answer[@"owner"] isEqualToString:name]) {
+            [addresses addObject:answer[@"address"]]; ttl = MIN(ttl, [answer[@"ttl"] unsignedIntValue]);
+        }
+        if (addresses.count) return @{@"addresses": addresses.array, @"ttl": @(ttl)};
         NSDictionary *alias = aliases[name]; if (!alias) return nil; ttl = MIN(ttl, [alias[@"ttl"] unsignedIntValue]); name = alias[@"name"];
     }
     return nil;

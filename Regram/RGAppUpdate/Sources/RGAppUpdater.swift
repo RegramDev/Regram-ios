@@ -4,6 +4,7 @@ import UIKit
 import Combine
 import SwiftSignalKit
 import RGUpdateSigner
+import RGStrings
 
 public let rgAppUpdatePrompt = ValuePromise<RGUpdatePrompt?>(nil, ignoreRepeated: true)
 
@@ -52,9 +53,9 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
             }
         }
     }
-    @Published public private(set) var stage: Stage = .idle
-    @Published public private(set) var progress = 0.0
-    @Published public private(set) var downloadedBytes: Int64 = 0
+    @Published public private(set) var stage: Stage = .idle { didSet { updateLiveActivity() } }
+    @Published public private(set) var progress = 0.0 { didSet { updateLiveActivity() } }
+    @Published public private(set) var downloadedBytes: Int64 = 0 { didSet { updateLiveActivity() } }
     @Published public private(set) var hasDownloadedUpdate = false
     @Published public private(set) var failure: RGUpdateError?
     @Published public private(set) var release: RGUpdateRelease?
@@ -96,6 +97,37 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     private var operation: Task<Void, Never>?
     private var operationId: UUID?
     private var preparedIPA: URL?
+    @Published public var showsUpdateActivity = UserDefaults.standard.object(forKey: "Regram.AppUpdate.LiveActivity") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showsUpdateActivity, forKey: "Regram.AppUpdate.LiveActivity"); updateLiveActivity() }
+    }
+    private let liveActivity = RGUpdateLiveActivity()
+    private var activityTracking = false
+    private var activityLanguage = UserDefaults.standard.string(forKey: "Regram.AppUpdate.Language") ?? Locale.preferredLanguages.first ?? "en"
+    private var pendingPreparation: String? {
+        get { UserDefaults.standard.string(forKey: "Regram.AppUpdate.ResumePreparation") }
+        set { UserDefaults.standard.set(newValue, forKey: "Regram.AppUpdate.ResumePreparation") }
+    }
+    public func setActivityLanguageCode(_ language: String) {
+        activityLanguage = language; UserDefaults.standard.set(language, forKey: "Regram.AppUpdate.Language"); updateLiveActivity()
+    }
+    private func updateLiveActivity() {
+        guard showsUpdateActivity else { liveActivity.submit(nil); return }
+        if !activityTracking && (stage == .restoring || stage == .checking) { return }
+        guard let release else { liveActivity.submit(nil); return }
+        let phase: String, label: String
+        switch stage {
+        case .downloading: phase = "downloading"; label = "AppUpdate.Downloading"
+        case .validating: phase = "validating"; label = "AppUpdate.Validating"
+        case .signing: phase = "signing"; label = "AppUpdate.Signing"
+        case .ready: phase = "ready"; label = "AppUpdate.Ready"
+        case .available where hasDownloadedUpdate && pendingPreparation == release.sha256:
+            phase = "downloaded"; label = "AppUpdate.ActivityDownloaded"
+        case .uploading, .installRequested, .installing: phase = "installing"; label = stage.localizationKey
+        default: liveActivity.submit(nil); return
+        }
+        liveActivity.submit(.init(release: release, phase: phase, labelKey: label, downloaded: downloadedBytes, language: activityLanguage, mayStart: activityTracking))
+    }
+
     private var localServer: RGLocalUpdateServer?
     private var installationBackgroundTask: UIBackgroundTaskIdentifier = .invalid
     private var foregroundObserver: NSObjectProtocol?
@@ -147,8 +179,19 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         activate()
     }
 
+    public static func cancelForDataReset() {
+        // Keep the launch reset path independent of updater initialization and credential reads.
+        RGUpdateBackgroundDownload.shared.cancel()
+        Task { await RGUpdateLiveActivity().end() }
+    }
+
     private func activate() {
         restoreCertificate()
+        if !stage.isBusy, let pending = RGUpdateBackgroundDownload.shared.pendingRelease {
+            if pending.isNewer(version: installedVersion, build: installedBuild) { resumeBackgroundDownload(pending); return }
+            RGUpdateBackgroundDownload.shared.cancel()
+        }
+        if resumePreparationIfActive() { return }
         if !didRestoreCache, UIApplication.shared.isProtectedDataAvailable, !stage.isBusy, !credentialIsBusy {
             didRestoreCache = true
             let id = UUID(); operationId = id; stage = .restoring
@@ -163,10 +206,11 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                         release = state.release; preparedIPA = method == .trollStore ? state.downloaded : state.prepared; hasDownloadedUpdate = state.downloaded != nil
                         downloadedBytes = state.downloaded == nil ? 0 : state.release.size
                         progress = state.downloaded == nil ? 0 : 1
+                        if preparedIPA != nil { pendingPreparation = nil }
                         stage = preparedIPA == nil ? .available : .ready
                         publishPrompt()
-                    } else { stage = .idle }
-                    checkAutomatically()
+                    } else { pendingPreparation = nil; stage = .idle }
+                    if !resumePreparationIfActive() { checkAutomatically() }
                 } catch {
                     guard operationId == id else { return }
                     didRestoreCache = false; stage = .idle
@@ -174,6 +218,60 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 }
             }
         } else { checkAutomatically() }
+    }
+
+    public func handleBackgroundDownloadEvents(identifier: String, completion: @escaping () -> Void) -> Bool {
+        let accepted = RGUpdateBackgroundDownload.shared.attachBackgroundEvents(identifier: identifier, completion: completion)
+        if accepted { activate() }
+        return accepted
+    }
+
+    private func downloadPackage(_ release: RGUpdateRelease, id: UUID) async throws -> URL {
+        let file = try await RGUpdateBackgroundDownload.shared.download(release: release) { value, bytes in
+            Task { @MainActor in
+                guard self.operationId == id, self.stage == .downloading else { return }
+                self.progress = value; self.downloadedBytes = bytes
+            }
+        }
+        try Task.checkCancellation()
+        guard operationId == id else { throw CancellationError() }
+        let cache = self.cache
+        let saved = try await Task.detached(priority: .utility) { try cache.saveDownloaded(file, release: release) }.value
+        try Task.checkCancellation()
+        guard operationId == id else { throw CancellationError() }
+        RGUpdateBackgroundDownload.shared.consume()
+        return saved
+    }
+
+    private func resumeBackgroundDownload(_ pending: RGUpdateRelease) {
+        operation?.cancel()
+        release = pending; pendingPreparation = pending.sha256; activityTracking = true
+        let id = UUID(); operationId = id; failure = nil; stage = .downloading
+        operation = Task {
+            do {
+                // A previous process may have committed the verified cache just before consuming the transfer record.
+                let cache = self.cache, version = installedVersion, build = installedBuild
+                let state = try await Task.detached(priority: .utility) { try cache.load(installedVersion: version, installedBuild: build, signer: nil) }.value
+                try Task.checkCancellation()
+                guard operationId == id else { return }
+                if let state, state.release.hasSameArtifact(as: pending), state.downloaded != nil {
+                    RGUpdateBackgroundDownload.shared.cancel()
+                } else {
+                    _ = try await downloadPackage(pending, id: id)
+                }
+                guard operationId == id else { return }
+                hasDownloadedUpdate = true; downloadedBytes = pending.size; progress = 1; stage = .available
+                _ = resumePreparationIfActive()
+            } catch { finishError(error, id: id) }
+        }
+    }
+
+    private func resumePreparationIfActive() -> Bool {
+        guard UIApplication.shared.applicationState == .active, !stage.isBusy, let release,
+              pendingPreparation == release.sha256, hasDownloadedUpdate, isConfigured else { return false }
+        pendingPreparation = nil
+        prepare(showInstallPrompt: true)
+        return true
     }
 
     private func signingFingerprint() -> String? {
@@ -191,7 +289,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
 
     private func checkAutomatically() {
-        guard automaticallyCheck, !stage.isBusy else { return }
+        guard automaticallyCheck, !stage.isBusy, pendingPreparation == nil else { return }
         guard Date().timeIntervalSince(lastCheck) >= 6 * 3600 else { publishPrompt(); return }
         check(automatic: true)
     }
@@ -301,7 +399,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
             } catch {
                 finishError(error, id: id)
                 if automatic, operationId == id, hasPreparedUpdate {
-                    stage = .ready
+                    pendingPreparation = nil; stage = .ready
                     publishPrompt()
                 }
             }
@@ -319,6 +417,8 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
         promptAfterOperation = showInstallPrompt
         rgAppUpdatePrompt.set(nil)
         guard isConfigured else { failure = .notConfigured; stage = .failed(RGUpdateError.notConfigured.localizationKey); return }
+        activityTracking = true
+        pendingPreparation = release.sha256
         operation?.cancel()
         let id = UUID(); operationId = id; stopInstallation(); failure = nil; stage = .validating
         if installationMethod == .trollStore {
@@ -356,7 +456,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 try Task.checkCancellation()
                 guard operationId == id else { return }
                 if let state, state.release.hasSameArtifact(as: release), let prepared = state.prepared {
-                    preparedIPA = prepared; hasDownloadedUpdate = state.downloaded != nil; progress = 1; downloadedBytes = release.size; stage = .ready
+                    preparedIPA = prepared; hasDownloadedUpdate = state.downloaded != nil; progress = 1; downloadedBytes = release.size; pendingPreparation = nil; stage = .ready
                     if promptAfterOperation { publishPrompt() }
                     return
                 }
@@ -365,18 +465,11 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                     downloaded = existing; hasDownloadedUpdate = true; downloadedBytes = release.size; progress = 1
                 } else {
                     stage = .downloading; progress = 0; downloadedBytes = 0; hasDownloadedUpdate = false
-                    let temporary = operationDirectory.appendingPathComponent("release.ipa")
-                    let download = RGUpdateDownload(destination: temporary, expectedSize: release.size) { value, bytes in
-                        Task { @MainActor in
-                            guard self.operationId == id, self.stage == .downloading else { return }
-                            self.progress = value; self.downloadedBytes = bytes
-                        }
-                    }
-                    try await download.download(from: release.downloadURL, configuration: networkConfiguration())
-                    try Task.checkCancellation()
-                    guard operationId == id else { return }
-                    downloaded = try await Task.detached { try cache.saveDownloaded(temporary, release: release) }.value
+                    downloaded = try await downloadPackage(release, id: id)
                     hasDownloadedUpdate = true
+                }
+                if UIApplication.shared.applicationState != .active {
+                    hasDownloadedUpdate = true; downloadedBytes = release.size; progress = 1; stage = .available; return
                 }
                 let signed = operationDirectory.appendingPathComponent("signed.ipa")
                 guard operationId == id else { return }
@@ -390,7 +483,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 guard operationId == id else { return }
                 let prepared = try await Task.detached { try cache.saveSigned(signed, release: release, signer: fingerprint) }.value
                 guard operationId == id else { return }
-                preparedIPA = prepared; progress = 1.0; stage = .ready
+                preparedIPA = prepared; progress = 1.0; pendingPreparation = nil; stage = .ready
                 if promptAfterOperation { publishPrompt() }
             } catch { finishError(error, id: id) }
         }
@@ -411,17 +504,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 } else {
                     try FileManager.default.createDirectory(at: operationDirectory, withIntermediateDirectories: true, attributes: [.protectionKey: FileProtectionType.complete])
                     stage = .downloading; progress = 0; downloadedBytes = 0; hasDownloadedUpdate = false
-                    let temporary = operationDirectory.appendingPathComponent("release.ipa")
-                    let download = RGUpdateDownload(destination: temporary, expectedSize: release.size) { value, bytes in
-                        Task { @MainActor in
-                            guard self.operationId == id, self.stage == .downloading else { return }
-                            self.progress = value; self.downloadedBytes = bytes
-                        }
-                    }
-                    try await download.download(from: release.downloadURL, configuration: networkConfiguration())
-                    try Task.checkCancellation()
-                    guard operationId == id else { return }
-                    downloaded = try await Task.detached { try cache.saveDownloaded(temporary, release: release) }.value
+                    downloaded = try await downloadPackage(release, id: id)
                 }
                 try Task.checkCancellation()
                 guard operationId == id else { return }
@@ -434,7 +517,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                 } catch { throw mapSigningError(error) }
                 try Task.checkCancellation()
                 guard operationId == id else { return }
-                preparedIPA = downloaded; stage = .ready
+                preparedIPA = downloaded; pendingPreparation = nil; stage = .ready
                 if promptAfterOperation { publishPrompt() }
             } catch { finishError(error, id: id) }
         }
@@ -504,7 +587,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
                             guard self.operationId == id, self.packageDeliveryComplete else { return }
                             let shouldExit = self.automaticallyExitAfterInstalling && self.installationMethod == .certificate
                             self.stopInstallation()
-                            if shouldExit { exit(0) }
+                            if shouldExit { await self.liveActivity.end(); exit(0) }
                         }
                     } else { self.stopInstallation() }
                 } }
@@ -652,8 +735,10 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 
     public func cancel() {
         operationId = nil; operation?.cancel(); operation = nil
+        RGUpdateBackgroundDownload.shared.cancel(); pendingPreparation = nil; activityTracking = false
         stopInstallation()
         stage = preparedIPA != nil ? .ready : (release == nil ? .idle : .available); progress = 0.0
+        liveActivity.submit(nil)
     }
 
     private var promptKind: RGUpdatePrompt.Kind? {
@@ -681,6 +766,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
 
     private func finishError(_ error: Error, id: UUID) {
         guard operationId == id else { return }
+        pendingPreparation = nil
         if error is CancellationError { stage = release == nil ? .idle : .available }
         else {
             let failure = error as? RGUpdateError ?? ((error as NSError).domain == NSCocoaErrorDomain ? .cache : .network)
@@ -689,6 +775,7 @@ private final class RGUpdateNetworkDelegate: NSObject, URLSessionTaskDelegate, U
     }
 
     private func reportFailure(_ error: RGUpdateError) {
+        pendingPreparation = nil
         failure = error
         stage = .failed(error.localizationKey)
         if promptAfterOperation { publishPrompt() }

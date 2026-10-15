@@ -967,3 +967,8 @@ Matching is case-insensitive.";
 "MessageScreenshot.UnknownSender" = "Unknown sender";
 "Common.Copied" = "Copied";
 "MessageScreenshot.Unavailable" = "Some selected messages are unavailable or cannot be exported.";
+
+"AppUpdate.LiveActivity" = "Show update progress in Live Activities";
+"AppUpdate.ActivityOpen" = "Open update page";
+"AppUpdate.ActivityStale" = "Progress will refresh when Regram can run";
+"AppUpdate.ActivityDownloaded" = "Downloaded. Open Regram to finish preparing the update.";
