@@ -159,7 +159,7 @@ private struct LabeledContentCompat: View {
 
 public func rgAppUpdateController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
-    RGAppUpdater.shared.setActivityLanguageCode(data.strings.rgLanguageCode)
+    Task { @MainActor in RGAppUpdater.shared.setActivityLanguageCode(data.strings.rgLanguageCode) }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "AppUpdate.Title".i18n(data.strings.rgLanguageCode)
