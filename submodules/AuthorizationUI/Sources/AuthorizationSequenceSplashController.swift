@@ -71,13 +71,13 @@ public final class AuthorizationSequenceSplashController: ViewController {
         })
         
         self.controller = RMIntroViewController(backgroundColor: theme.list.plainBackgroundColor, primaryColor: theme.list.itemPrimaryTextColor, buttonColor: theme.intro.startButtonColor, accentColor: theme.list.itemAccentColor, regularDotColor: theme.intro.dotColor, highlightedDotColor: theme.list.itemAccentColor, suggestedLocalizationSignal: localizationSignal)
-        // MARK: Regram — use the same artwork as the Regram Pro entry.
-        self.controller.regramArtwork = UIImage(bundleImageName: "RegramPro")
         
         self.startButton = SolidRoundedButtonNode(title: "Start Messaging", theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5, isShimmering: true)
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
 
         super.init(navigationBarPresentationData: nil)
+        // MARK: Regram — use the same artwork as the Regram Pro entry.
+        self.controller.regramArtwork = UIImage(bundleImageName: "RegramPro")
         
         self._hasGlassStyle = true
         
