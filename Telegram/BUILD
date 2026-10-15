@@ -1752,6 +1752,9 @@ plist_fragment(
     extension = "plist",
     template = 
     """
+    <!-- MARK: Regram -->
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
         <string>{telegram_bundle_id}.refresh</string>

@@ -86,6 +86,8 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         run(['zip', '-qry', str(archive), 'Payload'], cwd=staging)
         verified = extract(archive, work / 'verified')
         run(['codesign', '--verify', '--deep', '--strict', str(verified)])
+        if info(verified).get('NSSupportsLiveActivities') is not True:
+            raise RuntimeError('The generated app plist must declare Live Activity support')
         for bundle in [verified] + sorted((verified / 'PlugIns').glob('*.appex')):
             verify_notification_filtering(bundle, plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(bundle)])))
         if list(verified.rglob('embedded.mobileprovision')):
@@ -144,6 +146,7 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         'signatures_and_architectures_verified': True, 'matching_debug_symbols': True,
         'font_catalog_and_licenses_verified': True, 'device_tested': False,
         'notification_filtering_declaration_verified': True,
+        'live_activity_declaration_verified': True,
         'artifacts': {final.name: {'size_bytes': final.stat().st_size, 'sha256': checksum(final)}},
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)
