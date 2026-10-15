@@ -60,7 +60,8 @@ final class TabBarControllerNode: ASDisplayNode {
     private let contextAction: (Int, ContextExtractedContentContainingView, ContextGesture) -> Void
     
     private var tabBarView = ComponentView<Empty>()
-    private var tabBarContentState: (hasItems: Bool, hasContent: Bool)?
+    // MARK: Regram — track temporary search/toolbar hides as well as empty content.
+    private var tabBarContentState: RGTabBarPresentationState?
     private var needsTabBarRecreation = false
     
     private let disabledOverlayNode: ASDisplayNode
@@ -321,17 +322,16 @@ final class TabBarControllerNode: ASDisplayNode {
                 selectedId = ObjectIdentifier(selectedItem)
             }
         }
-        // MARK: Regram — empty glass containers must not be reused when content returns.
+        // MARK: Regram — hidden search/toolbar glass must not be reused when the bar returns.
         let tabBarSearchState: ViewController.TabBarSearchState? = self.currentController?.tabBarSearchState ?? ViewController.TabBarSearchState(isActive: false)
         let hasTabBarItems = !visibleComponentItems.isEmpty
         let hasVisibleTabBarContent = hasTabBarItems || externalComponentItem != nil
-        if let previousState = self.tabBarContentState {
-            if (!previousState.hasItems && hasTabBarItems) || (!previousState.hasContent && hasVisibleTabBarContent) {
-                self.needsTabBarRecreation = true
-            }
+        let presentationState = RGTabBarPresentationState(hasItems: hasTabBarItems, hasContent: hasVisibleTabBarContent, isHidden: params.isTabBarHidden, hasToolbar: params.toolbar != nil)
+        if presentationState.requiresFreshGlass(after: self.tabBarContentState) {
+            self.needsTabBarRecreation = true
         }
-        self.tabBarContentState = (hasTabBarItems, hasVisibleTabBarContent)
-        if self.needsTabBarRecreation && tabBarSearchState?.isActive != true {
+        self.tabBarContentState = presentationState
+        if self.needsTabBarRecreation && presentationState.isVisible && tabBarSearchState?.isActive != true {
             self.needsTabBarRecreation = false
             let previousTabBarView = self.tabBarView
             self.tabBarView = ComponentView<Empty>()

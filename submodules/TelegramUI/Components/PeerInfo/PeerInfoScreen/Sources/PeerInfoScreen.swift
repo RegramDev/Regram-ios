@@ -6468,17 +6468,31 @@ private final class RGRootSettingsBackGestureDelegate: NSObject, UIGestureRecogn
         guard canBegin(), let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
         let velocity = pan.velocity(in: pan.view)
         let distance = pan.translation(in: pan.view)
-        return (velocity.x > 0 && abs(velocity.x) > abs(velocity.y)) || (distance.x > 0 && abs(distance.x) > abs(distance.y))
+        return RGHiddenTabBarPolicy.shouldBeginBackGesture(distanceX: Double(distance.x), distanceY: Double(distance.y), velocityX: Double(velocity.x), velocityY: Double(velocity.y))
+    }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard canBegin() else { return false }
+        var view = touch.view
+        while let current = view, current !== gestureRecognizer.view {
+            if current is UIControl || current is UITextField || current is UITextView { return false }
+            if let scrollView = current as? UIScrollView,
+               scrollView.alwaysBounceHorizontal || scrollView.contentSize.width > scrollView.bounds.width + 1 {
+                return false
+            }
+            view = current.superview
+        }
+        return true
     }
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        return otherGestureRecognizer.view is UIScrollView
+        guard let scrollView = otherGestureRecognizer.view as? UIScrollView else { return false }
+        return !scrollView.alwaysBounceHorizontal && scrollView.contentSize.width <= scrollView.bounds.width + 1
     }
 }
 
 public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortcutResponder {
     // MARK: Regram
     private var rgRootBackGestureDelegate: RGRootSettingsBackGestureDelegate?
-    private var rgRootBackGesture: UIScreenEdgePanGestureRecognizer?
+    private var rgRootBackGesture: UIPanGestureRecognizer?
     private var rgCanReturnToChats: Bool {
         guard self.isNodeLoaded, let tabs = self.parent as? TabBarController,
               let navigation = self.navigationController as? NavigationController else { return false }
@@ -6490,7 +6504,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             avatarExpanded: self.controllerNode.headerNode.isAvatarExpanded
         )
     }
-    @objc private func rgRootBackSwiped(_ gesture: UIScreenEdgePanGestureRecognizer) {
+    @objc private func rgRootBackSwiped(_ gesture: UIPanGestureRecognizer) {
         guard gesture.state == .ended, self.rgCanReturnToChats else { return }
         if RGHiddenTabBarPolicy.completeBackGesture(distance: Double(gesture.translation(in: self.view).x), width: Double(self.view.bounds.width), velocity: Double(gesture.velocity(in: self.view).x)) {
             (self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface)?.openChats()
@@ -7002,11 +7016,11 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         self._readyInternal.set(self.controllerNode.ready.get())
         
         super.displayNodeDidLoad()
-        // MARK: Regram — pushed settings pages continue to use native navigation gestures.
+        // MARK: Regram — root settings accepts rightward content pans; pushed pages use native back.
         if self.isSettings {
             let delegate = RGRootSettingsBackGestureDelegate(canBegin: { [weak self] in self?.rgCanReturnToChats == true })
-            let gesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(self.rgRootBackSwiped(_:)))
-            gesture.edges = .left
+            let gesture = UIPanGestureRecognizer(target: self, action: #selector(self.rgRootBackSwiped(_:)))
+            gesture.maximumNumberOfTouches = 1
             gesture.delegate = delegate
             self.rgRootBackGestureDelegate = delegate
             self.rgRootBackGesture = gesture
