@@ -261,6 +261,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     private var dataImportSplash: LegacyDataImportSplash?
     private var memoryUsageOverlayView: UILabel?
     
+    // MARK: Regram — resume queued icon changes only when the application is active.
+    private var rgAppIconObserver: NSObjectProtocol?
+    deinit {
+        if let observer = rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
+    }
+
     private var buildConfig: BuildConfig?
     let episodeId = arc4random()
     
@@ -878,11 +884,19 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let iconSwitcher = RGAppIconSwitchCoordinator(current: { application.alternateIconName }, apply: { name, completion in
             guard application.supportsAlternateIcons else { completion(false); return }
             application.setAlternateIconName(name) { error in
-                DispatchQueue.main.async { completion(error == nil) }
+                DispatchQueue.main.async {
+                    if let error = error as NSError? {
+                        Logger.shared.log("AppIcon", "UIKit rejected icon change: \(error.domain) / \(error.code), \(error.localizedDescription)")
+                    }
+                    completion(error == nil)
+                }
             }
         }, changed: {
             NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil)
-        })
+        }, canApply: { application.applicationState == .active })
+        self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak iconSwitcher] _ in
+            iconSwitcher?.resume()
+        }
         let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: appGroupUrl.path, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
             var parsedUrl = URL(string: url)
             if let parsed = parsedUrl {
@@ -1126,7 +1140,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, getAlternateIconName: {
             if #available(iOS 10.3, *) {
                 // MARK: Regram — match an icon retained by iOS to its renamed picker entry.
-                return RGAppIconNames.canonicalName(application.alternateIconName)
+                return RGAppIconNames.canonicalName(iconSwitcher.currentIconName)
             } else {
                 return nil
             }

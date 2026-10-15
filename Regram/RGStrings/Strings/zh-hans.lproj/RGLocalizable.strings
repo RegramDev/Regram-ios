@@ -989,7 +989,7 @@
 "DNSDiagnostics.NoPolicyAddresses" = "没有符合当前策略的地址。";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "无法切换图标，请回到 Regram 后重试。";
+"AppIcon.ChangeFailed" = "无法切换图标，请稍后重试。";
 "RevokedMarker.Title" = "已撤回消息标记";
 "RevokedMarker.Style" = "标记样式";
 "RevokedMarker.Style.icon" = "图标";

@@ -996,7 +996,7 @@ Matching is case-insensitive.";
 "DNSDiagnostics.NoPolicyAddresses" = "No address matches the selected policy.";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "Unable to change the icon. Please try again when Regram is active.";
+"AppIcon.ChangeFailed" = "Unable to change the icon. Please try again shortly.";
 "RevokedMarker.Title" = "Deleted-message marker";
 "RevokedMarker.Style" = "Marker style";
 "RevokedMarker.Style.icon" = "Icon";

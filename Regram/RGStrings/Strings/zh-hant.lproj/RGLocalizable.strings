@@ -987,7 +987,7 @@
 "DNSDiagnostics.NoPolicyAddresses" = "沒有符合目前策略的位址。";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "無法切換圖示，請回到 Regram 後重試。";
+"AppIcon.ChangeFailed" = "無法切換圖示，請稍後再試。";
 "RevokedMarker.Title" = "已撤回訊息標記";
 "RevokedMarker.Style" = "標記樣式";
 "RevokedMarker.Style.icon" = "圖示";

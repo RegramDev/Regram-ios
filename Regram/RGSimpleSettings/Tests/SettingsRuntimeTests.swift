@@ -134,13 +134,13 @@ extension UserDefaults {
         coordinator.request("RGGold") { results.append($0) }
         expect(applies.count == 2 && results.allSatisfy { $0 }, "Selecting the active icon must complete without a UIKit request")
         coordinator.request("RGWhite") { results.append($0) }; applies[2].1(true)
-        expect(results.last == false, "An optimistic UIKit completion must not select an icon the system did not apply")
+        expect(results.last == true && coordinator.currentIconName == "RGWhite", "A successful UIKit completion must not be rejected because its getter still returns the old icon")
         coordinator.request("RGPro") { results.append($0) }; timeouts.last?()
         expect(results.last == false, "Interrupted callbacks must release the request lock")
         coordinator.request(nil) { results.append($0) }
         let count = results.count; applies[3].1(false)
         expect(results.count == count, "Late callbacks must not complete a newer request")
-        actual = nil; applies[4].1(true)
+        actual = nil; applies[4].1(true); coordinator.resume()
         actual = "SGDefault"
         coordinator.request(nil) { results.append($0) }
         expect(applies.count == 6 && applies[5].0 == nil, "Restoring primary must replace an old alternate named Default")
