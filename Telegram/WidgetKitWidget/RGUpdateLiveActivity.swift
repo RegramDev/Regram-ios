@@ -10,7 +10,7 @@ struct RGUpdateLiveActivity: Widget {
         ActivityConfiguration(for: RGUpdateActivityAttributes.self) { context in
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Image(systemName: "arrow.down.app.fill").foregroundColor(.accentColor)
+                    RGUpdateActivityIcon(size: 24)
                     Text(context.attributes.title).font(.headline)
                     Spacer()
                     Text("\(context.attributes.version) · b\(context.attributes.build)").font(.caption).foregroundColor(.secondary)
@@ -22,7 +22,7 @@ struct RGUpdateLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Regram", systemImage: "arrow.down.app.fill").font(.headline)
+                    HStack(spacing: 6) { RGUpdateActivityIcon(size: 22); Text("Regram").font(.headline) }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(context.attributes.version).font(.caption).monospacedDigit()
@@ -34,13 +34,23 @@ struct RGUpdateLiveActivity: Widget {
                     }.padding(.top, 4)
                 }
             } compactLeading: {
-                Image(systemName: "arrow.down.app.fill").foregroundColor(.cyan)
+                RGUpdateActivityIcon(size: 20)
             } compactTrailing: {
                 RGUpdateActivityIndicator(state: context.state, stale: rgUpdateActivityIsStale(context))
             } minimal: {
-                RGUpdateActivityIndicator(state: context.state, stale: rgUpdateActivityIsStale(context))
+                RGUpdateActivityIcon(size: 20).accessibilityLabel(Text(context.state.label))
             }.widgetURL(context.attributes.updateURL).keylineTint(.cyan)
         }
+    }
+}
+
+@available(iOSApplicationExtension 16.1, iOS 16.1, *)
+private struct RGUpdateActivityIcon: View {
+    let size: CGFloat
+    var body: some View {
+        Image("RegramUpdateIcon").renderingMode(.original).resizable().scaledToFit()
+            .frame(width: size, height: size)
+            .clipShape(RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
     }
 }
 
