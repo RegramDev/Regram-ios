@@ -39,7 +39,22 @@ static int rgRunDNSTests(void) { @autoreleasepool {
     NSCAssert([MTRGDNSMessage addressFromResponse:answer host:host type:1] == nil,@"Pointer cycle rejected");
     NSCAssert([MTRGDNSMessage queryForHost:@"bad..host" type:1] == nil,@"Empty label rejected");
     NSCAssert([MTRGDNSMessage queryForHost:[@"a" stringByPaddingToLength:64 withString:@"a" startingAtIndex:0] type:1] == nil,@"Long label rejected");
-    puts("DNS wire codec: A/AAAA, compressed names, TTL, question/type validation, truncation, NXDOMAIN and pointer cycles passed.");
+    NSDictionary *json = @{@"Status": @0, @"Question": @[@{@"name": @"proxy.example.", @"type": @1}], @"Answer": @[@{@"name": @"proxy.example.", @"type": @5, @"TTL": @20, @"data": @"alias.example."}, @{@"name": @"alias.example.", @"type": @1, @"TTL": @60, @"data": @"192.0.2.9"}, @{@"name": @"unrelated.example.", @"type": @1, @"TTL": @1, @"data": @"192.0.2.1"}]};
+    NSData *(^encode)(id) = ^NSData *(id value) { return [NSJSONSerialization dataWithJSONObject:value options:NSJSONWritingFragmentsAllowed error:nil]; };
+    NSDictionary *jsonResult = [MTRGDNSMessage addressesFromJSONResponse:encode(json) host:host type:1];
+    NSCAssert([jsonResult[@"addresses"] isEqual:(@[@"192.0.2.9"])] && [jsonResult[@"ttl"] intValue] == 20, @"JSON follows CNAME TTL and excludes unrelated records");
+    NSCAssert([MTRGDNSMessage addressesFromJSONResponse:encode(json) host:@"other.example" type:1] == nil, @"JSON validates question owner");
+    NSCAssert([MTRGDNSMessage addressesFromJSONResponse:encode(json) host:host type:28] == nil, @"JSON validates question family");
+    for (id malformed in @[@[], @5, NSNull.null, @{@"Status": @2}, @{@"Status": @0, @"Question": @[@7]}, @{@"Status": @0, @"Answer": @7}]) {
+        NSCAssert([MTRGDNSMessage addressesFromJSONResponse:encode(malformed) host:host type:1] == nil, @"Malformed JSON never raises or becomes an address");
+    }
+    NSCAssert([[MTRGDNSMessage addressesFromJSONResponse:encode(@{@"Status": @3}) host:host type:1][@"addresses"] count] == 0, @"Valid NXDOMAIN stays empty");
+    NSDictionary *cycle = @{@"Status": @0, @"Answer": @[@{@"name": host, @"type": @5, @"data": @"alias.example"}, @{@"name": @"alias.example", @"type": @5, @"data": host}]};
+    NSCAssert([MTRGDNSMessage addressesFromJSONResponse:encode(cycle) host:host type:1] == nil, @"CNAME cycles are bounded");
+    NSDictionary *txt = @{@"Status": @0, @"Question": @[@{@"name": @"apv3.stel.com.", @"type": @16}], @"Answer": @[@{@"name": @"apv3.stel.com.", @"type": @16, @"TTL": @60, @"data": @"\"signedpayload\""}, @{@"name": @"unrelated.example.", @"type": @16, @"TTL": @1, @"data": @"ignored"}]};
+    NSCAssert([[MTRGDNSMessage textRecordsFromJSONResponse:encode(txt) host:@"apv3.stel.com"][@"records"] count] == 1, @"TXT bootstrap accepts only records owned by the signed-config domain");
+    NSCAssert([MTRGDNSMessage textRecordsFromJSONResponse:encode(txt) host:host] == nil, @"TXT question mismatch fails closed");
+    puts("DNS wire and JSON codec: A/AAAA/TXT, owner/CNAME validation, malformed JSON, compressed names, TTL, question/type validation, truncation, NXDOMAIN and pointer cycles passed.");
 } return 0; }
 
 #if RG_STANDALONE_TESTS

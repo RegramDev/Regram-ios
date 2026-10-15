@@ -291,6 +291,7 @@ public class RGSimpleSettings {
         case hideStories
         case disableAllAds
         case antiRevoke
+        case revokedMarkerStyle, revokedMarkerText, revokedMarkerColor // MARK: Regram
         case antiAutoDelete
         case antiSelfDestruct
         case antiScreenshotNotification
@@ -535,6 +536,7 @@ public class RGSimpleSettings {
         Keys.hideStories.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.antiRevoke.rawValue: false,
+        Keys.revokedMarkerStyle.rawValue: "icon", Keys.revokedMarkerText.rawValue: "", Keys.revokedMarkerColor.rawValue: "",
         Keys.antiAutoDelete.rawValue: false,
         Keys.antiSelfDestruct.rawValue: false,
         Keys.antiScreenshotNotification.rawValue: false,
@@ -676,7 +678,7 @@ public class RGSimpleSettings {
             UserDefaults.standard.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
             APP_GROUP_USER_DEFAULTS?.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
             if newValue {
-                var policy = self.networkPolicy; policy.dohEnabled = false; policy.save(to: UserDefaults.standard)
+                var policy = self.networkPolicy; policy.dohEnabled = false; policy.useSystemDNS = true; policy.save(to: UserDefaults.standard)
                 if let shared = APP_GROUP_USER_DEFAULTS { policy.save(to: shared) }
             }
             NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
@@ -697,6 +699,11 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.antiRevoke.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiRevoke: Bool
+
+    // MARK: Regram — visual marker preferences live in the main application only.
+    @UserDefault(key: Keys.revokedMarkerStyle.rawValue) public var revokedMarkerStyle: String
+    @UserDefault(key: Keys.revokedMarkerText.rawValue) public var revokedMarkerText: String
+    @UserDefault(key: Keys.revokedMarkerColor.rawValue) public var revokedMarkerColor: String
 
 
     @UserDefault(key: Keys.antiAutoDelete.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
@@ -826,6 +833,7 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
         NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
+        NotificationCenter.default.post(name: Self.revokedMarkerDidChange, object: nil)
         NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil)
         self.synchronizeShared()
         // MARK: Regram — restore/reset transport preferences into the extension store as well.

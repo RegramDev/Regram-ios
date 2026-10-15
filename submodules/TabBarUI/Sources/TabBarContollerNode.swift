@@ -186,7 +186,8 @@ final class TabBarControllerNode: ASDisplayNode {
         transition.updateAlpha(node: self.disabledOverlayNode, alpha: value ? 0.0 : 1.0)
     }
     
-    var tabBarHidden = RGSimpleSettings.shared.hideTabBar {
+    // MARK: Regram — only transient hides belong here; user visibility is read afresh in layout.
+    var tabBarHidden = false {
         didSet {
             if self.tabBarHidden != oldValue {
                 self.requestUpdate()
@@ -195,7 +196,7 @@ final class TabBarControllerNode: ASDisplayNode {
     }
     
     func containerLayoutUpdated(_ layout: ContainerViewLayout, toolbar: Toolbar?, transition: ContainedViewLayoutTransition) -> CGFloat {
-        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: self.tabBarHidden || !RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible, currentControllerSearchState: self.currentController?.tabBarSearchState)
+        let params = Params(layout: layout, toolbar: toolbar, isTabBarHidden: RGHiddenTabBarPolicy.isHidden(transientlyHidden: self.tabBarHidden, isTabBarVisible: RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible), currentControllerSearchState: self.currentController?.tabBarSearchState)
         if let layoutResult = self.layoutResult, layoutResult.params == params {
             return layoutResult.bottomInset
         } else {

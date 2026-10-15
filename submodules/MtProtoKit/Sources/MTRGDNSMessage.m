@@ -66,4 +66,80 @@ static NSString *rgName(const uint8_t *b, NSUInteger length, NSUInteger *offset)
     }
     return nil;
 }
++ (NSDictionary *)addressesFromJSONResponse:(NSData *)data host:(NSString *)host type:(uint16_t)type {
+    if (!data.length || data.length > 65535 || (type != 1 && type != 28)) return nil;
+    id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![object isKindOfClass:NSDictionary.class]) return nil;
+    NSDictionary *json = object;
+    if (![json[@"Status"] isKindOfClass:NSNumber.class]) return nil;
+    NSInteger status = [json[@"Status"] integerValue];
+    if (status != 0 && status != 3) return nil;
+    NSString *name = [[host lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]];
+    if (json[@"Question"]) {
+        NSArray *questions = json[@"Question"];
+        if (![questions isKindOfClass:NSArray.class] || questions.count != 1 || ![questions[0] isKindOfClass:NSDictionary.class]) return nil;
+        id question = questions[0]; id questionName = question[@"name"];
+        if (![questionName isKindOfClass:NSString.class] || ![[[questionName lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]] isEqualToString:name] || ![question[@"type"] isKindOfClass:NSNumber.class] || [question[@"type"] unsignedIntValue] != type) return nil;
+    }
+    NSArray *records = json[@"Answer"] ?: @[];
+    if (![records isKindOfClass:NSArray.class] || records.count > 1024) return nil;
+    if (status == 3) return records.count ? nil : @{@"addresses": @[], @"ttl": @0};
+    NSMutableDictionary *aliases = [NSMutableDictionary dictionary]; NSMutableArray *answers = [NSMutableArray array];
+    for (id record in records) {
+        if (![record isKindOfClass:NSDictionary.class] || ![record[@"name"] isKindOfClass:NSString.class] || ![record[@"type"] isKindOfClass:NSNumber.class] || ![record[@"data"] isKindOfClass:NSString.class]) continue;
+        NSString *owner = [[record[@"name"] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]];
+        uint32_t ttl = [record[@"TTL"] isKindOfClass:NSNumber.class] ? (uint32_t)MAX(0, MIN(UINT32_MAX, [record[@"TTL"] doubleValue])) : 0;
+        uint32_t kind = [record[@"type"] unsignedIntValue];
+        if (kind == 5) aliases[owner] = @{@"name": [[record[@"data"] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]], @"ttl": @(ttl)};
+        else if (kind == type) {
+            uint8_t bytes[16]; int family = type == 1 ? AF_INET : AF_INET6;
+            if (inet_pton(family, [record[@"data"] UTF8String], bytes) == 1) {
+                char ip[INET6_ADDRSTRLEN]; inet_ntop(family, bytes, ip, sizeof(ip));
+                [answers addObject:@{@"owner": owner, @"address": [NSString stringWithUTF8String:ip], @"ttl": @(ttl)}];
+            }
+        }
+    }
+    uint32_t ttl = UINT32_MAX; NSMutableSet *seen = [NSMutableSet set];
+    for (NSUInteger i = 0; i < 16 && ![seen containsObject:name]; i++) {
+        [seen addObject:name]; NSMutableOrderedSet *addresses = [NSMutableOrderedSet orderedSet];
+        for (NSDictionary *answer in answers) if ([answer[@"owner"] isEqualToString:name]) { [addresses addObject:answer[@"address"]]; ttl = MIN(ttl, [answer[@"ttl"] unsignedIntValue]); }
+        if (addresses.count) return @{@"addresses": addresses.array, @"ttl": @(ttl)};
+        NSDictionary *alias = aliases[name]; if (!alias) return @{@"addresses": @[], @"ttl": @0};
+        ttl = MIN(ttl, [alias[@"ttl"] unsignedIntValue]); name = alias[@"name"];
+    }
+    return nil;
+}
+
++ (NSDictionary *)textRecordsFromJSONResponse:(NSData *)data host:(NSString *)host {
+    if (!data.length || data.length > 65535) return nil;
+    id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![object isKindOfClass:NSDictionary.class] || ![object[@"Status"] isKindOfClass:NSNumber.class] || [object[@"Status"] integerValue] != 0) return nil;
+    NSString *name = [[host lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]];
+    NSArray *questions = object[@"Question"];
+    if (questions) {
+        if (![questions isKindOfClass:NSArray.class] || questions.count != 1 || ![questions[0] isKindOfClass:NSDictionary.class]) return nil;
+        id question = questions[0];
+        if (![question[@"name"] isKindOfClass:NSString.class] || ![[[question[@"name"] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]] isEqualToString:name] || ![question[@"type"] isKindOfClass:NSNumber.class] || [question[@"type"] intValue] != 16) return nil;
+    }
+    NSArray *records = object[@"Answer"];
+    if (![records isKindOfClass:NSArray.class] || records.count > 1024) return nil;
+    NSMutableDictionary *aliases = [NSMutableDictionary dictionary]; NSMutableArray *answers = [NSMutableArray array];
+    for (id record in records) {
+        if (![record isKindOfClass:NSDictionary.class] || ![record[@"name"] isKindOfClass:NSString.class] || ![record[@"data"] isKindOfClass:NSString.class] || ![record[@"type"] isKindOfClass:NSNumber.class]) continue;
+        NSString *owner = [[record[@"name"] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]];
+        uint32_t ttl = [record[@"TTL"] isKindOfClass:NSNumber.class] ? (uint32_t)MAX(0, MIN(UINT32_MAX, [record[@"TTL"] doubleValue])) : 0;
+        if ([record[@"type"] intValue] == 5) aliases[owner] = @{@"name": [[record[@"data"] lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"."]], @"ttl": @(ttl)};
+        else if ([record[@"type"] intValue] == 16) [answers addObject:@{@"owner": owner, @"value": record[@"data"], @"ttl": @(ttl)}];
+    }
+    uint32_t ttl = UINT32_MAX; NSMutableSet *seen = [NSMutableSet set];
+    for (NSUInteger i = 0; i < 16 && ![seen containsObject:name]; i++) {
+        [seen addObject:name]; NSMutableArray *values = [NSMutableArray array];
+        for (NSDictionary *answer in answers) if ([answer[@"owner"] isEqualToString:name]) { [values addObject:answer[@"value"]]; ttl = MIN(ttl, [answer[@"ttl"] unsignedIntValue]); }
+        if (values.count) return @{@"records": values, @"ttl": @(ttl)};
+        NSDictionary *alias = aliases[name]; if (!alias) return nil;
+        ttl = MIN(ttl, [alias[@"ttl"] unsignedIntValue]); name = alias[@"name"];
+    }
+    return nil;
+}
+
 @end

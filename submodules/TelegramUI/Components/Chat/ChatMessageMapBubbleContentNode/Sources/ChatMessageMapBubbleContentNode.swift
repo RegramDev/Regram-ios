@@ -278,6 +278,7 @@ public class ChatMessageMapBubbleContentNode: ChatMessageBubbleContentNode {
                         edited: edited,
                         impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: .standalone(reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.StandaloneReactionSettings() : nil),
                         constrainedSize: CGSize(width: constrainedSize.width, height: CGFloat.greatestFiniteMagnitude),

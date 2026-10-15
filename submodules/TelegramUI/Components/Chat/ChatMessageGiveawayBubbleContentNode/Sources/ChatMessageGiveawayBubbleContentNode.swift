@@ -570,6 +570,7 @@ public class ChatMessageGiveawayBubbleContentNode: ChatMessageBubbleContentNode,
                         edited: edited,
                         impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: .trailingContent(contentWidth: 1000.0, reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.TrailingReactionSettings(displayInline: true, preferAdditionalInset: false) : nil),
                         constrainedSize: CGSize(width: constrainedSize.width - sideInsets, height: .greatestFiniteMagnitude),

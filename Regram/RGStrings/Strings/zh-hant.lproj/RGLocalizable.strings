@@ -917,13 +917,13 @@
 "NetworkPolicy.Title" = "DNS 與 IP 策略";
 "NetworkPolicy.DoH" = "自訂 DoH";
 "NetworkPolicy.Endpoint" = "HTTPS DNS 位址";
-"NetworkPolicy.InvalidURL" = "請輸入有效的 HTTPS 位址，不可包含使用者名稱、密碼或片段。";
-"NetworkPolicy.DoHNotice" = "DoH 用於 Telegram 傳輸中的代理網域解析，使用 DNS 封包格式。DC 已使用數字 IP；網頁、HTTP 介面及 Web 代理由系統解析。DoH 失敗不會自動退回系統 DNS；DoH 伺服器自身網域仍需系統 DNS。";
+"NetworkPolicy.InvalidURL" = "請輸入不含使用者名稱、密碼、查詢參數或片段的 HTTPS 位址。";
+"NetworkPolicy.DoHNotice" = "內建 DNS 使用 Google 與 Cloudflare 的 HTTPS 服務；系統 DNS 透過 iOS 解析代理網域。自訂 DoH 使用 DNS JSON，也用於已簽章備援 DC 設定的 TXT 查詢，並相容現有 DNS 封包格式的位址介面。自訂服務失敗不會改用系統 DNS；解析服務自身網域仍需系統 DNS。";
 "NetworkPolicy.IP" = "IP 版本策略";
-"NetworkPolicy.Automatic" = "自動";
+"NetworkPolicy.Automatic" = "自動（跟隨 Telegram）";
 "NetworkPolicy.IPv4" = "優先 IPv4";
 "NetworkPolicy.IPv6" = "優先 IPv6";
-"NetworkPolicy.IPNotice" = "優先策略適用於原生 Telegram 傳輸與代理網域位址選擇。保留另一個版本作為備援，不影響系統瀏覽器與其他 HTTP 服務。";
+"NetworkPolicy.IPNotice" = "適用於原生 Telegram 連線及 SOCKS5／MTProto 代理位址。優先模式保留另一版本作為備援；僅模式不會退回另一版本。網頁、更新、DNS 的 HTTP 請求及 Web 代理使用系統網路。";
 "NetworkPolicy.Apply" = "儲存並重新連線";
 "NetworkPolicy.Applied" = "網路策略已儲存。原生 Telegram 連線將重新建立。";
 "Bookmarks.Loading" = "載入中…";
@@ -953,8 +953,8 @@
 "DNSDiagnostics.Start" = "開始解析測試";
 "DNSDiagnostics.SystemDNS" = "系統 DNS";
 "DNSDiagnostics.Failed" = "沒有此版本的位址，或解析失敗";
-"DNSDiagnostics.Notice" = "分別測試 A／AAAA 位址及解析時間。DoH 繞過應用快取；系統 DNS 可能使用系統快取。時間為解析耗時，非 DC Ping。使用本頁設定且不自動儲存，離開即取消。";
-"NetworkPolicy.DNSExclusive" = "自訂 DoH 與代理頁的「使用系統 DNS」互斥，後啟用者生效。儲存後會重新連線。";
+"DNSDiagnostics.Notice" = "分別查詢 A 與 AAAA，不讀取應用程式內快取，並顯示目前策略允許的位址。耗時為 DNS 解析時間，並非 DC Ping。測試不儲存設定，離開頁面時停止。";
+"NetworkPolicy.DNSExclusive" = "選擇一種 DNS 解析方式，儲存後重新建立原生 Telegram 連線。";
 "MessageScreenshot.UnknownSender" = "未知傳送者";
 "Common.Copied" = "已複製";
 "MessageScreenshot.Unavailable" = "部分選取的訊息無法取得或不允許匯出。";
@@ -963,3 +963,40 @@
 "AppUpdate.ActivityOpen" = "開啟更新頁面";
 "AppUpdate.ActivityStale" = "等待 Regram 恢復執行後更新進度";
 "AppUpdate.ActivityDownloaded" = "已下載，開啟 Regram 完成更新準備";
+
+"NetworkPolicy.DNSMode" = "DNS 解析方式";
+
+"NetworkPolicy.BuiltInDNS" = "內建 DNS（HTTPS）";
+
+"NetworkPolicy.IPv4Only" = "僅 IPv4";
+
+"NetworkPolicy.IPv6Only" = "僅 IPv6";
+
+"NetworkPolicy.DisableBackup" = "停用備援 DC 位址探索";
+
+"NetworkPolicy.BackupNotice" = "保留已儲存及內建的 DC 位址，停止額外取得備援位址。";
+
+"NetworkPolicy.DoHFailure.network" = "無法連線至自訂 DNS 服務。";
+
+"NetworkPolicy.DoHFailure.response" = "自訂 DNS 服務傳回無效資料。";
+
+"NetworkPolicy.DoHFailure.noAddress" = "解析服務未傳回此位址族的記錄。";
+
+"DNSDiagnostics.PolicyAddresses" = "符合目前 IP 策略的位址";
+
+"DNSDiagnostics.NoPolicyAddresses" = "沒有符合目前策略的位址。";
+
+// Regram: icon selection and retained-message markers
+"AppIcon.ChangeFailed" = "無法切換圖示，請回到 Regram 後重試。";
+"RevokedMarker.Title" = "已撤回訊息標記";
+"RevokedMarker.Style" = "標記樣式";
+"RevokedMarker.Style.icon" = "圖示";
+"RevokedMarker.Style.text" = "文字";
+"RevokedMarker.Style.none" = "不顯示";
+"RevokedMarker.Text" = "標記文字";
+"RevokedMarker.DefaultText" = "已撤回";
+"RevokedMarker.Color" = "標記顏色";
+"RevokedMarker.InvalidColor" = "請輸入 #RRGGBB，留空使用時間文字的顏色。";
+"RevokedMarker.Preview" = "預覽";
+"RevokedMarker.Notice" = "自訂本機保留的已撤回訊息在時間旁的標記。文字留空使用預設標記，顏色留空跟隨主題；此設定不改變防撤回規則。";
+"RevokedMarker.Saved" = "已儲存，目前顯示的已撤回訊息已更新標記。";

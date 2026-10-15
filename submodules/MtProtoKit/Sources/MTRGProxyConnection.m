@@ -26,6 +26,7 @@
     MTSocksProxySettings *_proxy;
     NSString *_endpoint;
     NSInteger _preference;
+    bool _systemDNS;
     NSString *_successKey;
     NSArray<NSString *> *_addresses;
     NSUInteger _index;
@@ -52,7 +53,8 @@
         _sourceContext = context; _dcId = dc; _usage = usage;
         _proxy = context.apiEnvironment.socksProxySettings;
         _endpoint = context.apiEnvironment.rgDoHEndpoint; _preference = context.apiEnvironment.rgIPVersionPreference;
-        _successKey = [NSString stringWithFormat:@"%@|%u|%d|%@|%ld", _proxy.ip, _proxy.port, _proxy.secret != nil, _endpoint ?: @"system", (long)_preference];
+        _systemDNS = context.apiEnvironment.rgUseSystemDNS;
+        _successKey = [NSString stringWithFormat:@"%@|%u|%d|%@|%ld", _proxy.ip, _proxy.port, _proxy.secret != nil, _endpoint ?: (_systemDNS ? @"system" : @"builtin"), (long)_preference];
         _lookup = [[MTMetaDisposable alloc] init]; _replay = [NSMutableArray array];
     }
     return self;
@@ -72,7 +74,7 @@
         if (self->_started || self->_finished) return;
         self->_started = true;
         __weak MTRGProxyConnection *weakSelf = self;
-        [self->_lookup setDisposable:[[[MTDNS resolveProxyHostname:self->_proxy.ip dohEndpoint:self->_endpoint preference:self->_preference] deliverOn:[MTTcpConnection tcpQueue]] startWithNext:^(NSArray *addresses) {
+        [self->_lookup setDisposable:[[[MTDNS resolveProxyHostname:self->_proxy.ip dohEndpoint:self->_endpoint preference:self->_preference useSystemDNS:self->_systemDNS] deliverOn:[MTTcpConnection tcpQueue]] startWithNext:^(NSArray *addresses) {
             MTRGProxyConnection *strongSelf = weakSelf;
             if (!strongSelf || strongSelf->_finished) return;
             NSMutableArray *ordered = [addresses mutableCopy];

@@ -440,6 +440,7 @@ public class ChatMessageFactCheckBubbleContentNode: ChatMessageBubbleContentNode
                         edited: edited && !item.presentationData.isPreview,
                         impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: .trailingContent(contentWidth: nil, reactionSettings: item.presentationData.isPreview ? nil : ChatMessageDateAndStatusNode.TrailingReactionSettings(displayInline: shouldDisplayInlineDateReactions(message: EngineMessage(message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions), preferAdditionalInset: false)),
                         constrainedSize: textConstrainedSize,

@@ -73,7 +73,8 @@
 // MARK: Regram — copied with the environment, scoped to this Telegram transport.
 @property (nonatomic, copy) NSString * _Nullable rgDoHEndpoint;
 @property (nonatomic) bool rgUseSystemDNS;
-@property (nonatomic) NSInteger rgIPVersionPreference; // 0 automatic, 4 prefer IPv4, 6 prefer IPv6
+@property (nonatomic) bool rgDisableBackupAddressDiscovery;
+@property (nonatomic) NSInteger rgIPVersionPreference; // 0 automatic, 1 IPv4 only, 2 IPv6 only, 4/6 prefer a family
 @property (nonatomic) bool disableUpdates;
 @property (nonatomic) NSData * _Nullable tcpPayloadPrefix;
 @property (nonatomic) NSDictionary * _Nullable datacenterAddressOverrides;

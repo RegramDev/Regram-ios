@@ -8,7 +8,7 @@ public struct RGSettingsDestination: Hashable {
         "pro.home", "pro.messages", "pro.input", "pro.privacy", "pro.translation", "pro.media", "pro.appearance", "pro.notifications", "pro.network", "pro.tools",
         "settings.appearance", "settings.folders", "settings.chatList", "settings.profiles", "settings.stories", "settings.translation", "settings.messageActions", "settings.media", "settings.photos", "settings.stickers", "settings.recording", "settings.app",
         "settings.input", "settings.transfer", "settings.privacy",
-        "summary", "networkPolicy", "bottomBar", "llm", "stt", "updates", "linkPreview", "antiFeatures", "ghostMode", "fonts", "backup", "diagnostics", "datacenters", "bookmarks", "chatPreferences", "messageFilter", "hiddenUsers", "antiRevokeChats", "revokedMessages", "appIcons", "appBadges", "contextMenu"
+        "summary", "networkPolicy", "bottomBar", "llm", "stt", "updates", "linkPreview", "antiFeatures", "revokedMarker", "ghostMode", "fonts", "backup", "diagnostics", "datacenters", "bookmarks", "chatPreferences", "messageFilter", "hiddenUsers", "antiRevokeChats", "revokedMessages", "appIcons", "appBadges", "contextMenu"
     ]
     public init?(page: String, item: String? = nil) {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }
@@ -17,6 +17,7 @@ public struct RGSettingsDestination: Hashable {
         if page == "diagnostics", item == "datacenters" { self.page = "datacenters"; self.item = "start"; return }
         let moves: [String: String] = [
             "pro.messages:inputToolbar": "pro.input", "pro.messages:mentionAsUserIdLink": "pro.input", "pro.messages:panguSpacing": "pro.input", "pro.messages:defaultOutgoingFormatting": "pro.input", "pro.messages:chatPreferences": "pro.input",
+            "antiFeatures:revokedMarker": "revokedMarker",
             "pro.privacy:localPremium": "pro.tools", "pro.tools:diagnostics": "pro.network",
             "settings.messageActions:hideRecordingButton": "settings.input", "settings.messageActions:disableSendAsButton": "settings.input", "settings.messageActions:sendWithReturnKey": "settings.input",
             "settings.media:uploadSpeedBoost": "settings.transfer", "settings.media:downloadSpeedBoost": "settings.transfer", "settings.app:enableVoipTcp": "settings.transfer",

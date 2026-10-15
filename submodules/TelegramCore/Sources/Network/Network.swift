@@ -516,9 +516,10 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment.accessHostOverride = networkSettings?.backupHostOverride
             // MARK: Regram — DoH applies to proxy hostnames; Telegram DCs already use numeric addresses.
             let policy = RGSimpleSettings.shared.networkPolicy
-            apiEnvironment.rgUseSystemDNS = RGSimpleSettings.shared.localDNSForProxyHost && !policy.dohEnabled
+            apiEnvironment.rgUseSystemDNS = policy.useSystemDNS
             apiEnvironment.rgDoHEndpoint = policy.effectiveEndpoint
             apiEnvironment.rgIPVersionPreference = policy.ipVersion.rawValue
+            apiEnvironment.rgDisableBackupAddressDiscovery = policy.disableBackupAddresses
             
             var appDataUpdatedImpl: ((Data?) -> Void)?
             let syncValue = Atomic<Data?>(value: nil)
@@ -974,9 +975,10 @@ public final class Network: NSObject {
             let policy = RGSimpleSettings.shared.networkPolicy
             self?.context.updateApiEnvironment { environment in
                 guard let environment, let result = environment.copy() as? MTApiEnvironment else { return nil }
-                result.rgUseSystemDNS = RGSimpleSettings.shared.localDNSForProxyHost && !policy.dohEnabled
+                result.rgUseSystemDNS = policy.useSystemDNS
                 result.rgDoHEndpoint = policy.effectiveEndpoint
                 result.rgIPVersionPreference = policy.ipVersion.rawValue
+                result.rgDisableBackupAddressDiscovery = policy.disableBackupAddresses
                 return result
             }
         }

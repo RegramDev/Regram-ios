@@ -13,7 +13,7 @@ struct RGUpdateLiveActivity: Widget {
                     RGUpdateActivityIcon(size: 24)
                     Text(context.attributes.title).font(.headline)
                     Spacer()
-                    Text("\(context.attributes.version) · b\(context.attributes.build)").font(.caption).foregroundColor(.secondary)
+                    Text(verbatim: "\(context.attributes.version) · b\(context.attributes.build)").font(.caption).foregroundColor(.secondary)
                 }
                 RGUpdateActivityProgress(state: context.state, stale: rgUpdateActivityIsStale(context))
                 Link(context.state.action, destination: context.attributes.updateURL).font(.caption)
@@ -21,17 +21,20 @@ struct RGUpdateLiveActivity: Widget {
             .widgetURL(context.attributes.updateURL)
         } dynamicIsland: { context in
             DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 6) { RGUpdateActivityIcon(size: 22); Text("Regram").font(.headline) }
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.attributes.version).font(.caption).monospacedDigit()
-                }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 6) {
+                            RGUpdateActivityIcon(size: 22)
+                            Text("Regram").font(.headline).lineLimit(1)
+                            Spacer(minLength: 6)
+                            Text(verbatim: "\(context.attributes.version) · b\(context.attributes.build)")
+                                .font(.caption2).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        }
                         RGUpdateActivityProgress(state: context.state, stale: rgUpdateActivityIsStale(context))
-                        Link(context.state.action, destination: context.attributes.updateURL).font(.caption)
-                    }.padding(.top, 4)
+                        Link(context.state.action, destination: context.attributes.updateURL).font(.caption).lineLimit(1)
+                    }
+                    .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 12)
+                    .foregroundColor(.white).environment(\.colorScheme, .dark)
                 }
             } compactLeading: {
                 RGUpdateActivityIcon(size: 20)
@@ -60,17 +63,22 @@ private struct RGUpdateActivityProgress: View {
     let stale: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(stale ? state.staleLabel : state.label).lineLimit(2)
-                Spacer()
-                if state.isDeterminate { Text("\(Int(state.fraction * 100))%").monospacedDigit() }
+            HStack(spacing: 8) {
+                if !state.isDeterminate {
+                    if state.phase == "ready" || state.phase == "downloaded" {
+                        Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                    } else {
+                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .cyan)).frame(width: 16, height: 16)
+                    }
+                }
+                Text(stale ? state.staleLabel : state.label).font(.subheadline).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                if state.isDeterminate { Text("\(Int(state.fraction * 100))%").font(.subheadline).monospacedDigit().fixedSize() }
             }
             if state.isDeterminate {
                 ProgressView(value: state.fraction)
-                Text("\(ByteCountFormatter.string(fromByteCount: state.downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: state.total, countStyle: .file))").font(.caption).foregroundColor(.secondary).monospacedDigit()
-            } else if state.phase == "ready" || state.phase == "downloaded" {
-                Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
-            } else { ProgressView().progressViewStyle(.circular) }
+                Text("\(ByteCountFormatter.string(fromByteCount: state.downloaded, countStyle: .file)) / \(ByteCountFormatter.string(fromByteCount: state.total, countStyle: .file))").font(.caption2).foregroundColor(.secondary).monospacedDigit()
+            }
         }
     }
 }
@@ -86,7 +94,7 @@ private struct RGUpdateActivityIndicator: View {
             Circle().trim(from: 0, to: state.fraction).stroke(Color.cyan, style: StrokeStyle(lineWidth: 2, lineCap: .round)).rotationEffect(.degrees(-90))
         }.frame(width: 18, height: 18).accessibilityLabel(Text("\(Int(state.fraction * 100))%")) }
         else if state.phase == "ready" || state.phase == "downloaded" { Image(systemName: "checkmark.circle.fill").foregroundColor(.green) }
-        else { ProgressView().progressViewStyle(.circular).frame(width: 18, height: 18) }
+        else { ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .cyan)).frame(width: 18, height: 18) }
     }
 }
 

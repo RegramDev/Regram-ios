@@ -300,6 +300,7 @@ public class ChatMessageContactBubbleContentNode: ChatMessageBubbleContentNode {
                         edited: edited,
                         impressionCount: viewCount,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: .trailingContent(contentWidth: 1000.0, reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.TrailingReactionSettings(displayInline: true, preferAdditionalInset: false) : nil),
                         constrainedSize: CGSize(width: constrainedSize.width - sideInsets, height: .greatestFiniteMagnitude),

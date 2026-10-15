@@ -49,18 +49,17 @@ import RGStrings
     @available(iOS 16.1, *)
     private func apply(_ snapshot: Snapshot, generation token: UUID) async {
         let release = snapshot.release
+        let updateURL = RGUpdateSettingsLink.current
         let activities = Activity<RGUpdateActivityAttributes>.activities
-        for activity in activities where activity.attributes.build != release.build { await finish(activity) }
+        // Retire persisted activities from versions that chose a web/wallet URL protocol.
+        for activity in activities where activity.attributes.build != release.build || activity.attributes.updateURL != updateURL { await finish(activity) }
         guard token == generation, !Task.isCancelled else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let labels = snapshot.language
         let state = RGUpdateActivityAttributes.ContentState(phase: snapshot.phase, label: snapshot.labelKey.i18n(labels), action: "AppUpdate.ActivityOpen".i18n(labels), staleLabel: "AppUpdate.ActivityStale".i18n(labels), downloaded: snapshot.downloaded, total: release.size)
-        var activity = activities.first { $0.attributes.build == release.build && $0.activityState != .ended && $0.activityState != .dismissed }
+        var activity = activities.first { $0.attributes.build == release.build && $0.attributes.updateURL == updateURL && $0.activityState != .ended && $0.activityState != .dismissed }
         if activity == nil, snapshot.mayStart, UIApplication.shared.applicationState == .active, rejectedBuild != release.build {
-            let schemes = (Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []).flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
-            let scheme = schemes.first { !["tg", "telegram", "http", "https"].contains($0.lowercased()) } ?? "tg"
-            var url = URLComponents(); url.scheme = scheme; url.host = "rg"; url.path = "/settings"; url.queryItems = [URLQueryItem(name: "page", value: "updates")]
-            let attributes = RGUpdateActivityAttributes(build: release.build, version: release.version, title: "AppUpdate.Title".i18n(labels), updateURL: url.url!)
+            let attributes = RGUpdateActivityAttributes(build: release.build, version: release.version, title: "AppUpdate.Title".i18n(labels), updateURL: updateURL)
             do {
                 if #available(iOS 16.2, *) { activity = try Activity.request(attributes: attributes, content: ActivityContent(state: state, staleDate: staleDate(snapshot)), pushType: nil) }
                 else { activity = try Activity.request(attributes: attributes, contentState: state, pushType: nil) }

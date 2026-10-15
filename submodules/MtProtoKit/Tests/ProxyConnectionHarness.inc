@@ -47,6 +47,7 @@ static NSMutableDictionary<NSValue *, NSDictionary *> *childState;
 + (MTSignal *)resolveHostnameUniversal:(NSString *)host port:(int32_t)port { abort(); }
 + (MTSignal *)resolveHostname:(NSString *)host port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference { abort(); }
 + (MTSignal *)resolveProxyHostname:(NSString *)host dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference { return [MTSignal new]; }
++ (MTSignal *)resolveProxyHostname:(NSString *)host dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference useSystemDNS:(bool)useSystemDNS { return [MTSignal new]; }
 @end
 @implementation MTTcpConnection
 + (MTQueue *)tcpQueue { static MTQueue *queue; if (!queue) queue = [MTQueue new]; return queue; }

@@ -1,3 +1,4 @@
+#import "MTRGIPPolicy.h" // MARK: Regram
 #import "MTDiscoverConnectionSignals.h"
 
 #import "MTTcpConnection.h"
@@ -260,7 +261,12 @@
 + (MTSignal *)discoverSchemeWithContext:(MTContext *)context datacenterId:(NSInteger)datacenterId addressList:(NSArray *)addressList media:(bool)media isProxy:(bool)isProxy
 {
     MTSocksProxySettings *proxySettings = context.apiEnvironment.socksProxySettings;
-    NSArray<MTDatacenterAddress *> *bestAddressList = [self probeAddressesForAddressList:addressList media:media isProxy:isProxy proxySettings:proxySettings];
+    // MARK: Regram — filter before reducing proxy probes, so IPv6-only can discover an IPv6 address.
+    NSMutableArray *allowedAddresses = [NSMutableArray array];
+    for (MTDatacenterAddress *address in addressList) {
+        if (!MTRGIsNumericIP(address.ip) || MTRGAllowsIP(address.ip, context.apiEnvironment.rgIPVersionPreference)) [allowedAddresses addObject:address];
+    }
+    NSArray<MTDatacenterAddress *> *bestAddressList = [self probeAddressesForAddressList:allowedAddresses media:media isProxy:isProxy proxySettings:proxySettings];
     NSArray<NSNumber *> *alternatePorts = [self alternatePortsForProxySettings:proxySettings];
 
     NSMutableArray *bestTcp4Signals = [[NSMutableArray alloc] init];
@@ -333,8 +339,8 @@
     MTSignal *optimalTcp6Match = [[[[MTSignal mergeSignals:bestTcp6Signals] then:optimalDelaySignal] restart] take:1];
     
     // MARK: Regram — prefer one family without disabling the reachable fallback.
-    if (context.apiEnvironment.rgIPVersionPreference == 6 && bestTcp6Signals.count > 0) firstTcp4Match = [firstTcp4Match delay:0.35 onQueue:retryQueue];
-    if (context.apiEnvironment.rgIPVersionPreference == 4 && bestTcp4Signals.count > 0) firstTcp6Match = [firstTcp6Match delay:0.35 onQueue:retryQueue];
+    if (context.apiEnvironment.rgIPVersionPreference == 6 && bestTcp6Signals.count > 0) firstTcp4Match = [firstTcp4Match delay:2.0 onQueue:retryQueue];
+    if (context.apiEnvironment.rgIPVersionPreference == 4 && bestTcp4Signals.count > 0) firstTcp6Match = [firstTcp6Match delay:2.0 onQueue:retryQueue];
     MTSignal *anySignal = [[MTSignal mergeSignals:@[firstTcp4Match, firstTcp6Match, firstHttpMatch]] take:1];
     MTSignal *optimalSignal = [[MTSignal mergeSignals:@[optimalTcp4Match, optimalTcp6Match]] take:1];
     

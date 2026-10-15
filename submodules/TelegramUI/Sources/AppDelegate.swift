@@ -874,6 +874,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             |> distinctUntilChanged
         )
         
+        // MARK: Regram — UIKit accepts one icon operation at a time.
+        let iconSwitcher = RGAppIconSwitchCoordinator(current: { application.alternateIconName }, apply: { name, completion in
+            guard application.supportsAlternateIcons else { completion(false); return }
+            application.setAlternateIconName(name) { error in
+                DispatchQueue.main.async { completion(error == nil) }
+            }
+        }, changed: {
+            NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil)
+        })
         let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: appGroupUrl.path, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
             var parsedUrl = URL(string: url)
             if let parsed = parsedUrl {
@@ -1079,7 +1088,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "RGPro", imageName: "RGPro"),
                     PresentationAppIcon(name: "RGDay", imageName: "RGDay"),
                     PresentationAppIcon(name: "RGGold", imageName: "RGGold"),
-                    RGSimpleSettings.shared.duckyAppIconAvailable ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
+                    (RGSimpleSettings.shared.duckyAppIconAvailable || RGAppIconNames.canonicalName(application.alternateIconName) == "RGDucky") ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
                     PresentationAppIcon(name: "RGNeon", imageName: "RGNeon"),
                     PresentationAppIcon(name: "RGNeonBlue", imageName: "RGNeonBlue"),
                     PresentationAppIcon(name: "RGGlass", imageName: "RGGlass"),
@@ -1106,11 +1115,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack"),
                 ]
 
-                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" || RGAppIconNames.canonicalName(application.alternateIconName) == "RGBeta" {
                     icons.append(PresentationAppIcon(name: "RGBeta", imageName: "RGBeta"))
                 }
                 
-                return icons
+                return icons.filter { !$0.name.isEmpty && !$0.imageName.isEmpty }
             } else {
                 return []
             }
@@ -1126,16 +1135,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 completion(false)
                 return
             }
-            application.setAlternateIconName(name, completionHandler: { error in
-                if let error = error {
-                    Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
-                }
-                // MARK: Regram — UIKit may finish on a background queue; settings updates use main.
-                DispatchQueue.main.async {
-                    if error == nil { NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil) }
-                    completion(error == nil)
-                }
-            })
+            // MARK: Regram — dispatch even callers arriving from a database callback onto main.
+            DispatchQueue.main.async { iconSwitcher.request(name, completion: completion) }
         }, forceOrientation: { orientation in
             let value = orientation.rawValue
             if #available(iOSApplicationExtension 16.0, iOS 16.0, *) {

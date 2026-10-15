@@ -2031,7 +2031,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     UIView.transition(with: strongSelf.view, duration: 0.3, options: [.transitionCrossDissolve], animations: {
                     }, completion: nil)
                 }
-                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.3, curve: .linear))
+                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.3, curve: .linear))
             case .select:
                 strongSelf.state = strongSelf.state.withSelectedMessageIds(Set())
                 if let (layout, navigationHeight) = strongSelf.validLayout {
@@ -5233,7 +5233,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         controller.dismissAllTooltips()
         
         if self.isSettings {
-            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.4, curve: .spring))
+            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.4, curve: .spring))
         }
         
         let transition: ContainedViewLayoutTransition = .animated(duration: 0.35, curve: .easeInOut)
@@ -6460,7 +6460,43 @@ public struct PeerInfoSwitchToMediaTarget {
     }
 }
 
+// MARK: Regram — the hidden root settings tab has no navigation stack to pop.
+private final class RGRootSettingsBackGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+    let canBegin: () -> Bool
+    init(canBegin: @escaping () -> Bool) { self.canBegin = canBegin }
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard canBegin(), let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+        let velocity = pan.velocity(in: pan.view)
+        let distance = pan.translation(in: pan.view)
+        return (velocity.x > 0 && abs(velocity.x) > abs(velocity.y)) || (distance.x > 0 && abs(distance.x) > abs(distance.y))
+    }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return otherGestureRecognizer.view is UIScrollView
+    }
+}
+
 public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortcutResponder {
+    // MARK: Regram
+    private var rgRootBackGestureDelegate: RGRootSettingsBackGestureDelegate?
+    private var rgRootBackGesture: UIScreenEdgePanGestureRecognizer?
+    private var rgCanReturnToChats: Bool {
+        guard self.isNodeLoaded, let tabs = self.parent as? TabBarController,
+              let navigation = self.navigationController as? NavigationController else { return false }
+        return RGHiddenTabBarPolicy.canReturnToChats(
+            isTabBarVisible: RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible,
+            isRootSettings: self.isSettings && tabs.currentController === self,
+            isTopController: navigation.viewControllers.last === tabs,
+            editing: self.controllerNode.state.isEditing,
+            avatarExpanded: self.controllerNode.headerNode.isAvatarExpanded
+        )
+    }
+    @objc private func rgRootBackSwiped(_ gesture: UIScreenEdgePanGestureRecognizer) {
+        guard gesture.state == .ended, self.rgCanReturnToChats else { return }
+        if RGHiddenTabBarPolicy.completeBackGesture(distance: Double(gesture.translation(in: self.view).x), width: Double(self.view.bounds.width), velocity: Double(gesture.velocity(in: self.view).x)) {
+            (self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface)?.openChats()
+        }
+    }
+
     let context: AccountContext
     let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     public let peerId: PeerId
@@ -6966,6 +7002,17 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         self._readyInternal.set(self.controllerNode.ready.get())
         
         super.displayNodeDidLoad()
+        // MARK: Regram — pushed settings pages continue to use native navigation gestures.
+        if self.isSettings {
+            let delegate = RGRootSettingsBackGestureDelegate(canBegin: { [weak self] in self?.rgCanReturnToChats == true })
+            let gesture = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(self.rgRootBackSwiped(_:)))
+            gesture.edges = .left
+            gesture.delegate = delegate
+            self.rgRootBackGestureDelegate = delegate
+            self.rgRootBackGesture = gesture
+            self.view.addGestureRecognizer(gesture)
+        }
+
     }
     
     fileprivate var movingInHierarchy = false

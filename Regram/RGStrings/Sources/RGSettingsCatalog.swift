@@ -13,7 +13,7 @@ public struct RGSettingsCatalogEntry: Hashable {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
         if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -127,6 +127,11 @@ public enum RGSettingsCatalog {
         .init("pro.privacy", "privacySettings", "Settings.Category.privacy"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
+        .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),
+        .init("revokedMarker", "style", "RevokedMarker.Style"),
+        .init("revokedMarker", "text", "RevokedMarker.Text"),
+        .init("revokedMarker", "color", "RevokedMarker.Color"),
+        .init("revokedMarker", "apply", "NetworkPolicy.Apply"),
         .init("antiFeatures", "saveEditHistory", "AntiFeatures.EditHistory"),
         .init("antiFeatures", "antiAutoDelete", "AntiFeatures.AutoDelete"),
         .init("antiFeatures", "antiSelfDestruct", "AntiFeatures.SelfDestruct"),
@@ -139,9 +144,10 @@ public enum RGSettingsCatalog {
         .init("ghostMode", "ghostDontSendTyping", "Ghost.DontSendTyping"),
         .init("pro.messages", "summarySettings", "Summary.Title", keywords: "AI summary summarize 总结 摘要 總結"),
         .init("pro.network", "networkPolicy", "NetworkPolicy.Title", keywords: "DNS DoH IP IPv4 IPv6"),
-        .init("networkPolicy", "enabled", "NetworkPolicy.DoH"),
+        .init("networkPolicy", "enabled", "NetworkPolicy.DNSMode", keywords: "DoH DNS 系统 内置 Google Cloudflare IPv4 IPv6"),
         .init("networkPolicy", "endpoint", "NetworkPolicy.Endpoint"),
         .init("networkPolicy", "ipVersion", "NetworkPolicy.IP"),
+        .init("networkPolicy", "disableBackup", "NetworkPolicy.DisableBackup"),
         .init("networkPolicy", "test", "DNSDiagnostics.Title"),
         .init("networkPolicy", "apply", "NetworkPolicy.Apply"),
         .init("summary", "enabled", "Summary.Enabled"),

@@ -840,6 +840,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     result->_socksProxySettings = self.socksProxySettings;
@@ -870,6 +871,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -897,6 +899,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -924,6 +927,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     
@@ -951,6 +955,7 @@ NSString *suffix = @"";
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
     result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
     result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
     result.rgIPVersionPreference = self.rgIPVersionPreference;
     

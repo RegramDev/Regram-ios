@@ -926,13 +926,13 @@ Matching is case-insensitive.";
 "NetworkPolicy.Title" = "DNS and IP policy";
 "NetworkPolicy.DoH" = "Custom DoH";
 "NetworkPolicy.Endpoint" = "HTTPS DNS endpoint";
-"NetworkPolicy.InvalidURL" = "Enter a valid HTTPS URL without a username, password or fragment.";
-"NetworkPolicy.DoHNotice" = "DoH resolves proxy hostnames used by the Telegram transport, using DNS wire format. DCs already use numeric IPs. Webpages, HTTP APIs and Web proxies use system DNS. DoH failure does not downgrade to system DNS. Bootstrapping the resolver hostname still uses system DNS.";
+"NetworkPolicy.InvalidURL" = "Enter an HTTPS URL without a username, password, query or fragment.";
+"NetworkPolicy.DoHNotice" = "Built-in DNS uses Google and Cloudflare over HTTPS. System DNS resolves proxy hostnames through iOS. Custom DoH uses DNS JSON and also serves signed backup-DC TXT queries; existing wire-format address endpoints remain compatible. A custom resolver failure never downgrades to system DNS. Resolver hostnames still use system DNS to bootstrap.";
 "NetworkPolicy.IP" = "IP version policy";
-"NetworkPolicy.Automatic" = "Automatic";
+"NetworkPolicy.Automatic" = "Automatic (Telegram defaults)";
 "NetworkPolicy.IPv4" = "Prefer IPv4";
 "NetworkPolicy.IPv6" = "Prefer IPv6";
-"NetworkPolicy.IPNotice" = "Preference applies to native Telegram transport and proxy hostname address selection. The other family remains available as a fallback. System browsing and other HTTP services are unaffected.";
+"NetworkPolicy.IPNotice" = "Applies to native Telegram connections and SOCKS5/MTProto proxy addresses. Preferred modes allow the other family as a fallback; only modes do not. Webpages, updates, DNS HTTP requests and Web proxies use the system network.";
 "NetworkPolicy.Apply" = "Save and reconnect";
 "NetworkPolicy.Applied" = "Network policy saved. Native Telegram connections will reconnect.";
 "Bookmarks.Loading" = "Loading…";
@@ -962,8 +962,8 @@ Matching is case-insensitive.";
 "DNSDiagnostics.Start" = "Start resolution test";
 "DNSDiagnostics.SystemDNS" = "System DNS";
 "DNSDiagnostics.Failed" = "No address for this family, or resolution failed";
-"DNSDiagnostics.Notice" = "Test A and AAAA results and resolution duration separately. DoH bypasses the app cache; system DNS may use its cache. Duration is DNS resolution, not DC ping. Tests use this page’s configuration without saving it and cancel on leaving.";
-"NetworkPolicy.DNSExclusive" = "Custom DoH and “Use system DNS” on the proxy page are mutually exclusive. The most recently enabled option takes effect, and saving reconnects transport.";
+"DNSDiagnostics.Notice" = "Query A and AAAA independently without the app cache, then show addresses allowed by the selected policy. The duration measures DNS resolution, not DC ping. This test does not save settings and cancels when you leave.";
+"NetworkPolicy.DNSExclusive" = "Select one DNS resolution mode. Saving reconnects native Telegram transport.";
 "MessageScreenshot.UnknownSender" = "Unknown sender";
 "Common.Copied" = "Copied";
 "MessageScreenshot.Unavailable" = "Some selected messages are unavailable or cannot be exported.";
@@ -972,3 +972,40 @@ Matching is case-insensitive.";
 "AppUpdate.ActivityOpen" = "Open update page";
 "AppUpdate.ActivityStale" = "Progress will refresh when Regram can run";
 "AppUpdate.ActivityDownloaded" = "Downloaded. Open Regram to finish preparing the update.";
+
+"NetworkPolicy.DNSMode" = "DNS resolution";
+
+"NetworkPolicy.BuiltInDNS" = "Built-in DNS (HTTPS)";
+
+"NetworkPolicy.IPv4Only" = "IPv4 only";
+
+"NetworkPolicy.IPv6Only" = "IPv6 only";
+
+"NetworkPolicy.DisableBackup" = "Disable backup DC discovery";
+
+"NetworkPolicy.BackupNotice" = "Keep saved and built-in DC addresses, but stop additional backup-address discovery.";
+
+"NetworkPolicy.DoHFailure.network" = "Unable to connect to the custom DNS service.";
+
+"NetworkPolicy.DoHFailure.response" = "The custom DNS service returned an invalid response.";
+
+"NetworkPolicy.DoHFailure.noAddress" = "The resolver returned no address for this family.";
+
+"DNSDiagnostics.PolicyAddresses" = "Addresses allowed by the IP policy";
+
+"DNSDiagnostics.NoPolicyAddresses" = "No address matches the selected policy.";
+
+// Regram: icon selection and retained-message markers
+"AppIcon.ChangeFailed" = "Unable to change the icon. Please try again when Regram is active.";
+"RevokedMarker.Title" = "Deleted-message marker";
+"RevokedMarker.Style" = "Marker style";
+"RevokedMarker.Style.icon" = "Icon";
+"RevokedMarker.Style.text" = "Text";
+"RevokedMarker.Style.none" = "Hidden";
+"RevokedMarker.Text" = "Marker text";
+"RevokedMarker.DefaultText" = "Deleted";
+"RevokedMarker.Color" = "Marker color";
+"RevokedMarker.InvalidColor" = "Enter #RRGGBB, or leave blank to follow the timestamp color.";
+"RevokedMarker.Preview" = "Preview";
+"RevokedMarker.Notice" = "Customize the marker beside the timestamp of locally retained deleted messages. Leave text blank for the default label and color blank to follow the theme. This does not change deletion rules.";
+"RevokedMarker.Saved" = "Saved. Visible retained messages now use this marker.";

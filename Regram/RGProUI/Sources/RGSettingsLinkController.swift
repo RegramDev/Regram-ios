@@ -43,6 +43,7 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     case "chatPreferences": return rgChatPreferencesController(context: context, focusSetting: focus)
     case "messageFilter": return rgMessageFilterController(context: context, presentationData: presentationData)
     case "hiddenUsers": return rgHiddenUsersController(context: context)
+    case "revokedMarker": return rgRevokedMarkerController(context: context, focusSetting: focus)
     case "antiRevokeChats": return rgAntiRevokeChatsController(context: context)
     case "revokedMessages": return rgRevokedMessagesController(context: context)
     case "appIcons": return themeSettingsController(context: context, focusOnItemTag: .icon)

@@ -132,6 +132,7 @@ public class ChatMessageRestrictedBubbleContentNode: ChatMessageBubbleContentNod
                         edited: edited,
                         impressionCount: viewCount,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: .trailingContent(contentWidth: textLayout.trailingLineWidth, reactionSettings: ChatMessageDateAndStatusNode.TrailingReactionSettings(displayInline: shouldDisplayInlineDateReactions(message: EngineMessage(message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions), preferAdditionalInset: false)),
                         constrainedSize: textConstrainedSize,

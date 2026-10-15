@@ -76,7 +76,7 @@ Preview availability depends on Telegram and the preview services. Unavailable m
 - No local account-count cap; Telegram server login rules still apply.
 - Category-based JSON settings backup and restore, excluding login sessions, chat databases, certificates, and API keys.
 - DC1–DC5 connection tests on a separate page: initial connection request, three subsequent samples, average/minimum latency, variation and failures. Copied results contain only the five DC average ping values.
-- Opt-in custom DoH for proxy hostnames in the native Telegram transport, with automatic/prefer IPv4/prefer IPv6 strategies and reachable fallback.
+- Built-in HTTPS DNS, system DNS or opt-in custom DoH, with automatic, IPv4 only, prefer IPv4, prefer IPv6 and IPv6 only policies. Preferred modes allow fallback; only modes enforce the selected address family.
 - Hostname proxies retain multiple IPv4/IPv6 candidates, try them in policy order and rotate after failure or four seconds without a response. Each attempt starts a fresh handshake; successful addresses are remembered briefly.
 - Media/filter diagnostics, font cache management, and local data cleanup.
 - Update checks and IPA downloads from this repository's GitHub Releases, with size and SHA-256 validation.
@@ -171,8 +171,10 @@ Bookmarks are under **Settings → below Saved Messages → Message Bookmarks & 
 
 Configure summaries under **Regram Pro → Chats & Messages → Message summary API**. The feature is off by default and its menu and selection-toolbar buttons stay hidden while disabled. Time-range collection is limited to 5000 messages and 64 KB text; exceeding a limit requires a smaller interval instead of silently truncating. Selected-message requests allow at most 100 messages. Attachments are excluded. Secret chats, ephemeral media and protected messages are excluded. Sticker archives are limited to 500 files, 32 MiB per file and 256 MiB per pack. Temporary files are removed after cancellation, failure or sharing. An archive does not recreate a deleted server-side pack.
 
-**Regram Pro → Network & Transfers → DNS and IP policy** configures DoH and IP preference. DoH uses HTTPS DNS wire messages for proxy hostnames; DCs already use numeric IPs. Webpages, HTTP APIs and Web proxies use system DNS. DoH failures do not silently downgrade; bootstrapping the resolver hostname still uses system DNS.
+**Regram Pro → Network & Transfers → DNS and IP policy** configures built-in HTTPS DNS (Google/Cloudflare), system resolution or custom DoH. Custom resolvers use DNS JSON with wire-format compatibility for address queries, and also serve backup-DC TXT lookups. Backup configurations retain signature and validity checks; additional backup discovery can be disabled. Native DC addresses and proxy endpoints obey the IP policy. Webpages, HTTP APIs and Web proxies use the system network. Custom resolver failures never downgrade to system DNS; resolver hostnames still use system DNS to bootstrap.
 
-DC average-copy and summary-copy buttons immediately show a copied confirmation. DNS and IP policy includes an on-demand A/AAAA diagnostic page showing resolved addresses and elapsed lookup time, bypassing the app DNS cache without family fallback. This measures DNS lookup time, not DC Ping. The proxy page’s Use system DNS switch and DoH are mutually exclusive; saving reconnects the native transport immediately.
+DC average-copy and summary-copy buttons immediately show a copied confirmation. DNS and IP policy includes an on-demand A/AAAA diagnostic page showing resolved addresses and elapsed lookup time, bypassing the app DNS cache without family fallback. This measures DNS lookup time, not DC Ping. The resolution-mode picker replaces the duplicate proxy-page DNS switch; saving reconnects the native transport immediately.
 
 Automatic bottom-bar width balances readable labels, native selection effects and comfortable tap targets. More tabs use the available width; the bar remains centered. Manual percentage width is preserved.
+
+Retained deleted messages support an icon, a custom text marker or no marker, with a custom marker color or the theme’s timestamp color. Configure this under **Privacy & Filters → Anti-deletion & Restrictions → Deleted-message marker**.

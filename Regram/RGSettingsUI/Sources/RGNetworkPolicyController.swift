@@ -7,30 +7,42 @@ import Display
 import RGSwiftUI
 import RGSimpleSettings
 import RGStrings
+import MtProtoKit
 
 private struct RGNetworkPolicyView: View {
     @Environment(\.lang) private var lang
     @State private var policy = RGSimpleSettings.shared.networkPolicy
+    @State private var dnsFailure: String?
     let saved: () -> Void
     let openTest: (RGNetworkPolicy) -> Void
     var body: some View {
         Form {
             Section(footer: Text("NetworkPolicy.DoHNotice".i18n(lang))) {
-                Toggle("NetworkPolicy.DoH".i18n(lang), isOn: $policy.dohEnabled).rgSettingsLink("enabled")
-                TextField("NetworkPolicy.Endpoint".i18n(lang), text: $policy.endpoint, prompt: Text("https://example.com/dns-query")).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().rgSettingsLink("endpoint")
-                Text("NetworkPolicy.DNSExclusive".i18n(lang)).font(.footnote).foregroundColor(.secondary)
+                Picker("NetworkPolicy.DNSMode".i18n(lang), selection: $policy.dnsMode) {
+                    ForEach(RGNetworkPolicy.DNSMode.allCases, id: \.self) { mode in Text(mode.titleKey.i18n(lang)).tag(mode) }
+                }.pickerStyle(.menu).rgSettingsLink("enabled")
+                TextField("NetworkPolicy.Endpoint".i18n(lang), text: $policy.endpoint, prompt: Text("https://dns.google/resolve")).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().rgSettingsLink("endpoint")
+                if policy.dohEnabled, let dnsFailure {
+                    Text(("NetworkPolicy.DoHFailure." + dnsFailure).i18n(lang)).font(.footnote).foregroundColor(.secondary)
+                }
                 if policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint) { Text("NetworkPolicy.InvalidURL".i18n(lang)).foregroundColor(.secondary) }
             }
             Section(footer: Text("NetworkPolicy.IPNotice".i18n(lang))) {
                 Picker("NetworkPolicy.IP".i18n(lang), selection: $policy.ipVersion) {
-                    Text("NetworkPolicy.Automatic".i18n(lang)).tag(RGNetworkPolicy.IPVersion.automatic)
-                    Text("NetworkPolicy.IPv4".i18n(lang)).tag(RGNetworkPolicy.IPVersion.ipv4)
-                    Text("NetworkPolicy.IPv6".i18n(lang)).tag(RGNetworkPolicy.IPVersion.ipv6)
+                    ForEach(RGNetworkPolicy.IPVersion.allCases, id: \.self) { version in
+                        Text(version.titleKey.i18n(lang)).tag(version)
+                    }
                 }.pickerStyle(.menu).rgSettingsLink("ipVersion")
+            }
+            Section(footer: Text("NetworkPolicy.BackupNotice".i18n(lang))) {
+                Toggle("NetworkPolicy.DisableBackup".i18n(lang), isOn: $policy.disableBackupAddresses).rgSettingsLink("disableBackup")
             }
             Button("DNSDiagnostics.Title".i18n(lang)) { openTest(policy) }.rgSettingsLink("test")
             Button("NetworkPolicy.Apply".i18n(lang)) { RGSimpleSettings.shared.networkPolicy = policy; saved() }.disabled(policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint)).rgSettingsLink("apply")
         }.onReceive(NotificationCenter.default.publisher(for: RGNetworkPolicy.didChange)) { _ in policy = RGSimpleSettings.shared.networkPolicy }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("Regram.DNS.FailureChanged"))) { _ in dnsFailure = MTRGDNSDiagnostics.lastFailure(endpoint: policy.endpoint) }
+        .onChange(of: policy.endpoint) { value in dnsFailure = MTRGDNSDiagnostics.lastFailure(endpoint: value) }
+        .onAppear { dnsFailure = MTRGDNSDiagnostics.lastFailure(endpoint: policy.endpoint) }
     }
 }
 public func rgNetworkPolicyController(context: AccountContext, focusSetting: String? = nil) -> ViewController {

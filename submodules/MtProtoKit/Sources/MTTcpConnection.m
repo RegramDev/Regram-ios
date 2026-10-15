@@ -1,3 +1,4 @@
+#import "MTRGIPPolicy.h" // MARK: Regram
 #import "MTTcpConnection.h"
 
 #import <MtProtoKit/MTLogging.h>
@@ -817,6 +818,7 @@ struct ctr_state {
 {
     NSString *_rgDoHEndpoint; // MARK: Regram
     NSInteger _rgIPVersionPreference;
+    bool _rgUseSystemDNS;
     id<EncryptionProvider> _encryptionProvider;
     
     id<MTTcpConnectionInterface> _socket;
@@ -919,6 +921,7 @@ struct ctr_state {
         _scheme = scheme;
         _rgDoHEndpoint = context.apiEnvironment.rgDoHEndpoint; // MARK: Regram
         _rgIPVersionPreference = context.apiEnvironment.rgIPVersionPreference;
+        _rgUseSystemDNS = context.apiEnvironment.rgUseSystemDNS;
         
         _interface = interface;
         _usageCalculationInfo = usageCalculationInfo;
@@ -1019,6 +1022,13 @@ struct ctr_state {
 {
     [[MTTcpConnection tcpQueue] dispatchOnQueue:^
     {
+        // MARK: Regram — enforce strict modes even for literal proxy/override IPs before opening a socket.
+        if (_closed) return;
+        NSString *outbound = _socksIp ?: _mtpIp ?: _scheme.address.ip;
+        if (!_isWebProxy && MTRGIsNumericIP(outbound) && !MTRGAllowsIP(outbound, _rgIPVersionPreference)) {
+            [self closeAndNotifyWithError:true];
+            return;
+        }
         if (_socket == nil)
         {
             // The injected interface must be paired with `_isWebProxy`, because the WEB
@@ -1087,7 +1097,7 @@ struct ctr_state {
                 
                 if (isHostname) {
                     int32_t port = _socksPort;
-                    resolveSignal = [(_rgDoHEndpoint.length || _rgIPVersionPreference != 0 ? [MTDNS resolveHostname:_socksIp port:port dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference] : (_forceLocalDNS ? [MTDNS resolveHostnameNative:_socksIp port:port] : [MTDNS resolveHostnameUniversal:_socksIp port:port])) map:^id(NSString *resolvedIp) {
+                    resolveSignal = [[[MTDNS resolveProxyHostname:_socksIp dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference useSystemDNS:_rgUseSystemDNS] map:^id(NSArray *addresses) { return addresses.firstObject; }] map:^id(NSString *resolvedIp) {
                         return [[MTTcpConnectionData alloc] initWithIp:resolvedIp port:port isSocks:true];
                     }];
                 } else {
@@ -1105,7 +1115,7 @@ struct ctr_state {
                 
                 if (isHostname) {
                     int32_t port = _mtpPort;
-                    resolveSignal = [(_rgDoHEndpoint.length || _rgIPVersionPreference != 0 ? [MTDNS resolveHostname:_mtpIp port:port dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference] : (_forceLocalDNS ? [MTDNS resolveHostnameNative:_mtpIp port:port] : [MTDNS resolveHostnameUniversal:_mtpIp port:port])) map:^id(NSString *resolvedIp) {
+                    resolveSignal = [[[MTDNS resolveProxyHostname:_mtpIp dohEndpoint:_rgDoHEndpoint preference:_rgIPVersionPreference useSystemDNS:_rgUseSystemDNS] map:^id(NSArray *addresses) { return addresses.firstObject; }] map:^id(NSString *resolvedIp) {
                         return [[MTTcpConnectionData alloc] initWithIp:resolvedIp port:port isSocks:false];
                     }];
                 } else {

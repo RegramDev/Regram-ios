@@ -5,6 +5,6 @@ swift_library(
     module_name = "RGAppUpdate",
     srcs = glob(["Sources/**/*.swift"]),
     copts = ["-warnings-as-errors"],
-    deps = ["//Regram/RGUpdateActivity", "//Regram/RGStrings", "//Regram/RGUpdateSigner:RGUpdateSigner", "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit"],
+    deps = ["//submodules/BuildConfig", "//Regram/RGUpdateActivity", "//Regram/RGStrings", "//Regram/RGUpdateSigner:RGUpdateSigner", "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit"],
     visibility = ["//visibility:public"],
 )

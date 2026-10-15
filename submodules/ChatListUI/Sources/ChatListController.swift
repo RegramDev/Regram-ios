@@ -4859,7 +4859,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         
         completion?()
         
-        (self.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: transition)
+        (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: transition)
         
         self.isSearchActive = false
         if let navigationController = self.navigationController as? NavigationController {

@@ -43,6 +43,7 @@ HEADER = r'''
 @property MTSocksProxySettings *socksProxySettings;
 @property NSString *rgDoHEndpoint;
 @property NSInteger rgIPVersionPreference;
+@property bool rgUseSystemDNS;
 @end
 @interface MTContext : NSObject
 @property MTApiEnvironment *apiEnvironment;

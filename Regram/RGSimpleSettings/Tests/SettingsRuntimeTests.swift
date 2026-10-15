@@ -35,6 +35,19 @@ extension UserDefaults {
         settings.applyPreferences(["customDoHEnabled": .bool(true), "localDNSForProxyHost": .bool(true)])
         expect(settings.networkPolicy.dohEnabled && !settings.localDNSForProxyHost && !group.bool(forKey: "localDNSForProxyHost"), "Conflicting imported DNS choices must normalize before reconnect")
         expect(RGNetworkPolicy(dohEnabled: true, endpoint: "bad").effectiveEndpoint == "invalid-doh-endpoint", "Invalid enabled DoH must fail closed, not silently downgrade")
+        for version in RGNetworkPolicy.IPVersion.allCases {
+            var policy = settings.networkPolicy; policy.ipVersion = version; policy.disableBackupAddresses = true
+            for mode in RGNetworkPolicy.DNSMode.allCases {
+                policy.dnsMode = mode; settings.networkPolicy = policy
+                expect(settings.networkPolicy == policy && RGNetworkPolicy(defaults: group) == policy, "All five IP policies and three DNS modes must persist to both stores")
+            }
+        }
+        expect(RGNetworkPolicy.IPVersion.ipv4.rawValue == 4 && RGNetworkPolicy.IPVersion.ipv6.rawValue == 6, "Existing preferred-mode values must retain their meaning")
+        settings.revokedMarker = RGRevokedMarker(style: .text, text: "  test\n撤回  ", color: "aabbCC")
+        expect(settings.revokedMarker == RGRevokedMarker(style: .text, text: "test撤回", color: "#AABBCC"), "Marker text and color must normalize before storage")
+        expect(RGRevokedMarker(style: .text).label(defaultText: "Deleted") == "Deleted" && RGRevokedMarker(style: .none).label(defaultText: "Deleted") == nil, "Blank text uses localization; hidden marker adds no prefix")
+        expect(RGRevokedMarker.rgb("#000000") == 0 && RGRevokedMarker.rgb("#12345Z") == nil, "Black is valid; malformed marker colors are rejected")
+        expect(RGRevokedMarker.normalizedText("a\u{202e}b") == "ab" && RGRevokedMarker.normalizedText(String(repeating: "哈", count: 30)).count == 24, "Marker text must not inject control characters or unbounded timestamp text")
         settings.summaryLLMModel = "independent-model"; settings.summaryLLMPrompt = "summary @text"
         expect(settings.translationLLMModel.isEmpty && settings.translationLLMPrompt != settings.summaryLLMPrompt, "Summary and translation must have independent configuration")
         let backup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
@@ -51,6 +64,7 @@ extension UserDefaults {
         settings.applyPreferences(decoded.values)
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
         expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model", "Summary preferences must round-trip")
+        expect(settings.revokedMarker.text == "test撤回" && settings.revokedMarker.color == "#AABBCC", "Marker preferences must restore from backups")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
         expect(settings.messageFilterRules.count == 1 && !settings.messageFilterRules[0].isEnabled && settings.contentFilterGeneration > generation, "Restore must invalidate derived filter caches")
         settings.setChatPreferences(RGChatPreferences(formatting: "bold", panguSpacing: true), accountId: 1, peerId: 5)
@@ -71,7 +85,11 @@ extension UserDefaults {
         do { _ = try RGSettingsBackup.decode(bad.encoded()); fatalError("Out-of-range settings must be rejected") } catch {}
         do { _ = try RGSettingsBackup.decode(Data(repeating: 0, count: RGSettingsBackup.maximumBytes + 1)); fatalError("Oversized backup must be rejected") } catch {}
         settings.applyPreferences([:], resetCategories: [.media])
+        expect(!settings.networkPolicy.disableBackupAddresses && !RGNetworkPolicy(defaults: group).disableBackupAddresses, "Backup discovery reset must reach extensions")
         expect(!settings.networkPolicy.dohEnabled && RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .automatic, "Transport reset must update the extension too")
+        settings.applyPreferences([:], resetCategories: [.privacy])
+        expect(settings.revokedMarker == RGRevokedMarker(), "Reset restores the original icon marker")
+        Self.checkIconSwitching()
         let hide = RGMessageFilterRule(pattern: "spam")
         let keep = RGMessageFilterRule(pattern: "approved", isException: true)
         expect(RGNotificationFilterPolicy.shouldHide(text: "spam", senderId: 3, peerId: 5, isIncoming: true, rules: [hide], hiddenSenders: [], disabledChats: []), "Notifications must use the same keyword rules")
@@ -102,4 +120,32 @@ extension UserDefaults {
         settings.contextMenuOrder = originalMenuOrder
         print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
     }
+    static func checkIconSwitching() {
+        expect(RGAppIconNames.canonicalName("SGSilver") == "RGSilver" && RGAppIconNames.canonicalName("SGAnime") == "RGDefault" && RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Legacy artwork names must select the correct picker item")
+        var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
+        let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })
+        coordinator.request("RGBlack") { results.append($0) }
+        coordinator.request("RGWhite") { results.append($0) }
+        coordinator.request("RGGold") { results.append($0) }
+        expect(applies.count == 1 && results == [true], "Concurrent taps must queue only the latest requested icon")
+        actual = "RGBlack"; applies[0].1(true)
+        expect(applies.count == 2 && applies[1].0 == "RGGold", "Finish the active request before applying the newest tap")
+        actual = "RGGold"; applies[1].1(true)
+        coordinator.request("RGGold") { results.append($0) }
+        expect(applies.count == 2 && results.allSatisfy { $0 }, "Selecting the active icon must complete without a UIKit request")
+        coordinator.request("RGWhite") { results.append($0) }; applies[2].1(true)
+        expect(results.last == false, "An optimistic UIKit completion must not select an icon the system did not apply")
+        coordinator.request("RGPro") { results.append($0) }; timeouts.last?()
+        expect(results.last == false, "Interrupted callbacks must release the request lock")
+        coordinator.request(nil) { results.append($0) }
+        let count = results.count; applies[3].1(false)
+        expect(results.count == count, "Late callbacks must not complete a newer request")
+        actual = nil; applies[4].1(true)
+        actual = "SGDefault"
+        coordinator.request(nil) { results.append($0) }
+        expect(applies.count == 6 && applies[5].0 == nil, "Restoring primary must replace an old alternate named Default")
+        actual = nil; applies[5].1(true)
+        expect(results.last == true && updates >= 5, "Restoring primary must read the system and notify all icon views")
+    }
+
 }

@@ -303,7 +303,7 @@ private func proxySettingsControllerEntries(theme: PresentationTheme, strings: P
 
     entries.append(.enabled(theme, strings.ChatSettings_ConnectionType_UseProxy, proxySettings.enabled, proxySettings.servers.isEmpty))
     // MARK: Regram
-    entries.append(.localDNSToggle(theme, i18n("ProxySettings.UseSystemDNS", RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode)), RGSimpleSettings.shared.localDNSForProxyHost))
+    // MARK: Regram — DNS mode is configured once in DNS and IP policy.
     entries.append(.localDNSNotice(theme, i18n("ProxySettings.UseSystemDNS.Notice", RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode))))
     entries.append(.serversHeader(theme, strings.SocksProxySetup_SavedProxies))
     entries.append(.addServer(theme, strings.SocksProxySetup_AddProxy, state.editing))

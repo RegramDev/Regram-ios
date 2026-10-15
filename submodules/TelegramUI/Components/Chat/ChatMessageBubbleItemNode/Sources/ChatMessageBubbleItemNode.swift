@@ -2779,6 +2779,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                     edited: edited && !item.presentationData.isPreview,
                     impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                     dateText: dateText,
+                    isRevoked: message.rgIsRevoked, // MARK: Regram
                     type: statusType,
                     layoutInput: .standalone(reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.StandaloneReactionSettings() : nil),
                     constrainedSize: CGSize(width: 200.0, height: CGFloat.greatestFiniteMagnitude),

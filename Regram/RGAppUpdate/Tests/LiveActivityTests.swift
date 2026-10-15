@@ -7,6 +7,14 @@ import RGUpdateActivity
     @MainActor static func drain() async { for _ in 0..<30 { await Task.yield() } }
     @MainActor static func main() async throws {
         let release = RGUpdateRelease(version: "13.0", build: 34613, downloadURL: URL(string: "https://github.com/RegramDev/Regram-ios/releases/download/v13.0-b34613/Regram-13.0-b34613.ipa")!, sha256: String(repeating: "a", count: 64), size: 1000, notes: "unused")
+        let registered = ["telegram", "tg", "tonsite", "ton", "tc", "regram", "rg", "sg"]
+        for scheme in ["sg", "regram", "rg"] {
+            let link = RGUpdateSettingsLink.url(appSpecificScheme: scheme, registeredSchemes: registered)
+            assert(link.scheme == scheme && link.host == "rg" && link.path == "/settings" && URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems == [URLQueryItem(name: "page", value: "updates")])
+        }
+        for scheme in ["tonsite", "ton", "tc", "https", "unregistered", "bad scheme"] {
+            assert(RGUpdateSettingsLink.url(appSpecificScheme: scheme, registeredSchemes: registered).scheme == "tg")
+        }
         let coordinator = RGUpdateLiveActivity()
         func snapshot(_ phase: String, _ bytes: Int64 = 0, _ mayStart: Bool = true) -> RGUpdateLiveActivity.Snapshot { .init(release: release, phase: phase, labelKey: phase, downloaded: bytes, language: "en", mayStart: mayStart) }
         coordinator.submit(snapshot("downloading", 100)); await drain()
@@ -46,6 +54,12 @@ import RGUpdateActivity
         assert(Activity<RGUpdateActivityAttributes>.activities.first!.state.phase == "downloading", "Cancelled old update cannot replace the new task")
         await coordinator.end()
         assert(Activity<RGUpdateActivityAttributes>.activities.isEmpty)
+        let legacyState = RGUpdateActivityAttributes.ContentState(phase: "downloaded", label: "downloaded", action: "open", staleLabel: "stale", downloaded: 1000, total: 1000)
+        let legacy = try Activity<RGUpdateActivityAttributes>.request(attributes: RGUpdateActivityAttributes(build: release.build, version: release.version, title: "Regram", updateURL: URL(string: "tonsite://rg/settings?page=updates")!), content: ActivityContent(state: legacyState, staleDate: nil), pushType: nil)
+        coordinator.submit(snapshot("downloading", 100)); await drain()
+        assert(legacy.activityState == .ended, "Persisted activities with an old protocol must be retired")
+        assert(Activity<RGUpdateActivityAttributes>.activities.count == 1 && Activity<RGUpdateActivityAttributes>.activities.first!.attributes.updateURL == RGUpdateSettingsLink.current)
+        await coordinator.end()
         for bytes in [Int64.min, -1, 0, 50, 100, Int64.max] {
             let state = RGUpdateActivityAttributes.ContentState(phase: "downloading", label: "fixture", action: "open", staleLabel: "paused", downloaded: bytes, total: 100)
             assert(state.fraction >= 0 && state.fraction <= 1)
