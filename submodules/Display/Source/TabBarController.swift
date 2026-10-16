@@ -25,4 +25,16 @@ public protocol TabBarController: ViewController {
     func updateLayout(transition: ContainedViewLayoutTransition)
     
     func updateControllerLayout(controller: ViewController)
+
+    // MARK: Regram — root Settings can interactively return to the Chats tab.
+    func rgBeginInteractiveReturnToChats() -> Bool
+    func rgUpdateInteractiveReturnToChats(progress: CGFloat)
+    func rgEndInteractiveReturnToChats(completed: Bool, velocity: CGFloat)
+}
+
+// MARK: Regram — other tab containers keep their existing navigation behavior.
+public extension TabBarController {
+    func rgBeginInteractiveReturnToChats() -> Bool { false }
+    func rgUpdateInteractiveReturnToChats(progress: CGFloat) {}
+    func rgEndInteractiveReturnToChats(completed: Bool, velocity: CGFloat) {}
 }

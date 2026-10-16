@@ -12,6 +12,7 @@ public struct GroupsInCommonState: Equatable {
     public var peers: [RenderedPeer]
     public var count: Int?
     public var dataState: GroupsInCommonDataState
+    public var loadFailed: Bool = false // MARK: Regram — distinguish unavailable data from no common groups.
 }
 
 private final class GroupsInCommonContextImpl {
@@ -26,6 +27,7 @@ private final class GroupsInCommonContextImpl {
     private var peers: [RenderedPeer] = []
     private var count: Int?
     private var dataState: GroupsInCommonDataState = .ready(canLoadMore: true)
+    private var loadFailed = false // MARK: Regram
     
     private let stateValue = Promise<GroupsInCommonState>()
     var state: Signal<GroupsInCommonState, NoError> {
@@ -59,7 +61,9 @@ private final class GroupsInCommonContextImpl {
     func loadMore(limit: Int32) {
         let peerId = self.peerId
         
-        if case .ready(true) = self.dataState {
+        // MARK: Regram — a failed page can be retried explicitly without auto-loading forever.
+        if case let .ready(canLoadMore) = self.dataState, canLoadMore || self.loadFailed {
+            self.loadFailed = false
             if self.peers.isEmpty {
                 self.cacheDisposable.set((self.account.postbox.transaction { transaction -> ([RenderedPeer], Int32)? in
                     if let cached = transaction.retrieveItemCacheEntry(id: entryId(peerId: peerId))?.get(CachedGroupsInCommon.self) {
@@ -91,19 +95,21 @@ private final class GroupsInCommonContextImpl {
             let accountPeerId = self.account.peerId
             let network = self.account.network
             let postbox = self.account.postbox
-            let signal: Signal<([Peer], Int), NoError> = self.account.postbox.transaction { transaction -> Api.InputUser? in
+            let signal: Signal<([Peer], Int, Bool), NoError> = self.account.postbox.transaction { transaction -> Api.InputUser? in
                 return transaction.getPeer(peerId).flatMap(apiInputUser)
             }
-            |> mapToSignal { inputUser -> Signal<([Peer], Int), NoError> in
+            |> mapToSignal { inputUser -> Signal<([Peer], Int, Bool), NoError> in
                 guard let inputUser = inputUser else {
-                    return .single(([], 0))
+                    return .single(([], 0, true))
                 }
                 return network.request(Api.functions.messages.getCommonChats(userId: inputUser, maxId: maxId?._internalGetInt64Value() ?? 0, limit: limit))
                 |> map(Optional.init)
                 |> `catch` { _ -> Signal<Api.messages.Chats?, NoError> in
                     return .single(nil)
                 }
-                |> mapToSignal { result -> Signal<([Peer], Int), NoError> in
+                |> mapToSignal { result -> Signal<([Peer], Int, Bool), NoError> in
+                    // MARK: Regram — do not overwrite the cache with an empty network failure.
+                    guard result != nil else { return .single(([], 0, true)) }
                     let chats: [Api.Chat]
                     let count: Int?
                     if let result = result {
@@ -122,7 +128,7 @@ private final class GroupsInCommonContextImpl {
                         count = nil
                     }
                     
-                    return postbox.transaction { transaction -> ([Peer], Int) in
+                    return postbox.transaction { transaction -> ([Peer], Int, Bool) in
                         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: [])
                         updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
                         
@@ -132,14 +138,21 @@ private final class GroupsInCommonContextImpl {
                                 peers.append(peer)
                             }
                         }
-                        return (peers, count ?? 0)
+                        return (peers, count ?? 0, false)
                     }
                 }
             }
             
             self.disposable.set((signal
-            |> deliverOn(self.queue)).start(next: { [weak self] (peers, count) in
+            |> deliverOn(self.queue)).start(next: { [weak self] (peers, count, failed) in
                 guard let strongSelf = self else {
+                    return
+                }
+                // MARK: Regram — preserve known peers/count and expose an explicit retry state.
+                if failed {
+                    strongSelf.loadFailed = true
+                    strongSelf.dataState = .ready(canLoadMore: false)
+                    strongSelf.pushState()
                     return
                 }
                 var existingPeers = Set(strongSelf.peers.map { $0.peerId })
@@ -167,7 +180,7 @@ private final class GroupsInCommonContextImpl {
     }
     
     private func pushState() {
-        self.stateValue.set(.single(GroupsInCommonState(peers: self.peers, count: self.count, dataState: self.dataState)))
+        self.stateValue.set(.single(GroupsInCommonState(peers: self.peers, count: self.count, dataState: self.dataState, loadFailed: self.loadFailed))) // MARK: Regram
     }
 }
 

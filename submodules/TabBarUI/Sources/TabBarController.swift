@@ -48,6 +48,19 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     // MARK: Regram — the configurable search button always opens chat search.
     public var rgActivateSearch: (() -> Void)?
 
+    // MARK: Regram — a pan owns its transition until completion, cancellation or navigation.
+    private final class RGBackState {
+        let sourceIndex: Int
+        let destinationIndex: Int
+        let transition: RGRootTabBackTransition
+        var ending = false
+        init(sourceIndex: Int, destinationIndex: Int, transition: RGRootTabBackTransition) {
+            self.sourceIndex = sourceIndex; self.destinationIndex = destinationIndex; self.transition = transition
+        }
+    }
+    private var rgBackState: RGBackState?
+    private var rgSwitchingInteractively = false
+
     private var validLayout: ContainerViewLayout?
     
     private var tabBarControllerNode: TabBarControllerNode {
@@ -79,7 +92,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             }
         } set(value) {
             let index = max(0, min(self.controllers.count - 1, value))
-            if self._selectedIndex != index {
+            // MARK: Regram — selecting Chats during a preview also commits external navigation.
+            if self._selectedIndex != index || self.rgBackState != nil {
                 self._selectedIndex = index
                 
                 self.updateSelectedIndex(animated: true)
@@ -273,6 +287,11 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     }
     
     private func updateSelectedIndex(animated: Bool = false) {
+        // MARK: Regram — external navigation must not leave an interactive overlay behind.
+        if !self.rgSwitchingInteractively, let state = self.rgBackState {
+            self.rgBackState = nil
+            state.transition.remove()
+        }
         if !self.isNodeLoaded {
             return
         }
@@ -360,8 +379,64 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             self.containerLayoutUpdated(layout, transition: transition)
         }
     }
+
+    // MARK: Regram — the actual chat view is revealed under a snapshot of root Settings.
+    public func rgBeginInteractiveReturnToChats() -> Bool {
+        guard self.rgBackState == nil, self.isNodeLoaded, self.view.window != nil,
+              let source = self.currentController,
+              let destinationIndex = self.controllers.firstIndex(where: { $0.tabBarItem.animationName == "TabChats" }),
+              destinationIndex != self.selectedIndex,
+              let snapshot = source.view.snapshotView(afterScreenUpdates: false) else { return false }
+        let sourceIndex = self.selectedIndex
+        let frame = self.view.convert(source.view.bounds, from: source.view)
+        self.rgSwitchingInteractively = true
+        self._selectedIndex = destinationIndex
+        self.updateSelectedIndex(animated: false)
+        self.rgSwitchingInteractively = false
+        guard let destination = self.currentController?.view else {
+            self._selectedIndex = sourceIndex
+            self.updateSelectedIndex(animated: false)
+            return false
+        }
+        let transition = RGRootTabBackTransition(host: self.view, destination: destination, snapshot: snapshot, frame: frame)
+        self.rgBackState = RGBackState(sourceIndex: sourceIndex, destinationIndex: destinationIndex, transition: transition)
+        return true
+    }
+
+    public func rgUpdateInteractiveReturnToChats(progress: CGFloat) {
+        guard let state = self.rgBackState, !state.ending else { return }
+        state.transition.update(progress: progress)
+    }
+
+    public func rgEndInteractiveReturnToChats(completed: Bool, velocity: CGFloat) {
+        guard let state = self.rgBackState, !state.ending else { return }
+        state.ending = true
+        state.transition.finish(completed: completed, velocity: velocity, completion: { [weak self, weak state] in
+            guard let self, let state, self.rgBackState === state else { return }
+            self.rgBackState = nil
+            if !completed, self.controllers.indices.contains(state.sourceIndex) {
+                self._selectedIndex = state.sourceIndex
+                self.updateSelectedIndex(animated: false)
+            }
+            state.transition.remove()
+        })
+    }
+
+    private func rgCancelInteractiveReturnToChats() {
+        guard let state = self.rgBackState else { return }
+        self.rgBackState = nil
+        state.transition.remove()
+        if self.controllers.indices.contains(state.sourceIndex) {
+            self._selectedIndex = state.sourceIndex
+            self.updateSelectedIndex(animated: false)
+        }
+    }
     
     override open func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
+        // MARK: Regram — rotation/resizing cancels in the original coordinate space.
+        if let previous = self.validLayout, previous.size != layout.size || previous.inputHeight != layout.inputHeight || previous.intrinsicInsets != layout.intrinsicInsets {
+            self.rgCancelInteractiveReturnToChats()
+        }
         super.containerLayoutUpdated(layout, transition: transition)
         
         self.validLayout = layout
@@ -369,7 +444,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: transition)
         
         if let currentController = self.currentController {
-            currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size)
+            // MARK: Regram — setting a transformed view's frame would shift an in-flight pan.
+            if self.rgBackState == nil { currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size) }
             
             var updatedLayout = layout
             if !self.tabBarControllerNode.tabBarHidden {
@@ -386,7 +462,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         }
         if self.controllers.contains(where: { $0 === controller }) {
             let currentController = controller
-            currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size)
+            // MARK: Regram — the interactive destination already has this untransformed size.
+            if self.rgBackState == nil { currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size) }
             
             var updatedLayout = layout
             
@@ -408,6 +485,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     }
     
     override open func viewWillDisappear(_ animated: Bool) {
+        self.rgCancelInteractiveReturnToChats() // MARK: Regram
         if let currentController = self.currentController {
             currentController.viewWillDisappear(animated)
         }
@@ -432,6 +510,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     }
         
     public func setControllers(_ controllers: [ViewController], selectedIndex: Int?) {
+        self.rgCancelInteractiveReturnToChats() // MARK: Regram
         var updatedSelectedIndex: Int? = selectedIndex
         if updatedSelectedIndex == nil, let selectedIndex = self._selectedIndex, selectedIndex < self.controllers.count {
             if let index = controllers.firstIndex(where: { $0 === self.controllers[selectedIndex] }) {

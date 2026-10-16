@@ -1000,3 +1000,24 @@
 "RevokedMarker.Preview" = "預覽";
 "RevokedMarker.Notice" = "自訂本機保留的已撤回訊息在時間旁的標記。文字留空使用預設標記，顏色留空跟隨主題；此設定不改變防撤回規則。";
 "RevokedMarker.Saved" = "已儲存，目前顯示的已撤回訊息已更新標記。";
+
+/* Regram: messages in common groups */
+"CommonGroups.Action" = "共同群組內的發言";
+"CommonGroups.Title" = "%1$@ · 共同群組發言";
+"CommonGroups.Filter" = "篩選群組";
+"CommonGroups.All" = "全部共同群組";
+"CommonGroups.Scope" = "僅搜尋目前帳號有權存取的共同群組訊息；匿名或使用其他身分傳送的訊息不歸屬於此人。";
+"CommonGroups.Loaded" = "已顯示 %1$@ 則發言 · %2$@ 個共同群組";
+"CommonGroups.PartialFailure" = "部分查詢未完成，可重試；已取得的結果會保留。";
+"CommonGroups.Cancel" = "暫停查詢";
+"CommonGroups.Continue" = "繼續載入";
+"CommonGroups.Retry" = "重試未完成的查詢";
+"CommonGroups.Refresh" = "重新整理發言";
+"CommonGroups.Group" = "群組";
+"CommonGroups.Media" = "媒體或服務訊息（點按檢視）";
+"CommonGroups.Loading" = "正在尋找發言⋯";
+"CommonGroups.NoGroups" = "沒有可顯示的共同群組。";
+"CommonGroups.Empty" = "目前範圍內沒有可顯示的發言。";
+"CommonGroups.Failed" = "查詢未完成，請點按重試。";
+
+"CommonGroups.LoadMore" = "載入更多";

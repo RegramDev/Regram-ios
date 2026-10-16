@@ -1,6 +1,6 @@
 # Regram 自动更新与安装
 
-入口：**设置 → Regram Pro → 管理与工具 → Regram 更新**。本文描述 b34617 的流程；发行一份 Regram IPA，包含主应用及六个扩展。
+入口：**设置 → Regram Pro → 管理与工具 → Regram 更新**。本文描述 b34618 的流程；发行一份 Regram IPA，包含主应用及六个扩展。
 
 ## 更新来源与网络
 
@@ -10,7 +10,7 @@
 https://api.github.com/repos/RegramDev/Regram-ios/releases/latest
 ```
 
-发布标签使用 `v13.0-b34617` 形式，IPA 使用 `Regram-13.0-b34617.ipa` 形式。版本比较、标签、唯一候选文件名、下载路径、文件大小及 GitHub 资产 `digest: sha256:…` 均需通过检查；缺少 SHA-256、草稿、预发布、降级或重复候选不会用于更新。文件下载后继续检查包内版本、主应用及扩展结构与安装身份。
+发布标签使用 `v13.0-b34618` 形式，IPA 使用 `Regram-13.0-b34618.ipa` 形式。版本比较、标签、唯一候选文件名、下载路径、文件大小及 GitHub 资产 `digest: sha256:…` 均需通过检查；缺少 SHA-256、草稿、预发布、降级或重复候选不会用于更新。文件下载后继续检查包内版本、主应用及扩展结构与安装身份。
 
 **检查更新不要求导入证书。**「打开 GitHub Release」是独立按钮，点击才打开发布页；检查到新版本身不会跳浏览器。
 
@@ -106,4 +106,4 @@ Actions 构建和人工确认发布是两条流程，详见 [GitHub Actions](git
 | HEAD／GET／Range、交付、安装 URL 及 TrollStore | 更新测试目录中的 `LocalUpdateServerTests`、`UpdateDeliveryTrackerTests`、`TrollStoreInstallationTests` |
 | 合成证书、通配符权限、主应用及扩展签名 | [签名检查](../Regram/RGUpdateSigner/Tests/check_signer.py)，不读取正式证书 |
 
-b34617 已完成 arm64 Release、主应用及六扩展包校验、IPA 大小与 SHA-256 校验，安装身份和权限与 b34616 一致。用户于 2026-10-15 确认的真机验收对应 b34616；b34617 新修正尚未记录真机验收结果。主机适配／合成检查与用户设备反馈分别记录。
+b34618 已完成 Xcode 27 arm64 Release、主应用及六扩展包校验、IPA 大小与 SHA-256 校验，安装身份和权限与 b34617 一致。用户于 2026-10-15 确认的真机验收对应 b34616；b34618 的共同群组发言和返回动画尚未记录真机验收结果。主机适配／合成检查与用户设备反馈分别记录。

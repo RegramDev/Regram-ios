@@ -1009,3 +1009,24 @@ Matching is case-insensitive.";
 "RevokedMarker.Preview" = "Preview";
 "RevokedMarker.Notice" = "Customize the marker beside the timestamp of locally retained deleted messages. Leave text blank for the default label and color blank to follow the theme. This does not change deletion rules.";
 "RevokedMarker.Saved" = "Saved. Visible retained messages now use this marker.";
+
+/* Regram: messages in common groups */
+"CommonGroups.Action" = "Messages in Common Groups";
+"CommonGroups.Title" = "%1$@ · Common Groups";
+"CommonGroups.Filter" = "Filter Groups";
+"CommonGroups.All" = "All Common Groups";
+"CommonGroups.Scope" = "Searches messages accessible to this account in common groups. Anonymous posts and messages sent under other identities are not attributed to this person.";
+"CommonGroups.Loaded" = "Showing %1$@ messages · %2$@ common groups";
+"CommonGroups.PartialFailure" = "Some queries did not finish. Retry to continue; loaded results are retained.";
+"CommonGroups.Cancel" = "Pause Search";
+"CommonGroups.Continue" = "Continue Loading";
+"CommonGroups.Retry" = "Retry Unfinished Queries";
+"CommonGroups.Refresh" = "Refresh Messages";
+"CommonGroups.Group" = "Group";
+"CommonGroups.Media" = "Media or service message (tap to view)";
+"CommonGroups.Loading" = "Searching for messages…";
+"CommonGroups.NoGroups" = "No common groups to display.";
+"CommonGroups.Empty" = "No messages to display in this scope.";
+"CommonGroups.Failed" = "The search did not finish. Tap Retry to continue.";
+
+"CommonGroups.LoadMore" = "Load More";

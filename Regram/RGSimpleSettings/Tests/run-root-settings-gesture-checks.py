@@ -11,6 +11,9 @@ delegate = source[a:b]
 a = source.index('    @objc private func rgRootBackSwiped(')
 b = source.index('\n\n    let context:', a)
 handler = source[a:b]
+a = source.index('    private func rgAttachRootBackGesture()')
+b = source.index('    private var rgCanReturnToChats:', a)
+attach = source[a:b]
 a = source.index('        // MARK: Regram — root settings accepts rightward content pans;')
 b = source.index('\n\n    }', a)
 registration = source[a:b]
@@ -79,6 +82,11 @@ func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
 ui = '''
 import UIKit
 protocol TelegramRootControllerInterface: AnyObject { func openChats() }
+protocol TabBarController: UIViewController {
+    func rgBeginInteractiveReturnToChats() -> Bool
+    func rgUpdateInteractiveReturnToChats(progress: CGFloat)
+    func rgEndInteractiveReturnToChats(completed: Bool, velocity: CGFloat)
+}
 final class Window { var viewController: UIViewController? }
 final class Shared { var mainWindow: Window? }
 final class Context { let sharedContext = Shared() }
@@ -86,6 +94,8 @@ DELEGATE
 final class Controller: UIViewController {
     private var rgRootBackGestureDelegate: RGRootSettingsBackGestureDelegate?
     private var rgRootBackGesture: UIPanGestureRecognizer?
+    private weak var rgRootBackTabs: TabBarController?
+    ATTACH
     var rgCanReturnToChats = false
     var isSettings = true
     let context = Context()
@@ -94,7 +104,7 @@ final class Controller: UIViewController {
         REGISTRATION
     }
 }
-'''.replace('DELEGATE', delegate).replace('HANDLER', handler).replace('REGISTRATION', registration)
+'''.replace('DELEGATE', delegate).replace('HANDLER', handler).replace('ATTACH', attach).replace('REGISTRATION', registration)
 with tempfile.TemporaryDirectory(prefix='regram-settings-pan-checks-') as directory:
     folder = Path(directory)
     (folder / 'Tests.swift').write_text(fixture)

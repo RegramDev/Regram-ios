@@ -1,4 +1,6 @@
 import Foundation
+import RGCommonGroupMessagesUI // MARK: Regram
+import RGStrings // MARK: Regram
 import UIKit
 import Display
 import AccountContext
@@ -399,6 +401,18 @@ extension PeerInfoScreenNode {
                 let headerButtons = Set(peerInfoHeaderButtons(peer: peer, cachedData: data.cachedData, isOpenedFromChat: strongSelf.isOpenedFromChat, isExpanded: true, videoCallsEnabled: strongSelf.videoCallsEnabled, isSecretChat: strongSelf.peerId.namespace == Namespaces.Peer.SecretChat, isContact: strongSelf.data?.isContact ?? false, threadInfo: strongSelf.data?.threadData?.info))
                 
                 let filteredButtons = allHeaderButtons.subtracting(headerButtons)
+
+                // MARK: Regram — a single profile-level entry, scoped to the account's common groups.
+                if peer.id.namespace == Namespaces.Peer.CloudUser, peer.id != strongSelf.context.account.peerId {
+                    let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
+                    items.append(.action(ContextMenuActionItem(text: "CommonGroups.Action".i18n(language), icon: { theme in
+                        generateTintedImage(image: UIImage(systemName: "person.2"), color: theme.contextMenu.primaryColor)
+                    }, action: { [weak self] _, f in
+                        f(.dismissWithoutContent)
+                        guard let self, let page = rgCommonGroupMessagesController(context: self.context, author: peer) else { return }
+                        self.controller?.push(page)
+                    })))
+                }
                 
                 var currentAutoremoveTimeout: Int32?
                 if let cachedData = data.cachedData as? CachedUserData {

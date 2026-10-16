@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34617**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34618**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -17,6 +17,7 @@ This documentation describes **13.0 / b34617**. See [GitHub Releases](https://gi
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu.
+- Messages in common groups: open from a person’s profile More menu, browse their searchable messages across shared groups, filter by group, load more, and return to the original message.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
 - Folder selection after joining groups/channels, remembered folders, and folder/list display options.
@@ -64,7 +65,7 @@ Preview availability depends on Telegram and third-party services. A sticker arc
 - App icons and screenshot App Badges. The Regram Pro entry follows the selected app icon; login artwork and update Live Activities use Regram artwork.
 - Icon selection follows a successful system callback, then reconciles delayed system reads. This fixes the false failure alert after the Home Screen icon already changed.
 - Upstream Telegram bottom-bar components, animations and gestures, with live preview, drag ordering, label visibility, standalone buttons and automatic/manual width.
-- Chats and Settings remain selected. The bar stays centered; automatic width balances readable labels, selection effects and tap spacing. Settings remains reachable while hidden, and unhiding applies immediately.
+- Chats and Settings remain selected. The bar stays centered; automatic width balances readable labels, selection effects and tap spacing. Settings remains reachable while hidden. Swipe right from the Settings content area to return to Chats with finger-tracked motion and cancellation; unhiding applies immediately.
 - Chat-list separators, compact display, preview lines and colors.
 - Separate Latin/CJK fonts, downloads, TTF/OTF/TTC import, previews, management and missing-glyph fallback.
 - Input tools, default formatting, Pangu spacing, Return-to-send and per-chat input preferences.
@@ -117,11 +118,13 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
+b34618 passed an Xcode 27 arm64 Release build, main-app and six-extension checks, with installation identity unchanged from b34617. Common-group pagination, failure handling and interactive-return lifecycle regressions passed. Real-account searches and gesture rendering have not been exercised on a device.
+
 b34617 passed the `//Telegram:Regram` arm64 Release build, package checks for the main app and six extensions, and relevant local regressions. The user-reported device acceptance on 2026-10-15 applies to b34616 and its tested scenarios. Device acceptance results for the b34617 tab-bar background restoration after search and return gesture fixes have not yet been recorded.
 
 ## Building
 
-Use macOS, full Xcode, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**.
+Use macOS, full Xcode 27, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**.
 
 ```sh
 git clone --recursive https://github.com/RegramDev/Regram-ios.git

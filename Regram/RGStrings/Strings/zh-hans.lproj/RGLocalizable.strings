@@ -1002,3 +1002,24 @@
 "RevokedMarker.Preview" = "预览";
 "RevokedMarker.Notice" = "自定义本机保留的已撤回消息在时间旁的标记。文字留空使用默认标记，颜色留空跟随主题；此设置不改变防撤回规则。";
 "RevokedMarker.Saved" = "已保存，当前显示的已撤回消息已更新标记。";
+
+/* Regram: messages in common groups */
+"CommonGroups.Action" = "共同群组内的发言";
+"CommonGroups.Title" = "%1$@ · 共同群组发言";
+"CommonGroups.Filter" = "筛选群组";
+"CommonGroups.All" = "全部共同群组";
+"CommonGroups.Scope" = "仅检索当前账号有权访问的共同群组消息；匿名或使用其他身份发送的消息不归属于此人。";
+"CommonGroups.Loaded" = "已显示 %1$@ 条发言 · %2$@ 个共同群组";
+"CommonGroups.PartialFailure" = "部分查询未完成，可重试；已取得的结果会保留。";
+"CommonGroups.Cancel" = "暂停查询";
+"CommonGroups.Continue" = "继续加载";
+"CommonGroups.Retry" = "重试未完成的查询";
+"CommonGroups.Refresh" = "刷新发言";
+"CommonGroups.Group" = "群组";
+"CommonGroups.Media" = "媒体或服务消息（点按查看）";
+"CommonGroups.Loading" = "正在查找发言…";
+"CommonGroups.NoGroups" = "没有可显示的共同群组。";
+"CommonGroups.Empty" = "当前范围内没有可显示的发言。";
+"CommonGroups.Failed" = "查询未完成，请点按重试。";
+
+"CommonGroups.LoadMore" = "加载更多";

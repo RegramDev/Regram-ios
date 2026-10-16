@@ -42,6 +42,8 @@ private struct SearchMessagesPeerState: Equatable {
 }
 
 public struct SearchMessagesResult: Equatable {
+    // MARK: Regram — paginated callers can distinguish an unavailable page from an empty search.
+    public var rgRequestFailed = false
     public let messages: [Message]
     public let threadInfo: [MessageId: MessageHistoryThreadData]
     public let readStates: [PeerId: CombinedPeerReadState]
@@ -57,6 +59,7 @@ public struct SearchMessagesResult: Equatable {
     }
     
     public static func ==(lhs: SearchMessagesResult, rhs: SearchMessagesResult) -> Bool {
+        if lhs.rgRequestFailed != rhs.rgRequestFailed { return false } // MARK: Regram
         if lhs.messages.count != rhs.messages.count {
             return false
         }
@@ -650,7 +653,19 @@ func _internal_searchMessages(account: Account, location: SearchMessagesLocation
             }
             
             let updatedState = SearchMessagesState(main: mergedState(transaction: transaction, seedConfiguration: account.postbox.seedConfiguration, accountPeerId: account.peerId, state: state?.main, result: result) ?? SearchMessagesPeerState(messages: [], readStates: [:], threadInfo: [:], totalCount: 0, completed: true, nextRate: nil), additional: additional)
-            return (mergedResult(updatedState), updatedState)
+            // MARK: Regram — keep the existing result contract while exposing failed peer pages.
+            var merged = mergedResult(updatedState)
+            if case let .peer(peerId, _, _, _, _, _, _) = location {
+                let mainExpected = state?.main.completed != true
+                var additionalExpected = false
+                if let cached = transaction.getPeerCachedData(peerId: peerId) as? CachedChannelData,
+                   let migration = cached.migrationReference,
+                   transaction.getPeer(migration.maxMessageId.peerId).flatMap(apiInputPeer) != nil {
+                    additionalExpected = state?.additional?.completed != true && (state?.main.completed == true || state?.additional == nil)
+                }
+                merged.rgRequestFailed = (mainExpected && result == nil) || (additionalExpected && additionalResult == nil)
+            }
+            return (merged, updatedState)
         }
     }
 }

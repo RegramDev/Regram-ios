@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../.."
 # Use the same declared number for local/CI builds; never derive it from workflow runs or commits.
 build_number="$(python3 build-system/ci/versioning.py)"
 
-# Reference package builds intentionally use the same Xcode generation as local b34582.
+# Reference packages use the Xcode 27 toolchain declared in versions.json.
 export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 xcode_details="$(xcodebuild -version)"
 xcode_number="$(printf '%s\n' "$xcode_details" | sed -n 's/^Xcode //p')"
