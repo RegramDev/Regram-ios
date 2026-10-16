@@ -374,6 +374,27 @@ API_AVAILABLE(ios(10))
     return result;
 }
 
+// MARK: Regram — read-only, bounded notification startup; key creation belongs to the main app.
++ (DeviceSpecificEncryptionParameters * _Nullable)notificationEncryptionParameters:(NSString * _Nonnull)rootPath {
+    NSString *lockPath = [rootPath stringByAppendingPathComponent:@".tempkey.lock"];
+    int fd = open(lockPath.fileSystemRepresentation, O_CREAT | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR);
+    if (fd < 0) { return nil; }
+    BOOL locked = NO;
+    for (int attempt = 0; attempt < 25; attempt++) {
+        if (flock(fd, LOCK_SH | LOCK_NB) == 0) { locked = YES; break; }
+        if (errno != EWOULDBLOCK && errno != EINTR) { break; }
+        usleep(10 * 1000);
+    }
+    NSData *data = locked ? [NSData dataWithContentsOfFile:[rootPath stringByAppendingPathComponent:@".tempkey"]] : nil;
+    if (locked) { flock(fd, LOCK_UN); }
+    close(fd);
+    if (data.length != 48) { return nil; }
+    DeviceSpecificEncryptionParameters *parameters = [[DeviceSpecificEncryptionParameters alloc] init];
+    parameters.key = [data subdataWithRange:NSMakeRange(0, 32)];
+    parameters.salt = [data subdataWithRange:NSMakeRange(32, 16)];
+    return parameters;
+}
+
 + (DeviceSpecificEncryptionParameters * _Nonnull)deviceSpecificEncryptionParameters:(NSString * _Nonnull)rootPath baseAppBundleId:(NSString * _Nonnull)baseAppBundleId {
     CFAbsoluteTime startTime = CFAbsoluteTimeGetCurrent();
     

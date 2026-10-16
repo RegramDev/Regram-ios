@@ -353,8 +353,14 @@ public final class PasscodeCredentialStore: @unchecked Sendable {
         }
     }
 
-    private func serialized<T>(_ body: () throws -> T) throws -> T {
-        self.mutex.lock()
+    // MARK: Regram — notification reads have a deadline; app and credential writes keep their lock semantics.
+    private func serialized<T>(timeout: TimeInterval? = nil, _ body: () throws -> T) throws -> T {
+        let deadline = timeout.map { ProcessInfo.processInfo.systemUptime + max(0, $0) }
+        if let timeout {
+            guard self.mutex.lock(before: Date(timeIntervalSinceNow: max(0, timeout))) else { throw PasscodeError.unavailable }
+        } else {
+            self.mutex.lock()
+        }
         defer {
             self.mutex.unlock()
         }
@@ -364,7 +370,15 @@ public final class PasscodeCredentialStore: @unchecked Sendable {
             guard fd >= 0 else {
                 throw PasscodeError.unavailable
             }
-            guard flock(fd, LOCK_EX) == 0 else {
+            if let deadline {
+                while flock(fd, LOCK_EX | LOCK_NB) != 0 {
+                    guard (errno == EWOULDBLOCK || errno == EINTR), ProcessInfo.processInfo.systemUptime < deadline else {
+                        close(fd)
+                        throw PasscodeError.unavailable
+                    }
+                    usleep(10_000)
+                }
+            } else if flock(fd, LOCK_EX) != 0 {
                 close(fd)
                 throw PasscodeError.unavailable
             }
@@ -429,6 +443,15 @@ public final class PasscodeCredentialStore: @unchecked Sendable {
 
     public func managedReference() throws -> PasscodeCredentialReference?? {
         try self.serialized {
+            guard let record = try self.load(), record.managedPasscode else { return nil }
+            return .some(self.reference(record))
+        }
+    }
+
+    // MARK: Regram — combine authority checks and a read under one bounded notification lock.
+    public func managedReferenceForNotification(expectsExistingCredential: Bool = false, timeout: TimeInterval) throws -> PasscodeCredentialReference?? {
+        try self.serialized(timeout: timeout) {
+            if expectsExistingCredential { self.expectsCredential = true }
             guard let record = try self.load(), record.managedPasscode else { return nil }
             return .some(self.reference(record))
         }

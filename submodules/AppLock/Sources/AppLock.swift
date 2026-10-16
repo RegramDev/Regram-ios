@@ -14,6 +14,26 @@ import FastBlur
 import AppLockState
 import PassKit
 import PasscodeCore
+import RGAppGroupIdentifier // MARK: Regram
+
+// MARK: Regram — invalidate only obsolete lock snapshots after authoritative passcode removal.
+private func rgHasAuthoritativePasscodeRemoval() -> Bool {
+    do {
+        guard let reference = try PasscodeCredentialStore.shared.managedReferenceForNotification(timeout: 0.3) else { return false }
+        return reference == nil
+    } catch {
+        return false
+    }
+}
+
+private func rgStateAfterPasscodeRemoval(_ state: LockState, passcodeConfigured: Bool) -> LockState {
+    guard !passcodeConfigured else { return state }
+    var updated = state
+    updated.isManuallyLocked = false
+    updated.autolockTimeout = nil
+    updated.unlockAttempts = nil
+    return updated
+}
 
 private func isLocked(passcodeSettings: PresentationPasscodeSettings, state: LockState) -> Bool {
     if state.isManuallyLocked {
@@ -118,6 +138,7 @@ public final class AppLockContextImpl: AppLockContext {
     private var timestampRenewTimer: SwiftSignalKit.Timer?
     
     private var currentStateValue: LockState
+    private var rgPasscodeConfigured = true // MARK: Regram — unknown state retains privacy.
     private let currentState = Promise<LockState>()
     
     private let autolockTimeout = ValuePromise<Int32?>(nil, ignoreRepeated: true)
@@ -198,6 +219,7 @@ public final class AppLockContextImpl: AppLockContext {
 
             var shouldDisplayCoveringView = false
             var isCurrentlyLocked = false
+            strongSelf.rgPasscodeConfigured = accessChallengeData.data.isLockable // MARK: Regram
             
             if !accessChallengeData.data.isLockable {
                 if let passcodeController = strongSelf.passcodeController {
@@ -207,6 +229,14 @@ public final class AppLockContextImpl: AppLockContext {
                 
                 strongSelf.autolockTimeout.set(nil)
                 strongSelf.autolockReportTimeout.set(nil)
+                // MARK: Regram — disabling a passcode previously left isManuallyLocked in the
+                // shared file. Recheck the latest state when the queued write executes.
+                if RGNotificationExperiment.isEnabled {
+                    strongSelf.updateLockState { [weak strongSelf] state in
+                        guard let strongSelf, RGNotificationExperiment.isEnabled, rgHasAuthoritativePasscodeRemoval() else { return state }
+                        return rgStateAfterPasscodeRemoval(state, passcodeConfigured: strongSelf.rgPasscodeConfigured)
+                    }
+                }
             } else {
                 if let _ = passcodeSettings.autolockTimeout, !isApplicationActive, !strongSelf.biometricAuthenticationState.suppressCoveringView {
                     shouldDisplayCoveringView = true

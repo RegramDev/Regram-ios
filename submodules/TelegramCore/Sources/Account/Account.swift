@@ -1757,7 +1757,8 @@ public func standaloneStateManager(
     id: AccountRecordId,
     encryptionParameters: ValueBoxEncryptionParameters,
     rootPath: String,
-    auxiliaryMethods: AccountAuxiliaryMethods
+    auxiliaryMethods: AccountAuxiliaryMethods,
+    notificationOpen: Bool = false // MARK: Regram
 ) -> Signal<AccountStateManager?, NoError> {
     let path = "\(rootPath)/\(accountRecordIdPathName(id))"
 
@@ -1771,7 +1772,8 @@ public func standaloneStateManager(
         isReadOnly: false,
         useCopy: false,
         useCaches: false,
-        removeDatabaseOnError: false
+        removeDatabaseOnError: false,
+        notificationOpen: notificationOpen // MARK: Regram
     )
     
     Logger.shared.log("StandaloneStateManager", "Prepare request postbox")

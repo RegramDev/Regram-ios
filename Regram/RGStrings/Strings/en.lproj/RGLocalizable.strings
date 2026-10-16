@@ -34,7 +34,6 @@
 "Settings.ChatList.Lines" = "Message Preview Lines";
 "Settings.ChatList.Lines.1" = "1 Line";
 "Settings.ChatList.Lines.2" = "2 Lines";
-"Settings.ChatList.Lines.3" = "3 Lines";
 "Mention.UserIdLink" = "Mention by Name";
 "Mention.UserIdLink.Notice" = "Long-pressing an avatar to mention inserts the user's full name as a mention instead of @username. Tapping it opens their profile.";
 "LocalPremium.Title" = "Local Premium";
@@ -1030,3 +1029,10 @@ Matching is case-insensitive.";
 "CommonGroups.Failed" = "The search did not finish. Tap Retry to continue.";
 
 "CommonGroups.LoadMore" = "Load More";
+
+// Regram debug tools
+"Debug.NotificationExperiment" = "Experimental notification recovery";
+"Debug.NotificationExperiment.Info" = "Off by default. Attempts to recover unresolved encrypted notifications and remove placeholder alerts. Keeps message previews and app-lock privacy. iOS may still show an alert when the service extension cannot run.";
+"Debug.ClearCache" = "Clear cache";
+"Debug.ClearCache.Info" = "Clear cached media for this account and web/network caches. Locally cached media may become unavailable until downloaded again. Keeps accounts, messages, settings, certificates and saved edit-history images.";
+"Debug.ClearCache.Done" = "Cache cleared";

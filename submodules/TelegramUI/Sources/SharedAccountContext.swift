@@ -1,3 +1,4 @@
+import RGAppGroupIdentifier // MARK: Regram
 // MARK: Regram
 import RGProUI
 import RGSimpleSettings
@@ -1233,6 +1234,29 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         }
     }
     
+    // MARK: Regram — register only after the notification route was actually committed.
+    private func rgPublishNotificationRoute(account: Account, attempt: Int = 0) -> Signal<Bool, NoError> {
+        return accountBackupData(postbox: account.postbox)
+        |> mapToSignal { backup -> Signal<Bool, NoError> in
+            guard let backup, backup.notificationEncryptionKeyId != nil, backup.notificationEncryptionKey != nil else {
+                return Signal<Bool, NoError>.complete()
+                |> delay(min(30.0, 0.5 * pow(2.0, Double(min(attempt, 6)))), queue: .mainQueue())
+                |> then(deferred { self.rgPublishNotificationRoute(account: account, attempt: min(attempt + 1, 6)) })
+            }
+            return self.accountManager.transaction { transaction -> Bool in
+                var committed = false
+                transaction.updateRecord(account.id) { record in
+                    guard let record else { return nil }
+                    let attributes = record.attributes.filter { if case .backupData = $0 { return false }; return true }
+                        + [.backupData(AccountBackupDataAttribute(data: backup))]
+                    committed = true
+                    return AccountRecord(id: record.id, attributes: attributes, temporarySessionId: record.temporarySessionId)
+                }
+                return committed
+            }
+        }
+    }
+
     private func updateCurrentCall(call: PresentationCurrentCall?) {
         if self.currentCall == call {
             return
@@ -1704,14 +1728,23 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             return true
         })
         
+        // MARK: Regram — apply an experimental toggle without requiring a new APNs token.
+        let recovery = Signal<Bool, NoError> { subscriber in
+            let observer = NotificationCenter.default.addObserver(forName: RGNotificationExperiment.changed, object: nil, queue: nil) { _ in
+                subscriber.putNext(RGNotificationExperiment.isEnabled)
+            }
+            subscriber.putNext(RGNotificationExperiment.isEnabled)
+            return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+        } |> distinctUntilChanged
         let updatedApsToken = self.apsNotificationToken |> distinctUntilChanged(isEqual: { $0 == $1 })
         self.registeredNotificationTokensDisposable.set((combineLatest(
             queue: .mainQueue(),
             settings,
             self.activeAccountContexts,
-            updatedApsToken
+            updatedApsToken,
+            recovery
         )
-        |> mapToSignal { settings, activeAccountsAndInfo, apsNotificationToken -> Signal<(Bool, Data?), NoError> in
+        |> mapToSignal { settings, activeAccountsAndInfo, apsNotificationToken, recoveryEnabled -> Signal<(Bool, Data?), NoError> in
             let (primary, activeAccounts, _) = activeAccountsAndInfo
             var appliedApsList: [Signal<Bool?, NoError>] = []
             var appliedVoipList: [Signal<Never, NoError>] = []
@@ -1762,9 +1795,18 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                     if let apsNotificationToken {
                         // MARK: Regram — commit the notification key routing metadata
                         // before the server can send the first encrypted push.
-                        appliedAps = self.updateAccountBackupData(account: account.account)
-                        |> map { _ -> Bool in }
-                        |> then(account.engine.accountData.registerNotificationToken(token: apsNotificationToken, type: .aps(encrypt: true), sandbox: sandbox, otherAccountUserIds: (account.account.testingEnvironment ? activeTestingUserIds : activeProductionUserIds).filter({ $0 != account.account.peerId.id }), excludeMutedChats: !settings.includeMuted))
+                        if recoveryEnabled {
+                            appliedAps = self.rgPublishNotificationRoute(account: account.account)
+                            |> mapToSignal { published -> Signal<Bool, NoError> in
+                                // Missing local records must not invalidate a valid APNs token.
+                                guard published else { return .single(true) }
+                                return account.engine.accountData.registerNotificationToken(token: apsNotificationToken, type: .aps(encrypt: true), sandbox: sandbox, otherAccountUserIds: (account.account.testingEnvironment ? activeTestingUserIds : activeProductionUserIds).filter({ $0 != account.account.peerId.id }), excludeMutedChats: !settings.includeMuted)
+                            }
+                        } else {
+                            appliedAps = self.updateAccountBackupData(account: account.account)
+                            |> map { _ -> Bool in }
+                            |> then(account.engine.accountData.registerNotificationToken(token: apsNotificationToken, type: .aps(encrypt: true), sandbox: sandbox, otherAccountUserIds: (account.account.testingEnvironment ? activeTestingUserIds : activeProductionUserIds).filter({ $0 != account.account.peerId.id }), excludeMutedChats: !settings.includeMuted))
+                        }
                     } else {
                         appliedAps = .single(true)
                     }

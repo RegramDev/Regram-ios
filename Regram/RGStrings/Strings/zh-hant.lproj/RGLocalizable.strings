@@ -30,7 +30,6 @@
 "Settings.ChatList.Lines" = "訊息預覽行數";
 "Settings.ChatList.Lines.1" = "1 行";
 "Settings.ChatList.Lines.2" = "2 行";
-"Settings.ChatList.Lines.3" = "3 行";
 "Mention.UserIdLink" = "按暱稱提及";
 "Mention.UserIdLink.Notice" = "長按頭像提及時，插入對方的完整暱稱作為提及，而不是 @使用者名稱。點按可開啟對方資料。";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "預設顯示共同群組";
@@ -1021,3 +1020,10 @@
 "CommonGroups.Failed" = "查詢未完成，請點按重試。";
 
 "CommonGroups.LoadMore" = "載入更多";
+
+// Regram debug tools
+"Debug.NotificationExperiment" = "實驗性通知恢復";
+"Debug.NotificationExperiment.Info" = "預設關閉。嘗試恢復未解析的加密通知並清理佔位提醒，保留訊息預覽和應用程式鎖隱私。通知擴充功能無法執行時，iOS 仍可能顯示提醒。";
+"Debug.ClearCache" = "清除快取";
+"Debug.ClearCache.Info" = "清除目前帳號的媒體快取及網頁、網路快取。快取媒體可能需要重新下載才能檢視。保留帳號、訊息、設定、憑證及已儲存的編輯歷史圖片。";
+"Debug.ClearCache.Done" = "快取已清除";

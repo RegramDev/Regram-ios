@@ -7,6 +7,8 @@ extension UserDefaults {
 @main enum SettingsRuntimeTests {
     static func expect(_ value: @autoclosure () -> Bool, _ message: String) { if !value() { fatalError(message) } }
     static func main() throws {
+        // An installed three-line value must migrate before the singleton caches its wrappers.
+        UserDefaults.rgTestStandard.set("3", forKey: "chatListLines")
         let settings = RGSimpleSettings.shared
         let suite = ProcessInfo.processInfo.environment["RG_TEST_SUITE"]!
         defer {
@@ -14,6 +16,14 @@ extension UserDefaults {
             UserDefaults(suiteName: suite + "-group")!.removePersistentDomain(forName: suite + "-group")
         }
         UserDefaults.rgTestStandard.set("synthetic", forKey: "api_hash")
+        expect(RGSimpleSettings.ChatListLines.allCases.map(\.rawValue).sorted() == ["1", "2"], "Only one- and two-line modes are offered")
+        expect(settings.chatListLines == "2" && UserDefaults.rgTestStandard.string(forKey: "chatListLines") == "2", "Persistently migrate a removed three-line value")
+        settings.chatListLines = "1"
+        expect(settings.chatListLines == "1", "Keep the one-line selection")
+        settings.applyPreferences(["chatListLines": .string("3")])
+        expect(settings.chatListLines == "2" && UserDefaults.rgTestStandard.string(forKey: "chatListLines") == "2", "Old backups must not restore an unsupported line mode")
+        expect(settings.exportPreferences(categories: [.appearance]).values["chatListLines"] == .string("2"), "Export must not retain the removed three-line value")
+        settings.chatListLines = "2"
         expect(!settings.messageSummaryEnabled, "Summary actions must be opt-in")
         settings.messageSummaryEnabled = true
         expect(!settings.automaticallyRevealSpoilers, "Spoilers must remain concealed by default")

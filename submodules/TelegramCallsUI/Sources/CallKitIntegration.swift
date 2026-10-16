@@ -21,7 +21,7 @@ public final class CallKitIntegration {
         return false
         #else
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            return Locale.current.regionCode?.lowercased() != "cn" && !(rgSharedUserDefaults()?.bool(forKey: "legacyNotificationsFix") ?? false)
+            return Locale.current.regionCode?.lowercased() != "cn" // MARK: Regram — the retired notification switch must not disable calls.
         } else {
             return false
         }

@@ -1465,7 +1465,8 @@ func debugRestoreState(basePath: String, name: String) {
     }
 }
 
-public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, encryptionParameters: ValueBoxEncryptionParameters, timestampForAbsoluteTimeBasedOperations: Int32, isMainProcess: Bool, isTemporary: Bool, isReadOnly: Bool, useCopy: Bool, useCaches: Bool, removeDatabaseOnError: Bool) -> Signal<PostboxResult, NoError> {
+// MARK: Regram — notification-only safe opening never creates or upgrades a schema.
+public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, encryptionParameters: ValueBoxEncryptionParameters, timestampForAbsoluteTimeBasedOperations: Int32, isMainProcess: Bool, isTemporary: Bool, isReadOnly: Bool, useCopy: Bool, useCaches: Bool, removeDatabaseOnError: Bool, notificationOpen: Bool = false) -> Signal<PostboxResult, NoError> {
     let queue = Postbox.sharedQueue
     return Signal { subscriber in
         queue.async {
@@ -1512,7 +1513,7 @@ public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, 
             guard var valueBox = SqliteValueBox(basePath: dbBasePath, queue: queue, isTemporary: isTemporary, isReadOnly: isReadOnly, useCaches: useCaches, removeDatabaseOnError: removeDatabaseOnError, encryptionParameters: encryptionParameters, upgradeProgress: { progress in
                 postboxLog("openPostbox, SqliteValueBox upgrading progress \(progress)")
                 subscriber.putNext(.upgrading(progress))
-            }) else {
+            }, notificationOpen: notificationOpen) else {
                 postboxLog("openPostbox, SqliteValueBox open error")
                 subscriber.putNext(.error)
                 return
@@ -1523,6 +1524,10 @@ public func openPostbox(basePath: String, seedConfiguration: SeedConfiguration, 
                 
                 let userVersion: Int32? = metadataTable.userVersion()
                 let currentUserVersion: Int32 = 25
+                if notificationOpen && userVersion != currentUserVersion { // MARK: Regram
+                    subscriber.putNext(.error)
+                    return
+                }
 
                 postboxLog("openPostbox, current userVersion: \(String(describing: userVersion ?? nil))")
                 

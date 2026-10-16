@@ -1,5 +1,6 @@
 import RGAppGroupIdentifier
 import RGSimpleSettings // MARK: Regram
+import RGNotificationRecovery // MARK: Regram
 import Foundation
 import PasscodeCore
 import UserNotifications
@@ -26,7 +27,6 @@ import ImageIO
 import UniformTypeIdentifiers
 
 private let groupUserDefaults: UserDefaults? = UserDefaults(suiteName: rgAppGroupIdentifier())
-private let LEGACY_NOTIFICATIONS_FIX: Bool = groupUserDefaults?.bool(forKey: "legacyNotificationsFix") ?? false
 
 // MARK: Regram
 /// Whether a notification this extension wants to show *nothing* for has to be delivered as a
@@ -40,14 +40,36 @@ private let LEGACY_NOTIFICATIONS_FIX: Bool = groupUserDefaults?.bool(forKey: "le
 /// generic "You have a new message". That is why simply opening a group on desktop made this build
 /// buzz on every read-receipt — including for messages the user had just sent themselves.
 ///
-/// So: ask the signature, not the build flag. `LEGACY_NOTIFICATIONS_FIX` still forces it on, but it
-/// is deliberately not the only source — that flag also disables CallKit (see
-/// `CallKitIntegration.isAvailable`), and this has nothing to do with calls.
-private let RG_SILENCE_EMPTY_NOTIFICATIONS: Bool = LEGACY_NOTIFICATIONS_FIX || !rgSignatureGrants(RGEntitlement.userNotificationsFiltering)
+/// MARK: Regram — keep the existing path when the experiment is off.
+private let RG_SILENCE_EMPTY_NOTIFICATIONS = !rgSignatureGrants(RGEntitlement.userNotificationsFiltering)
+private let RG_RECOVERY_SILENCE_EMPTY_NOTIFICATIONS = !RGNotificationRecovery.filteringEligible(signatureDeclared: rgSignatureGrants(RGEntitlement.userNotificationsFiltering))
 private let PINNED_MESSAGE_ACTION: String = groupUserDefaults?.string(forKey: "pinnedMessageNotifications") ?? "default"
 private let PINNED_MESSAGE_ACTION_EXCEPTIONS: [String: String] = (groupUserDefaults?.dictionary(forKey: "pinnedMessageNotificationsExceptions") as? [String: String]) ?? [:]
 private let MENTION_AND_REPLY_ACTION: String = groupUserDefaults?.string(forKey: "mentionsAndRepliesNotifications") ?? "default"
 private let MENTION_AND_REPLY_ACTION_EXCEPTIONS: [String: String] = (groupUserDefaults?.dictionary(forKey: "mentionsAndRepliesNotificationsExceptions") as? [String: String]) ?? [:]
+
+// MARK: Regram — notification settings must refresh when iOS reuses the extension process.
+private struct RGNotificationPreferenceSnapshot {
+    let pinnedAction: String
+    let pinnedExceptions: [String: String]
+    let mentionAction: String
+    let mentionExceptions: [String: String]
+    let filterEnabled: Bool
+    let rules: [RGMessageFilterRule]
+    let hiddenSenders: Set<Int64>
+    let disabledChats: Set<Int64>
+
+    init(defaults: UserDefaults?) {
+        pinnedAction = defaults?.string(forKey: "pinnedMessageNotifications") ?? "default"
+        pinnedExceptions = defaults?.dictionary(forKey: "pinnedMessageNotificationsExceptions") as? [String: String] ?? [:]
+        mentionAction = defaults?.string(forKey: "mentionsAndRepliesNotifications") ?? "default"
+        mentionExceptions = defaults?.dictionary(forKey: "mentionsAndRepliesNotificationsExceptions") as? [String: String] ?? [:]
+        filterEnabled = defaults?.bool(forKey: "filterNotifications") ?? false
+        rules = RGMessageFilter.decode(defaults?.string(forKey: "messageFilterRules") ?? "[]")
+        hiddenSenders = Set((defaults?.stringArray(forKey: "blockedPeerIds") ?? []).compactMap(Int64.init))
+        disabledChats = Set((defaults?.stringArray(forKey: "messageFilterDisabledPeerIds") ?? []).compactMap(Int64.init))
+    }
+}
 
 private let queue = Queue()
 
@@ -58,6 +80,49 @@ private func setupSharedLogger(rootPath: String, path: String) {
         installedSharedLogger = true
         Logger.setSharedLogger(Logger(rootPath: rootPath, basePath: path))
     }
+}
+
+// MARK: Regram — bound every multipart buffer before upstream consumers allocate it.
+private func rgBoundedNotificationFetch(_ source: Signal<MediaResourceDataFetchResult, MediaResourceDataFetchError>, budget: RGNotificationResourceBudget?, resource: TelegramMediaResource) -> Signal<MediaResourceDataFetchResult, MediaResourceDataFetchError> {
+    guard let budget else { return source }
+    return Signal { subscriber in
+        guard budget.reserve(size: resource.size) else {
+            subscriber.putError(.generic)
+            return EmptyDisposable
+        }
+        let maximum = resource.size ?? RGNotificationResourceBudget.maximumResourceBytes
+        let disposable = MetaDisposable()
+        let received = Atomic<Int64>(value: 0)
+        disposable.set(source.start(next: { value in
+            var valid = true
+            switch value {
+            case let .dataPart(offset, data, range, _):
+                valid = range.lowerBound >= 0 && range.upperBound <= Int64(data.count)
+                if valid {
+                    valid = RGNotificationResourceBudget.permitsChunk(offset: offset, count: data.count, lowerBound: Int(range.lowerBound), upperBound: Int(range.upperBound), maximumBytes: maximum)
+                }
+                if valid {
+                    let total = received.modify { $0 + Int64(data.count) }
+                    valid = total <= maximum
+                }
+            case let .resourceSizeUpdated(size):
+                valid = size >= 0 && size <= maximum
+            default:
+                break
+            }
+            guard valid else { subscriber.putError(.generic); disposable.dispose(); return }
+            subscriber.putNext(value)
+        }, error: { subscriber.putError($0) }, completed: { subscriber.putCompletion() }))
+        return disposable
+    }
+}
+
+private func rgNotificationImageRepresentation(_ representations: [TelegramMediaImageRepresentation], recoveryEnabled: Bool) -> TelegramMediaImageRepresentation? {
+    guard recoveryEnabled else { return largestImageRepresentation(representations) }
+    let candidates = representations.filter {
+        max($0.dimensions.width, $0.dimensions.height) <= 1280 && ($0.resource.size ?? 0) <= RGNotificationResourceBudget.maximumResourceBytes
+    }.sorted { max($0.dimensions.width, $0.dimensions.height) < max($1.dimensions.width, $1.dimensions.height) }
+    return candidates.first(where: { max($0.dimensions.width, $0.dimensions.height) >= 320 }) ?? candidates.last
 }
 
 private let accountAuxiliaryMethods = AccountAuxiliaryMethods(fetchResource: { account, resource, ranges, _ in
@@ -522,6 +587,12 @@ private func peerAvatar(mediaBox: MediaBox, accountPeerId: PeerId, peer: Peer, i
 
 @available(iOSApplicationExtension 10.0, iOS 10.0, *)
 private struct NotificationContent: CustomStringConvertible {
+    // MARK: Regram — immutable request policy is copied into each delivered model.
+    var recoveryEnabled = false
+    var recoveryPreferences: RGNotificationPreferenceSnapshot?
+    var rgSilenceEmptyNotifications: Bool {
+        recoveryEnabled ? RG_RECOVERY_SILENCE_EMPTY_NOTIFICATIONS : RG_SILENCE_EMPTY_NOTIFICATIONS
+    }
     var lottieSettings: LottieRenderingSettings = .noAccountFallback
     struct CustomEmoji {
         var range: Range<Int>
@@ -566,15 +637,7 @@ private struct NotificationContent: CustomStringConvertible {
     /// "You have a new message" — the same alert, over and over, for messages the user can already
     /// read in the app.
     var isForeignSession: Bool = false
-    /// Whether `generate()` will *silence* a foreign-session push rather than drop it — the case that
-    /// leaves a delivered notification behind for `removeEmptyNotifications()` to clear.
-    ///
-    /// Dropping one outright needs `usernotifications.filtering`, which Apple grants only on request.
-    /// Ask the signature rather than the build flag: on a re-signed build what was declared is not
-    /// what was granted.
-    var isSilencedRatherThanDropped: Bool {
-        return self.isForeignSession && RG_SILENCE_EMPTY_NOTIFICATIONS
-    }
+    var routingUnavailable = false // MARK: Regram — do not trust a badge from an unrecognized route.
     let chatId: Int64?
     /// The account this notification was delivered to, set only while more than one is signed
     /// in (see `notificationRecipientAccountName`).
@@ -689,7 +752,13 @@ private struct NotificationContent: CustomStringConvertible {
         #if DEBUG
         print("body:\(content.body) silent:\(self.silent) isMentionOrReply:\(self.isMentionOrReply) MENTION_AND_REPLY_ACTION:\(MENTION_AND_REPLY_ACTION) isPinned:\(self.isPinned) PINNED_MESSAGE_ACTION:\(PINNED_MESSAGE_ACTION)" +  " forceIsEmpty:\(self.forceIsEmpty) forceIsSilent:\(self.forceIsSilent)")
         #endif
-        if self.shouldSuppressAsEmptyControlNotification && !RG_SILENCE_EMPTY_NOTIFICATIONS {
+        // MARK: Regram — finish control/foreign pushes before expensive intent/media rendering.
+        if self.recoveryEnabled, self.shouldSuppressAsEmptyControlNotification || self.isForeignSession {
+            let filtered = self.rgSilenceEmptyNotifications ? RGNotificationRecovery.quietContent(badge: nil) : UNMutableNotificationContent()
+            if !self.isForeignSession, let badge = self.badge { filtered.badge = badge as NSNumber }
+            return filtered
+        }
+        if self.shouldSuppressAsEmptyControlNotification && !self.rgSilenceEmptyNotifications {
             // MARK: Regram — filtering forbids alert fields, but an unread count
             // computed by read/delete synchronization must still update the badge.
             let filtered = UNMutableNotificationContent()
@@ -698,7 +767,7 @@ private struct NotificationContent: CustomStringConvertible {
         }
         // MARK: Regram
         if self.isForeignSession {
-            if !self.isSilencedRatherThanDropped {
+            if !self.rgSilenceEmptyNotifications {
                 return UNNotificationContent()
             }
             // Empty content is still *delivered* without the entitlement — as a blank banner, which
@@ -832,15 +901,15 @@ private struct NotificationContent: CustomStringConvertible {
         // own alert, the server's placeholder "You have a new message". `self.body` is checked too
         // because a body with inline emoji goes out as `attributedBody`, leaving `content.body` empty.
         let rgHasVisibleText = !content.title.isEmpty || !content.subtitle.isEmpty || !content.body.isEmpty || !(self.body ?? "").isEmpty
-        if (self.shouldSuppressAsEmptyControlNotification || (!rgHasVisibleText && self.attachments.isEmpty && self.sender == nil)) && RG_SILENCE_EMPTY_NOTIFICATIONS {
+        if (self.shouldSuppressAsEmptyControlNotification || (!rgHasVisibleText && self.attachments.isEmpty && self.sender == nil)) && self.rgSilenceEmptyNotifications {
             // MARK: Regram — built from scratch rather than by blanking the title. A mention or
             // pinned-message notification the user disabled arrives here with its real text,
             // attachments and sender avatar already filled in, and the passive row stays in
             // Notification Center until the sweep removes it; if the extension is suspended first,
             // it stays there showing the message. Only the badge (read-state sync is the whole point
             // of these) and userInfo carry over.
-            let silenced = UNMutableNotificationContent()
-            silenced.title = " "
+            let silenced = self.recoveryEnabled ? RGNotificationRecovery.quietContent(badge: content.badge) : UNMutableNotificationContent()
+            if !self.recoveryEnabled { silenced.title = " " }
             silenced.threadIdentifier = "empty-notification"
             if #available(iOSApplicationExtension 15.0, iOS 15.0, *) {
                 silenced.interruptionLevel = .passive
@@ -852,7 +921,7 @@ private struct NotificationContent: CustomStringConvertible {
             // MARK: Regram — retain a badge computed from the current account
             // after read/delete updates. Never recover a control push's original badge.
             silenced.badge = content.badge
-            if !self.isEmpty && !self.dismissAfterDelivery && !self.forceIsEmpty {
+            if !self.recoveryEnabled && !self.isEmpty && !self.dismissAfterDelivery && !self.forceIsEmpty {
                 silenced.userInfo = content.userInfo
             }
             content = silenced
@@ -867,20 +936,20 @@ private struct NotificationContent: CustomStringConvertible {
 
 // MARK: Regram — cold account opens may temporarily fail while the app publishes
 // its database. Retry the same account within the extension's bounded time budget.
-private func rgStandaloneStateManagerWithRetry(queue: Queue, accountManager: AccountManager<TelegramAccountManagerTypes>, networkArguments: NetworkInitializationArguments, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters, rootPath: String, auxiliaryMethods: AccountAuxiliaryMethods, attempt: Int = 1) -> Signal<AccountStateManager?, NoError> {
-    return standaloneStateManager(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods)
+private func rgStandaloneStateManagerWithRetry(queue: Queue, accountManager: AccountManager<TelegramAccountManagerTypes>, networkArguments: NetworkInitializationArguments, id: AccountRecordId, encryptionParameters: ValueBoxEncryptionParameters, rootPath: String, auxiliaryMethods: AccountAuxiliaryMethods, recoveryEnabled: Bool = false, attempt: Int = 1) -> Signal<AccountStateManager?, NoError> {
+    return standaloneStateManager(accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods, notificationOpen: recoveryEnabled)
     |> mapToSignal { stateManager in
         guard stateManager == nil, attempt < RGNotificationPolicy.maximumStartupAttempts else { return .single(stateManager) }
         return Signal<AccountStateManager?, NoError>.complete()
         |> delay(RGNotificationPolicy.retryDelay(attempt: attempt), queue: queue)
-        |> then(rgStandaloneStateManagerWithRetry(queue: queue, accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods, attempt: attempt + 1))
+        |> then(rgStandaloneStateManagerWithRetry(queue: queue, accountManager: accountManager, networkArguments: networkArguments, id: id, encryptionParameters: encryptionParameters, rootPath: rootPath, auxiliaryMethods: auxiliaryMethods, recoveryEnabled: recoveryEnabled, attempt: attempt + 1))
     }
 }
 
 // MARK: Regram — account records are an in-memory atomic-state snapshot.
 // Reopen metadata after a routing miss to see writes made by the main app.
 private typealias RGNotificationAccountSnapshot = (AccountManager<TelegramAccountManagerTypes>, AccountRecordsView<TelegramAccountManagerTypes>, AccountSharedDataView<TelegramAccountManagerTypes>)
-private func rgNotificationAccountSnapshot(accountManager: AccountManager<TelegramAccountManagerTypes>, keyId: Data?, queue: Queue, attempt: Int = 1) -> Signal<RGNotificationAccountSnapshot, NoError> {
+private func rgNotificationAccountSnapshot(accountManager: AccountManager<TelegramAccountManagerTypes>, keyId: Data?, queue: Queue, recoveryEnabled: Bool = false, attempt: Int = 1) -> Signal<RGNotificationAccountSnapshot, NoError> {
     return combineLatest(queue: queue, accountManager.accountRecords(), accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.inAppNotificationSettings, ApplicationSpecificSharedDataKeys.voiceCallSettings, ApplicationSpecificSharedDataKeys.automaticMediaDownloadSettings, SharedDataKeys.loggingSettings]))
     |> take(1)
     |> mapToSignal { records, sharedData in
@@ -894,9 +963,16 @@ private func rgNotificationAccountSnapshot(accountManager: AccountManager<Telegr
         return Signal<RGNotificationAccountSnapshot, NoError>.complete()
         |> delay(RGNotificationPolicy.retryDelay(attempt: attempt), queue: queue)
         |> then(deferred {
+            // MARK: Regram — refresh protected metadata without a fatal initializer.
+            if recoveryEnabled {
+                return (openNotificationAccountManager(basePath: accountManager.basePath) as Signal<AccountManager<TelegramAccountManagerTypes>?, NoError>)
+                |> mapToSignal { refreshed in
+                    rgNotificationAccountSnapshot(accountManager: refreshed ?? accountManager, keyId: keyId, queue: queue, recoveryEnabled: true, attempt: attempt + 1)
+                }
+            }
             // MARK: Regram — reopening metadata must use the same passcode setup as initial startup.
             let refreshedManager: AccountManager<TelegramAccountManagerTypes> = setupAccountManager(basePath: accountManager.basePath, isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
-            return rgNotificationAccountSnapshot(accountManager: refreshedManager, keyId: keyId, queue: queue, attempt: attempt + 1)
+            return rgNotificationAccountSnapshot(accountManager: refreshedManager, keyId: keyId, queue: queue, recoveryEnabled: recoveryEnabled, attempt: attempt + 1)
         })
     }
 }
@@ -937,11 +1013,13 @@ private final class NotificationServiceHandler {
     private let pollDisposable = MetaDisposable()
     // Handler creation is, for practical purposes, when the system's ~30 s extension
     // budget started ticking; the connection deadline on the poll path counts from here.
-    private let startTimestamp = CFAbsoluteTimeGetCurrent()
+    private let startTimestamp: CFAbsoluteTime
 
-    init?(queue: Queue, episode: String, updateCurrentContent: @escaping (NotificationContent) -> Void, completed: @escaping () -> Void, requestIdentifier: String, payload: [AnyHashable: Any]) {
+    init?(queue: Queue, episode: String, updateCurrentContent: @escaping (NotificationContent) -> Void, completed: @escaping () -> Void, requestIdentifier: String, payload: [AnyHashable: Any], recoveryEnabled: Bool, preparedAccountManager: AccountManager<TelegramAccountManagerTypes>?, receivedAt: CFAbsoluteTime, recoveryPreferences: RGNotificationPreferenceSnapshot?) {
         //debug_linker_fail_test()
+        let recoveryBudget: RGNotificationResourceBudget? = recoveryEnabled ? RGNotificationResourceBudget() : nil
         self.queue = queue
+        self.startTimestamp = recoveryEnabled ? receivedAt : CFAbsoluteTimeGetCurrent()
 
         // In the extension, database BEGIN/COMMIT/step failures must crash (the system then
         // falls back to displaying the unmodified push) instead of failing silently: silent
@@ -984,9 +1062,21 @@ private final class NotificationServiceHandler {
 
         let appVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "unknown"
 
-        self.accountManager = setupAccountManager(basePath: rootPath + "/accounts-metadata", isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
+        if recoveryEnabled {
+            guard let preparedAccountManager else { return nil }
+            self.accountManager = preparedAccountManager
+        } else {
+            self.accountManager = setupAccountManager(basePath: rootPath + "/accounts-metadata", isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false)
+        }
 
-        let deviceSpecificEncryptionParameters = BuildConfig.deviceSpecificEncryptionParameters(rootPath, baseAppBundleId: baseAppBundleId)
+        // MARK: Regram — retry protected/missing key reads instead of overwriting the shared key.
+        let deviceSpecificEncryptionParameters: DeviceSpecificEncryptionParameters
+        if recoveryEnabled {
+            guard let parameters = BuildConfig.notificationEncryptionParameters(rootPath: rootPath) else { return nil }
+            deviceSpecificEncryptionParameters = parameters
+        } else {
+            deviceSpecificEncryptionParameters = BuildConfig.deviceSpecificEncryptionParameters(rootPath, baseAppBundleId: baseAppBundleId)
+        }
         self.encryptionParameters = ValueBoxEncryptionParameters(forceEncryptionIfNoSet: false, key: ValueBoxEncryptionParameters.Key(data: deviceSpecificEncryptionParameters.key)!, salt: ValueBoxEncryptionParameters.Salt(data: deviceSpecificEncryptionParameters.salt)!)
         
         // MARK: Regram — never block the extension queue on a metadata transaction.
@@ -1003,7 +1093,18 @@ private final class NotificationServiceHandler {
         
         let isLockedMessage: String?
         let isLockedStoryMessage: String?
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: appLockStatePath(rootPath: rootPath))), let state = try? JSONDecoder().decode(LockState.self, from: data), isAppLocked(state: state) {
+        // MARK: Regram — a removed managed app passcode must not leave a stale privacy preview.
+        // Legacy/unavailable credential information remains fail-closed.
+        var rgHasConfiguredPasscode: Bool?
+        if recoveryEnabled { do {
+            if let managed = try PasscodeCredentialStore.shared.managedReferenceForNotification(timeout: 0.3) {
+                rgHasConfiguredPasscode = managed != nil
+            }
+        } catch { } }
+        // MARK: Regram — unreadable lock metadata is private until explicitly known to be removed.
+        let lockState = (try? Data(contentsOf: URL(fileURLWithPath: appLockStatePath(rootPath: rootPath)))).flatMap { try? JSONDecoder().decode(LockState.self, from: $0) }
+        let fileSaysLocked = lockState.map { isAppLocked(state: $0) } ?? (recoveryEnabled && rgHasConfiguredPasscode != false)
+        if RGNotificationRecovery.shouldUseLockedPreview(fileSaysLocked: fileSaysLocked, hasConfiguredPasscode: rgHasConfiguredPasscode) {
             if let notificationsPresentationData = try? Data(contentsOf: URL(fileURLWithPath: notificationsPresentationDataPath(rootPath: rootPath))), let notificationsPresentationDataValue = try? JSONDecoder().decode(NotificationsPresentationData.self, from: notificationsPresentationData) {
                 isLockedMessage = notificationsPresentationDataValue.applicationLockedMessageString
                 isLockedStoryMessage = notificationsPresentationDataValue.applicationLockedStoryString ?? notificationsPresentationDataValue.applicationLockedMessageString
@@ -1045,7 +1146,7 @@ private final class NotificationServiceHandler {
             return nil
         }
 
-        let _ = (rgNotificationAccountSnapshot(accountManager: self.accountManager, keyId: notificationPayloadKeyId(data: payloadData), queue: self.queue)
+        let _ = (rgNotificationAccountSnapshot(accountManager: self.accountManager, keyId: notificationPayloadKeyId(data: payloadData), queue: self.queue, recoveryEnabled: recoveryEnabled)
         |> deliverOn(self.queue)).start(next: { [weak self] accountManager, records, sharedData in
             // MARK: Regram — account opens and unread counts use the same fresh snapshot.
             self?.accountManager = accountManager
@@ -1099,7 +1200,10 @@ private final class NotificationServiceHandler {
                 // a session that is not this install. Guarded on `recordId` rather than on reaching
                 // this branch at all: a nil `self` means the extension is being torn down, which says
                 // nothing about who the push belongs to.
-                content.isForeignSession = recordId == nil
+                // MARK: Regram — a routing miss can be a temporarily unpublished local record.
+                // It is not proof that an account should be removed or logged out.
+                content.isForeignSession = recordId == nil && !recoveryEnabled
+                content.routingUnavailable = recoveryEnabled && recordId == nil
                 updateCurrentContent(content)
                 completed()
 
@@ -1113,7 +1217,8 @@ private final class NotificationServiceHandler {
                 id: recordId,
                 encryptionParameters: strongSelf.encryptionParameters,
                 rootPath: rootPath,
-                auxiliaryMethods: accountAuxiliaryMethods
+                auxiliaryMethods: accountAuxiliaryMethods,
+                recoveryEnabled: recoveryEnabled
             )
             |> deliverOn(strongSelf.queue)).start(next: { stateManager in
                 guard let strongSelf = self else {
@@ -1623,7 +1728,14 @@ private final class NotificationServiceHandler {
                                         
                                         CXProvider.reportNewIncomingVoIPPushPayload(voipPayload, completion: { error in
                                             Logger.shared.log("NotificationService \(episode)", "Did report voip notification, error: \(String(describing: error))")
-
+                                            // MARK: Regram — rejected CallKit handoff is still a real incoming call.
+                                            if recoveryEnabled, error != nil {
+                                                var fallback = NotificationContent(isLockedMessage: isLockedMessage)
+                                                fallback.recipientAccountName = recipientAccountName
+                                                fallback.title = callData.peer?.debugDisplayTitle
+                                                fallback.body = incomingCallMessage
+                                                updateCurrentContent(fallback)
+                                            }
                                             completed()
                                         })
                                     } else {
@@ -1669,7 +1781,14 @@ private final class NotificationServiceHandler {
                                         
                                         CXProvider.reportNewIncomingVoIPPushPayload(voipPayload, completion: { error in
                                             Logger.shared.log("NotificationService \(episode)", "Did report voip notification, error: \(String(describing: error))")
-
+                                            // MARK: Regram — rejected CallKit handoff is still a real incoming call.
+                                            if recoveryEnabled, error != nil {
+                                                var fallback = NotificationContent(isLockedMessage: isLockedMessage)
+                                                fallback.recipientAccountName = recipientAccountName
+                                                fallback.title = fromPeer?.debugDisplayTitle
+                                                fallback.body = incomingCallMessage
+                                                updateCurrentContent(fallback)
+                                            }
                                             completed()
                                         })
                                     } else {
@@ -1712,7 +1831,7 @@ private final class NotificationServiceHandler {
                                 // (bugs.telegram.org/c/64534, /c/61583). Giving up shows the payload's own
                                 // text instead of the fetched message, which is the same content the
                                 // expiry path would have shown, only sooner and without the retries.
-                                let connectionDeadline = strongSelf.startTimestamp + 25.0
+                                let connectionDeadline = strongSelf.startTimestamp + (recoveryEnabled ? 19.0 : 25.0)
                                 let remainingBudget: () -> Double = {
                                     return max(0.5, connectionDeadline - CFAbsoluteTimeGetCurrent())
                                 }
@@ -1742,7 +1861,7 @@ private final class NotificationServiceHandler {
                                         if let mediaAttachment {
                                             var contentType: MediaResourceUserContentType = .other
                                             var fetchResource: TelegramMultipartFetchableResource?
-                                            if let image = mediaAttachment as? TelegramMediaImage, let representation = largestImageRepresentation(image.representations), let resource = representation.resource as? TelegramMultipartFetchableResource {
+                                            if let image = mediaAttachment as? TelegramMediaImage, let representation = rgNotificationImageRepresentation(image.representations, recoveryEnabled: recoveryEnabled), let resource = representation.resource as? TelegramMultipartFetchableResource {
                                                 fetchResource = resource
                                                 contentType = .image
                                             } else if let file = mediaAttachment as? TelegramMediaFile {
@@ -1772,7 +1891,7 @@ private final class NotificationServiceHandler {
                                                         
                                                         let collectedData = Atomic<DataValue>(value: DataValue())
                                                         
-                                                        return standaloneMultipartFetch(
+                                                        return rgBoundedNotificationFetch(standaloneMultipartFetch(
                                                             accountPeerId: stateManager.accountPeerId,
                                                             postbox: stateManager.postbox,
                                                             network: stateManager.network,
@@ -1796,7 +1915,7 @@ private final class NotificationServiceHandler {
                                                             decryptedSize: nil,
                                                             continueInBackground: false,
                                                             useMainConnection: true
-                                                        ).start(next: { result in
+                                                        ), budget: recoveryBudget, resource: resource).start(next: { result in
                                                             switch result {
                                                             case let .dataPart(offset, data, dataRange, _):
                                                                 var isCompleted = false
@@ -1857,13 +1976,13 @@ private final class NotificationServiceHandler {
                                             fetchResource = downloadNotificationSound.resource as? TelegramMultipartFetchableResource
 
                                             if let resource = fetchResource {
-                                                if let path = strongSelf.stateManager?.postbox.mediaBox.completedResourcePath(resource), let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                                                if let path = strongSelf.stateManager?.postbox.mediaBox.completedResourcePath(resource), let data = recoveryEnabled ? (recoveryBudget?.reserve(size: resource.size) == true ? RGNotificationResourceBudget.cachedData(path: path) : nil) : (try? Data(contentsOf: URL(fileURLWithPath: path))) {
                                                     fetchNotificationSoundSignal = .single(data)
                                                 } else {
                                                     let intervals: Signal<[(Range<Int64>, MediaBoxFetchPriority)], NoError> = .single([(0 ..< Int64.max, MediaBoxFetchPriority.maximum)])
                                                     fetchNotificationSoundSignal = Signal { subscriber in
                                                         let collectedData = Atomic<Data>(value: Data())
-                                                        return standaloneMultipartFetch(
+                                                        return rgBoundedNotificationFetch(standaloneMultipartFetch(
                                                             accountPeerId: stateManager.accountPeerId,
                                                             postbox: stateManager.postbox,
                                                             network: stateManager.network,
@@ -1882,7 +2001,7 @@ private final class NotificationServiceHandler {
                                                             decryptedSize: nil,
                                                             continueInBackground: false,
                                                             useMainConnection: true
-                                                        ).start(next: { result in
+                                                        ), budget: recoveryBudget, resource: resource).start(next: { result in
                                                             switch result {
                                                             case let .dataPart(_, data, _, _):
                                                                 let _ = collectedData.modify { current in
@@ -1914,7 +2033,7 @@ private final class NotificationServiceHandler {
                                             return wasDisplayed
                                         }
                                         
-                                        let maxEmojiCount: Int = 10
+                                        let maxEmojiCount: Int = recoveryEnabled ? 2 : 10
                                         var uniqueEmojiIds: [Int64] = []
                                         for emoji in content.customEmoji {
                                             if !uniqueEmojiIds.contains(emoji.fileId) {
@@ -1932,7 +2051,7 @@ private final class NotificationServiceHandler {
                                             for (_, file) in files {
                                                 if let resource = file.resource as? TelegramMultipartFetchableResource {
                                                     let fetchSignal: Signal<(Int64, String?), NoError>
-                                                    if let path = stateManager.postbox.mediaBox.completedResourcePath(resource) {
+                                                    if let path = stateManager.postbox.mediaBox.completedResourcePath(resource), !recoveryEnabled || (RGNotificationResourceBudget.cachedFileIsWithinBudget(path: path) && recoveryBudget?.reserve(size: resource.size) == true) {
                                                         fetchSignal = .single((file.fileId.id, path))
                                                     } else {
                                                         let intervals: Signal<[(Range<Int64>, MediaBoxFetchPriority)], NoError> = .single([(0 ..< Int64.max, MediaBoxFetchPriority.maximum)])
@@ -1944,7 +2063,7 @@ private final class NotificationServiceHandler {
                                                             
                                                             let collectedData = Atomic<DataValue>(value: DataValue())
                                                             
-                                                            return standaloneMultipartFetch(
+                                                            return rgBoundedNotificationFetch(standaloneMultipartFetch(
                                                                 accountPeerId: stateManager.accountPeerId,
                                                                 postbox: stateManager.postbox,
                                                                 network: stateManager.network,
@@ -1968,7 +2087,7 @@ private final class NotificationServiceHandler {
                                                                 decryptedSize: nil,
                                                                 continueInBackground: false,
                                                                 useMainConnection: true
-                                                            ).start(next: { result in
+                                                            ), budget: recoveryBudget, resource: resource).start(next: { result in
                                                                 switch result {
                                                                 case let .dataPart(offset, data, dataRange, _):
                                                                     var isCompleted = false
@@ -2110,7 +2229,7 @@ private final class NotificationServiceHandler {
                                                 
                                                 Logger.shared.log("NotificationService \(episode)", "mediaAttachment: \(String(describing: mediaAttachment)), mediaData: \(String(describing: mediaData?.count))")
 
-                                                if let image = mediaAttachment as? TelegramMediaImage, let resource = largestImageRepresentation(image.representations)?.resource {
+                                                if let image = mediaAttachment as? TelegramMediaImage, let resource = rgNotificationImageRepresentation(image.representations, recoveryEnabled: recoveryEnabled)?.resource {
                                                     if let mediaData = mediaData {
                                                         stateManager.postbox.mediaBox.storeResourceData(resource.id, data: mediaData, synchronous: true)
                                                         if let messageId {
@@ -2168,7 +2287,7 @@ private final class NotificationServiceHandler {
                                                         if let mediaData = mediaData {
                                                             stateManager.postbox.mediaBox.storeResourceData(file.resource.id, data: mediaData, synchronous: true)
                                                         }
-                                                        if let storedPath = stateManager.postbox.mediaBox.completedResourcePath(file.resource, pathExtension: nil) {
+                                                        if let storedPath = stateManager.postbox.mediaBox.completedResourcePath(file.resource, pathExtension: nil), !recoveryEnabled || (remainingBudget() >= 6.0 && RGNotificationResourceBudget.cachedFileIsWithinBudget(path: storedPath)) {
                                                             let semaphore = DispatchSemaphore(value: 0)
                                                             let tempFile = TempBox.shared.tempFile(fileName: "audio.m4a")
                                                             let _ = (convertOpusToAAC(sourcePath: storedPath, allocateTempFile: {
@@ -2328,9 +2447,9 @@ private final class NotificationServiceHandler {
                                             var content = content
                                             // MARK: Regram — opt-in notification filtering shares the same keyword
                                             // and hidden-sender preferences, using original text rather than alert prefixes.
-                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, RGSimpleSettings.shared.filterNotifications {
+                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, recoveryPreferences?.filterEnabled ?? RGSimpleSettings.shared.filterNotifications {
                                                 let settings = RGSimpleSettings.shared
-                                                content.filteredByContentRule = RGNotificationFilterPolicy.shouldHide(text: message.text, senderId: message.author?.id.toInt64(), peerId: message.id.peerId.toInt64(), isIncoming: message.flags.contains(.Incoming), rules: settings.messageFilterRules, hiddenSenders: settings.blockedPeerIds, disabledChats: settings.messageFilterDisabledPeerIds)
+                                                content.filteredByContentRule = RGNotificationFilterPolicy.shouldHide(text: message.text, senderId: message.author?.id.toInt64(), peerId: message.id.peerId.toInt64(), isIncoming: message.flags.contains(.Incoming), rules: recoveryPreferences?.rules ?? settings.messageFilterRules, hiddenSenders: recoveryPreferences?.hiddenSenders ?? settings.blockedPeerIds, disabledChats: recoveryPreferences?.disabledChats ?? settings.messageFilterDisabledPeerIds)
                                             }
                                             
                                             var parsedMedia: Media?
@@ -2445,7 +2564,7 @@ private final class NotificationServiceHandler {
                                                     var resource: MediaResource?
                                                     var fetchSize: Int64?
                                                     if let image = media as? TelegramMediaImage {
-                                                        resource = largestImageRepresentation(image.representations)?.resource
+                                                        resource = rgNotificationImageRepresentation(image.representations, recoveryEnabled: recoveryEnabled)?.resource
                                                     } else if let file = media as? TelegramMediaFile {
                                                         resource = file.resource
                                                         for attribute in file.attributes {
@@ -2471,7 +2590,7 @@ private final class NotificationServiceHandler {
                                                 let intervals: Signal<[(Range<Int64>, MediaBoxFetchPriority)], NoError> = .single([(0 ..< Int64.max, MediaBoxFetchPriority.maximum)])
                                                 return Signal<Void, NoError> { subscriber in
                                                     let collectedData = Atomic<Data>(value: Data())
-                                                    return standaloneMultipartFetch(
+                                                    return rgBoundedNotificationFetch(standaloneMultipartFetch(
                                                         accountPeerId: stateManager.accountPeerId,
                                                         postbox: stateManager.postbox,
                                                         network: stateManager.network,
@@ -2490,7 +2609,7 @@ private final class NotificationServiceHandler {
                                                         decryptedSize: nil,
                                                         continueInBackground: false,
                                                         useMainConnection: true
-                                                    ).start(next: { result in
+                                                    ), budget: recoveryBudget, resource: resourceValue).start(next: { result in
                                                         switch result {
                                                         case let .dataPart(_, data, _, _):
                                                             let _ = collectedData.modify { current in
@@ -2524,13 +2643,13 @@ private final class NotificationServiceHandler {
                                             fetchResource = downloadNotificationSound.resource as? TelegramMultipartFetchableResource
 
                                             if let resource = fetchResource {
-                                                if let path = strongSelf.stateManager?.postbox.mediaBox.completedResourcePath(resource), let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                                                if let path = strongSelf.stateManager?.postbox.mediaBox.completedResourcePath(resource), let data = recoveryEnabled ? (recoveryBudget?.reserve(size: resource.size) == true ? RGNotificationResourceBudget.cachedData(path: path) : nil) : (try? Data(contentsOf: URL(fileURLWithPath: path))) {
                                                     fetchNotificationSoundSignal = .single(data)
                                                 } else {
                                                     let intervals: Signal<[(Range<Int64>, MediaBoxFetchPriority)], NoError> = .single([(0 ..< Int64.max, MediaBoxFetchPriority.maximum)])
                                                     fetchNotificationSoundSignal = Signal { subscriber in
                                                         let collectedData = Atomic<Data>(value: Data())
-                                                        return standaloneMultipartFetch(
+                                                        return rgBoundedNotificationFetch(standaloneMultipartFetch(
                                                             accountPeerId: stateManager.accountPeerId,
                                                             postbox: stateManager.postbox,
                                                             network: stateManager.network,
@@ -2549,7 +2668,7 @@ private final class NotificationServiceHandler {
                                                             decryptedSize: nil,
                                                             continueInBackground: false,
                                                             useMainConnection: true
-                                                        ).start(next: { result in
+                                                        ), budget: recoveryBudget, resource: resource).start(next: { result in
                                                             switch result {
                                                             case let .dataPart(_, data, _, _):
                                                                 let _ = collectedData.modify { current in
@@ -2891,6 +3010,10 @@ final class NotificationService: UNNotificationServiceExtension {
     private let completionLock = NSLock()
     private var currentRequestIdentifier: String?
     private var episode: String?
+    private var recoveryEnabled = false // MARK: Regram
+    private var recoveryPreferences: RGNotificationPreferenceSnapshot?
+    private let rgAccountStartupDisposable = MetaDisposable()
+    private var receivedAt: CFAbsoluteTime = 0
     // MARK: Regram — completion uses an immutable snapshot of its own request.
     private var rgDeadlineWorkItem: DispatchWorkItem?
     private struct RGDelivery {
@@ -2899,6 +3022,7 @@ final class NotificationService: UNNotificationServiceExtension {
         let initialContent: UNNotificationContent?
         let requestIdentifier: String?
         let episode: String?
+        let recoveryEnabled: Bool
     }
     // MARK: Regram
     
@@ -2908,23 +3032,15 @@ final class NotificationService: UNNotificationServiceExtension {
     
     // MARK: Regram
     func removeEmptyNotificationsOnce() {
-        if !RG_SILENCE_EMPTY_NOTIFICATIONS {
-            return
+        // MARK: Regram — cleanup also covers failed filtering and unmarked system fallbacks.
+        if self.recoveryEnabled {
+            RGNotificationRecovery.removeDeliveredPlaceholders()
+        } else if RG_SILENCE_EMPTY_NOTIFICATIONS {
+            UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+                let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
+                if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+            }
         }
-        var emptyNotifications: [String] = []
-        UNUserNotificationCenter.current().getDeliveredNotifications(completionHandler: { notifications in
-            for notification in notifications {
-                if notification.request.content.threadIdentifier == "empty-notification" {
-                    emptyNotifications.append(notification.request.identifier)
-                }
-            }
-            if !emptyNotifications.isEmpty {
-                UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: emptyNotifications)
-                #if DEBUG
-                NSLog("Empty notifications removed once. Count \(emptyNotifications.count)")
-                #endif
-            }
-        })
     }
 
     func removeEmptyNotifications() {
@@ -2932,24 +3048,25 @@ final class NotificationService: UNNotificationServiceExtension {
         self.removeEmptyNotifications(requestId: requestId)
     }
 
-    private func removeEmptyNotifications(requestId: String) {
-        guard RG_SILENCE_EMPTY_NOTIFICATIONS else { return }
-        NotificationService.removeEmptyNotification(requestId: requestId, attempt: 0)
+    private func removeEmptyNotifications(requestId: String, recoveryEnabled: Bool? = nil) {
+        let enabled = recoveryEnabled ?? self.recoveryEnabled
+        guard enabled || RG_SILENCE_EMPTY_NOTIFICATIONS else { return }
+        NotificationService.removeEmptyNotification(requestId: requestId, attempt: 0, recoveryEnabled: enabled)
     }
 
     // Static, capturing nothing: the retries run after the content handler was called, when the
     // extension object may already have been released. A weak reference then ended the chain after
     // the first miss and left the silenced row in place until the app's own sweep on next launch.
-    private static func removeEmptyNotification(requestId: String, attempt: Int) {
+    private static func removeEmptyNotification(requestId: String, attempt: Int, recoveryEnabled: Bool) {
         guard attempt < 8 else { return }
         let delay = min(1.0, 0.05 * pow(2.0, Double(attempt)))
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) {
             UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
-                let matches = notifications.filter { $0.request.identifier == requestId && $0.request.content.threadIdentifier == "empty-notification" }
+                let matches = notifications.filter { $0.request.identifier == requestId && (recoveryEnabled ? RGNotificationRecovery.shouldRemove($0.request.content) : $0.request.content.threadIdentifier == "empty-notification") }
                 if !matches.isEmpty {
                     UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [requestId])
                 } else {
-                    NotificationService.removeEmptyNotification(requestId: requestId, attempt: attempt + 1)
+                    NotificationService.removeEmptyNotification(requestId: requestId, attempt: attempt + 1, recoveryEnabled: recoveryEnabled)
                 }
             }
         }
@@ -2960,7 +3077,7 @@ final class NotificationService: UNNotificationServiceExtension {
         defer { self.completionLock.unlock() }
         if let episode, self.episode != episode { return nil }
         guard let handler = self.contentHandler else { return nil }
-        let result = RGDelivery(handler: handler, content: self.content.with({ $0 }), initialContent: self.initialContent, requestIdentifier: self.currentRequestIdentifier, episode: self.episode)
+        let result = RGDelivery(handler: handler, content: self.content.with({ $0 }), initialContent: self.initialContent, requestIdentifier: self.currentRequestIdentifier, episode: self.episode, recoveryEnabled: self.recoveryEnabled)
         self.contentHandler = nil
         self.rgDeadlineWorkItem?.cancel()
         self.rgDeadlineWorkItem = nil
@@ -2978,7 +3095,10 @@ final class NotificationService: UNNotificationServiceExtension {
         self.completionLock.lock()
         defer { self.completionLock.unlock() }
         guard self.episode == episode, self.contentHandler != nil else { return }
-        let _ = self.content.swap(value)
+        var snapshot = value
+        snapshot.recoveryEnabled = self.recoveryEnabled
+        snapshot.recoveryPreferences = self.recoveryPreferences
+        let _ = self.content.swap(snapshot)
     }
 
     // MARK: Regram — network/database stalls also happen after installation.
@@ -2986,6 +3106,7 @@ final class NotificationService: UNNotificationServiceExtension {
     private func rgComplete(episode: String? = nil, reason: String) {
         guard let delivery = self.rgTakeDelivery(episode: episode) else { return }
         Logger.shared.log("NotificationService \(delivery.episode ?? "???")", "Completing: \(reason), hasContent=\(delivery.content != nil)")
+        self.rgAccountStartupDisposable.set(nil)
         self.rgDeliver(delivery)
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
@@ -3001,6 +3122,8 @@ final class NotificationService: UNNotificationServiceExtension {
         // MARK: Regram — an OS request identifier may be reused; each receive
         // needs its own generation for callbacks and deadline ownership.
         self.rgComplete(reason: "superseded")
+        let recoveryEnabled = RGNotificationExperiment.isEnabled
+        self.receivedAt = CFAbsoluteTimeGetCurrent()
         let episode = UUID().uuidString
         let deadline = DispatchWorkItem { [weak self] in
             self?.rgComplete(episode: episode, reason: "processing deadline")
@@ -3011,18 +3134,46 @@ final class NotificationService: UNNotificationServiceExtension {
         let _ = self.content.swap(nil)
         self.currentRequestIdentifier = request.identifier
         self.contentHandler = contentHandler
+        self.recoveryEnabled = recoveryEnabled
+        self.recoveryPreferences = recoveryEnabled ? RGNotificationPreferenceSnapshot(defaults: groupUserDefaults) : nil
         self.rgDeadlineWorkItem = deadline
         self.completionLock.unlock()
 
+        self.removeEmptyNotificationsOnce() // MARK: Regram — before database/network startup.
         self.impl = nil
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + RGNotificationPolicy.processingDeadline, execute: deadline)
-        self.rgStartHandler(request: request, episode: episode, attempt: 1)
+        self.rgStartHandler(request: request, episode: episode, attempt: 1, recoveryEnabled: recoveryEnabled)
     }
 
     // MARK: Regram — transient App Group resolution can also fail before an
     // account is opened. Retries belong to this request and stop after expiry.
-    private func rgStartHandler(request: UNNotificationRequest, episode: String, attempt: Int) {
+    private func rgStartHandler(request: UNNotificationRequest, episode: String, attempt: Int, recoveryEnabled: Bool, preparedAccountManager: AccountManager<TelegramAccountManagerTypes>? = nil, didPrepare: Bool = false) {
         guard self.rgIsPendingRequest(episode) else { return }
+        // MARK: Regram — prepare metadata asynchronously with a failable, non-destructive path.
+        if recoveryEnabled && !didPrepare {
+            setValueBoxStrictErrorHandling(true)
+            guard let container = rgDataContainerURL(),
+                  (try? PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: rgAppGroupIdentifier(), processRole: .appExtension))) != nil else {
+                self.rgComplete(episode: episode, reason: "shared container unavailable")
+                return
+            }
+            self.rgAccountStartupDisposable.set(((openNotificationAccountManager(basePath: rootPathForBasePath(container.path) + "/accounts-metadata") as Signal<AccountManager<TelegramAccountManagerTypes>?, NoError>)
+            |> deliverOnMainQueue).start(next: { [weak self] manager in
+                guard let self, self.rgIsPendingRequest(episode) else { return }
+                if manager == nil, attempt < RGNotificationPolicy.maximumStartupAttempts {
+                    Queue.mainQueue().after(RGNotificationPolicy.retryDelay(attempt: attempt)) { [weak self] in
+                        self?.rgStartHandler(request: request, episode: episode, attempt: attempt + 1, recoveryEnabled: recoveryEnabled)
+                    }
+                } else if manager == nil {
+                    self.rgComplete(episode: episode, reason: "metadata unavailable")
+                } else {
+                    self.rgStartHandler(request: request, episode: episode, attempt: attempt, recoveryEnabled: recoveryEnabled, preparedAccountManager: manager, didPrepare: true)
+                }
+            }))
+            return
+        }
+        let receivedAt = self.receivedAt
+        let recoveryPreferences = self.recoveryPreferences
         self.impl = QueueLocalObject(queue: queue, generate: { [weak self] in
             guard self?.rgIsPendingRequest(episode) == true else { return BoxedNotificationServiceHandler(value: nil) }
             let handler = NotificationServiceHandler(
@@ -3035,7 +3186,11 @@ final class NotificationService: UNNotificationServiceExtension {
                     self?.rgComplete(episode: episode, reason: "handler completed")
                 },
                 requestIdentifier: request.identifier,
-                payload: request.content.userInfo
+                payload: request.content.userInfo,
+                recoveryEnabled: recoveryEnabled,
+                preparedAccountManager: preparedAccountManager,
+                receivedAt: receivedAt,
+                recoveryPreferences: recoveryPreferences
             )
             // MARK: Regram — a handler that fails to start never calls `completed`, so the push used
             // to wait out the whole time limit and then show its placeholder alert.
@@ -3045,7 +3200,7 @@ final class NotificationService: UNNotificationServiceExtension {
                         DispatchQueue.main.async { [weak self] in
                             guard let self, self.rgIsPendingRequest(episode) else { return }
                             self.impl = nil
-                            self.rgStartHandler(request: request, episode: episode, attempt: attempt + 1)
+                            self.rgStartHandler(request: request, episode: episode, attempt: attempt + 1, recoveryEnabled: recoveryEnabled)
                         }
                     }
                 } else {
@@ -3062,11 +3217,12 @@ final class NotificationService: UNNotificationServiceExtension {
         let generated: UNNotificationContent
         if let content = delivery.content {
             generated = content.generate()
-        } else if let initial = delivery.initialContent, initial.userInfo["p"] is String {
+        } else if let initial = delivery.initialContent, initial.userInfo["p"] is String || (delivery.recoveryEnabled && RGNotificationRecovery.shouldRemove(initial)) {
             // An unresolved encrypted alert is the server placeholder, not the
             // decrypted privacy preview. Preserve its badge in the passive fallback.
             var content = NotificationContent(isLockedMessage: nil, isEmpty: true)
-            content.badge = initial.badge?.intValue
+            content.recoveryEnabled = delivery.recoveryEnabled
+            content.badge = delivery.recoveryEnabled ? nil : initial.badge?.intValue
             generated = content.generate()
         } else {
             delivery.handler(delivery.initialContent ?? UNNotificationContent())
@@ -3080,18 +3236,31 @@ final class NotificationService: UNNotificationServiceExtension {
         // another session, whose badge counts another account.
         let isForeignSession = delivery.content?.isForeignSession ?? false
         let isControl = delivery.content.map { $0.isEmpty || $0.dismissAfterDelivery || $0.forceIsEmpty } ?? false
-        if RG_SILENCE_EMPTY_NOTIFICATIONS, generated.badge == nil, RGNotificationPolicy.shouldRecoverBadge(foreignSession: isForeignSession, markedControl: isControl), isSilenced || (generated.title.isEmpty && generated.body.isEmpty), let badge = delivery.initialContent?.badge, let mutable = generated.mutableCopy() as? UNMutableNotificationContent {
+        let silenceEmpty = delivery.recoveryEnabled ? RG_RECOVERY_SILENCE_EMPTY_NOTIFICATIONS : RG_SILENCE_EMPTY_NOTIFICATIONS
+        if silenceEmpty, generated.badge == nil, (!delivery.recoveryEnabled || (delivery.content != nil && delivery.content?.routingUnavailable != true)), RGNotificationPolicy.shouldRecoverBadge(foreignSession: isForeignSession, markedControl: isControl), isSilenced || (generated.title.isEmpty && generated.body.isEmpty), let badge = delivery.initialContent?.badge, let mutable = generated.mutableCopy() as? UNMutableNotificationContent {
             mutable.badge = badge
             delivered = mutable
         }
+        // MARK: Regram — distinguish intentional privacy previews and real messages whose text
+        // happens to match the server placeholder from unresolved encrypted/control pushes.
+        let expectedSuppression = delivery.content.map { $0.shouldSuppressAsEmptyControlNotification || $0.isForeignSession } ?? (delivery.initialContent?.userInfo["p"] is String || delivery.initialContent.map(RGNotificationRecovery.shouldRemove) == true)
+        if delivery.recoveryEnabled, !expectedSuppression, delivery.content != nil, let resolved = delivered.mutableCopy() as? UNMutableNotificationContent {
+            resolved.userInfo[RGNotificationRecovery.resolvedKey] = true
+            delivered = resolved
+        }
         self.removeEmptyNotificationsOnce()
         delivery.handler(delivered)
-        if isSilenced, let requestId = delivery.requestIdentifier {
-            self.removeEmptyNotifications(requestId: requestId)
+        // Cleanup is independent of the eligibility decision: APNs headers or signing can still
+        // prevent an apparently authorized empty-content filter from taking effect.
+        if (delivery.recoveryEnabled && expectedSuppression) || isSilenced, let requestId = delivery.requestIdentifier {
+            self.removeEmptyNotifications(requestId: requestId, recoveryEnabled: delivery.recoveryEnabled)
         }
     }
 
+    deinit { self.rgAccountStartupDisposable.dispose() }
+
     override func serviceExtensionTimeWillExpire() {
+        self.rgAccountStartupDisposable.set(nil)
         self.impl = nil
         self.rgComplete(reason: "system expiry")
     }
@@ -3530,8 +3699,8 @@ extension NotificationContent {
         // MARK: Regram — notification options are permanent local features.
         if !self.isEmpty {
             if self.isPinned {
-                var desiredAction = PINNED_MESSAGE_ACTION
-                if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {
+                var desiredAction = self.recoveryPreferences?.pinnedAction ?? PINNED_MESSAGE_ACTION
+                if let chatId = chatId, let exceptionAction = (self.recoveryPreferences?.pinnedExceptions ?? PINNED_MESSAGE_ACTION_EXCEPTIONS)["\(chatId)"] {
                     desiredAction = exceptionAction
                 }
                 if desiredAction == "disabled" {
@@ -3539,8 +3708,8 @@ extension NotificationContent {
                 }
             }
             if self.isMentionOrReply {
-                var desiredAction = MENTION_AND_REPLY_ACTION
-                if let chatId = chatId, let exceptionAction = MENTION_AND_REPLY_ACTION_EXCEPTIONS["\(chatId)"] {
+                var desiredAction = self.recoveryPreferences?.mentionAction ?? MENTION_AND_REPLY_ACTION
+                if let chatId = chatId, let exceptionAction = (self.recoveryPreferences?.mentionExceptions ?? MENTION_AND_REPLY_ACTION_EXCEPTIONS)["\(chatId)"] {
                     desiredAction = exceptionAction
                 }
                 if desiredAction == "disabled" {
@@ -3553,8 +3722,8 @@ extension NotificationContent {
     var forceIsSilent: Bool {
         if !self.silent {
             if self.isPinned {
-                var desiredAction = PINNED_MESSAGE_ACTION
-                if let chatId = chatId, let exceptionAction = PINNED_MESSAGE_ACTION_EXCEPTIONS["\(chatId)"] {
+                var desiredAction = self.recoveryPreferences?.pinnedAction ?? PINNED_MESSAGE_ACTION
+                if let chatId = chatId, let exceptionAction = (self.recoveryPreferences?.pinnedExceptions ?? PINNED_MESSAGE_ACTION_EXCEPTIONS)["\(chatId)"] {
                     desiredAction = exceptionAction
                 }
                 if desiredAction == "silenced" {
@@ -3562,8 +3731,8 @@ extension NotificationContent {
                 }
             }
             if self.isMentionOrReply {
-                var desiredAction = MENTION_AND_REPLY_ACTION
-                if let chatId = chatId, let exceptionAction = MENTION_AND_REPLY_ACTION_EXCEPTIONS["\(chatId)"] {
+                var desiredAction = self.recoveryPreferences?.mentionAction ?? MENTION_AND_REPLY_ACTION
+                if let chatId = chatId, let exceptionAction = (self.recoveryPreferences?.mentionExceptions ?? MENTION_AND_REPLY_ACTION_EXCEPTIONS)["\(chatId)"] {
                     desiredAction = exceptionAction
                 }
                 if desiredAction == "silenced" {

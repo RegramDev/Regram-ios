@@ -1,4 +1,5 @@
 import TelegramCore
+import SwiftSignalKit // MARK: Regram
 #if os(macOS)
 import PasscodeCore
 #endif
@@ -91,4 +92,22 @@ public func setupAccountManager<Types: AccountManagerTypes>(basePath: String, is
             }
         )
     )
+}
+
+// MARK: Regram — notification-only opening cannot initialize credentials or migrate lock metadata.
+@available(macOS 10.15, *)
+public func openNotificationAccountManager<Types: AccountManagerTypes>(basePath: String) -> Signal<AccountManager<Types>?, NoError> {
+    return AccountManager.openForNotification(basePath: basePath, accessChallenge: AccountManagerAccessChallenge(
+        prepare: { _ in
+            let _ = try PasscodeEnvironment.shared.sharedAccessGroup()
+            PasscodeCredentialStore.shared.configureLock(directory: basePath)
+        },
+        resolve: { current, _ in
+            let expectsExisting: Bool
+            if let current, case .secured = current { expectsExisting = true } else { expectsExisting = false }
+            guard let reference = try PasscodeCredentialStore.shared.managedReferenceForNotification(expectsExistingCredential: expectsExisting, timeout: 0.3) else { return nil }
+            return .some(reference.map { accessChallengeData(reference: $0) } ?? .none)
+        },
+        finishInitialization: {}
+    ))
 }

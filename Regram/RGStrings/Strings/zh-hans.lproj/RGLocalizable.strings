@@ -30,7 +30,6 @@
 "Settings.ChatList.Lines" = "消息预览行数";
 "Settings.ChatList.Lines.1" = "1 行";
 "Settings.ChatList.Lines.2" = "2 行";
-"Settings.ChatList.Lines.3" = "3 行";
 "Mention.UserIdLink" = "按昵称提及";
 "LinkPreview.Disable" = "发送链接时关闭预览";
 "LinkPreview.Disable.Notice" = "发送链接时不附带网页预览。输入时仍可查看预览，别人发来的消息也不受影响。";
@@ -1023,3 +1022,10 @@
 "CommonGroups.Failed" = "查询未完成，请点按重试。";
 
 "CommonGroups.LoadMore" = "加载更多";
+
+// Regram debug tools
+"Debug.NotificationExperiment" = "实验性通知恢复";
+"Debug.NotificationExperiment.Info" = "默认关闭。尝试恢复未解析的加密通知并清理占位提醒，保留消息预览和应用锁隐私。通知扩展无法运行时，iOS 仍可能显示提醒。";
+"Debug.ClearCache" = "清除缓存";
+"Debug.ClearCache.Info" = "清除当前账号的媒体缓存及网页、网络缓存。缓存媒体可能需要重新下载才能查看。保留账号、消息、设置、证书及已保存的编辑历史图片。";
+"Debug.ClearCache.Done" = "缓存已清除";

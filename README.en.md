@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34618**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34619**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -31,6 +31,7 @@ This documentation describes **13.0 / b34618**. See [GitHub Releases](https://gi
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
 - Notification content filtering, pin/mention/reply policies, empty-notification recovery and entitlement diagnostics.
+- Experimental notification recovery at `tg://rg/rgdebug`, off for new installations and replacing the old compatibility switch. The same page can clear current-account media and web/network caches after confirmation, keeping accounts, databases, settings, certificates and update packages.
 
 Anti-revoke and edit history retain content already received or observed on this device. Ghost mode does not suppress ordinary chat read receipts. Client preferences cannot grant permissions enforced by Telegram or iOS.
 
@@ -63,10 +64,10 @@ Preview availability depends on Telegram and third-party services. A sticker arc
 ### Appearance and input
 
 - App icons and screenshot App Badges. The Regram Pro entry follows the selected app icon; login artwork and update Live Activities use Regram artwork.
-- Icon selection follows a successful system callback, then reconciles delayed system reads. This fixes the false failure alert after the Home Screen icon already changed.
+- Confirmed icon selections persist across launches and restore the Pro entry and Appearance selection while delayed system reads reconcile. Failed changes and stale callbacks do not replace the saved choice.
 - Upstream Telegram bottom-bar components, animations and gestures, with live preview, drag ordering, label visibility, standalone buttons and automatic/manual width.
 - Chats and Settings remain selected. The bar stays centered; automatic width balances readable labels, selection effects and tap spacing. Settings remains reachable while hidden. Swipe right from the Settings content area to return to Chats with finger-tracked motion and cancellation; unhiding applies immediately.
-- Chat-list separators, compact display, preview lines and colors.
+- Chat-list separators, compact display, one/two body-preview lines and colors. Older three-line preferences and backups migrate to two lines.
 - Separate Latin/CJK fonts, downloads, TTF/OTF/TTC import, previews, management and missing-glyph fallback.
 - Input tools, default formatting, Pangu spacing, Return-to-send and per-chat input preferences.
 - Rich-text editing and rendering for headings, quotes, code, lists, tables, links, media and drafts. Some entry points depend on upstream configuration.
@@ -117,6 +118,8 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
 ## Verification scope
+
+b34619 passed the Xcode 27 arm64 Release build, main-app/six-extension checks, 12 matching debug symbols and final IPA validation. Identity and entitlements match b34618, retaining the notification-filtering declaration. Recovery policies, settings migration, one/two-line layout and icon lifecycle/persistence checks passed, including fresh-process reads. The new fixes have not been validated on a device and do not guarantee elimination of every placeholder notification.
 
 b34618 passed an Xcode 27 arm64 Release build, main-app and six-extension checks, with installation identity unchanged from b34617. Common-group pagination, failure handling and interactive-return lifecycle regressions passed. Real-account searches and gesture rendering have not been exercised on a device.
 

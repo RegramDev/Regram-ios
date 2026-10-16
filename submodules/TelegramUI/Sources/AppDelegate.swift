@@ -12,6 +12,7 @@ import RGStrings
 import RGSimpleSettings
 import RGAppGroupIdentifier
 import RGAppUpdate // MARK: Regram
+import RGNotificationRecovery // MARK: Regram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -881,10 +882,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         )
         
         // MARK: Regram — UIKit accepts one icon operation at a time.
-        let iconSwitcher = RGAppIconSwitchCoordinator(current: { application.alternateIconName }, apply: { name, completion in
+        let iconSelection = RGAppIconSelectionStore(defaults: .standard)
+        let iconSwitcher = RGAppIconSwitchCoordinator(current: {
+            iconSelection.resolvedName(systemName: application.alternateIconName)
+        }, apply: { name, completion in
             guard application.supportsAlternateIcons else { completion(false); return }
+            let request = iconSelection.beginRequest(name, systemName: application.alternateIconName)
             application.setAlternateIconName(name) { error in
                 DispatchQueue.main.async {
+                    iconSelection.finishRequest(request, succeeded: error == nil)
                     if let error = error as NSError? {
                         Logger.shared.log("AppIcon", "UIKit rejected icon change: \(error.domain) / \(error.code), \(error.localizedDescription)")
                     }
@@ -1102,7 +1108,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "RGPro", imageName: "RGPro"),
                     PresentationAppIcon(name: "RGDay", imageName: "RGDay"),
                     PresentationAppIcon(name: "RGGold", imageName: "RGGold"),
-                    (RGSimpleSettings.shared.duckyAppIconAvailable || RGAppIconNames.canonicalName(application.alternateIconName) == "RGDucky") ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
+                    (RGSimpleSettings.shared.duckyAppIconAvailable || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGDucky") ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
                     PresentationAppIcon(name: "RGNeon", imageName: "RGNeon"),
                     PresentationAppIcon(name: "RGNeonBlue", imageName: "RGNeonBlue"),
                     PresentationAppIcon(name: "RGGlass", imageName: "RGGlass"),
@@ -1129,7 +1135,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack"),
                 ]
 
-                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" || RGAppIconNames.canonicalName(application.alternateIconName) == "RGBeta" {
+                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGBeta" {
                     icons.append(PresentationAppIcon(name: "RGBeta", imageName: "RGBeta"))
                 }
                 
@@ -2298,11 +2304,20 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
             return
         }
-        // The extension can be suspended immediately after completing a push. Finish its cleanup
-        // when the app resumes, without touching real message notifications.
-        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
-            let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
-            if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+        // MARK: Regram — expanded cleanup is opt-in and limited to foreground activation.
+        if RGNotificationExperiment.isEnabled {
+            RGNotificationRecovery.removeDeliveredPlaceholders()
+            for delay in [0.25, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard self?.isInForegroundValue == true, RGNotificationExperiment.isEnabled else { return }
+                    RGNotificationRecovery.removeDeliveredPlaceholders()
+                }
+            }
+        } else {
+            UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+                let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
+                if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+            }
         }
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
@@ -3382,13 +3397,26 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     
     @available(iOS 10.0, *)
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let _ = (accountIdFromNotification(notification, sharedContext: self.sharedContextPromise.get())
+        // MARK: Regram — suppress unresolved server placeholders before foreground presentation,
+        // including pushes for which the service extension did not run during an update.
+        let recoveryEnabled = RGNotificationExperiment.isEnabled
+        if recoveryEnabled, RGNotificationRecovery.shouldRemove(notification.request.content) {
+            completionHandler([])
+            center.removeDeliveredNotifications(withIdentifiers: [notification.request.identifier])
+            return
+        }
+        var accountSignal = accountIdFromNotification(notification, sharedContext: self.sharedContextPromise.get())
+        if recoveryEnabled { accountSignal = accountSignal |> timeout(1.0, queue: .mainQueue(), alternate: .single(nil)) } // MARK: Regram
+        let _ = (accountSignal
+        |> take(1)
         |> deliverOnMainQueue).start(next: { accountId in
+            var options: UNNotificationPresentationOptions = [] // MARK: Regram — always complete once.
             if let context = self.contextValue {
                 if let accountId = accountId, context.context.account.id != accountId || notification.request.content.userInfo["url"] != nil {
-                    completionHandler([.banner, .list])
+                    options = [.banner, .list]
                 }
             }
+            if recoveryEnabled || !options.isEmpty { completionHandler(options) }
         })
     }
     

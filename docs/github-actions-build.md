@@ -2,7 +2,7 @@
 
 `.github/workflows/build.yml` 在每次 `push` 以及手动 `workflow_dispatch` 时构建 `//Telegram:Regram`。不同分支独立排队；同一分支的推送不会取消上一轮构建。工作流使用官方 `xcode-27` arm64 托管 runner，与当前已验证的本地 Xcode 27 构建代际一致。
 
-每次运行保留主程序和六个扩展，生成 arm64 Release 的可重新签名 IPA。安装包只保留一份，命名为 **Regram-13.0-b34618.ipa** 这样的形式。版本和构建号均来自 `versions.json`，不使用 Actions 运行次数计算；配置了 `REGRAM_BUILD_NUMBER` 时必须与仓库声明一致。上传使用 `archive: false`，下载得到 IPA 本身，不再额外包一层 ZIP。下载入口在该次 Actions 页面底部的 Artifacts，保存 14 天。
+每次运行保留主程序和六个扩展，生成 arm64 Release 的可重新签名 IPA。安装包只保留一份，命名为 **Regram-13.0-b34619.ipa** 这样的形式。版本和构建号均来自 `versions.json`，不使用 Actions 运行次数计算；配置了 `REGRAM_BUILD_NUMBER` 时必须与仓库声明一致。上传使用 `archive: false`，下载得到 IPA 本身，不再额外包一层 ZIP。下载入口在该次 Actions 页面底部的 Artifacts，保存 14 天。
 
 调试符号用于构建时 UUID 校验，其归档保留在构建目录，不作为 Actions 附件上传；`BUILD-MANIFEST.json` 另以 `package-verification` 附件保存，文件名、源码提交和 SHA-256 同时写入该次构建的 Summary。推送构建不会创建 Release。
 
@@ -10,7 +10,7 @@
 
 Actions 中只有 **Publish confirmed IPA** 工作流可以发布 Release，且仅支持在 master 上手动运行。先下载并确认构建的 IPA，然后在 Run workflow 中填写成功的 Build Regram 运行 ID、完整 IPA 文件名，并勾选 **I confirm publishing this IPA filename and build to Releases**。不勾选确认时，发布任务不执行。
 
-发布流程会核对来源是成功的 master 构建、artifact 精确名称、SHA-256、IPA 内的版本和构建号，下载时设置 `skip-decompress: true`，保留 IPA 本体。Release 标签与标题从选定版本生成，例如 **v13.0-b34618** 和 **Regram 13.0 (b34618)**，只选择这一份 IPA 作为安装包附件。已存在的标签不会被覆盖。收到明确确认后，流程才创建草稿、上传 IPA，核对唯一附件后公开发布；未确认时不会创建草稿或公开 Release。
+发布流程会核对来源是成功的 master 构建、artifact 精确名称、SHA-256、IPA 内的版本和构建号，下载时设置 `skip-decompress: true`，保留 IPA 本体。Release 标签与标题从选定版本生成，例如 **v13.0-b34619** 和 **Regram 13.0 (b34619)**，只选择这一份 IPA 作为安装包附件。已存在的标签不会被覆盖。收到明确确认后，流程才创建草稿、上传 IPA，核对唯一附件后公开发布；未确认时不会创建草稿或公开 Release。
 
 ## 构建参数
 

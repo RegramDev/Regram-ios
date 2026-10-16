@@ -41,6 +41,8 @@ public class RGSimpleSettings {
         if self.translationBackend == "gtranslate" { self.translationBackend = TranslationBackend.google.rawValue }
         // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
         if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
+        // MARK: Regram — persist the supported mode when upgrading an old three-line setting.
+        if storedChatListLines != chatListLines { self.chatListLines = chatListLines }
         UserDefaults.standard.removeObject(forKey: "nsfwEnabled")
         UserDefaults.standard.removeObject(forKey: "nsfwAgeConfirmed")
         let showRepostToStoryMigrationKey = "migrated_\(Keys.showRepostToStory.rawValue)"
@@ -252,7 +254,6 @@ public class RGSimpleSettings {
         case hideChannelBottomButton
         case forceSystemSharing
         case confirmCalls
-        case legacyNotificationsFix
         case messageFilterKeywords
         case messageFilterRules
         case blockedPeerIds
@@ -344,11 +345,10 @@ public class RGSimpleSettings {
     }
 
     public enum ChatListLines: String, CaseIterable {
-        case three = "3"
         case two = "2"
         case one = "1"
 
-        public static let defaultValue: ChatListLines = .three
+        public static let defaultValue: ChatListLines = .two
     }
     
     public enum MessageDoubleTapAction: String, CaseIterable {
@@ -558,7 +558,6 @@ public class RGSimpleSettings {
     ]
     
     public static let groupDefaultValues: [String: Any] = [
-        Keys.legacyNotificationsFix.rawValue: false,
         Keys.pinnedMessageNotifications.rawValue: PinnedMessageNotificationsSettings.default.rawValue,
         Keys.mentionsAndRepliesNotifications.rawValue: MentionsAndRepliesNotificationsSettings.default.rawValue,
         Keys.showRepostToStoryV2.rawValue: true,
@@ -806,6 +805,7 @@ public class RGSimpleSettings {
             for key in keys {
                 let storage = self.backupStorage(key: key, wrappers: wrappers)
                 var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
+                if key == Keys.chatListLines.rawValue { raw = self.chatListLines } // MARK: Regram
                 if raw == nil && key == "forceBuiltInMic" { raw = false }
                 if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
             }
@@ -823,6 +823,10 @@ public class RGSimpleSettings {
         for (key, value) in values where RGSettingsBackup.category(for: key) != nil && !key.hasPrefix("native.") {
             let storage = self.backupStorage(key: key, wrappers: wrappers)
             if key == Keys.downloadSpeedBoost.rawValue, value == .string("maximum") { storage.set("medium", forKey: key) }
+            else if key == Keys.chatListLines.rawValue { // MARK: Regram — imported removed modes cannot reappear in backups.
+                let count = (value.propertyList as? String).flatMap(ChatListLines.init(rawValue:)) ?? .two
+                storage.set(count.rawValue, forKey: key)
+            }
             else { storage.set(value.propertyList, forKey: key) }
         }
         for wrapper in wrappers { wrapper.invalidatePreferenceCache() }
@@ -1134,7 +1138,12 @@ public class RGSimpleSettings {
     public var compactChatList: Bool
 
     @UserDefault(key: Keys.chatListLines.rawValue)
-    public var chatListLines: String
+    private var storedChatListLines: String
+    // MARK: Regram — old backups and installed "3" values become the supported two-line mode.
+    public var chatListLines: String {
+        get { (ChatListLines(rawValue: storedChatListLines) ?? .two).rawValue }
+        set { storedChatListLines = (ChatListLines(rawValue: newValue) ?? .two).rawValue }
+    }
 
     @UserDefault(key: Keys.compactFolderNames.rawValue)
     public var compactFolderNames: Bool
@@ -1174,8 +1183,6 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.confirmCalls.rawValue)
     public var confirmCalls: Bool
     
-    @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
-    public var legacyNotificationsFix: Bool
     
 
     
