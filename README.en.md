@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34619**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34620**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -57,6 +57,7 @@ Custom recognition is user initiated, excludes secret chats and view-once media,
 - Photo quality and large-image sending. Pasted photos default to HD, maximum JPEG quality and up to 2560 px.
 - Sticker size/history, camera and recording, transfer and default-video-quality options.
 - Bottom video controls for rewind/forward by 15 seconds and play/pause. Picture-in-picture, speed and quality are in the top-right menu.
+- Ordinary full-screen video pauses on Home or screen locking and retains its position; the play/pause icon follows playback state, while active picture-in-picture keeps playing.
 - Optional media-loading experiments for prefetching, playback admission, player reuse and first-frame handoff, allowing comparison within the same app.
 
 Preview availability depends on Telegram and third-party services. A sticker archive cannot recreate a deleted server-side pack. Media-loading benefits require device comparison.
@@ -118,6 +119,8 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
 ## Verification scope
+
+b34620 playback regressions cover background transitions, play/pause icons, delayed callbacks, player ownership, PiP and looping animations. Actual audio, screen locking and installation over an older version still require device validation.
 
 b34619 passed the Xcode 27 arm64 Release build, main-app/six-extension checks, 12 matching debug symbols and final IPA validation. Identity and entitlements match b34618, retaining the notification-filtering declaration. Recovery policies, settings migration, one/two-line layout and icon lifecycle/persistence checks passed, including fresh-process reads. The new fixes have not been validated on a device and do not guarantee elimination of every placeholder notification.
 
