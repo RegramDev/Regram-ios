@@ -62,6 +62,7 @@ def main():
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
+    run('gallery-playback', ['python3', 'Regram/RGGalleryUI/Tests/run-playback-checks.py'])
     run('revoked-history', ['python3', 'Regram/RGProUI/Tests/run-archive-checks.py'])
     run('localizations', ['plutil', '-lint'] + [f'Regram/RGStrings/Strings/{lang}.lproj/RGLocalizable.strings' for lang in ['en', 'zh-Hans', 'zh-Hant']])
     run('release-offline-mocks', ['python3', 'build-system/ci/test_release.py'])

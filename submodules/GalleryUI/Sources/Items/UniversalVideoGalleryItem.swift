@@ -966,6 +966,14 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     
     private var playerStatusValue: MediaPlayerStatus?
     private let statusDisposable = MetaDisposable()
+
+    // MARK: Regram — full-screen video pauses on Home/lock; an active PiP keeps its own playback.
+    private let rgApplicationInForegroundDisposable = MetaDisposable()
+    private var rgApplicationInForeground = true {
+        didSet {
+            self.rgPauseVideoInBackground()
+        }
+    }
     
     private let moreButtonStateDisposable = MetaDisposable()
     private let mediaPlaybackStateDisposable = MetaDisposable()
@@ -1203,15 +1211,43 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 strongSelf.updateControlsVisibility(false)
             }
         }).strict()
+
+        // MARK: Regram — observe the app lifecycle even while the gallery remains visible in its window.
+        self.rgApplicationInForegroundDisposable.set((context.sharedContext.applicationBindings.applicationInForeground
+        |> distinctUntilChanged
+        |> deliverOnMainQueue).start(next: { [weak self] inForeground in
+            self?.rgApplicationInForeground = inForeground
+        }))
     }
     
     deinit {
         self.statusDisposable.dispose()
+        self.rgApplicationInForegroundDisposable.dispose() // MARK: Regram
         self.moreButtonStateDisposable.dispose()
         self.mediaPlaybackStateDisposable.dispose()
         self.scrubbingFrameDisposable?.dispose()
         self.hideControlsDisposable?.dispose()
         self.automaticPictureInPictureDisposable?.dispose()
+    }
+
+    // MARK: Regram — also cancel a pending ownership autoplay and preserve the ordinary video's position.
+    private func rgPauseVideoInBackground() {
+        guard !self.rgApplicationInForeground,
+              self.context.sharedContext.mediaManager.currentPictureInPictureNode !== self else {
+            return
+        }
+        // Looping animations have no Play button to resume them when the app returns.
+        if let content = self.item?.content as? NativeVideoContent, content.fileReference.media.isAnimated {
+            return
+        } else if let content = self.item?.content as? HLSVideoContent, content.fileReference.media.isAnimated {
+            return
+        }
+        self.playOnContentOwnership = false
+        guard let videoNode = self.videoNode, videoNode.ownsContentNode else {
+            return
+        }
+        self.resetLivePhotoPlayback()
+        videoNode.pause()
     }
     
     override func ready() -> Signal<Void, NoError> {
@@ -1493,6 +1529,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             videoNode.ownsContentNodeUpdated = { [weak self] value in
                 if let strongSelf = self {
                     strongSelf.updateDisplayPlaceholder(!value)
+                    strongSelf.rgPauseVideoInBackground() // MARK: Regram — a late ownership callback must not autoplay in the background.
                     
                     if strongSelf.playOnContentOwnership {
                         strongSelf.playOnContentOwnership = false
@@ -1694,6 +1731,13 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     var hasStarted = strongSelf.hasStartedOnce
                     var displayProgress = true
                     if let value = value {
+                        // MARK: Regram — stop a delayed playback/buffering callback after the app entered the background.
+                        switch value.status {
+                        case .playing, .buffering(_, true, _, _):
+                            strongSelf.rgPauseVideoInBackground()
+                        default:
+                            break
+                        }
                         if value.timestamp > 0 {
                             hasStarted = true
                         }
@@ -2370,7 +2414,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 }
                 
                 Queue.mainQueue().after(1.0, {
-                    if let item = self.item, item.isSecret, !self.isPlaying {
+                    if let item = self.item, item.isSecret, !self.isPlaying, self.rgApplicationInForeground { // MARK: Regram — do not restart after Home/lock.
                         videoNode.playOnceWithSound(playAndRecord: false, seek: .start, actionAtEnd: self.actionAtEnd)
                     }
                 })
@@ -3163,6 +3207,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 }
                 
                 if !didExpand {
+                    self.rgPauseVideoInBackground() // MARK: Regram — closing PiP in the background also stops its audio.
                     self.activePictureInPictureController = nil
                     self.activePictureInPictureNavigationController = nil
                     
@@ -3295,7 +3340,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
 
     @objc private func moreButtonPressed() {
-        self.moreBarButton.play()
+        // MARK: Regram — do not start a second Lottie animation while the video/menu transition is rendering.
         self.moreBarButton.contextAction?(self.moreBarButton.containerNode, nil)
     }
 
@@ -3513,18 +3558,10 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             return .single(([], []))
         }
         
-        let peer: Signal<EnginePeer?, NoError>
-        if let (message, _, _) = self.contentInfo() {
-            peer = self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: message.id.peerId))
-        } else {
-            peer = .single(nil)
-        }
-
-        return combineLatest(queue: Queue.mainQueue(),
-            videoNode.status |> take(1),
-            peer,
-            videoNode.videoQualityStateSignal()
-        )
+        // MARK: Regram — menu uses the already-rendered snapshot, without waiting on Postbox or live quality streams.
+        let currentPeer = self.contentInfo().flatMap { $0.0.peers[$0.0.id.peerId] }.map(EnginePeer.init)
+        let statusSnapshot: Signal<MediaPlayerStatus?, NoError> = self.playerStatusValue.map { .single(Optional($0)) } ?? (videoNode.status |> take(1))
+        return combineLatest(queue: Queue.mainQueue(), statusSnapshot, Signal<EnginePeer?, NoError>.single(currentPeer), .single(videoNode.videoQualityState()))
         |> map { [weak self] status, peer, videoQualityState -> (items: [ContextMenuItem], topItems: [ContextMenuItem]) in
             guard let status = status, let strongSelf = self else {
                 return ([], [])
@@ -3666,12 +3703,12 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 // MARK: Regram — all auxiliary playback actions share the header More menu.
                 if strongSelf.settingsButtonState != nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VideoSettings_SpeedControlTitle, textLayout: .secondLineWithValue(String(format: "%.2gx", status.baseRate)), icon: { theme in
-                        UIImage(systemName: "speedometer")?.withTintColor(theme.actionSheet.primaryTextColor, renderingMode: .alwaysOriginal)
+                        generateTintedImage(image: UIImage(systemName: "speedometer"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in
                         guard let self else { return }
                         let settingsItems = self.contextMenuMainItems(isSettings: true, dismiss: dismiss) |> map { value -> ContextController.Items in
                             let back = ContextMenuItem.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Back, icon: { theme in
-                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+                                generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.contextMenu.primaryColor)
                             }, iconPosition: .left, action: { controller, _ in controller?.popItems() }))
                             let items = [back] + value.items
                             return ContextController.Items(content: value.topItems.isEmpty ? .list(items) : .twoLists(items, value.topItems))
@@ -3679,22 +3716,22 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                         controller?.pushItems(items: settingsItems)
                     })))
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Fullscreen, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Expand"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.footerContentNode.toggleFullscreen?() }) })))
                 }
                 if strongSelf.hasPictureInPicture && strongSelf.pictureInPictureNode == nil {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_PictureInPicture, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/PictureInPictureButton"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/PictureInPictureButton"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.pictureInPictureButtonPressed() }) })))
                 }
                 if strongSelf.displayStickersButton {
                     items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_VoiceOver_Stickers, icon: { theme in
-                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/Stickers"), color: theme.actionSheet.primaryTextColor)
+                        generateTintedImage(image: UIImage(bundleImageName: "Media Gallery/Stickers"), color: theme.contextMenu.primaryColor)
                     }, action: { [weak self] controller, _ in controller?.dismiss(completion: { self?.openStickersButtonPressed() }) })))
                 }
                 if !items.isEmpty { items.append(.separator) }
                 if let (message, maybeFile, _) = strongSelf.contentInfo(), let file = maybeFile, !message.isCopyProtected() && !item.peerIsCopyProtected && message.paidContent == nil {
-                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { c, _ in
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_MenuSaveToGallery, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.contextMenu.primaryColor) }, action: { c, _ in
                         guard let self else {
                             c?.dismiss(result: .default, completion: nil)
                             return
@@ -3731,7 +3768,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                                 var items: [ContextMenuItem] = []
                                 
                                 items.append(.action(ContextMenuActionItem(text: self.presentationData.strings.Common_Back, icon: { theme in
-                                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.actionSheet.primaryTextColor)
+                                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Back"), color: theme.contextMenu.primaryColor)
                                 }, iconPosition: .left, action: { c, _ in
                                     c?.popItems()
                                 })))
@@ -3873,7 +3910,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                     if let video = image.video {
                         videoReference = .message(message: MessageReference(message), media: video)
                     }
-                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_SaveImage, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.Gallery_SaveImage, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Download"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
                         f(.default)
                         
                         let _ = (SaveToCameraRoll.saveToCameraRoll(context: context, userLocation: .peer(message.id.peerId), mediaReference: .message(message: MessageReference(message), media: image), video: videoReference)
@@ -3948,7 +3985,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                 if RGMediaMetadata.isEnabled, let rgMediaInfoFileReference {
                     let mediaReference = rgMediaInfoFileReference.abstract
                     let context = strongSelf.context
-                    items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: strongSelf.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.actionSheet.primaryTextColor) }, action: { [weak self] _, f in
+                    items.append(.action(ContextMenuActionItem(text: RGMediaMetadata.menuItemTitle(strings: strongSelf.presentationData.strings), icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Info"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
                         f(.default)
                         guard let self, let controller = self.galleryController() else {
                             return

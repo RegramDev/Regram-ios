@@ -633,6 +633,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 edited: edited,
                 impressionCount: viewCount,
                 dateText: dateText,
+                isRevoked: item.message.rgIsRevoked, // MARK: Regram
                 type: statusType,
                 layoutInput: .standalone(reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.StandaloneReactionSettings() : nil),
                 constrainedSize: CGSize(width: params.width, height: CGFloat.greatestFiniteMagnitude),

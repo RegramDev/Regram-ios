@@ -570,6 +570,7 @@ public class ChatMessageInteractiveInstantVideoNode: ASDisplayNode {
                 edited: edited && !sentViaBot && !item.presentationData.isPreview,
                 impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                 dateText: dateText,
+                isRevoked: item.message.rgIsRevoked, // MARK: Regram
                 type: statusType,
                 layoutInput: .standalone(reactionSettings: shouldDisplayInlineDateReactions(message: EngineMessage(item.message), isPremium: item.associatedData.isPremium, forceInline: item.associatedData.forceInlineReactions) ? ChatMessageDateAndStatusNode.StandaloneReactionSettings() : nil),
                 constrainedSize: CGSize(width: max(1.0, maxDateAndStatusWidth), height: CGFloat.greatestFiniteMagnitude),

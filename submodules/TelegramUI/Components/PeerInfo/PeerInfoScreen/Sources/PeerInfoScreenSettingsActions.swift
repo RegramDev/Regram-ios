@@ -80,6 +80,9 @@ extension PeerInfoScreenNode {
             ))
         case .stories:
             push(PeerInfoStoryGridScreen(context: self.context, peerId: self.context.account.peerId, scope: .saved))
+        // MARK: Regram
+        case .messageBookmarks:
+            push(self.context.sharedContext.makeRGBookmarksController(context: self.context))
         case .savedMessages:
             let _ = (self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: self.context.account.peerId))
             |> deliverOnMainQueue).startStandalone(next: { [weak self] peer in

@@ -29,6 +29,8 @@ public enum RGContextMenuItemId: String, CaseIterable, Hashable {
     case edit
     case editHistory
     case bookmark // MARK: Regram
+    case summarize
+    case messageScreenshot
     case editSuggestedPostMessage
     case editSuggestedPostTime
     case editSuggestedPostPrice
@@ -63,7 +65,7 @@ public enum RGContextMenuItemId: String, CaseIterable, Hashable {
     /// Regular message actions implemented by Regram. Conditional actions are added only after
     /// the account actually produces them; diagnostics and wallet actions stay out of this UI.
     public static let standardItems: Set<RGContextMenuItemId> = [
-        .reply, .repeatForward, .repeatCopy, .copy, .translate, .speak, .edit, .editHistory, .bookmark,
+        .reply, .repeatForward, .repeatCopy, .copy, .translate, .speak, .edit, .editHistory, .bookmark, .summarize, .messageScreenshot,
         .pin, .unpin, .copyLink, .forward, .forwardNoQuote, .saveToCloud, .saveMedia,
         .saveToFiles, .favoriteSticker, .saveStickerToCameraRoll, .saveGif, .viewStickerPack,
         .select, .selectFromUser, .delete, .report, .json, .addFilter

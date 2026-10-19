@@ -4,7 +4,24 @@ import Display
 
 enum RGCompactMessagePreviewLayout {
     static func isEnabled() -> Bool {
-        (RGSimpleSettings.ChatListLines(rawValue: RGSimpleSettings.shared.chatListLines) ?? .three) != .three
+        maximumMessageLines() == 1
+    }
+
+    // MARK: Regram — the selection counts message-body lines, not title/author rows.
+    static func maximumMessageLines() -> Int {
+        switch RGSimpleSettings.ChatListLines(rawValue: RGSimpleSettings.shared.chatListLines) ?? .two {
+        case .one: return 1
+        case .two: return 2
+        }
+    }
+
+    static func minimumRowHeight(titleHeight: CGFloat, authorHeight: CGFloat, bodyHeight: CGFloat, sizeFactor: CGFloat, compactMessagePreview: Bool, compactChatList: Bool, hasTags: Bool) -> CGFloat {
+        let hasAuthor = authorHeight > 0
+        let bodyBottom = titleHeight - 2.0 + (hasAuthor ? authorHeight - 3.0 : 0.0)
+            + textBlockOffset(sizeFactor: sizeFactor, compactMessagePreview: compactMessagePreview, compactChatList: compactChatList, hasAuthorLine: hasAuthor) + bodyHeight
+        let titleBottom = titleHeight + textVerticalOffset(sizeFactor: sizeFactor, compactMessagePreview: compactMessagePreview, compactChatList: compactChatList, hasAuthorLine: hasAuthor)
+        let tagsHeight = hasTags ? floorToScreenPixels(22.0 * sizeFactor) : 0.0
+        return floorToScreenPixels(8.0 * sizeFactor) + max(titleBottom, bodyBottom) + tagsHeight + max(6.0, 8.0 * sizeFactor)
     }
 
     static func avatarScaleDivisor(compactChatList: Bool, compactMessagePreview: Bool) -> CGFloat {

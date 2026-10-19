@@ -30,7 +30,8 @@ private struct RGDiagnosticsView: View {
             }.rgSettingsLink("transfer")
             Section(header: Text("Diagnostics.Filter".i18n(lang)), footer: Text("Diagnostics.Filter.Notice".i18n(lang))) {
                 HStack {
-                    Button("Diagnostics.Filter.Run".i18n(lang)) {
+                    Button((testing ? "Common.Cancel" : "Diagnostics.Filter.Run").i18n(lang)) {
+                        if testing { benchmark.cancel(); testing = false; return }
                         let token = benchmark.begin()
                         let rules = RGSimpleSettings.shared.messageFilterRules
                         let session = benchmark

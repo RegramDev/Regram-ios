@@ -76,6 +76,8 @@ public final class AuthorizationSequenceSplashController: ViewController {
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
 
         super.init(navigationBarPresentationData: nil)
+        // MARK: Regram — use the same artwork as the Regram Pro entry.
+        self.controller.regramArtwork = UIImage(bundleImageName: "RegramPro")
         
         self._hasGlassStyle = true
         

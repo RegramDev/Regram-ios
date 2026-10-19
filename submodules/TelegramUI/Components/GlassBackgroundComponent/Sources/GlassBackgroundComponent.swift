@@ -567,7 +567,7 @@ public class GlassBackgroundView: UIView {
         self.contentContainer = ContentContainer(maskContentView: self.maskContentView)
         
         super.init(frame: frame)
-        
+
         if let shadowView = self.shadowView {
             self.addSubview(shadowView)
         }

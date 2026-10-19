@@ -11,6 +11,7 @@ import RGLogging
 import RGStrings
 import RGSimpleSettings
 import RGAppGroupIdentifier
+import RGNotificationRecovery // MARK: Regram
 import UIKit
 import SwiftSignalKit
 import Display
@@ -260,6 +261,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     private var dataImportSplash: LegacyDataImportSplash?
     private var memoryUsageOverlayView: UILabel?
     
+    // MARK: Regram — resume queued icon changes only when the application is active.
+    private var rgAppIconObserver: NSObjectProtocol?
+    deinit {
+        if let observer = rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
+    }
+
     private var buildConfig: BuildConfig?
     let episodeId = arc4random()
     
@@ -871,6 +878,28 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             |> distinctUntilChanged
         )
         
+        // MARK: Regram — UIKit accepts one icon operation at a time.
+        let iconSelection = RGAppIconSelectionStore(defaults: .standard)
+        let iconSwitcher = RGAppIconSwitchCoordinator(current: {
+            iconSelection.resolvedName(systemName: application.alternateIconName)
+        }, apply: { name, completion in
+            guard application.supportsAlternateIcons else { completion(false); return }
+            let request = iconSelection.beginRequest(name, systemName: application.alternateIconName)
+            application.setAlternateIconName(name) { error in
+                DispatchQueue.main.async {
+                    iconSelection.finishRequest(request, succeeded: error == nil)
+                    if let error = error as NSError? {
+                        Logger.shared.log("AppIcon", "UIKit rejected icon change: \(error.domain) / \(error.code), \(error.localizedDescription)")
+                    }
+                    completion(error == nil)
+                }
+            }
+        }, changed: {
+            NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil)
+        }, canApply: { application.applicationState == .active })
+        self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak iconSwitcher] _ in
+            iconSwitcher?.resume()
+        }
         let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: appGroupUrl.path, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
             var parsedUrl = URL(string: url)
             if let parsed = parsedUrl {
@@ -1076,7 +1105,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "RGPro", imageName: "RGPro"),
                     PresentationAppIcon(name: "RGDay", imageName: "RGDay"),
                     PresentationAppIcon(name: "RGGold", imageName: "RGGold"),
-                    RGSimpleSettings.shared.duckyAppIconAvailable ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
+                    (RGSimpleSettings.shared.duckyAppIconAvailable || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGDucky") ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
                     PresentationAppIcon(name: "RGNeon", imageName: "RGNeon"),
                     PresentationAppIcon(name: "RGNeonBlue", imageName: "RGNeonBlue"),
                     PresentationAppIcon(name: "RGGlass", imageName: "RGGlass"),
@@ -1103,18 +1132,18 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack"),
                 ]
 
-                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGBeta" {
                     icons.append(PresentationAppIcon(name: "RGBeta", imageName: "RGBeta"))
                 }
                 
-                return icons
+                return icons.filter { !$0.name.isEmpty && !$0.imageName.isEmpty }
             } else {
                 return []
             }
         }, getAlternateIconName: {
             if #available(iOS 10.3, *) {
                 // MARK: Regram — match an icon retained by iOS to its renamed picker entry.
-                return RGAppIconNames.canonicalName(application.alternateIconName)
+                return RGAppIconNames.canonicalName(iconSwitcher.currentIconName)
             } else {
                 return nil
             }
@@ -1123,16 +1152,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 completion(false)
                 return
             }
-            application.setAlternateIconName(name, completionHandler: { error in
-                if let error = error {
-                    Logger.shared.log("App \(self.episodeId)", "failed to set alternate icon with error \(error.localizedDescription)")
-                }
-                // MARK: Regram — UIKit may finish on a background queue; settings updates use main.
-                DispatchQueue.main.async {
-                    if error == nil { NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil) }
-                    completion(error == nil)
-                }
-            })
+            // MARK: Regram — dispatch even callers arriving from a database callback onto main.
+            DispatchQueue.main.async { iconSwitcher.request(name, completion: completion) }
         }, forceOrientation: { orientation in
             let value = orientation.rawValue
             if #available(iOSApplicationExtension 16.0, iOS 16.0, *) {
@@ -2278,11 +2299,20 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
             return
         }
-        // The extension can be suspended immediately after completing a push. Finish its cleanup
-        // when the app resumes, without touching real message notifications.
-        UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
-            let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
-            if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+        // MARK: Regram — expanded cleanup is opt-in and limited to foreground activation.
+        if RGNotificationExperiment.isEnabled {
+            RGNotificationRecovery.removeDeliveredPlaceholders()
+            for delay in [0.25, 1.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard self?.isInForegroundValue == true, RGNotificationExperiment.isEnabled else { return }
+                    RGNotificationRecovery.removeDeliveredPlaceholders()
+                }
+            }
+        } else {
+            UNUserNotificationCenter.current().getDeliveredNotifications { notifications in
+                let ids = notifications.filter { $0.request.content.threadIdentifier == "empty-notification" }.map { $0.request.identifier }
+                if !ids.isEmpty { UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids) }
+            }
         }
         self.isInForegroundValue = true
         self.isInForegroundPromise.set(true)
@@ -3362,13 +3392,26 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     
     @available(iOS 10.0, *)
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        let _ = (accountIdFromNotification(notification, sharedContext: self.sharedContextPromise.get())
+        // MARK: Regram — suppress unresolved server placeholders before foreground presentation,
+        // including pushes for which the service extension did not run during an update.
+        let recoveryEnabled = RGNotificationExperiment.isEnabled
+        if recoveryEnabled, RGNotificationRecovery.shouldRemove(notification.request.content) {
+            completionHandler([])
+            center.removeDeliveredNotifications(withIdentifiers: [notification.request.identifier])
+            return
+        }
+        var accountSignal = accountIdFromNotification(notification, sharedContext: self.sharedContextPromise.get())
+        if recoveryEnabled { accountSignal = accountSignal |> timeout(1.0, queue: .mainQueue(), alternate: .single(nil)) } // MARK: Regram
+        let _ = (accountSignal
+        |> take(1)
         |> deliverOnMainQueue).start(next: { accountId in
+            var options: UNNotificationPresentationOptions = [] // MARK: Regram — always complete once.
             if let context = self.contextValue {
                 if let accountId = accountId, context.context.account.id != accountId || notification.request.content.userInfo["url"] != nil {
-                    completionHandler([.banner, .list])
+                    options = [.banner, .list]
                 }
             }
+            if recoveryEnabled || !options.isEmpty { completionHandler(options) }
         })
     }
     
@@ -3378,7 +3421,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
     
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
-        Logger.shared.log("App \(self.episodeId)", "handleEventsForBackgroundURLSession \(identifier)")
+        // MARK: Regram — beta has no background application-update downloads.
         completionHandler()
     }
     

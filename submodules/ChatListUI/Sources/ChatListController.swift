@@ -3840,7 +3840,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.dismiss()
     }
     
-    public static func openMoreMenu(context: AccountContext, peerId: EnginePeer.Id, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?) {
+    public static func openMoreMenu(context: AccountContext, peerId: EnginePeer.Id, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?, additionalItems: [ContextMenuItem] = []) {
         let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
         |> deliverOnMainQueue).startStandalone(next: { [sourceController] peer in
             guard case let .channel(channel) = peer else {
@@ -3849,7 +3849,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             
             let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
             
-            var items: [ContextMenuItem] = []
+            var items: [ContextMenuItem] = additionalItems // MARK: Regram — context-specific extensions.
             
             items.append(.action(ContextMenuActionItem(text: strings.Chat_ContextViewAsTopics, icon: { theme in
                 if !isViewingAsTopics {
@@ -4859,7 +4859,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         
         completion?()
         
-        (self.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: transition)
+        (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: transition)
         
         self.isSearchActive = false
         if let navigationController = self.navigationController as? NavigationController {

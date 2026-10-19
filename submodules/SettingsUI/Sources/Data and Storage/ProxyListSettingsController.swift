@@ -303,8 +303,8 @@ private func proxySettingsControllerEntries(theme: PresentationTheme, strings: P
 
     entries.append(.enabled(theme, strings.ChatSettings_ConnectionType_UseProxy, proxySettings.enabled, proxySettings.servers.isEmpty))
     // MARK: Regram
-    entries.append(.localDNSToggle(theme, i18n("ProxySettings.UseSystemDNS", strings.baseLanguageCode), RGSimpleSettings.shared.localDNSForProxyHost))
-    entries.append(.localDNSNotice(theme, i18n("ProxySettings.UseSystemDNS.Notice", strings.baseLanguageCode)))
+    // MARK: Regram — DNS mode is configured once in DNS and IP policy.
+    entries.append(.localDNSNotice(theme, i18n("ProxySettings.UseSystemDNS.Notice", RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode))))
     entries.append(.serversHeader(theme, strings.SocksProxySetup_SavedProxies))
     entries.append(.addServer(theme, strings.SocksProxySetup_AddProxy, state.editing))
     var index = 0
@@ -391,7 +391,6 @@ public func proxySettingsController(context: AccountContext, mode: ProxySettings
 
 public func proxySettingsController(accountManager: AccountManager<TelegramAccountManagerTypes>, sharedContext: SharedAccountContext, context: AccountContext? = nil, network: Network, mode: ProxySettingsControllerMode, presentationData: PresentationData, updatedPresentationData: Signal<PresentationData, NoError>, focusOnItemTag: ProxySettingsEntryTag? = nil) -> ViewController {
     var pushControllerImpl: ((ViewController) -> Void)?
-    var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var dismissImpl: (() -> Void)?
     let stateValue = Atomic(value: ProxySettingsControllerState())
     let statePromise = ValuePromise<ProxySettingsControllerState>(stateValue.with { $0 })
@@ -421,22 +420,7 @@ public func proxySettingsController(accountManager: AccountManager<TelegramAccou
     
     let arguments = ProxySettingsControllerArguments(toggleLocalDNS: { value in
         RGSimpleSettings.shared.localDNSForProxyHost = value
-        guard let context = context else {
-            return
-        }
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let actionSheet = ActionSheetController(presentationData: presentationData)
-        actionSheet.setItemGroups([ActionSheetItemGroup(items: [
-            ActionSheetTextItem(title: i18n("Common.RestartRequired", presentationData.strings.baseLanguageCode)),
-            ActionSheetButtonItem(title: i18n("Common.RestartNow", presentationData.strings.baseLanguageCode), color: .destructive, font: .default, action: {
-                exit(0)
-            })
-        ]), ActionSheetItemGroup(items: [
-            ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                actionSheet?.dismissAnimated()
-            })
-        ])])
-        presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
+        // MARK: Regram — the shared network policy reconnects immediately; no restart dialog.
     }, toggleEnabled: { value in
         let _ = updateProxySettingsInteractively(accountManager: accountManager, { current in
             var current = current
@@ -503,8 +487,14 @@ public func proxySettingsController(accountManager: AccountManager<TelegramAccou
         return proxySettings.servers
     })
     
-    let signal = combineLatest(updatedPresentationData, statePromise.get(), proxySettings.get(), statusesContext.statuses(), network.connectionStatus)
-    |> map { presentationData, state, proxySettings, statuses, connectionStatus -> (ItemListControllerState, (ItemListNodeState, Any)) in
+    // MARK: Regram — refresh the DNS switch even when only the network policy changes.
+    let dnsChanges = Signal<Void, NoError> { subscriber in
+        let observer = NotificationCenter.default.addObserver(forName: RGNetworkPolicy.didChange, object: nil, queue: nil) { _ in subscriber.putNext(()) }
+        subscriber.putNext(())
+        return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+    } |> deliverOnMainQueue
+    let signal = combineLatest(updatedPresentationData, statePromise.get(), proxySettings.get(), statusesContext.statuses(), network.connectionStatus, dnsChanges)
+    |> map { presentationData, state, proxySettings, statuses, connectionStatus, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
         var presentationData = presentationData
         let updatedTheme = presentationData.theme.withModalBlocksBackground()
         presentationData = presentationData.withUpdated(theme: updatedTheme)
@@ -657,9 +647,7 @@ public func proxySettingsController(accountManager: AccountManager<TelegramAccou
         }
     }
     // MARK: Regram
-    presentControllerImpl = { [weak controller] c, a in
-        controller?.present(c, in: .window(.root), with: a)
-    }
+
     
     return controller
 }

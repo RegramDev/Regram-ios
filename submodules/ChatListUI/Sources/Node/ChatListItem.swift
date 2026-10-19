@@ -3860,12 +3860,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             
             let textLineSpacing: CGFloat = min(0.2, item.presentationData.fontSize.itemListBaseFontSize * 0.2 / 17.0)
             // MARK: Regram
-            let rgChatListMaxLines: Int
-            if rgCompactMessagePreview {
-                rgChatListMaxLines = 1
-            } else {
-                rgChatListMaxLines = (authorAttributedString == nil && itemTags.isEmpty && forumThread == nil && topForumTopicItems.isEmpty && !rgCompactChatList) ? 2 : 1
-            }
+            let rgChatListMaxLines = RGCompactMessagePreviewLayout.maximumMessageLines()
             let (textLayout, textApply) = textLayout(TextNodeLayoutArguments(
                 attributedString: textAttributedString,
                 backgroundColor: nil,
@@ -4118,6 +4113,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             // MARK: Regram
             itemHeight = itemHeight / (rgCompactChatList ? 1.5 : 1.0)
+            // MARK: Regram — preserve the chosen body lines, including author/topic/tag rows.
+            itemHeight = max(itemHeight, RGCompactMessagePreviewLayout.minimumRowHeight(titleHeight: titleLayout.size.height, authorHeight: authorLayout.height, bodyHeight: textLayout.size.height, sizeFactor: item.presentationData.fontSize.itemListBaseFontSize / 17.0, compactMessagePreview: rgCompactMessagePreview, compactChatList: rgCompactChatList, hasTags: !itemTags.isEmpty))
             let rawContentRect = CGRect(origin: CGPoint(x: 2.0, y: layoutOffset + floor(item.presentationData.fontSize.itemListBaseFontSize * 8.0 / 17.0)), size: CGSize(width: rawContentWidth, height: itemHeight - 12.0 - 9.0))
             
             let insets = ChatListItemNode.insets(first: first, last: last, firstWithHeader: firstWithHeader)
@@ -5037,7 +5034,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         let rgCompactMessagePreviewTagListOffset = max(0.0, RGCompactMessagePreviewLayout.textBlockOffset(sizeFactor: sizeFactor, compactMessagePreview: rgCompactMessagePreview, compactChatList: rgCompactChatList, hasAuthorLine: false) - floorToScreenPixels(4.0 * sizeFactor))
                         //
                         
-                        let itemTagListFrame = CGRect(origin: CGPoint(x: contentRect.minX, y: contentRect.minY + measureLayout.size.height * 2.0 + floorToScreenPixels(2.0 * sizeFactor) + rgCompactMessagePreviewTagListOffset), size: CGSize(width: contentRect.width, height: floorToScreenPixels(20.0 * sizeFactor)))
+                        let itemTagListFrame = CGRect(origin: CGPoint(x: contentRect.minX, y: max(contentRect.minY + measureLayout.size.height * 2.0 + floorToScreenPixels(2.0 * sizeFactor) + rgCompactMessagePreviewTagListOffset, textNodeFrame.maxY + floorToScreenPixels(2.0 * sizeFactor))), size: CGSize(width: contentRect.width, height: floorToScreenPixels(20.0 * sizeFactor))) // MARK: Regram
                         
                         var itemTagListTransition = transition
                         let itemTagList: ComponentView<Empty>

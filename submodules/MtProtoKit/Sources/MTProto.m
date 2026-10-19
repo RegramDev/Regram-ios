@@ -2808,11 +2808,16 @@ static bool isBytesEqualConstTime(uint8_t const *bytes1, uint8_t const *bytes2, 
 - (void)contextApiEnvironmentUpdated:(MTContext *)context apiEnvironment:(MTApiEnvironment *)apiEnvironment {
     [[MTProto managerQueue] dispatchOnQueue:^{
         NSString *previousLangPackCode = _apiEnvironment.langPackCode;
+        NSString *previousDoH = _apiEnvironment.rgDoHEndpoint; // MARK: Regram
+        NSInteger previousIPVersion = _apiEnvironment.rgIPVersionPreference;
+        bool previousSystemDNS = _apiEnvironment.rgUseSystemDNS;
+        bool previousBackupDisabled = _apiEnvironment.rgDisableBackupAddressDiscovery;
         MTSocksProxySettings *previousSocksProxySettings = _apiEnvironment.socksProxySettings;
         
         _apiEnvironment = apiEnvironment;
         
-        bool resetConnection = false;
+        // MARK: Regram — only restart when the transport policy actually changes.
+        bool resetConnection = previousBackupDisabled != apiEnvironment.rgDisableBackupAddressDiscovery || previousSystemDNS != apiEnvironment.rgUseSystemDNS || previousIPVersion != apiEnvironment.rgIPVersionPreference || ![(previousDoH ?: @"") isEqualToString:(apiEnvironment.rgDoHEndpoint ?: @"")];
         
         if ((_apiEnvironment.socksProxySettings != nil) != (previousSocksProxySettings != nil) || (previousSocksProxySettings != nil && ![_apiEnvironment.socksProxySettings isEqual:previousSocksProxySettings])) {
             resetConnection = true;

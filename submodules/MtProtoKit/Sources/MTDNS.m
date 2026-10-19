@@ -1,3 +1,8 @@
+#import "MTRGDoHResolver.h" // MARK: Regram
+#import "MTRGIPPolicy.h"
+#import <MtProtoKit/MTRGDNSDiagnostics.h> // MARK: Regram
+#import "MTRGDNSMessage.h" // MARK: Regram
+#import <MtProtoKit/MTAtomic.h>
 #import "MTDNS.h"
 
 #import <arpa/inet.h>
@@ -250,5 +255,78 @@
     // again on a socket that is already connecting.
     return [[[self resolveHostnameNative:hostname port:port] timeout:10.0 onQueue:[MTQueue concurrentDefaultQueue] orSignal:[MTSignal single:hostname]] take:1];
 }
+
+
+// MARK: Regram — DNS mode is explicit; strict policies query and retain only the selected family.
++ (MTSignal *)resolveProxyHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference {
+    return [self resolveProxyHostname:hostname dohEndpoint:endpoint preference:preference useSystemDNS:!endpoint.length useCache:true];
+}
++ (MTSignal *)resolveProxyHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference useSystemDNS:(bool)useSystemDNS {
+    return [self resolveProxyHostname:hostname dohEndpoint:endpoint preference:preference useSystemDNS:useSystemDNS useCache:true];
+}
++ (MTSignal *)resolveProxyHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference useSystemDNS:(bool)useSystemDNS useCache:(bool)useCache {
+    if (MTRGIsNumericIP(hostname)) return MTRGAllowsIP(hostname, preference) ? [MTSignal single:@[hostname]] : [MTSignal fail:nil];
+    if (useSystemDNS) {
+        MTSignal *native = [[MTSignal alloc] initWithGenerator:^id<MTDisposable>(MTSubscriber *subscriber) {
+            MTAtomic *cancelled = [[MTAtomic alloc] initWithValue:@false];
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                struct addrinfo hints = {0}, *result = NULL;
+                hints.ai_family = preference == MTRGIPv4Only ? AF_INET : preference == MTRGIPv6Only ? AF_INET6 : AF_UNSPEC;
+                hints.ai_socktype = SOCK_STREAM;
+                NSMutableArray *ips = [NSMutableArray array];
+                if (getaddrinfo(hostname.UTF8String, NULL, &hints, &result) == 0) {
+                    for (struct addrinfo *a = result; a != NULL; a = a->ai_next) {
+                        char ip[INET6_ADDRSTRLEN]; void *address = a->ai_family == AF_INET6 ? (void *)&((struct sockaddr_in6 *)a->ai_addr)->sin6_addr : a->ai_family == AF_INET ? (void *)&((struct sockaddr_in *)a->ai_addr)->sin_addr : NULL;
+                        if (address && inet_ntop(a->ai_family, address, ip, sizeof(ip))) [ips addObject:[NSString stringWithUTF8String:ip]];
+                    }
+                    freeaddrinfo(result);
+                }
+                if (![[cancelled value] boolValue]) {
+                    NSArray *addresses = MTRGOrderIPs(ips, preference);
+                    if (addresses.count) { [subscriber putNext:addresses]; [subscriber putCompletion]; } else [subscriber putError:nil];
+                }
+            });
+            return [[MTBlockDisposable alloc] initWithBlock:^{ [cancelled swap:@true]; }];
+        }];
+        return [native timeout:10.0 onQueue:[MTQueue concurrentDefaultQueue] orSignal:[MTSignal fail:nil]];
+    }
+    NSMutableArray *signals = [NSMutableArray array];
+    for (NSNumber *type in @[@1, @28]) {
+        if ((preference == MTRGIPv4Only && type.intValue == 28) || (preference == MTRGIPv6Only && type.intValue == 1)) continue;
+        MTSignal *signal = [[MTRGDoHResolver queryHostname:hostname type:type.unsignedShortValue endpoint:endpoint useCache:useCache] catch:^MTSignal *(__unused id error) { return [MTSignal single:@{@"addresses": @[]}]; }];
+        [signals addObject:signal];
+    }
+    return [[[MTSignal combineSignals:signals] mapToSignal:^MTSignal *(NSArray *answers) {
+        NSMutableArray *ips = [NSMutableArray array];
+        for (NSDictionary *answer in answers) [ips addObjectsFromArray:answer[@"addresses"]];
+        NSArray *ordered = MTRGOrderIPs(ips, preference);
+        return ordered.count ? [MTSignal single:ordered] : [MTSignal fail:nil];
+    }] take:1];
+}
++ (MTSignal *)resolveHostname:(NSString *)hostname port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference {
+    return [self resolveHostname:hostname port:port dohEndpoint:endpoint preference:preference useCache:true strictFamily:false];
+}
++ (MTSignal *)resolveHostname:(NSString *)hostname port:(int32_t)port dohEndpoint:(NSString *)endpoint preference:(NSInteger)preference useCache:(bool)useCache strictFamily:(bool)strictFamily {
+    NSInteger policy = strictFamily ? (preference == 6 ? MTRGIPv6Only : MTRGIPv4Only) : preference;
+    return [[self resolveProxyHostname:hostname dohEndpoint:endpoint preference:policy useSystemDNS:!endpoint.length useCache:useCache] map:^id(NSArray *addresses) { return addresses.firstObject; }];
+}
+
+@end
+
+// MARK: Regram — fresh A/AAAA lookups, with elapsed time; no fallback disguised as the requested family.
+@implementation MTRGDNSDiagnostics
++ (MTSignal *)queryHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint family:(NSInteger)family {
+    return [self queryHostname:hostname dohEndpoint:endpoint family:family useSystemDNS:!endpoint.length];
+}
++ (MTSignal *)queryHostname:(NSString *)hostname dohEndpoint:(NSString *)endpoint family:(NSInteger)family useSystemDNS:(bool)useSystemDNS {
+    if (family != 4 && family != 6) return [MTSignal fail:nil];
+    CFAbsoluteTime start = CFAbsoluteTimeGetCurrent();
+    NSInteger policy = family == 6 ? MTRGIPv6Only : MTRGIPv4Only;
+    return [[MTDNS resolveProxyHostname:hostname dohEndpoint:endpoint preference:policy useSystemDNS:useSystemDNS useCache:false] map:^id(NSArray *addresses) {
+        return @{@"address": addresses.firstObject, @"addresses": addresses, @"milliseconds": @((CFAbsoluteTimeGetCurrent() - start) * 1000)};
+    }];
+}
++ (NSArray<NSString *> *)orderedAddresses:(NSArray<NSString *> *)addresses policy:(NSInteger)policy { return MTRGOrderIPs(addresses, policy); }
++ (NSString *)lastFailureForEndpoint:(NSString *)endpoint { return [MTRGDoHResolver lastFailureForEndpoint:endpoint]; }
 
 @end

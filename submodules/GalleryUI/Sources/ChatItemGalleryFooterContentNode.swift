@@ -291,6 +291,10 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                         self.statusButtonNode.isHidden = true
                         self.statusNode.isHidden = true
                 }
+                // MARK: Regram — the glass controls render in the footer's layout, separately from the video item.
+                if self.rgVideoControlsEnabled {
+                    self.requestLayout?(.immediate)
+                }
             }
         }
     }

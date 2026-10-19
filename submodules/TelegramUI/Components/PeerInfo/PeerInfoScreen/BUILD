@@ -1,6 +1,7 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
+    "//Regram/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram

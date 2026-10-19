@@ -108,6 +108,7 @@ typedef enum {
     UIView *_startButton;
     
     bool _loadedView;
+    UIImageView *_regramArtworkView; // MARK: Regram
 }
 @end
 
@@ -213,6 +214,7 @@ typedef enum {
 
 - (void)startTimer
 {
+    if (_regramArtworkView != nil) return; // MARK: Regram — static artwork needs no render timer.
     if (_updateAndRenderTimer == nil)
     {
         _updateAndRenderTimer = [NSTimer timerWithTimeInterval:1.0f / 60.0f target:self selector:@selector(updateAndRender) userInfo:nil repeats:true];
@@ -230,8 +232,10 @@ typedef enum {
 }
 
 - (void)animateIn {
-    CGPoint logoTargetPosition = _glkView.center;
-    _glkView.center = CGPointMake(self.view.bounds.size.width / 2.0, self.view.bounds.size.height / 2.0);
+    // MARK: Regram — use the same entrance and transition geometry for app artwork.
+    UIView *artworkView = _regramArtworkView ?: _glkView;
+    CGPoint logoTargetPosition = artworkView.center;
+    artworkView.center = CGPointMake(self.view.bounds.size.width / 2.0, self.view.bounds.size.height / 2.0);
     
     RMIntroPageView *firstPage = (RMIntroPageView *)[_pageViews firstObject];
     CGPoint headerTargetPosition = firstPage.headerLabel.center;
@@ -246,24 +250,24 @@ typedef enum {
     CGPoint buttonTargetPosition = _startButton.center;
     _startButton.center = CGPointMake(buttonTargetPosition.x, buttonTargetPosition.y + 220.0);
     
-    _glkView.transform = CGAffineTransformMakeScale(0.66, 0.66);
+    artworkView.transform = CGAffineTransformMakeScale(0.66, 0.66);
         
     [UIView animateWithDuration:0.65 delay:0.15 usingSpringWithDamping:1.2f initialSpringVelocity:0.0 options:kNilOptions animations:^{
-        _glkView.center = logoTargetPosition;
+        artworkView.center = logoTargetPosition;
         firstPage.headerLabel.center = headerTargetPosition;
         firstPage.descriptionLabel.center = descriptionTargetPosition;
         _pageControl.center = pageControlTargetPosition;
         _startButton.center = buttonTargetPosition;
-        _glkView.transform = CGAffineTransformIdentity;
+        artworkView.transform = CGAffineTransformIdentity;
     } completion:nil];
     
-    _glkView.alpha = 0.0;
+    artworkView.alpha = 0.0;
     _pageScrollView.alpha = 0.0;
     _pageControl.alpha = 0.0;
     _startButton.alpha = 0.0;
     
     [UIView animateWithDuration:0.3 delay:0.15 options:kNilOptions animations:^{
-        _glkView.alpha = 1.0;
+        artworkView.alpha = 1.0;
         _pageScrollView.alpha = 1.0;
         _pageControl.alpha = 1.0;
         _startButton.alpha = 1.0;
@@ -272,6 +276,18 @@ typedef enum {
 
 - (void)loadGL
 {
+    // MARK: Regram — preserve the welcome layout while replacing the tour illustration.
+    if (self.regramArtwork != nil) {
+        if (_regramArtworkView == nil) {
+            _regramArtworkView = [[UIImageView alloc] initWithImage:self.regramArtwork];
+            _regramArtworkView.contentMode = UIViewContentModeScaleAspectFill;
+            _regramArtworkView.clipsToBounds = true;
+            _regramArtworkView.userInteractionEnabled = false;
+            _regramArtworkView.isAccessibilityElement = false;
+            [self.view insertSubview:_regramArtworkView atIndex:0];
+        }
+        return;
+    }
 #if TARGET_OS_SIMULATOR && defined(__aarch64__)
     return;
 #endif
@@ -350,6 +366,13 @@ typedef enum {
     self.view.backgroundColor = _backgroundColor;
     
     [self loadGL];
+
+    // MARK: Regram
+    if (self.regramArtwork != nil && _headlines.count > 0) {
+        NSMutableArray *headlines = [_headlines mutableCopy];
+        headlines[0] = @"Regram";
+        _headlines = headlines;
+    }
     
     _wrapperView = [[UIScrollView alloc]initWithFrame:self.view.bounds];
     [self.view addSubview:_wrapperView];
@@ -390,6 +413,15 @@ typedef enum {
 }
 
 - (UIView *)createAnimationSnapshot {
+    // MARK: Regram — keep the welcome-to-login transition consistent with the visible artwork.
+    if (_regramArtworkView != nil) {
+        UIImageView *imageView = [[UIImageView alloc] initWithImage:_regramArtworkView.image];
+        imageView.frame = _regramArtworkView.frame;
+        imageView.contentMode = _regramArtworkView.contentMode;
+        imageView.clipsToBounds = true;
+        imageView.layer.cornerRadius = _regramArtworkView.layer.cornerRadius;
+        return imageView;
+    }
     UIImage *image = _glkView.snapshot;
     UIImageView *imageView = [[UIImageView alloc] initWithFrame:_glkView.frame];
     imageView.image = image;
@@ -551,6 +583,12 @@ typedef enum {
     
     _pageControl.frame = CGRectMake(0, pageControlY, self.view.bounds.size.width, 7);
     _glkView.frame = CGRectChangedOriginY(_glkView.frame, glViewY - statusBarHeight);
+    // MARK: Regram
+    if (_regramArtworkView != nil) {
+        CGFloat side = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad ? 240.0 : 200.0;
+        _regramArtworkView.frame = CGRectMake(floor((self.view.bounds.size.width - side) / 2.0), glViewY - statusBarHeight, side, side);
+        _regramArtworkView.layer.cornerRadius = side * 0.23;
+    }
     
     CGFloat startButtonWidth = MIN(430.0 - 48.0, self.view.bounds.size.width - 48.0f);
     UIView *startButton = self.createStartButton(startButtonWidth);

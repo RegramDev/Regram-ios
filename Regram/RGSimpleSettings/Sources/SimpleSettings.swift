@@ -41,6 +41,8 @@ public class RGSimpleSettings {
         if self.translationBackend == "gtranslate" { self.translationBackend = TranslationBackend.google.rawValue }
         // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
         if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
+        // MARK: Regram — persist the supported mode when upgrading an old three-line setting.
+        if storedChatListLines != chatListLines { self.chatListLines = chatListLines }
         UserDefaults.standard.removeObject(forKey: "nsfwEnabled")
         UserDefaults.standard.removeObject(forKey: "nsfwAgeConfirmed")
         let showRepostToStoryMigrationKey = "migrated_\(Keys.showRepostToStory.rawValue)"
@@ -252,7 +254,6 @@ public class RGSimpleSettings {
         case hideChannelBottomButton
         case forceSystemSharing
         case confirmCalls
-        case legacyNotificationsFix
         case messageFilterKeywords
         case messageFilterRules
         case blockedPeerIds
@@ -291,6 +292,7 @@ public class RGSimpleSettings {
         case hideStories
         case disableAllAds
         case antiRevoke
+        case revokedMarkerStyle, revokedMarkerText, revokedMarkerColor // MARK: Regram
         case antiAutoDelete
         case antiSelfDestruct
         case antiScreenshotNotification
@@ -343,11 +345,10 @@ public class RGSimpleSettings {
     }
 
     public enum ChatListLines: String, CaseIterable {
-        case three = "3"
         case two = "2"
         case one = "1"
 
-        public static let defaultValue: ChatListLines = .three
+        public static let defaultValue: ChatListLines = .two
     }
     
     public enum MessageDoubleTapAction: String, CaseIterable {
@@ -535,6 +536,7 @@ public class RGSimpleSettings {
         Keys.hideStories.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.antiRevoke.rawValue: false,
+        Keys.revokedMarkerStyle.rawValue: "icon", Keys.revokedMarkerText.rawValue: "", Keys.revokedMarkerColor.rawValue: "",
         Keys.antiAutoDelete.rawValue: false,
         Keys.antiSelfDestruct.rawValue: false,
         Keys.antiScreenshotNotification.rawValue: false,
@@ -556,7 +558,6 @@ public class RGSimpleSettings {
     ]
     
     public static let groupDefaultValues: [String: Any] = [
-        Keys.legacyNotificationsFix.rawValue: false,
         Keys.pinnedMessageNotifications.rawValue: PinnedMessageNotificationsSettings.default.rawValue,
         Keys.mentionsAndRepliesNotifications.rawValue: MentionsAndRepliesNotificationsSettings.default.rawValue,
         Keys.showRepostToStoryV2.rawValue: true,
@@ -666,8 +667,22 @@ public class RGSimpleSettings {
     
     public var lastAccountFolders = UserDefaultsBackedDictionary<String, Int32>(userDefaultsKey: Keys.lastAccountFolders.rawValue, threadSafe: false)
     
-    @UserDefault(key: Keys.localDNSForProxyHost.rawValue)
-    public var localDNSForProxyHost: Bool
+    // MARK: Regram — the DNS choices are mutually exclusive and shared with extensions.
+    public var localDNSForProxyHost: Bool {
+        get {
+            let defaults = Bundle.main.bundlePath.hasSuffix(".appex") ? APP_GROUP_USER_DEFAULTS ?? UserDefaults.standard : UserDefaults.standard
+            return defaults.bool(forKey: Keys.localDNSForProxyHost.rawValue) && !defaults.bool(forKey: "customDoHEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
+            APP_GROUP_USER_DEFAULTS?.set(newValue, forKey: Keys.localDNSForProxyHost.rawValue)
+            if newValue {
+                var policy = self.networkPolicy; policy.dohEnabled = false; policy.useSystemDNS = true; policy.save(to: UserDefaults.standard)
+                if let shared = APP_GROUP_USER_DEFAULTS { policy.save(to: shared) }
+            }
+            NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
+        }
+    }
     
     @UserDefault(key: Keys.sendLargePhotos.rawValue)
     public var sendLargePhotos: Bool
@@ -683,6 +698,11 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.antiRevoke.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiRevoke: Bool
+
+    // MARK: Regram — visual marker preferences live in the main application only.
+    @UserDefault(key: Keys.revokedMarkerStyle.rawValue) public var revokedMarkerStyle: String
+    @UserDefault(key: Keys.revokedMarkerText.rawValue) public var revokedMarkerText: String
+    @UserDefault(key: Keys.revokedMarkerColor.rawValue) public var revokedMarkerColor: String
 
 
     @UserDefault(key: Keys.antiAutoDelete.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
@@ -785,6 +805,7 @@ public class RGSimpleSettings {
             for key in keys {
                 let storage = self.backupStorage(key: key, wrappers: wrappers)
                 var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
+                if key == Keys.chatListLines.rawValue { raw = self.chatListLines } // MARK: Regram
                 if raw == nil && key == "forceBuiltInMic" { raw = false }
                 if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
             }
@@ -802,6 +823,10 @@ public class RGSimpleSettings {
         for (key, value) in values where RGSettingsBackup.category(for: key) != nil && !key.hasPrefix("native.") {
             let storage = self.backupStorage(key: key, wrappers: wrappers)
             if key == Keys.downloadSpeedBoost.rawValue, value == .string("maximum") { storage.set("medium", forKey: key) }
+            else if key == Keys.chatListLines.rawValue { // MARK: Regram — imported removed modes cannot reappear in backups.
+                let count = (value.propertyList as? String).flatMap(ChatListLines.init(rawValue:)) ?? .two
+                storage.set(count.rawValue, forKey: key)
+            }
             else { storage.set(value.propertyList, forKey: key) }
         }
         for wrapper in wrappers { wrapper.invalidatePreferenceCache() }
@@ -812,7 +837,13 @@ public class RGSimpleSettings {
         NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
         NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
         NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
+        NotificationCenter.default.post(name: Self.revokedMarkerDidChange, object: nil)
+        NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil)
         self.synchronizeShared()
+        // MARK: Regram — restore/reset transport preferences into the extension store as well.
+        if self.networkPolicy.dohEnabled { UserDefaults.standard.set(false, forKey: Keys.localDNSForProxyHost.rawValue) }
+        if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared); shared.set(self.localDNSForProxyHost, forKey: Keys.localDNSForProxyHost.rawValue) }
+        NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
     }
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
@@ -1107,7 +1138,12 @@ public class RGSimpleSettings {
     public var compactChatList: Bool
 
     @UserDefault(key: Keys.chatListLines.rawValue)
-    public var chatListLines: String
+    private var storedChatListLines: String
+    // MARK: Regram — old backups and installed "3" values become the supported two-line mode.
+    public var chatListLines: String {
+        get { (ChatListLines(rawValue: storedChatListLines) ?? .two).rawValue }
+        set { storedChatListLines = (ChatListLines(rawValue: newValue) ?? .two).rawValue }
+    }
 
     @UserDefault(key: Keys.compactFolderNames.rawValue)
     public var compactFolderNames: Bool
@@ -1147,8 +1183,6 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.confirmCalls.rawValue)
     public var confirmCalls: Bool
     
-    @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
-    public var legacyNotificationsFix: Bool
     
 
     

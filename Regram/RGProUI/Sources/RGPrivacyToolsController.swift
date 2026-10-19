@@ -6,6 +6,7 @@ import ItemListUI
 import RGItemListUI
 import RGSimpleSettings
 import RGStrings
+import RGSettingsUI
 import SwiftSignalKit
 import TelegramPresentationData
 
@@ -59,13 +60,14 @@ private func antiFeatureToggles() -> [RGPrivacyToggle] {
 
 private func rgPrivacyToolsController(context: AccountContext, title: String, noticeKey: String, toggles: [RGPrivacyToggle], page: String, focusSetting: String?) -> ViewController {
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    var push: ((ViewController) -> Void)?
 
     let arguments = RGItemListArguments<RGPrivacyToolsToggle, AnyHashable, AnyHashable, AnyHashable, AnyHashable>(context: context, setBoolValue: { toggleName, value in
         if let toggle = toggles.first(where: { $0.setting == toggleName }) {
             toggle.set(value)
         }
         simplePromise.set(true)
-    }, settingsPage: page)
+    }, openDisclosureLink: { _ in push?(rgRevokedMarkerController(context: context)) }, settingsPage: page)
 
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get())
     |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
@@ -76,6 +78,9 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
         for toggle in toggles {
             entries.append(.toggle(id: id.count, section: .main, settingName: toggle.setting, value: toggle.get(), text: toggle.localizationKey.i18n(lang), enabled: true))
         }
+        if page == "antiFeatures" {
+            entries.append(.disclosure(id: id.count, section: .main, link: AnyHashable("revokedMarker"), text: "RevokedMarker.Title".i18n(lang)))
+        }
         entries.append(.notice(id: id.count, section: .main, text: noticeKey.i18n(lang)))
 
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
@@ -84,7 +89,9 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
         return (controllerState, (listState, arguments))
     }
 
-    return RGSettingsListController(context: context, state: signal)
+    let controller = RGSettingsListController(context: context, state: signal)
+    push = { [weak controller] target in (controller?.navigationController as? NavigationController)?.pushViewController(target) }
+    return controller
 }
 
 

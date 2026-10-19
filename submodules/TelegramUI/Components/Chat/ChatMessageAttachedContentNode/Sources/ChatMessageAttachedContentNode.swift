@@ -762,6 +762,7 @@ public final class ChatMessageAttachedContentNode: ASDisplayNode {
                                 edited: edited && !isPreview,
                                 impressionCount: !isPreview ? viewCount : nil,
                                 dateText: dateText,
+                                isRevoked: message.rgIsRevoked, // MARK: Regram
                                 type: statusType,
                                 layoutInput: .trailingContent(
                                     contentWidth: trailingContentWidth,

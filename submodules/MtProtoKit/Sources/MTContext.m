@@ -1,3 +1,4 @@
+#import "MTRGIPPolicy.h" // MARK: Regram
 #import <MtProtoKit/MTContext.h>
 
 #import <inttypes.h>
@@ -272,6 +273,11 @@ static NSTimeInterval MTRetryDelayForFailureCount(NSUInteger failureCount) {
         _isTestingEnvironment = isTestingEnvironment;
         _useTempAuthKeys = useTempAuthKeys;
         _forceLocalDNS = forceLocalDNS;
+        // MARK: Regram — retain the legacy constructor contract and keep runtime policy authoritative.
+        if (forceLocalDNS && !_apiEnvironment.rgDoHEndpoint.length && !_apiEnvironment.rgUseSystemDNS) {
+            _apiEnvironment = [_apiEnvironment copy];
+            _apiEnvironment.rgUseSystemDNS = true;
+        }
         
         _tempKeyExpiration = 24 * 60 * 60;
         
@@ -1052,7 +1058,7 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
         __block int32_t earliestFailure = INT32_MAX;
         
         int32_t timestamp = (int32_t)CFAbsoluteTimeGetCurrent();
-        __block bool scanIpv6 = false;
+        __block bool scanIpv6 = _apiEnvironment.rgIPVersionPreference != MTRGIPAutomatic; // MARK: Regram
         for (MTTransportScheme *scheme in schemes) {
             if (scheme.address.isIpv6) {
                 [self _withTransportSchemeStatsForDatacenterId:datacenterId transportScheme:scheme process:^MTTransportSchemeStats *(MTTransportSchemeStats *current) {
@@ -1065,6 +1071,8 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
         }
         
         for (MTTransportScheme *scheme in schemes.reverseObjectEnumerator) {
+            // MARK: Regram — strict modes cannot select a cached or manual scheme of the other family.
+            if (MTRGIsNumericIP(scheme.address.ip) && !MTRGAllowsIP(scheme.address.ip, _apiEnvironment.rgIPVersionPreference)) continue;
             if (scheme.address.isIpv6 && !scanIpv6) {
                 continue;
             }
@@ -1072,7 +1080,7 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
                 if (schemeWithEarliestFailure == nil) {
                     schemeWithEarliestFailure = scheme;
                     earliestFailure = current.lastFailureTimestamp;
-                } else if (earliestFailure > current.lastFailureTimestamp) {
+                } else if (earliestFailure > current.lastFailureTimestamp || (earliestFailure == current.lastFailureTimestamp && ((_apiEnvironment.rgIPVersionPreference == 6 && scheme.address.isIpv6) || (_apiEnvironment.rgIPVersionPreference == 4 && !scheme.address.isIpv6)))) {
                     earliestFailure = current.lastFailureTimestamp;
                     schemeWithEarliestFailure = scheme;
                 }
@@ -1132,7 +1140,9 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
     } synchronous:true];
     
     for (int i = (int)(results.count - 1); i >= 0; i--) {
-        if (enforceMedia && !results[i].address.preferForMedia) {
+        if (MTRGIsNumericIP(results[i].address.ip) && !MTRGAllowsIP(results[i].address.ip, _apiEnvironment.rgIPVersionPreference)) {
+            [results removeObjectAtIndex:i];
+        } else if (enforceMedia && !results[i].address.preferForMedia) {
             [results removeObjectAtIndex:i];
         } else if (!media && results[i].address.preferForMedia) {
             [results removeObjectAtIndex:i];
@@ -1909,6 +1919,7 @@ static void copyKeychainDictionaryKey(NSString * _Nonnull group, NSString * _Non
         MTApiEnvironment *apiEnvironment = f(_apiEnvironment);
         if (apiEnvironment != nil) {
             _apiEnvironment = apiEnvironment;
+            _forceLocalDNS = apiEnvironment.rgUseSystemDNS;
             
             NSArray *changeListeners = [[NSArray alloc] initWithArray:_changeListeners];
             for (MTWeakContextChangeListener *value in changeListeners) {

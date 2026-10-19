@@ -1,4 +1,5 @@
-import RGSimpleSettings
+import RGSimpleSettings // MARK: Regram
+import RGStrings // MARK: Regram
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -13,6 +14,30 @@ import ReactionImageComponent
 import AnimationCache
 import MultiAnimationRenderer
 import TelegramStringFormatting
+
+// MARK: Regram — shared by bubble/media timestamps and call-message labels.
+public func rgRevokedMessageStatusText(_ text: String, isRevoked: Bool, strings: PresentationStrings, font: UIFont, color: UIColor) -> NSAttributedString {
+    let language = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode)
+    let settings = RGSimpleSettings.shared.revokedMarker
+    let marker: String? = isRevoked ? settings.label(defaultText: "RevokedMarker.DefaultText".i18n(language)) : nil
+    let result = NSMutableAttributedString(string: (marker.map { $0 + " " } ?? "") + text, font: font, textColor: color)
+    if let marker, let rgb = RGRevokedMarker.rgb(settings.color) {
+        result.addAttribute(.foregroundColor, value: UIColor(rgb: rgb), range: NSRange(location: 0, length: (marker as NSString).length))
+    }
+    return result
+}
+
+private func rgMessageStatusText(_ arguments: ChatMessageDateAndStatusNode.Arguments, font: UIFont, color: UIColor) -> NSAttributedString {
+    let result = NSMutableAttributedString(attributedString: rgRevokedMessageStatusText(arguments.dateText, isRevoked: arguments.isRevoked, strings: arguments.presentationData.strings, font: font, color: color))
+    if arguments.edited, !(arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool ?? false) {
+        result.insert(NSAttributedString(string: arguments.presentationData.strings.Conversation_MessageEditedLabel + " ", font: font, textColor: color), at: 0)
+    }
+    if let impressionCount = arguments.impressionCount {
+        let count = compactNumericCountString(impressionCount, decimalSeparator: arguments.presentationData.dateTimeFormat.decimalSeparator)
+        result.insert(NSAttributedString(string: count + " ", font: font, textColor: color), at: 0)
+    }
+    return result
+}
 
 private func maybeAddRotationAnimation(_ layer: CALayer, duration: Double) {
     if let _ = layer.animation(forKey: "clockFrameAnimation") {
@@ -251,6 +276,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
         var edited: Bool
         var impressionCount: Int?
         var dateText: String
+        var isRevoked: Bool // MARK: Regram
         var type: ChatMessageDateAndStatusType
         var layoutInput: LayoutInput
         var constrainedSize: CGSize
@@ -277,6 +303,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             edited: Bool,
             impressionCount: Int?,
             dateText: String,
+            isRevoked: Bool = false, // MARK: Regram
             type: ChatMessageDateAndStatusType,
             layoutInput: LayoutInput,
             constrainedSize: CGSize,
@@ -302,6 +329,7 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
             self.edited = edited
             self.impressionCount = impressionCount == 0 ? nil : impressionCount
             self.dateText = dateText
+            self.isRevoked = isRevoked // MARK: Regram
             self.type = type
             self.layoutInput = layoutInput
             self.availableReactions = availableReactions
@@ -604,19 +632,9 @@ public class ChatMessageDateAndStatusNode: ASDisplayNode {
                 }
             }
             
-            var updatedDateText = arguments.dateText
-            if arguments.edited {
-                if let useEditedTimestamp = arguments.context.getAppConfigValue("message_primary_edited_date") as? Bool, useEditedTimestamp {
-                } else {
-                    updatedDateText = "\(arguments.presentationData.strings.Conversation_MessageEditedLabel) \(updatedDateText)"
-                }
-            }
-            if let impressionCount = arguments.impressionCount {
-                updatedDateText = compactNumericCountString(impressionCount, decimalSeparator: arguments.presentationData.dateTimeFormat.decimalSeparator) + " " + updatedDateText
-            }
-            
             let dateFont = Font.regular(floor(arguments.presentationData.fontSize.baseDisplaySize * 11.0 / 17.0))
-            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: NSAttributedString(string: updatedDateText, font: dateFont, textColor: dateColor), backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
+            let attributedDate = rgMessageStatusText(arguments, font: dateFont, color: dateColor)
+            let (date, dateApply) = dateLayout(TextNodeLayoutArguments(attributedString: attributedDate, backgroundColor: nil, maximumNumberOfLines: 1, truncationType: .middle, constrainedSize: arguments.constrainedSize, alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
             
             let checkOffset = floor(arguments.presentationData.fontSize.baseDisplaySize * 6.0 / 17.0)
             

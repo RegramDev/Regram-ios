@@ -1108,6 +1108,7 @@ public class ChatMessageRichDataBubbleContentNode: ChatMessageBubbleContentNode 
                         edited: edited && !item.presentationData.isPreview,
                         impressionCount: !item.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
+                        isRevoked: item.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: dateLayoutInput,
                         constrainedSize: CGSize(width: boundingSize.width, height: .greatestFiniteMagnitude),

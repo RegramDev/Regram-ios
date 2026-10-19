@@ -23,6 +23,8 @@ import ThemeAccentColorScreen
 import WallpaperGridScreen
 import PeerNameColorItem
 import DeviceModel
+import RGSimpleSettings // MARK: Regram
+import RGStrings // MARK: Regram
 
 private final class ThemeSettingsControllerArguments {
     let context: AccountContext
@@ -502,6 +504,16 @@ public protocol ThemeSettingsController {
 }
 
 private final class ThemeSettingsControllerImpl: ItemListController, ThemeSettingsController {
+    // MARK: Regram — refresh on return from the system icon sheet and from other settings pages.
+    var refreshAppIcon: (() -> Void)?
+    private var iconObservers: [NSObjectProtocol] = []
+    func observeAppIcon() {
+        for name in [PresentationResourcesSettings.regramAppIconDidChange, UIApplication.didBecomeActiveNotification] {
+            iconObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.refreshAppIcon?() })
+        }
+    }
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); refreshAppIcon?() }
+    deinit { iconObservers.forEach { NotificationCenter.default.removeObserver($0) } }
 }
 
 public func themeSettingsController(context: AccountContext, focusOnItemTag: ThemeSettingsEntryTag? = nil) -> ViewController {
@@ -522,23 +534,18 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     
     let _ = context.engine.themes.wallpapers().start()
     
-    let currentAppIcon: PresentationAppIcon?
+    // MARK: Regram — resolve legacy identifiers and the primary artwork to the visible picker entry.
     var appIcons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
-    if let alternateIconName = context.sharedContext.applicationBindings.getAlternateIconName() {
-        currentAppIcon = appIcons.filter { $0.name == alternateIconName }.first
-    } else {
-        currentAppIcon = appIcons.filter { $0.isDefault }.first
-    }
-    
     let premiumConfiguration = PremiumConfiguration.with(appConfiguration: context.currentAppConfiguration.with { $0 })
-    if premiumConfiguration.isPremiumDisabled || context.account.testingEnvironment {
-        appIcons = appIcons.filter { !$0.isPremium } 
-    }
-    
+    if premiumConfiguration.isPremiumDisabled || context.account.testingEnvironment { appIcons = appIcons.filter { !$0.isPremium } }
     let availableAppIcons: Signal<[PresentationAppIcon], NoError> = .single(appIcons)
-    let currentAppIconName = ValuePromise<String?>()
-    currentAppIconName.set(currentAppIcon?.name ?? "Blue")
-    
+    let currentAppIconName = ValuePromise<String?>(ignoreRepeated: true)
+    let refreshAppIcon = {
+        let actual = RGAppIconNames.canonicalName(context.sharedContext.applicationBindings.getAlternateIconName())
+        currentAppIconName.set(actual ?? appIcons.first(where: { $0.isDefault })?.name)
+    }
+    refreshAppIcon()
+
     let cloudThemes = Promise<[TelegramTheme]>()
     let updatedCloudThemes = context.engine.themes.themes(accountManager: context.sharedContext.accountManager)
     cloudThemes.set(updatedCloudThemes)
@@ -620,26 +627,20 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
             return current.withUpdatedShowNextMediaOnTap(value)
         }).start()
     }, selectAppIcon: { icon in
-        let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
-        |> deliverOnMainQueue).start(next: { peer in
-            let isPremium = peer?.isPremium ?? false
-            if icon.isPremium && !isPremium {
-                var replaceImpl: ((ViewController) -> Void)?
-                let controller = PremiumDemoScreen(context: context, subject: .appIcons, source: .other, action: {
-                    let controller = PremiumIntroScreen(context: context, source: .appIcons)
-                    replaceImpl?(controller)
-                })
-                replaceImpl = { [weak controller] c in
-                    controller?.replace(with: c)
+        // MARK: Regram — local icons need no peer/database lookup; do not stall taps behind it.
+        let apply = {
+            context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { success in
+                refreshAppIcon()
+                if !success {
+                    let data = context.sharedContext.currentPresentationData.with { $0 }
+                    presentControllerImpl?(textAlertController(context: context, title: data.strings.Appearance_AppIcon, text: "AppIcon.ChangeFailed".i18n(RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode)), actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), nil)
                 }
-                pushControllerImpl?(controller)
-            // MARK: Regram — selecting a local icon does not depend on a client subscription.
-            } else {
-                context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { success in
-                    if success {
-                        currentAppIconName.set(icon.name)
-                    }
-                })
+            })
+        }
+        if !icon.isPremium { apply(); return }
+        let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)) |> deliverOnMainQueue).start(next: { peer in
+            if peer?.isPremium == true { apply() } else {
+                pushControllerImpl?(PremiumIntroScreen(context: context, source: .appIcons))
             }
         })
     }, editTheme: { theme in
@@ -1162,6 +1163,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     
     let controller = ThemeSettingsControllerImpl(context: context, state: signal)
     controller.alwaysSynchronous = true
+    controller.refreshAppIcon = refreshAppIcon // MARK: Regram
+    controller.observeAppIcon()
     pushControllerImpl = { [weak controller] c in
         (controller?.navigationController as? NavigationController)?.pushViewController(c)
     }

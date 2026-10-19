@@ -57,6 +57,16 @@ end = '''
  let archive=Header(context,parent,.chatList(.archive)),forum=Header(context,parent,.forum)
  precondition(archive.settingsButton==nil && forum.settingsButton==nil)
  RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible=true;precondition(header.settingsButton==nil)
+ precondition(RGHiddenTabBarPolicy.isHidden(transientlyHidden:false,isTabBarVisible:false))
+ precondition(!RGHiddenTabBarPolicy.isHidden(transientlyHidden:false,isTabBarVisible:true))
+ precondition(RGHiddenTabBarPolicy.isHidden(transientlyHidden:true,isTabBarVisible:true))
+ for visible in [true,false] { for root in [true,false] { for top in [true,false] { for editing in [true,false] { for expanded in [true,false] {
+ precondition(RGHiddenTabBarPolicy.canReturnToChats(isTabBarVisible:visible,isRootSettings:root,isTopController:top,editing:editing,avatarExpanded:expanded) == (!visible && root && top && !editing && !expanded))
+ }}}}}
+ precondition(!RGHiddenTabBarPolicy.completeBackGesture(distance:10,width:390,velocity:100))
+ precondition(!RGHiddenTabBarPolicy.completeBackGesture(distance:-10,width:390,velocity:600))
+ precondition(RGHiddenTabBarPolicy.completeBackGesture(distance:80,width:390,velocity:0))
+ precondition(RGHiddenTabBarPolicy.completeBackGesture(distance:20,width:390,velocity:600))
  print("Production hidden-tab settings getter updates without a network event; tap, account menu, selection, reordering, nested lists and restoration passed.")
 }}
 '''

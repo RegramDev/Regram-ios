@@ -839,6 +839,10 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
+    result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
+    result.rgIPVersionPreference = self.rgIPVersionPreference;
     result->_socksProxySettings = self.socksProxySettings;
     result->_networkSettings = self.networkSettings;
     result->_systemCode = self.systemCode;
@@ -866,6 +870,10 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
+    result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
+    result.rgIPVersionPreference = self.rgIPVersionPreference;
     
     [result _updateApiInitializationHash];
     
@@ -890,6 +898,10 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
+    result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
+    result.rgIPVersionPreference = self.rgIPVersionPreference;
     
     [result _updateApiInitializationHash];
     
@@ -914,6 +926,10 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
+    result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
+    result.rgIPVersionPreference = self.rgIPVersionPreference;
     
     [result _updateApiInitializationHash];
     
@@ -938,6 +954,10 @@ NSString *suffix = @"";
     result.tcpPayloadPrefix = self.tcpPayloadPrefix;
     result.datacenterAddressOverrides = self.datacenterAddressOverrides;
     result.accessHostOverride = self.accessHostOverride;
+    result.rgUseSystemDNS = self.rgUseSystemDNS; // MARK: Regram
+    result.rgDisableBackupAddressDiscovery = self.rgDisableBackupAddressDiscovery;
+    result.rgDoHEndpoint = self.rgDoHEndpoint; // MARK: Regram
+    result.rgIPVersionPreference = self.rgIPVersionPreference;
     
     [result _updateApiInitializationHash];
     

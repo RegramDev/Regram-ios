@@ -34,7 +34,6 @@
 "Settings.ChatList.Lines" = "Message Preview Lines";
 "Settings.ChatList.Lines.1" = "1 Line";
 "Settings.ChatList.Lines.2" = "2 Lines";
-"Settings.ChatList.Lines.3" = "3 Lines";
 "Mention.UserIdLink" = "Mention by Name";
 "Mention.UserIdLink.Notice" = "Long-pressing an avatar to mention inserts the user's full name as a mention instead of @username. Tapping it opens their profile.";
 "LocalPremium.Title" = "Local Premium";
@@ -108,7 +107,7 @@
 "PasscodeSettings.AutoLock.InFiveSeconds" = "If away for 5 seconds";
 
 "ProxySettings.UseSystemDNS" = "Use system DNS";
-"ProxySettings.UseSystemDNS.Notice" = "Use system DNS to bypass timeout if you don't have access to Google DNS";
+"ProxySettings.UseSystemDNS.Notice" = "Use the system resolver for proxy hostnames. Enabling this disables custom DoH; changes reconnect immediately.";
 
 /* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
 "Common.NoTelegramPremiumNeeded" = "You **don't need** %@!";
@@ -822,3 +821,129 @@ Matching is case-insensitive.";
 "Bookmarks.Empty" = "No bookmarks in this selection.";
 "Bookmarks.LoadMore" = "Load More Bookmarks";
 "Bookmarks.ChatUnavailable" = "The original chat is not available locally. You can still edit or remove this bookmark.";
+
+// MARK: Regram — message tools, theme and network policy
+"Summary.Title" = "Message summary API";
+"Summary.Action" = "Summarize messages";
+"Summary.ConnectionNotice" = "Summarization uses its own endpoint and key, separate from translation. The key stays in the local Keychain.";
+"Summary.PromptNotice" = "@text is the selected messages; @toLang is the app language. No unselected context or media is uploaded.";
+"Summary.UploadNotice" = "Send and summarize uploads the selected text above to your configured API. No images, audio, extra account metadata or unselected messages are attached. Your provider may charge for requests.";
+"Summary.Selected" = "Selected text messages:";
+"Summary.Configure" = "Configure summary API";
+"Summary.Start" = "Send and summarize";
+"Summary.TooLarge" = "Selected text exceeds 64 KB. Select fewer messages.";
+"Summary.Result" = "Summary";
+"Summary.Copy" = "Copy summary";
+"MessageScreenshot.Action" = "Capture message";
+"StickerBackup.Action" = "Export sticker pack backup";
+"StickerBackup.Failed" = "Sticker pack backup failed. Check download access and available storage, then retry.";
+"NetworkPolicy.Title" = "DNS and IP policy";
+"NetworkPolicy.DoH" = "Custom DoH";
+"NetworkPolicy.Endpoint" = "HTTPS DNS endpoint";
+"NetworkPolicy.InvalidURL" = "Enter an HTTPS URL without a username, password, query or fragment.";
+"NetworkPolicy.DoHNotice" = "Built-in DNS uses Google and Cloudflare over HTTPS. System DNS resolves proxy hostnames through iOS. Custom DoH uses DNS JSON and also serves signed backup-DC TXT queries; existing wire-format address endpoints remain compatible. A custom resolver failure never downgrades to system DNS. Resolver hostnames still use system DNS to bootstrap.";
+"NetworkPolicy.IP" = "IP version policy";
+"NetworkPolicy.Automatic" = "Automatic (Telegram defaults)";
+"NetworkPolicy.IPv4" = "Prefer IPv4";
+"NetworkPolicy.IPv6" = "Prefer IPv6";
+"NetworkPolicy.IPNotice" = "Applies to native Telegram connections and SOCKS5/MTProto proxy addresses. Preferred modes allow the other family as a fallback; only modes do not. Webpages, updates, DNS HTTP requests and Web proxies use the system network.";
+"NetworkPolicy.Apply" = "Save and reconnect";
+"NetworkPolicy.Applied" = "Network policy saved. Native Telegram connections will reconnect.";
+"Bookmarks.Loading" = "Loading…";
+
+// MARK: Regram — local UI follow-up
+"Summary.Enabled" = "Enable message summaries";
+"Summary.EnabledNotice" = "When disabled, summary actions are hidden from chat menus, message menus and selection tools. API configuration is retained.";
+"Summary.RangeAction" = "Summarize a time range";
+"Summary.Range" = "Time range";
+"Summary.LastHour" = "Last hour";
+"Summary.Today" = "Today";
+"Summary.LastDay" = "Last 24 hours";
+"Summary.CustomRange" = "Custom interval";
+"Summary.From" = "From";
+"Summary.To" = "To";
+"Summary.LoadRange" = "Load messages in this interval";
+"Summary.LoadingRange" = "Loading message pages…";
+"Summary.ReviewRange" = "Review text and confirm summary";
+"Summary.OnlySelected" = "Summarize selected messages only";
+"Summary.RangeNotice" = "Fetch text in this interval from the current chat or topic, then confirm upload to the summary API. Attachments, ephemeral, secret and protected content are excluded.";
+"Summary.RangeInvalid" = "The start must precede the end.";
+"Summary.RangeFailed" = "Message retrieval did not complete. Check the connection and retry.";
+"Summary.RangeEmpty" = "No usable text in this interval, or messages could not be retrieved.";
+"Summary.RangeTooLarge" = "This interval exceeds the request limit. Choose a shorter interval. Text is not silently truncated and uploaded.";
+"DNSDiagnostics.Title" = "DNS and IP resolution test";
+"DNSDiagnostics.Host" = "Hostname or IP to test";
+"DNSDiagnostics.Start" = "Start resolution test";
+"DNSDiagnostics.SystemDNS" = "System DNS";
+"DNSDiagnostics.Failed" = "No address for this family, or resolution failed";
+"DNSDiagnostics.Notice" = "Query A and AAAA independently without the app cache, then show addresses allowed by the selected policy. The duration measures DNS resolution, not DC ping. This test does not save settings and cancels when you leave.";
+"NetworkPolicy.DNSExclusive" = "Select one DNS resolution mode. Saving reconnects native Telegram transport.";
+"MessageScreenshot.UnknownSender" = "Unknown sender";
+"Common.Copied" = "Copied";
+"MessageScreenshot.Unavailable" = "Some selected messages are unavailable or cannot be exported.";
+
+
+"NetworkPolicy.DNSMode" = "DNS resolution";
+
+"NetworkPolicy.BuiltInDNS" = "Built-in DNS (HTTPS)";
+
+"NetworkPolicy.IPv4Only" = "IPv4 only";
+
+"NetworkPolicy.IPv6Only" = "IPv6 only";
+
+"NetworkPolicy.DisableBackup" = "Disable backup DC discovery";
+
+"NetworkPolicy.BackupNotice" = "Keep saved and built-in DC addresses, but stop additional backup-address discovery.";
+
+"NetworkPolicy.DoHFailure.network" = "Unable to connect to the custom DNS service.";
+
+"NetworkPolicy.DoHFailure.response" = "The custom DNS service returned an invalid response.";
+
+"NetworkPolicy.DoHFailure.noAddress" = "The resolver returned no address for this family.";
+
+"DNSDiagnostics.PolicyAddresses" = "Addresses allowed by the IP policy";
+
+"DNSDiagnostics.NoPolicyAddresses" = "No address matches the selected policy.";
+
+// Regram: icon selection and retained-message markers
+"AppIcon.ChangeFailed" = "Unable to change the icon. Please try again shortly.";
+"RevokedMarker.Title" = "Deleted-message marker";
+"RevokedMarker.Style" = "Marker style";
+"RevokedMarker.Style.icon" = "Icon";
+"RevokedMarker.Style.text" = "Text";
+"RevokedMarker.Style.none" = "Hidden";
+"RevokedMarker.Text" = "Marker text";
+"RevokedMarker.DefaultText" = "Deleted";
+"RevokedMarker.Color" = "Marker color";
+"RevokedMarker.InvalidColor" = "Enter #RRGGBB, or leave blank to follow the timestamp color.";
+"RevokedMarker.Preview" = "Preview";
+"RevokedMarker.Notice" = "Customize the marker beside the timestamp of locally retained deleted messages. Leave text blank for the default label and color blank to follow the theme. This does not change deletion rules.";
+"RevokedMarker.Saved" = "Saved. Visible retained messages now use this marker.";
+
+/* Regram: messages in common groups */
+"CommonGroups.Action" = "Messages in Common Groups";
+"CommonGroups.Title" = "%1$@ · Common Groups";
+"CommonGroups.Filter" = "Filter Groups";
+"CommonGroups.All" = "All Common Groups";
+"CommonGroups.Scope" = "Searches messages accessible to this account in common groups. Anonymous posts and messages sent under other identities are not attributed to this person.";
+"CommonGroups.Loaded" = "Showing %1$@ messages · %2$@ common groups";
+"CommonGroups.PartialFailure" = "Some queries did not finish. Retry to continue; loaded results are retained.";
+"CommonGroups.Cancel" = "Pause Search";
+"CommonGroups.Continue" = "Continue Loading";
+"CommonGroups.Retry" = "Retry Unfinished Queries";
+"CommonGroups.Refresh" = "Refresh Messages";
+"CommonGroups.Group" = "Group";
+"CommonGroups.Media" = "Media or service message (tap to view)";
+"CommonGroups.Loading" = "Searching for messages…";
+"CommonGroups.NoGroups" = "No common groups to display.";
+"CommonGroups.Empty" = "No messages to display in this scope.";
+"CommonGroups.Failed" = "The search did not finish. Tap Retry to continue.";
+
+"CommonGroups.LoadMore" = "Load More";
+
+// Regram debug tools
+"Debug.NotificationExperiment" = "Experimental notification recovery";
+"Debug.NotificationExperiment.Info" = "Off by default. Attempts to recover unresolved encrypted notifications and remove placeholder alerts. Keeps message previews and app-lock privacy. iOS may still show an alert when the service extension cannot run.";
+"Debug.ClearCache" = "Clear cache";
+"Debug.ClearCache.Info" = "Clear cached media for this account and web/network caches. Locally cached media may become unavailable until downloaded again. Keeps accounts, messages, settings, certificates and saved edit-history images.";
+"Debug.ClearCache.Done" = "Cache cleared";

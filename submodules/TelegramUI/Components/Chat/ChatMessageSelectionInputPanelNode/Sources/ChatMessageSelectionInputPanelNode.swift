@@ -1,3 +1,5 @@
+import RGSimpleSettings
+import RGStrings // MARK: Regram
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -193,6 +195,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
     private let reportButton: GlassButtonView
     private let forwardButton: GlassButtonView
     // MARK: Regram
+    private let summaryButton: GlassButtonView // MARK: Regram
     private let cloudButton: GlassButtonView
     private let forwardHideNamesButton: GlassButtonView
     //
@@ -241,6 +244,10 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.forwardButton.accessibilityLabel = strings.VoiceOver_MessageContextForward
 
         // MARK: Regram
+        self.summaryButton = GlassButtonView()
+        self.summaryButton.image = UIImage(systemName: "text.badge.star")
+        self.summaryButton.isAccessibilityElement = true
+        self.summaryButton.accessibilityLabel = "Summary.Action".i18n(RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode))
         self.cloudButton = GlassButtonView()
         self.cloudButton.icon = "SaveToCloud"
         self.cloudButton.isAccessibilityElement = true
@@ -274,6 +281,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.view.addSubview(self.deleteButton)
         self.view.addSubview(self.reportButton)
         self.view.addSubview(self.forwardButton)
+        self.view.addSubview(self.summaryButton)
         self.view.addSubview(self.cloudButton) // MARK: Regram
         self.view.addSubview(self.forwardHideNamesButton) // MARK: Regram
         self.view.addSubview(self.shareButton)
@@ -293,6 +301,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
         self.reportButton.button.addTarget(self, action: #selector(self.reportButtonPressed), for: .touchUpInside)
         self.forwardButton.button.addTarget(self, action: #selector(self.forwardButtonPressed), for: .touchUpInside)
         // MARK: Regram
+        self.summaryButton.button.addTarget(self, action: #selector(self.summaryButtonPressed), for: .touchUpInside)
         self.cloudButton.button.addTarget(self, action: #selector(self.cloudButtonPressed), for: .touchUpInside)
         self.forwardHideNamesButton.button.addTarget(self, action: #selector(self.forwardHideNamesButtonPressed), for: .touchUpInside)
         //
@@ -357,6 +366,11 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
     }
     
     // MARK: Regram
+    @objc private func summaryButtonPressed() {
+        guard RGSimpleSettings.shared.messageSummaryEnabled, !self.summaryButton.isHidden, self.summaryButton.isEnabled else { return }
+        self.interfaceInteraction?.forwardSelectedMessages("summarize")
+    }
+
     @objc private func cloudButtonPressed() {
         if let _ = self.presentationInterfaceState?.renderedPeer?.peer as? TelegramSecretChat {
             return
@@ -648,6 +662,8 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             }
         }
         
+        self.summaryButton.isHidden = !RGSimpleSettings.shared.messageSummaryEnabled || interfaceState.renderedPeer?.peer is TelegramSecretChat || self.actions?.isCopyProtected != false
+        self.summaryButton.isEnabled = !selectedMessages.isEmpty && selectedMessages.count <= 100
         let buttonSize = CGSize(width: 40.0, height: 40.0)
 
         // MARK: Regram
@@ -657,6 +673,7 @@ public final class ChatMessageSelectionInputPanelNode: ChatInputPanelNode {
             self.reportButton,
             self.tagButton,
             self.shareButton,
+            self.summaryButton,
             self.cloudButton,
             self.forwardHideNamesButton,
             self.forwardButton

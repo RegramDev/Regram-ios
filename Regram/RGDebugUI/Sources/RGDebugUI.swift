@@ -1,4 +1,7 @@
 import Foundation
+import WebKit
+import RGAppGroupIdentifier
+import RGStrings
 import UniformTypeIdentifiers
 import RGItemListUI
 import UndoUI
@@ -36,6 +39,7 @@ private enum RGDebugActions: String {
     case fileManager
     case clearRegDateCache
     case clearOutgoingTranslationLanguageCache
+    case clearCache
 
 
 
@@ -43,7 +47,7 @@ private enum RGDebugActions: String {
 
 private enum RGDebugToggles: String {
     case forceImmediateShareSheet
-    case legacyNotificationsFix
+    case notificationRecoveryExperiment
     case inputToolbar
 }
 
@@ -57,6 +61,7 @@ private typealias RGDebugControllerEntry = RGItemListUIEntry<RGDebugControllerSe
 
 private func RGDebugControllerEntries(presentationData: PresentationData) -> [RGDebugControllerEntry] {
     var entries: [RGDebugControllerEntry] = []
+    let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
     
     let id = RGItemListCounter()
     #if DEBUG
@@ -66,13 +71,49 @@ private func RGDebugControllerEntries(presentationData: PresentationData) -> [RG
 
     entries.append(.action(id: id.count, section: .base, actionType: .clearRegDateCache, text: "Clear Regdate cache", kind: .generic))
     entries.append(.action(id: id.count, section: .base, actionType: .clearOutgoingTranslationLanguageCache, text: "Clear Outgoing Translation cache", kind: .generic))
+    entries.append(.action(id: id.count, section: .base, actionType: .clearCache, text: "Debug.ClearCache".i18n(language), kind: .generic))
     entries.append(.toggle(id: id.count, section: .base, settingName: .forceImmediateShareSheet, value: RGSimpleSettings.shared.forceSystemSharing, text: "Force System Share Sheet", enabled: true))
     
     #if DEBUG
     #endif
 
-    entries.append(.toggle(id: id.count, section: .notifications, settingName: .legacyNotificationsFix, value: RGSimpleSettings.shared.legacyNotificationsFix, text: "[OLD] Fix empty notifications", enabled: true))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .notificationRecoveryExperiment, value: RGNotificationExperiment.isEnabled, text: "Debug.NotificationExperiment".i18n(language), enabled: true))
+    entries.append(.notice(id: id.count, section: .notifications, text: "Debug.NotificationExperiment.Info".i18n(language)))
     return entries
+}
+
+// MARK: Regram — use the storage engine, never remove shared account directories or keys.
+private final class RGDebugCacheCleanup {
+    private let disposable = MetaDisposable()
+    private var spinner: ViewController?
+    private(set) var isRunning = false
+
+    deinit {
+        self.disposable.dispose()
+        self.spinner?.dismiss()
+    }
+
+    func start(context: AccountContext, present: @escaping (ViewController, ViewControllerPresentationArguments?) -> Void) {
+        guard !self.isRunning else { return }
+        self.isRunning = true
+        let data = context.sharedContext.currentPresentationData.with { $0 }
+        let spinner = OverlayStatusController(theme: data.theme, type: .loading(cancelled: nil))
+        self.spinner = spinner
+        present(spinner, nil)
+        self.disposable.set((context.engine.resources.clearStorage(peerId: nil, categories: [.photos, .videos, .files, .music, .stickers, .avatars, .misc, .stories], includeMessages: [], excludeMessages: [])
+        |> deliverOnMainQueue).start(completed: { [weak self] in
+            URLCache.shared.removeAllCachedResponses()
+            WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) { [weak self] in
+                guard let self else { return }
+                self.isRunning = false
+                self.spinner?.dismiss()
+                self.spinner = nil
+                let current = context.sharedContext.currentPresentationData.with { $0 }
+                let language = RGLocalizationManager.shared.preferredLocale(primary: current.strings.primaryComponent.languageCode, secondary: current.strings.secondaryComponent?.languageCode)
+                present(okUndoController("Debug.ClearCache.Done".i18n(language), current), nil)
+            }
+        }))
+    }
 }
 private func okUndoController(_ text: String, _ presentationData: PresentationData) -> UndoOverlayController {
     return UndoOverlayController(presentationData: presentationData, content: .succeed(text: text, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false })
@@ -84,14 +125,15 @@ public func rgDebugController(context: AccountContext) -> ViewController {
     var pushControllerImpl: ((ViewController) -> Void)?
 
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    let cacheCleanup = RGDebugCacheCleanup()
     
     let arguments = RGItemListArguments<RGDebugToggles, AnyHashable, RGDebugOneFromManySetting, RGDebugDisclosureLink, RGDebugActions>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
             case .forceImmediateShareSheet:
                 RGSimpleSettings.shared.forceSystemSharing = value
-            case .legacyNotificationsFix:
-                RGSimpleSettings.shared.legacyNotificationsFix = value
-                RGSimpleSettings.shared.synchronizeShared()
+            case .notificationRecoveryExperiment:
+                RGNotificationExperiment.setEnabled(value)
+                simplePromise.set(true)
             case .inputToolbar:
                 RGSimpleSettings.shared.inputToolbar = value
         }
@@ -114,6 +156,22 @@ public func rgDebugController(context: AccountContext) -> ViewController {
     }, action: { actionType in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         switch actionType {
+            case .clearCache:
+                guard !cacheCleanup.isRunning else { return }
+                let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
+                let sheet = ActionSheetController(presentationData: presentationData)
+                sheet.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: "Debug.ClearCache.Info".i18n(language)),
+                        ActionSheetButtonItem(title: "Debug.ClearCache".i18n(language), color: .destructive, action: { [weak sheet] in
+                            sheet?.dismissAnimated()
+                            guard let present = presentControllerImpl else { return }
+                            cacheCleanup.start(context: context, present: present)
+                        })
+                    ]),
+                    ActionSheetItemGroup(items: [ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in sheet?.dismissAnimated() })])
+                ])
+                presentControllerImpl?(sheet, nil)
             case .clearRegDateCache:
                 RGLogger.shared.log("RGDebug", "Regdate cache cleanup init")
                 

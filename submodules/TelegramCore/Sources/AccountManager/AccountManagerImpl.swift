@@ -108,7 +108,8 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
         }
     }
     
-    fileprivate init?(queue: Queue, basePath: String, isTemporary: Bool, isReadOnly: Bool, useCaches: Bool, removeDatabaseOnError: Bool, temporarySessionId: Int64, accessChallenge: AccountManagerAccessChallenge) {
+    // MARK: Regram — notification startup reports unavailable metadata without deleting it.
+    fileprivate init?(queue: Queue, basePath: String, isTemporary: Bool, isReadOnly: Bool, useCaches: Bool, removeDatabaseOnError: Bool, temporarySessionId: Int64, accessChallenge: AccountManagerAccessChallenge, notificationOpen: Bool = false) {
         let startTime = CFAbsoluteTimeGetCurrent()
         
         self.queue = queue
@@ -118,8 +119,13 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
         self.temporarySessionId = temporarySessionId
         self.canCleanPasscodeMetadata = !isReadOnly && !isTemporary
         self.resolveAccessChallenge = accessChallenge.resolve
+        if notificationOpen {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: self.atomicStatePath)),
+                  let _ = try? JSONDecoder().decode(AccountManagerAtomicState<Types>.self, from: data) else { return nil }
+        }
         let _ = try? FileManager.default.createDirectory(atPath: basePath, withIntermediateDirectories: true, attributes: nil)
-        guard let guardValueBox = SqliteValueBox(basePath: basePath + "/guard_db", queue: queue, isTemporary: isTemporary, isReadOnly: false, useCaches: useCaches, removeDatabaseOnError: removeDatabaseOnError, encryptionParameters: nil, upgradeProgress: { _ in }) else {
+        guard let guardValueBox = SqliteValueBox(basePath: basePath + "/guard_db", queue: queue, isTemporary: isTemporary, isReadOnly: false, useCaches: useCaches, removeDatabaseOnError: removeDatabaseOnError, encryptionParameters: nil, upgradeProgress: { _ in }, notificationOpen: notificationOpen) else {
+            if notificationOpen { return nil }
             postboxLog("Could not open guard value box at \(basePath + "/guard_db")")
             postboxLogSync()
             preconditionFailure()
@@ -129,10 +135,11 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
         
         var valueBox: SqliteValueBox?
         for i in 0 ..< 3 {
-            if let valueBoxValue = SqliteValueBox(basePath: basePath + "/db", queue: queue, isTemporary: isTemporary, isReadOnly: isReadOnly, useCaches: useCaches, removeDatabaseOnError: removeDatabaseOnError, encryptionParameters: nil, upgradeProgress: { _ in }) {
+            if let valueBoxValue = SqliteValueBox(basePath: basePath + "/db", queue: queue, isTemporary: isTemporary, isReadOnly: isReadOnly, useCaches: useCaches, removeDatabaseOnError: removeDatabaseOnError, encryptionParameters: nil, upgradeProgress: { _ in }, notificationOpen: notificationOpen) {
                 valueBox = valueBoxValue
                 break
             } else {
+                if notificationOpen { return nil }
                 postboxLog("Could not open value box at \(basePath + "/db") (try \(i))")
                 postboxLogSync()
                 
@@ -140,6 +147,7 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
             }
         }
         guard let valueBox = valueBox else {
+            if notificationOpen { return nil }
             postboxLog("Giving up on opening value box at \(basePath + "/db")")
             postboxLogSync()
             preconditionFailure()
@@ -166,6 +174,7 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
                 let atomicState = try JSONDecoder().decode(AccountManagerAtomicState<Types>.self, from: data)
                 self.currentAtomicState = atomicState
             } catch let e {
+                if notificationOpen { return nil } // MARK: Regram — unavailable/corrupt snapshot is not a new install.
                 postboxLog("decode atomic state error: \(e)")
                 postboxLogSync()
                 
@@ -175,6 +184,7 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
                 preconditionFailure()
             }
         } catch let e {
+            if notificationOpen { return nil } // MARK: Regram
             postboxLog("load atomic state error: \(e)")
             postboxLogSync()
             
@@ -191,11 +201,11 @@ final class AccountManagerImpl<Types: AccountManagerTypes> {
         }
         
         let tableAccessChallengeData = self.legacyMetadataTable.getAccessChallengeData()
-        if self.currentAtomicState.accessChallengeData != .none {
+        if !notificationOpen, self.currentAtomicState.accessChallengeData != .none {
             if tableAccessChallengeData == .none {
                 self.legacyMetadataTable.setAccessChallengeData(self.currentAtomicState.accessChallengeData)
             }
-        } else if tableAccessChallengeData != .none {
+        } else if !notificationOpen, tableAccessChallengeData != .none {
             self.currentAtomicState.accessChallengeData = tableAccessChallengeData
             self.syncAtomicStateToFile()
         }
@@ -719,6 +729,30 @@ public final class AccountManager<Types: AccountManagerTypes> {
     private let queue: Queue
     private let impl: QueueLocalObject<AccountManagerImpl<Types>>
     public let temporarySessionId: Int64
+
+    // MARK: Regram — prepared on the existing metadata queue, with no force-unwrapped initializer.
+    private init(basePath: String, temporarySessionId: Int64, prepared: AccountManagerImpl<Types>) {
+        self.queue = sharedQueue
+        self.basePath = basePath
+        self.temporarySessionId = temporarySessionId
+        self.impl = QueueLocalObject(queue: sharedQueue, generate: { prepared })
+        self.mediaBox = MediaBox(basePath: basePath + "/media", isMainProcess: false)
+    }
+
+    public static func openForNotification(basePath: String, accessChallenge: AccountManagerAccessChallenge) -> Signal<AccountManager<Types>?, NoError> {
+        return Signal { subscriber in
+            let cancelled = Atomic<Bool>(value: false)
+            sharedQueue.async {
+                guard !cancelled.with({ $0 }) else { return }
+                let sessionId = Int64.random(in: Int64.min ... Int64.max)
+                let prepared = AccountManagerImpl<Types>(queue: sharedQueue, basePath: basePath, isTemporary: true, isReadOnly: false, useCaches: false, removeDatabaseOnError: false, temporarySessionId: sessionId, accessChallenge: accessChallenge, notificationOpen: true)
+                guard !cancelled.with({ $0 }) else { return }
+                subscriber.putNext(prepared.map { AccountManager(basePath: basePath, temporarySessionId: sessionId, prepared: $0) })
+                subscriber.putCompletion()
+            }
+            return ActionDisposable { let _ = cancelled.swap(true) }
+        }
+    }
     
     public static func getCurrentRecords(basePath: String) -> (records: [AccountRecord<Types.Attribute>], currentId: AccountRecordId?) {
         return AccountManagerImpl<Types>.getCurrentRecords(basePath: basePath)

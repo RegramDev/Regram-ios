@@ -282,6 +282,10 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 1, text: presentationData.strings.Settings_SavedMessages, icon: PresentationResourcesSettings.savedMessages, action: {
         interaction.openSettings(.savedMessages)
     }))
+    // MARK: Regram — keep the local message index next to Saved Messages.
+    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 100, text: "Bookmarks.Title".i18n(presentationData.strings.rgLanguageCode), icon: PresentationResourcesSettings.savedMessages, action: {
+        interaction.openSettings(.messageBookmarks)
+    }))
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 2, text: presentationData.strings.CallSettings_RecentCalls, icon: PresentationResourcesSettings.recentCalls, action: {
         interaction.openSettings(.recentCalls)
     }))

@@ -20,9 +20,15 @@ import Foundation
             settings.hide(required); settings.toggleHidden(required)
             assert(settings.isVisible(required))
         }
+        assert(!settings.isVisible(.search) && settings.externalItem == nil)
+        settings.setSearchMode(.button)
+        assert(!settings.isVisible(.search))
         settings.setSearchMode(.hidden)
         settings.moveToExternal(.settings)
         assert(settings.externalItem == .settings && settings.isVisible(.settings))
+        settings.isBottomBarVisible = false
+        assert(settings.visibleNavigationItems.isEmpty)
+        settings.isBottomBarVisible = true
         settings.automaticWidth = false
         settings.buttonWidthFillRatio = 80
         settings.save(to: defaults)
@@ -44,8 +50,16 @@ import Foundation
         assert(invalid.buttonWidthFillRatio == 100)
         let onlyRequired = RGBottomBarSettings(hiddenItems: Set(RGBottomBarItemId.allCases))
         assert(onlyRequired.visibleBottomItems == [.chats, .settings])
-        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0) == 240)
-        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 3, percent: 0) == 288)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 3, percent: 0) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0, naturalItemWidths: [100, 120]) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0, searchButtonWidth: 64, naturalItemWidths: [64, 90]) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 320, itemCount: 4, percent: 0, naturalItemWidths: [120, 120, 120, 120]) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 80, naturalItemWidths: [64, 64]) == 288)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 800, itemCount: 5, percent: 100) == 500)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 500, itemCount: 2, percent: 0) == 320)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 4, percent: 0) == 360)
+        assert(RGTabBarLayoutPolicy.width(containerWidth: 360, itemCount: 2, percent: 0, naturalItemWidths: [180, 140]) == 360)
         assert(RGDatacenterLocation.title(5) == "DC5 · Singapore")
         print("Bottom-bar checks passed: required tabs, legacy/backup recovery, automatic/manual width, centering and persistence")
     }

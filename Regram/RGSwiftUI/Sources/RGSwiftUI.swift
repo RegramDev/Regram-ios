@@ -34,6 +34,11 @@ public struct ContainerViewLayoutKey: EnvironmentKey {
 }
 
 @available(iOS 13.0, *)
+public struct RGPresentationThemeKey: EnvironmentKey {
+    public static let defaultValue: PresentationTheme? = nil
+}
+
+@available(iOS 13.0, *)
 public struct LangKey: EnvironmentKey {
     public static let defaultValue: String = "en"
 }
@@ -54,6 +59,11 @@ public extension EnvironmentValues {
     var containerViewLayout: ContainerViewLayout? {
         get { self[ContainerViewLayoutKey.self] }
         set { self[ContainerViewLayoutKey.self] = newValue }
+    }
+
+    var rgPresentationTheme: PresentationTheme? {
+        get { self[RGPresentationThemeKey.self] }
+        set { self[RGPresentationThemeKey.self] = newValue }
     }
 
     var lang: String {
@@ -105,8 +115,14 @@ public struct RGSwiftUIView<Content: View>: View {
             .environment(\.navigationBarHeight, navigationBarHeight.value)
             .environment(\.containerViewLayout, containerViewLayout.value)
             .environment(\.lang, languageModel.value)
+            .environment(\.rgPresentationTheme, themeModel.value)
+            .foregroundColor(Color(uiColor: themeModel.value?.list.itemPrimaryTextColor ?? .label))
             .preferredColorScheme(themeModel.value.map { $0.overallDarkAppearance ? .dark : .light })
             .accentColor(Color(uiColor: themeModel.value?.list.itemAccentColor ?? .systemBlue))
+            // MARK: Regram — list actions use the surrounding row, not iOS's filled button capsule.
+            .buttonStyle(RGListActionButtonStyle(theme: themeModel.value))
+            .menuStyle(.borderlessButton)
+            .modifier(RGListBackgroundModifier(theme: themeModel.value))
             .font(RGTypography.font(configuration: RGSimpleSettings.shared.fontConfiguration, area: .interface, size: UIFont.preferredFont(forTextStyle: .body).pointSize).map { SwiftUI.Font($0) })
 //            .environment(\.containerViewLayoutUpdateCount, containerViewLayoutUpdateCount)
 //            .onReceive(containerViewLayoutUpdateCount.$value) { _ in
@@ -205,6 +221,7 @@ public final class LegacySwiftUIController: LegacyController {
         self.appearanceDisposable.set((signal |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.themeModel.value = data.theme
+            self.legacyController?.overrideUserInterfaceStyle = data.theme.overallDarkAppearance ? .dark : .light
             self.languageModel.value = data.strings.rgLanguageCode
             self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data), transition: .immediate)
             self.statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
@@ -540,5 +557,27 @@ public struct ContentSizeModifier: ViewModifier {
 public extension View {
     func trackSize(_ size: Binding<CGSize>) -> some View {
         self.modifier(ContentSizeModifier(size: size))
+    }
+}
+
+// MARK: Regram — theme-aware hosted settings keep native list rows and action roles.
+@available(iOS 13.0, *)
+private struct RGListActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    let theme: PresentationTheme?
+    private func actionColor(_ configuration: Configuration) -> UIColor {
+        if #available(iOS 15.0, *), configuration.role == .destructive { return theme?.list.itemDestructiveColor ?? .systemRed }
+        return theme?.list.itemAccentColor ?? .systemBlue
+    }
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.foregroundColor(Color(uiColor: actionColor(configuration))).opacity(!enabled ? 0.4 : configuration.isPressed ? 0.6 : 1)
+    }
+}
+@available(iOS 13.0, *)
+private struct RGListBackgroundModifier: ViewModifier {
+    let theme: PresentationTheme?
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) { content.scrollContentBackground(.hidden).background(Color(uiColor: theme?.list.blocksBackgroundColor ?? .systemGroupedBackground)) }
+        else { content.background(Color(uiColor: theme?.list.blocksBackgroundColor ?? .systemGroupedBackground)) }
     }
 }

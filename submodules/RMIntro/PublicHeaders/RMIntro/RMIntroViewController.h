@@ -62,6 +62,9 @@
 
 @property (nonatomic) CGRect defaultFrame;
 
+// MARK: Regram — optional static app artwork for the login welcome screen.
+@property (nonatomic, strong) UIImage *regramArtwork;
+
 - (instancetype)initWithBackgroundColor:(UIColor *)backgroundColor primaryColor:(UIColor *)primaryColor buttonColor:(UIColor *)buttonColor accentColor:(UIColor *)accentColor regularDotColor:(UIColor *)regularDotColor highlightedDotColor:(UIColor *)highlightedDotColor suggestedLocalizationSignal:(SSignal *)suggestedLocalizationSignal;
 
 @property (nonatomic, copy) void (^startMessaging)(void);

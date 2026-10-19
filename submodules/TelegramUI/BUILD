@@ -6,6 +6,7 @@ load(
 )
 
 rgdeps = [
+    "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGLinkMetadata:RGLinkMetadata",
     "//Regram/RGConfig:RGConfig",
@@ -30,6 +31,7 @@ rgdeps = [
 ]
 
 rgsrcs = [
+    "//Regram/RGAppIconSelection:RGAppIconSelection", # MARK: Regram
     "//Regram/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
     "//Regram/RGDBReset:RGDBReset",
     "//Regram/RGShowMessageJson:RGShowMessageJson",

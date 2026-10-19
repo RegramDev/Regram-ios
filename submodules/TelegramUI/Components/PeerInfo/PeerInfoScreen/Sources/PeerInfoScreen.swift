@@ -173,6 +173,7 @@ enum PeerInfoSettingsSection {
     case proxy
     case stories
     case savedMessages
+    case messageBookmarks // MARK: Regram
     case recentCalls
     case devices
     case chatFolders
@@ -2030,7 +2031,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     UIView.transition(with: strongSelf.view, duration: 0.3, options: [.transitionCrossDissolve], animations: {
                     }, completion: nil)
                 }
-                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.3, curve: .linear))
+                (strongSelf.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.3, curve: .linear))
             case .select:
                 strongSelf.state = strongSelf.state.withSelectedMessageIds(Set())
                 if let (layout, navigationHeight) = strongSelf.validLayout {
@@ -5232,7 +5233,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         controller.dismissAllTooltips()
         
         if self.isSettings {
-            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(RGSimpleSettings.shared.hideTabBar ? true : false, transition: .animated(duration: 0.4, curve: .spring))
+            (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.4, curve: .spring))
         }
         
         let transition: ContainedViewLayoutTransition = .animated(duration: 0.35, curve: .easeInOut)
@@ -6459,7 +6460,83 @@ public struct PeerInfoSwitchToMediaTarget {
     }
 }
 
+// MARK: Regram — the hidden root settings tab has no navigation stack to pop.
+private final class RGRootSettingsBackGestureDelegate: NSObject, UIGestureRecognizerDelegate {
+    let canBegin: () -> Bool
+    init(canBegin: @escaping () -> Bool) { self.canBegin = canBegin }
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard canBegin(), let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+        let velocity = pan.velocity(in: pan.view)
+        let distance = pan.translation(in: pan.view)
+        return RGHiddenTabBarPolicy.shouldBeginBackGesture(distanceX: Double(distance.x), distanceY: Double(distance.y), velocityX: Double(velocity.x), velocityY: Double(velocity.y))
+    }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard canBegin() else { return false }
+        var view = touch.view
+        while let current = view, current !== gestureRecognizer.view {
+            if current is UIControl || current is UITextField || current is UITextView { return false }
+            if let scrollView = current as? UIScrollView,
+               scrollView.alwaysBounceHorizontal || scrollView.contentSize.width > scrollView.bounds.width + 1 {
+                return false
+            }
+            view = current.superview
+        }
+        return true
+    }
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let scrollView = otherGestureRecognizer.view as? UIScrollView else { return false }
+        return !scrollView.alwaysBounceHorizontal && scrollView.contentSize.width <= scrollView.bounds.width + 1
+    }
+}
+
 public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortcutResponder {
+    // MARK: Regram
+    private var rgRootBackGestureDelegate: RGRootSettingsBackGestureDelegate?
+    private var rgRootBackGesture: UIPanGestureRecognizer?
+    private weak var rgRootBackTabs: TabBarController?
+
+    private func rgAttachRootBackGesture() {
+        guard let gesture = self.rgRootBackGesture, let tabs = self.parent as? TabBarController else { return }
+        // The recognizer stays on the tab container while Settings is removed for the preview.
+        if gesture.view !== tabs.view {
+            gesture.view?.removeGestureRecognizer(gesture)
+            tabs.view.addGestureRecognizer(gesture)
+        }
+    }
+    private var rgCanReturnToChats: Bool {
+        guard self.isNodeLoaded, let tabs = self.parent as? TabBarController,
+              let navigation = self.navigationController as? NavigationController else { return false }
+        return RGHiddenTabBarPolicy.canReturnToChats(
+            isTabBarVisible: RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible,
+            isRootSettings: self.isSettings && tabs.currentController === self,
+            isTopController: navigation.viewControllers.last === tabs,
+            editing: self.controllerNode.state.isEditing,
+            avatarExpanded: self.controllerNode.headerNode.isAvatarExpanded
+        )
+    }
+    @objc private func rgRootBackSwiped(_ gesture: UIPanGestureRecognizer) {
+        let width = max(1, gesture.view?.bounds.width ?? self.view.bounds.width)
+        let distance = gesture.translation(in: gesture.view).x
+        let velocity = gesture.velocity(in: gesture.view).x
+        switch gesture.state {
+        case .began:
+            guard self.rgCanReturnToChats, let tabs = self.parent as? TabBarController else { return }
+            if tabs.rgBeginInteractiveReturnToChats() { self.rgRootBackTabs = tabs }
+        case .changed:
+            self.rgRootBackTabs?.rgUpdateInteractiveReturnToChats(progress: distance / width)
+        case .ended, .cancelled, .failed:
+            let completed = gesture.state == .ended && RGHiddenTabBarPolicy.completeBackGesture(distance: Double(distance), width: Double(width), velocity: Double(velocity))
+            if let tabs = self.rgRootBackTabs {
+                self.rgRootBackTabs = nil
+                tabs.rgEndInteractiveReturnToChats(completed: completed, velocity: velocity)
+            } else if completed && self.rgCanReturnToChats {
+                (self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface)?.openChats()
+            }
+        default:
+            break
+        }
+    }
+
     let context: AccountContext
     let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     public let peerId: PeerId
@@ -6935,6 +7012,8 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
     
     deinit {
         self.readyInternalDisposable?.dispose()
+        // MARK: Regram — the pan lives on the tab container, so remove it with its owner.
+        if let gesture = self.rgRootBackGesture { gesture.view?.removeGestureRecognizer(gesture) }
         self.presentationDataDisposable?.dispose()
         self.accountsAndPeersDisposable?.dispose()
         self.tabBarItemDisposable?.dispose()
@@ -6965,6 +7044,17 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         self._readyInternal.set(self.controllerNode.ready.get())
         
         super.displayNodeDidLoad()
+        // MARK: Regram — root settings accepts rightward content pans; pushed pages use native back.
+        if self.isSettings {
+            let delegate = RGRootSettingsBackGestureDelegate(canBegin: { [weak self] in self?.rgCanReturnToChats == true })
+            let gesture = UIPanGestureRecognizer(target: self, action: #selector(self.rgRootBackSwiped(_:)))
+            gesture.maximumNumberOfTouches = 1
+            gesture.delegate = delegate
+            self.rgRootBackGestureDelegate = delegate
+            self.rgRootBackGesture = gesture
+            self.rgAttachRootBackGesture()
+        }
+
     }
     
     fileprivate var movingInHierarchy = false
@@ -6979,6 +7069,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
     
     public override func didMove(toParent viewController: UIViewController?) {
         super.didMove(toParent: viewController)
+        if viewController != nil { self.rgAttachRootBackGesture() } // MARK: Regram
         
         if self.isSettings {
             if viewController == nil {
@@ -7414,7 +7505,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
         self.controllerNode.deactivateSearch()
     }
     
-    public static func openSavedMessagesMoreMenu(context: AccountContext, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?) {
+    public static func openSavedMessagesMoreMenu(context: AccountContext, sourceController: ViewController, isViewingAsTopics: Bool, sourceView: UIView, gesture: ContextGesture?, additionalItems: [ContextMenuItem] = []) {
         let _ = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
         |> deliverOnMainQueue).startStandalone(next: { [sourceController] peer in
             guard let peer else {
@@ -7423,7 +7514,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             
             let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
             
-            var items: [ContextMenuItem] = []
+            var items: [ContextMenuItem] = additionalItems // MARK: Regram — context-specific extensions.
             
             items.append(.action(ContextMenuActionItem(text: strings.Chat_SavedMessagesModeMenu_ViewAsChats, icon: { theme in
                 if !isViewingAsTopics {

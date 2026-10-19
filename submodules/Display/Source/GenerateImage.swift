@@ -3,6 +3,7 @@ import UIKit
 import Accelerate
 import AsyncDisplayKit
 import CoreMedia
+import CoreImage // MARK: Regram
 
 public let deviceColorSpace: CGColorSpace = {
     if #available(iOSApplicationExtension 9.3, iOS 9.3, *) {
@@ -312,6 +313,23 @@ public func generateTintedImage(image: UIImage?, color: UIColor, backgroundColor
         imageSize = strongCustomSize
     }
 
+    // MARK: Regram — SF Symbols/vector images can have no CGImage; empty images are also valid inputs.
+    guard imageSize.width.isFinite, imageSize.height.isFinite, imageSize.width > 0.0, imageSize.height > 0.0 else { return nil }
+
+    var raster = image.cgImage
+    if raster == nil, let ciImage = image.ciImage {
+        raster = CIContext(options: [.useSoftwareRenderer: true]).createCGImage(ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+    }
+    if raster == nil {
+        let format = UIGraphicsImageRendererFormat(); format.scale = max(1, image.scale); format.opaque = false
+        raster = UIGraphicsImageRenderer(size: imageSize, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: imageSize)) }.cgImage
+    }
+    if let current = raster, current.alphaInfo == .none || current.alphaInfo == .noneSkipFirst || current.alphaInfo == .noneSkipLast {
+        let format = UIGraphicsImageRendererFormat(); format.scale = max(1, image.scale); format.opaque = false
+        raster = UIGraphicsImageRenderer(size: imageSize, format: format).image { _ in UIImage(cgImage: current).draw(in: CGRect(origin: .zero, size: imageSize)) }.cgImage
+    }
+    guard let bitmap = raster else { return nil }
+
     UIGraphicsBeginImageContextWithOptions(imageSize, backgroundColor != nil, image.scale)
     if let context = UIGraphicsGetCurrentContext() {
         if let backgroundColor = backgroundColor {
@@ -324,13 +342,13 @@ public func generateTintedImage(image: UIImage?, color: UIColor, backgroundColor
         context.translateBy(x: imageRect.midX, y: imageRect.midY)
         context.scaleBy(x: flipHorizontally ? -1.0 : 1.0, y: -1.0)
         context.translateBy(x: -imageRect.midX, y: -imageRect.midY)
-        context.clip(to: imageRect, mask: image.cgImage!)
+        context.clip(to: imageRect, mask: bitmap)
         context.setFillColor(color.cgColor)
         context.fill(imageRect)
         context.restoreGState()
     }
     
-    let tintedImage = UIGraphicsGetImageFromCurrentImageContext()!
+    let tintedImage = UIGraphicsGetImageFromCurrentImageContext()
     UIGraphicsEndImageContext()
     
     return tintedImage

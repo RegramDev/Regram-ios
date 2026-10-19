@@ -1,4 +1,5 @@
 // MARK: Regram — hosted settings copy stable links and scroll to the requested control.
+import TelegramPresentationData
 import Foundation
 import RGStrings
 import SwiftUI
@@ -15,6 +16,7 @@ private struct RGSettingLinkModifier: ViewModifier {
     @Environment(\.rgSettingsPage) private var page
     @Environment(\.rgSettingsFocus) private var focus
     @Environment(\.lang) private var language
+    @Environment(\.rgPresentationTheme) private var theme
     func body(content: Content) -> some View {
         content
             .id(item)
@@ -27,7 +29,7 @@ private struct RGSettingLinkModifier: ViewModifier {
                     }
                 }
             }
-            .listRowBackground(focus == item ? Color.accentColor.opacity(0.12) : nil)
+            .listRowBackground(focus == item ? Color.accentColor.opacity(0.12) : Color(uiColor: theme?.list.itemBlocksBackgroundColor ?? .secondarySystemGroupedBackground))
     }
 }
 private struct RGSettingsPageModifier: ViewModifier {

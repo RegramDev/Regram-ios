@@ -1008,6 +1008,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         edited: edited && !arguments.presentationData.isPreview,
                         impressionCount: !arguments.presentationData.isPreview ? viewCount : nil,
                         dateText: dateText,
+                        isRevoked: arguments.message.rgIsRevoked, // MARK: Regram
                         type: statusType,
                         layoutInput: statusLayoutInput,
                         constrainedSize: constrainedSize,

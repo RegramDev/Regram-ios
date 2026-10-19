@@ -1733,6 +1733,7 @@ plist_fragment(
     extension = "plist",
     template = 
     """
+    <!-- MARK: Regram -->
     <key>BGTaskSchedulerPermittedIdentifiers</key>
     <array>
         <string>{telegram_bundle_id}.refresh</string>

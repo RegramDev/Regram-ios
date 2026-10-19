@@ -1,3 +1,4 @@
+import RGProUI // MARK: Regram
 // MARK: Regram
 import RGJoinedChatFolderPicker
 import RGSimpleSettings
@@ -601,6 +602,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     // MARK: Regram
     private var rgLinkPreviewSettingsObserver: NSObjectProtocol?
     private var rgSpoilerSettingsObserver: NSObjectProtocol?
+    private var rgRevokedMarkerObserver: NSObjectProtocol? // MARK: Regram
     private var rgShowHiddenPinnedMessagesObserver: NSObjectProtocol?
     public var overlayTitle: String? {
          var title: String?
@@ -6508,12 +6510,21 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 return
             }
             
+            // MARK: Regram — no summary action while the feature is disabled.
+            var summaryItems: [ContextMenuItem] = []
+            if RGSimpleSettings.shared.messageSummaryEnabled, peerId.namespace != Namespaces.Peer.SecretChat {
+                summaryItems.append(.action(ContextMenuActionItem(text: "Summary.RangeAction".i18n(self.presentationData.strings.rgLanguageCode), icon: { theme in generateTintedImage(image: UIImage(systemName: "text.badge.star"), color: theme.contextMenu.primaryColor) }, action: { [weak self] _, f in
+                    f(.default)
+                    guard let self, let controller = rgMessageSummaryRangeController(context: self.context, peerId: peerId, threadId: self.chatLocation.threadId) else { return }
+                    (self.navigationController as? NavigationController)?.pushViewController(controller)
+                })))
+            }
             if peerId == self.context.account.peerId {
-                PeerInfoScreenImpl.openSavedMessagesMoreMenu(context: self.context, sourceController: self, isViewingAsTopics: false, sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture)
+                PeerInfoScreenImpl.openSavedMessagesMoreMenu(context: self.context, sourceController: self, isViewingAsTopics: false, sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             } else if peerId.namespace == Namespaces.Peer.CloudUser {
-                self.openBotForumMoreMenu(sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture)
+                self.openBotForumMoreMenu(sourceView: self.navigationBar?.navigationButtonContextContainer(sourceView: sourceNode.view) ?? sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             } else {
-                ChatListControllerImpl.openMoreMenu(context: self.context, peerId: peerId, sourceController: self, isViewingAsTopics: false, sourceView: sourceNode.view, gesture: gesture)
+                ChatListControllerImpl.openMoreMenu(context: self.context, peerId: peerId, sourceController: self, isViewingAsTopics: false, sourceView: sourceNode.view, gesture: gesture, additionalItems: summaryItems)
             }
         }
         self.moreBarButton.addTarget(self, action: #selector(self.moreButtonPressed), forControlEvents: .touchUpInside)
@@ -7115,6 +7126,15 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
             for id in messageIds { self.chatDisplayNode.historyNode.requestMessageUpdate(id) }
         }
+        self.rgRevokedMarkerObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.revokedMarkerDidChange, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.isNodeLoaded else { return }
+            var messageIds = Set<MessageId>()
+            self.chatDisplayNode.historyNode.forEachItemNode { node in
+                guard let node = node as? ChatMessageItemView, let item = node.item else { return }
+                for message in item.content { messageIds.insert(message.0.id) }
+            }
+            for id in messageIds { self.chatDisplayNode.historyNode.requestMessageUpdate(id) }
+        }
         self.rgLinkPreviewSettingsObserver = NotificationCenter.default.addObserver(forName: RGLinkPreviewRules.didChangeNotification, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.urlPreviewQueryState?.1.dispose()
@@ -7204,6 +7224,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         // MARK: Regram
         if let observer = rgLinkPreviewSettingsObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = rgSpoilerSettingsObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = rgRevokedMarkerObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = rgShowHiddenPinnedMessagesObserver { NotificationCenter.default.removeObserver(observer) }
         let _ = ChatControllerCount.modify { value in
             return value - 1

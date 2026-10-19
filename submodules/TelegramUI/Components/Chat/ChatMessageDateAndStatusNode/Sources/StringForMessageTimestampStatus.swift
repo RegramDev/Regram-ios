@@ -252,13 +252,6 @@ public func stringForMessageTimestampStatus(
         }
     }
 
-    // MARK: Regram — anti-revoke indicator. A message the sender recalled that anti-revoke kept is
-    // tagged with RGRevokedMessageAttribute; show a trash icon before its timestamp so it is
-    // recognisable as deleted.
-    if message.rgIsRevoked {
-        dateText = "🗑 \(dateText)"
-    }
-
     // MARK: Regram — message id, for group and channel messages (RGSimpleSettings.showMessageId).
     if RGSimpleSettings.shared.showMessageId, message.id.namespace == Namespaces.Message.Cloud, !associatedData.isForwardOptionsPreview {
         let peerNamespace = message.id.peerId.namespace

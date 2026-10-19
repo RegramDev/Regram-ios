@@ -357,7 +357,10 @@ public final class SqliteValueBox: ValueBox {
     
     private let queue: Queue
     
-    public init?(basePath: String, queue: Queue, isTemporary: Bool, isReadOnly: Bool, useCaches: Bool, removeDatabaseOnError: Bool, encryptionParameters: ValueBoxEncryptionParameters?, upgradeProgress: (Float) -> Void, inMemory: Bool = false) {
+    // MARK: Regram — only notification startup opts into failable, short-budget opening.
+    private let notificationOpen: Bool
+    public init?(basePath: String, queue: Queue, isTemporary: Bool, isReadOnly: Bool, useCaches: Bool, removeDatabaseOnError: Bool, encryptionParameters: ValueBoxEncryptionParameters?, upgradeProgress: (Float) -> Void, inMemory: Bool = false, notificationOpen: Bool = false) {
+        self.notificationOpen = notificationOpen
         self.basePath = basePath
         self.isTemporary = isTemporary
         self.isReadOnly = isReadOnly
@@ -367,6 +370,7 @@ public final class SqliteValueBox: ValueBox {
         self.encryptionParameters = encryptionParameters
         self.databasePath = basePath + "/db_sqlite"
         self.queue = queue
+        if notificationOpen && !FileManager.default.fileExists(atPath: self.databasePath) { return nil } // MARK: Regram
         if let database = self.openDatabase(encryptionParameters: encryptionParameters, isTemporary: isTemporary, isReadOnly: isReadOnly, upgradeProgress: upgradeProgress) {
             self.database = database
         } else {
@@ -429,7 +433,7 @@ public final class SqliteValueBox: ValueBox {
         case let .failure(openError):
             postboxLog("Couldn't open DB: sqlite \(openError.code), errno \(openError.systemErrno)")
             
-            if isReadOnly {
+            if isReadOnly || self.notificationOpen { // MARK: Regram — no destructive recovery in an extension.
                 postboxLog("Readonly, exiting")
                 return nil
             }
@@ -472,7 +476,7 @@ public final class SqliteValueBox: ValueBox {
             SqliteValueBox.clearOpenFailures(databasePath: path)
         }
 
-        sqlite3_busy_timeout(database.handle, 5 * 1000)
+        sqlite3_busy_timeout(database.handle, self.notificationOpen ? 300 : 5 * 1000) // MARK: Regram
         
         var resultCode: Bool = true
         
@@ -629,11 +633,17 @@ public final class SqliteValueBox: ValueBox {
 
         postboxLog("Did set up checkpoint_fullfsync")
         
-        self.beginInternal(database: database)
+        // MARK: Regram — a failed startup transaction is never allowed to continue non-atomically.
+        if self.notificationOpen {
+            guard database.execute(isReadOnly ? "BEGIN DEFERRED" : "BEGIN IMMEDIATE") else { return nil }
+        } else {
+            self.beginInternal(database: database)
+        }
 
         postboxLog("Did begin transaction")
         
         let result = self.getUserVersion(database)
+        if self.notificationOpen && result < 4 { return nil } // MARK: Regram — main app owns schema creation.
         
         if result < 3 {
             resultCode = database.execute("CREATE TABLE __meta_fulltext_tables (name INTEGER)")

@@ -44,7 +44,7 @@ private struct RGDatacenterDiagnosticsView: View {
             }
             Section {
                 if network.cancelled { Text("Diagnostics.DC.Cancelled".i18n(lang)).foregroundColor(.secondary) }
-                Button("Diagnostics.CopyAverages".i18n(lang)) { UIPasteboard.general.string = network.report() }.rgSettingsLink("copy")
+                RGCopyButton("Diagnostics.CopyAverages", value: { network.report() }).disabled(network.results.values.allSatisfy { $0.samples.isEmpty && !$0.completed }).rgSettingsLink("copy")
             }
         }.transaction { $0.animation = nil }
         .onDisappear { network.cancel() }

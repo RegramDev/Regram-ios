@@ -30,7 +30,6 @@
 "Settings.ChatList.Lines" = "訊息預覽行數";
 "Settings.ChatList.Lines.1" = "1 行";
 "Settings.ChatList.Lines.2" = "2 行";
-"Settings.ChatList.Lines.3" = "3 行";
 "Mention.UserIdLink" = "按暱稱提及";
 "Mention.UserIdLink.Notice" = "長按頭像提及時，插入對方的完整暱稱作為提及，而不是 @使用者名稱。點按可開啟對方資料。";
 "Settings.Profiles.DefaultTabGroupsInCommon" = "預設顯示共同群組";
@@ -83,7 +82,7 @@
 "PasscodeSettings.AutoLock.InFiveSeconds" = "離開5秒後";
 
 "ProxySettings.UseSystemDNS" = "使用系統 DNS";
-"ProxySettings.UseSystemDNS.Notice" = "如果您無法使用 Google DNS，請使用系統 DNS";
+"ProxySettings.UseSystemDNS.Notice" = "使用系統解析器解析代理網域。開啟後會關閉自訂 DoH，變更立即重新連線。";
 
 /* Preserve markdown asterisks! Example: You **don't** need Telegram Premium! */
 "Common.NoTelegramPremiumNeeded" = "您 **不需要** %@！";
@@ -813,3 +812,129 @@
 "Bookmarks.Empty" = "目前篩選下沒有書籤。";
 "Bookmarks.LoadMore" = "載入更多書籤";
 "Bookmarks.ChatUnavailable" = "原聊天資訊在本機不可用，仍可編輯標籤或移除此書籤。";
+
+// MARK: Regram — message tools, theme and network policy
+"Summary.Title" = "訊息摘要介面";
+"Summary.Action" = "摘要訊息";
+"Summary.ConnectionNotice" = "訊息摘要使用獨立介面與金鑰，不讀取翻譯設定。金鑰僅儲存在本機鑰匙圈。";
+"Summary.PromptNotice" = "@text 為所選訊息，@toLang 為應用程式語言。不自動附帶其他聊天內容或媒體。";
+"Summary.UploadNotice" = "點選「傳送並摘要」後，會將上方所選文字傳送至設定的介面。不額外附帶圖片、語音、帳號資訊及未選取訊息。服務可能收費。";
+"Summary.Selected" = "所選文字訊息數：";
+"Summary.Configure" = "設定摘要介面";
+"Summary.Start" = "傳送並摘要";
+"Summary.TooLarge" = "所選文字超過 64 KB，請減少選取訊息。";
+"Summary.Result" = "摘要結果";
+"Summary.Copy" = "複製摘要";
+"MessageScreenshot.Action" = "訊息截圖";
+"StickerBackup.Action" = "匯出貼圖包備份";
+"StickerBackup.Failed" = "貼圖包備份失敗。請確認檔案可下載及裝置有足夠空間後重試。";
+"NetworkPolicy.Title" = "DNS 與 IP 策略";
+"NetworkPolicy.DoH" = "自訂 DoH";
+"NetworkPolicy.Endpoint" = "HTTPS DNS 位址";
+"NetworkPolicy.InvalidURL" = "請輸入不含使用者名稱、密碼、查詢參數或片段的 HTTPS 位址。";
+"NetworkPolicy.DoHNotice" = "內建 DNS 使用 Google 與 Cloudflare 的 HTTPS 服務；系統 DNS 透過 iOS 解析代理網域。自訂 DoH 使用 DNS JSON，也用於已簽章備援 DC 設定的 TXT 查詢，並相容現有 DNS 封包格式的位址介面。自訂服務失敗不會改用系統 DNS；解析服務自身網域仍需系統 DNS。";
+"NetworkPolicy.IP" = "IP 版本策略";
+"NetworkPolicy.Automatic" = "自動（跟隨 Telegram）";
+"NetworkPolicy.IPv4" = "優先 IPv4";
+"NetworkPolicy.IPv6" = "優先 IPv6";
+"NetworkPolicy.IPNotice" = "適用於原生 Telegram 連線及 SOCKS5／MTProto 代理位址。優先模式保留另一版本作為備援；僅模式不會退回另一版本。網頁、更新、DNS 的 HTTP 請求及 Web 代理使用系統網路。";
+"NetworkPolicy.Apply" = "儲存並重新連線";
+"NetworkPolicy.Applied" = "網路策略已儲存。原生 Telegram 連線將重新建立。";
+"Bookmarks.Loading" = "載入中…";
+
+// MARK: Regram — local UI follow-up
+"Summary.Enabled" = "啟用訊息摘要";
+"Summary.EnabledNotice" = "關閉後隱藏聊天選單、訊息選單及多選工具列的摘要按鈕，保留介面設定。";
+"Summary.RangeAction" = "依時間摘要聊天";
+"Summary.Range" = "時間範圍";
+"Summary.LastHour" = "最近一小時";
+"Summary.Today" = "今天";
+"Summary.LastDay" = "最近 24 小時";
+"Summary.CustomRange" = "自訂時段";
+"Summary.From" = "開始時間";
+"Summary.To" = "結束時間";
+"Summary.LoadRange" = "取得此時段的訊息";
+"Summary.LoadingRange" = "正在分頁取得訊息…";
+"Summary.ReviewRange" = "查看文字並確認摘要";
+"Summary.OnlySelected" = "僅摘要所選訊息";
+"Summary.RangeNotice" = "取得目前聊天或話題中此時段的文字，再確認傳送至摘要介面。不傳送附件，排除一次性、秘密及受保護內容。";
+"Summary.RangeInvalid" = "開始時間須早於結束時間。";
+"Summary.RangeFailed" = "訊息取得未完成，請檢查連線後重試。";
+"Summary.RangeEmpty" = "此時段沒有可用文字，或暫時無法取得訊息。";
+"Summary.RangeTooLarge" = "此時段文字超過請求上限，請縮短時段後重試。不會自動截斷並傳送。";
+"DNSDiagnostics.Title" = "DNS 與 IP 解析測試";
+"DNSDiagnostics.Host" = "測試網域或 IP";
+"DNSDiagnostics.Start" = "開始解析測試";
+"DNSDiagnostics.SystemDNS" = "系統 DNS";
+"DNSDiagnostics.Failed" = "沒有此版本的位址，或解析失敗";
+"DNSDiagnostics.Notice" = "分別查詢 A 與 AAAA，不讀取應用程式內快取，並顯示目前策略允許的位址。耗時為 DNS 解析時間，並非 DC Ping。測試不儲存設定，離開頁面時停止。";
+"NetworkPolicy.DNSExclusive" = "選擇一種 DNS 解析方式，儲存後重新建立原生 Telegram 連線。";
+"MessageScreenshot.UnknownSender" = "未知傳送者";
+"Common.Copied" = "已複製";
+"MessageScreenshot.Unavailable" = "部分選取的訊息無法取得或不允許匯出。";
+
+
+"NetworkPolicy.DNSMode" = "DNS 解析方式";
+
+"NetworkPolicy.BuiltInDNS" = "內建 DNS（HTTPS）";
+
+"NetworkPolicy.IPv4Only" = "僅 IPv4";
+
+"NetworkPolicy.IPv6Only" = "僅 IPv6";
+
+"NetworkPolicy.DisableBackup" = "停用備援 DC 位址探索";
+
+"NetworkPolicy.BackupNotice" = "保留已儲存及內建的 DC 位址，停止額外取得備援位址。";
+
+"NetworkPolicy.DoHFailure.network" = "無法連線至自訂 DNS 服務。";
+
+"NetworkPolicy.DoHFailure.response" = "自訂 DNS 服務傳回無效資料。";
+
+"NetworkPolicy.DoHFailure.noAddress" = "解析服務未傳回此位址族的記錄。";
+
+"DNSDiagnostics.PolicyAddresses" = "符合目前 IP 策略的位址";
+
+"DNSDiagnostics.NoPolicyAddresses" = "沒有符合目前策略的位址。";
+
+// Regram: icon selection and retained-message markers
+"AppIcon.ChangeFailed" = "無法切換圖示，請稍後再試。";
+"RevokedMarker.Title" = "已撤回訊息標記";
+"RevokedMarker.Style" = "標記樣式";
+"RevokedMarker.Style.icon" = "圖示";
+"RevokedMarker.Style.text" = "文字";
+"RevokedMarker.Style.none" = "不顯示";
+"RevokedMarker.Text" = "標記文字";
+"RevokedMarker.DefaultText" = "已撤回";
+"RevokedMarker.Color" = "標記顏色";
+"RevokedMarker.InvalidColor" = "請輸入 #RRGGBB，留空使用時間文字的顏色。";
+"RevokedMarker.Preview" = "預覽";
+"RevokedMarker.Notice" = "自訂本機保留的已撤回訊息在時間旁的標記。文字留空使用預設標記，顏色留空跟隨主題；此設定不改變防撤回規則。";
+"RevokedMarker.Saved" = "已儲存，目前顯示的已撤回訊息已更新標記。";
+
+/* Regram: messages in common groups */
+"CommonGroups.Action" = "共同群組內的發言";
+"CommonGroups.Title" = "%1$@ · 共同群組發言";
+"CommonGroups.Filter" = "篩選群組";
+"CommonGroups.All" = "全部共同群組";
+"CommonGroups.Scope" = "僅搜尋目前帳號有權存取的共同群組訊息；匿名或使用其他身分傳送的訊息不歸屬於此人。";
+"CommonGroups.Loaded" = "已顯示 %1$@ 則發言 · %2$@ 個共同群組";
+"CommonGroups.PartialFailure" = "部分查詢未完成，可重試；已取得的結果會保留。";
+"CommonGroups.Cancel" = "暫停查詢";
+"CommonGroups.Continue" = "繼續載入";
+"CommonGroups.Retry" = "重試未完成的查詢";
+"CommonGroups.Refresh" = "重新整理發言";
+"CommonGroups.Group" = "群組";
+"CommonGroups.Media" = "媒體或服務訊息（點按檢視）";
+"CommonGroups.Loading" = "正在尋找發言⋯";
+"CommonGroups.NoGroups" = "沒有可顯示的共同群組。";
+"CommonGroups.Empty" = "目前範圍內沒有可顯示的發言。";
+"CommonGroups.Failed" = "查詢未完成，請點按重試。";
+
+"CommonGroups.LoadMore" = "載入更多";
+
+// Regram debug tools
+"Debug.NotificationExperiment" = "實驗性通知恢復";
+"Debug.NotificationExperiment.Info" = "預設關閉。嘗試恢復未解析的加密通知並清理佔位提醒，保留訊息預覽和應用程式鎖隱私。通知擴充功能無法執行時，iOS 仍可能顯示提醒。";
+"Debug.ClearCache" = "清除快取";
+"Debug.ClearCache.Info" = "清除目前帳號的媒體快取及網頁、網路快取。快取媒體可能需要重新下載才能檢視。保留帳號、訊息、設定、憑證及已儲存的編輯歷史圖片。";
+"Debug.ClearCache.Done" = "快取已清除";
