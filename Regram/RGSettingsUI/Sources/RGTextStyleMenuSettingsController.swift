@@ -42,9 +42,9 @@ private enum RGFeatureTextStyleMenuEntry: ItemListNodeEntry {
 
     var tag: ItemListItemTag? {
         switch self {
-        case .position: return RGFeatureSettingsFocusTag("position")
-        case let .item(_, id, _, _, _): return RGFeatureSettingsFocusTag(id.rawValue)
-        case .reset: return RGFeatureSettingsFocusTag("reset")
+        case .position: return RGSimpleSettingsFocusTag("position")
+        case let .item(_, id, _, _, _): return RGSimpleSettingsFocusTag(id.rawValue)
+        case .reset: return RGSimpleSettingsFocusTag("reset")
         default: return nil
         }
     }
@@ -139,7 +139,7 @@ private enum RGFeatureTextStyleMenuEntry: ItemListNodeEntry {
         case let .positionFooter(text), let .itemsFooter(text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
         case let .item(_, id, title, value, isEditing):
-            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, editing: isEditing, reorderable: true, sectionId: self.section, style: .blocks, updated: { value in
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: title, value: value, isReorderable: isEditing, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.itemUpdated(id, value)
             }, tag: self.tag)
         case let .reset(title):
