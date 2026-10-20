@@ -122,7 +122,7 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
-b34621 adds overflow-pin persistence and chat/interface options; build and regression results are recorded in the [implementation notes](docs/chat-and-interface-tools.md). Real-account interactions, device behavior and the 1–2 day pin-retention scenario remain unverified.
+b34621 adds overflow-pin persistence and chat/interface options. The main app and six extensions passed the arm64 Release build and 40 local checks; details are recorded in the [implementation notes](docs/chat-and-interface-tools.md). Real-account interactions, device behavior and the 1–2 day pin-retention scenario remain unverified.
 
 b34620 playback regressions cover background transitions, play/pause icons, delayed callbacks, player ownership, PiP and looping animations. Actual audio, screen locking and installation over an older version still require device validation.
 
