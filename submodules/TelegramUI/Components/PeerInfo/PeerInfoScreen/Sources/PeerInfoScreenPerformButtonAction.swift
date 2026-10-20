@@ -1,3 +1,4 @@
+import RGJoinedChatFolderPicker // MARK: Regram
 import Foundation
 import RGCommonGroupMessagesUI // MARK: Regram
 import RGStrings // MARK: Regram
@@ -439,6 +440,30 @@ extension PeerInfoScreenNode {
                 }
                 
                 var canSetupAutoremoveTimeout = false
+
+                // MARK: Regram — Manual folder selection is independent of the post-join prompt setting.
+                let canChooseFolder: Bool
+                switch chatPeer {
+                case let .channel(channel):
+                    canChooseFolder = channel.participationStatus == .member
+                case let .legacyGroup(group):
+                    canChooseFolder = group.membership == .Member
+                default:
+                    canChooseFolder = false
+                }
+                if canChooseFolder {
+                    items.append(.action(ContextMenuActionItem(text: presentationData.strings.ChatList_Context_AddToFolder, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Folder"), color: theme.contextMenu.primaryColor)
+                    }, action: { [weak self] _, f in
+                        f(.dismissWithoutContent)
+                        guard let self else {
+                            return
+                        }
+                        rgPresentChatFolderPicker(context: self.context, peerId: chatPeer.id, present: { [weak self] controller in
+                            self?.controller?.present(controller, in: .window(.root))
+                        })
+                    })))
+                }
                 
                 if case let .secretChat(secretChat) = chatPeer {
                     currentAutoremoveTimeout = secretChat.messageAutoremoveTimeout

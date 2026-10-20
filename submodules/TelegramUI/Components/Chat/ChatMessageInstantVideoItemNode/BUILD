@@ -40,6 +40,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatMessageActionButtonsNode",
         "//submodules/TelegramUI/Components/Chat/ChatSwipeToReplyRecognizer",
         "//submodules/TelegramUI/Components/Chat/ChatMessageReactionsFooterContentNode",
+        # MARK: Regram
     ],
     visibility = [
         "//visibility:public",

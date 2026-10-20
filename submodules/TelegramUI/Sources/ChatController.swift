@@ -602,6 +602,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     // MARK: Regram
     private var rgLinkPreviewSettingsObserver: NSObjectProtocol?
     private var rgSpoilerSettingsObserver: NSObjectProtocol?
+    private var rgFeatureMessageSettingsObserver: NSObjectProtocol?
     private var rgRevokedMarkerObserver: NSObjectProtocol? // MARK: Regram
     private var rgShowHiddenPinnedMessagesObserver: NSObjectProtocol?
     public var overlayTitle: String? {
@@ -7117,7 +7118,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
 
         // MARK: Regram
         // MARK: Regram — requery an existing draft when preview rules or services change.
-        self.rgSpoilerSettingsObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.spoilerSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
+        let rgRefreshMessagePresentation: (Notification) -> Void = { [weak self] _ in
             guard let self, self.isNodeLoaded else { return }
             var messageIds = Set<MessageId>()
             self.chatDisplayNode.historyNode.forEachItemNode { node in
@@ -7126,6 +7127,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             }
             for id in messageIds { self.chatDisplayNode.historyNode.requestMessageUpdate(id) }
         }
+        self.rgSpoilerSettingsObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.spoilerSettingsDidChange, object: nil, queue: .main, using: rgRefreshMessagePresentation)
+        self.rgFeatureMessageSettingsObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.featureMessagePresentationDidChange, object: nil, queue: .main, using: rgRefreshMessagePresentation)
         self.rgRevokedMarkerObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.revokedMarkerDidChange, object: nil, queue: .main) { [weak self] _ in
             guard let self, self.isNodeLoaded else { return }
             var messageIds = Set<MessageId>()
@@ -7221,6 +7224,7 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
 
     deinit {
+        if let observer = self.rgFeatureMessageSettingsObserver { NotificationCenter.default.removeObserver(observer) }
         // MARK: Regram
         if let observer = rgLinkPreviewSettingsObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = rgSpoilerSettingsObserver { NotificationCenter.default.removeObserver(observer) }
@@ -8231,6 +8235,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         if let _ = self.focusOnSearchAfterAppearance {
             self.focusOnSearchAfterAppearance = nil
             if let searchNode = self.navigationBar?.contentNode as? ChatSearchNavigationContentNode {
+                searchNode.activate()
+            } else if let searchNode = self.chatDisplayNode.searchNavigationNode {
+                // MARK: Regram — 单手模式下搜索框在底部搜索面板里，不在导航栏。
                 searchNode.activate()
             }
         }

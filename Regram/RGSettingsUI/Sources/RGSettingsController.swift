@@ -56,6 +56,28 @@ private enum RGControllerSection: Int32, RGItemListSection {
 }
 
 private enum RGBoolSetting: String {
+    case showFoldersInShareSheet
+    case chatToolsEnabled
+    case tapMessageRowToOpenContextMenu
+    case confirmUnpin
+    case hideSavedAndArchivedMessagesInList
+    case hidePrivateChatActivities
+    case hideFolderUnreadCount
+    case showArchiveInFolders
+    case openArchiveOnPull
+    case stayAtLatestMessageAfterRefresh
+    case enablePanguOnEditing
+    case enablePanguOnReceiving
+    case hideTopStories
+    case disableChatAvatarStories
+    case hideTabBarPermissionWarnings
+    case disableCommunityChatGrouping
+    case chatSearchFieldAtBottom
+    case bottomUpGlobalSearchResults
+    case bottomUpChatSearchResults
+    case keepNewChatsVisibleAtTop
+    case autoInlineBotEnabled
+
     case hidePhoneInSettings
     case showTabNames
     case showContactsTab
@@ -70,7 +92,6 @@ private enum RGBoolSetting: String {
     case showProfileId
     case warnOnStoriesOpen
     case sendWithReturnKey
-    case rememberLastFolder
     case chooseFolderAfterJoining
     case sendLargePhotos
     case storyStealthMode
@@ -126,6 +147,11 @@ private enum RGBoolSetting: String {
 }
 
 private enum RGOneFromManySetting: String {
+    case chatListSwipeAction
+    case chatListFolderTabDisplayMode
+    case communityAvatarTapAction
+    case videoPIPSwipeDirection
+
     case nyStyle
     case defaultVideoQuality
     case allChatsTitleLengthOverride
@@ -144,6 +170,8 @@ private enum RGSliderSetting: String {
 }
 
 private enum RGDisclosureLink: String {
+    case groupProfileSettings, startupFolder, textStyleMenu, inlineBotRules
+
 
     case contentSettings
     case languageSettings
@@ -201,7 +229,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     #endif
     entries.append(.toggle(id: id.count, section: .folders, settingName: .compactFolderNames, value: RGSimpleSettings.shared.compactFolderNames, text: i18n("Settings.Folders.CompactNames", lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .allChatsTitleLengthOverride, text: i18n("Settings.Folders.AllChatsTitle", lang), value: i18n("Settings.Folders.AllChatsTitle.\(RGSimpleSettings.shared.allChatsTitleLengthOverride)", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .folders, settingName: .rememberLastFolder, value: RGSimpleSettings.shared.rememberLastFolder, text: i18n("Settings.Folders.RememberLast", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .folders, text: i18n("Settings.Folders.RememberLast.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .chooseFolderAfterJoining, value: RGSimpleSettings.shared.chooseFolderAfterJoining, text: i18n("JoinFolder.Setting", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .folders, text: i18n("JoinFolder.Setting.Notice", lang)))
@@ -209,8 +236,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.header(id: id.count, section: .chatList, text: i18n("Settings.ChatList.Header", lang), badge: nil))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .compactChatList, value: RGSimpleSettings.shared.compactChatList, text: i18n("Settings.CompactChatList", lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListLines, text: "Settings.ChatList.Lines".i18n(lang), value: "Settings.ChatList.Lines.\(RGSimpleSettings.shared.chatListLines)".i18n(lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableChatSwipeOptions, value: !RGSimpleSettings.shared.disableChatSwipeOptions, text: i18n("Settings.ChatSwipeOptions", lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableDeleteChatSwipeOption, value: !RGSimpleSettings.shared.disableDeleteChatSwipeOption, text: i18n("Settings.DeleteChatSwipeOption", lang), enabled: !RGSimpleSettings.shared.disableChatSwipeOptions))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableDeleteChatSwipeOption, value: !RGSimpleSettings.shared.disableDeleteChatSwipeOption, text: i18n("Settings.DeleteChatSwipeOption", lang), enabled: RGSimpleSettings.shared.chatListSwipeActionMode.allowsQuickActions))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .hideChatListSeparators, value: RGSimpleSettings.shared.hideChatListSeparators, text: "Settings.ChatList.HideSeparators".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .unlimitedPinnedChats, value: RGSimpleSettings.shared.unlimitedPinnedChats, text: i18n("Settings.UnlimitedPinnedChats", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .chatList, text: i18n("Settings.UnlimitedPinnedChats.Notice", lang)))
@@ -350,6 +376,39 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .content, settingName: .hidePhoneInSettings, value: RGSimpleSettings.shared.hidePhoneInSettings, text: i18n("Settings.HidePhoneInSettingsUI", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .content, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))
     
+
+    // MARK: Regram — chat, search and interface options.
+    entries.append(.toggle(id: id.count, section: .folders, settingName: .showFoldersInShareSheet, value: RGSimpleSettings.shared.showFoldersInShareSheet, text: "features.ShowFoldersInShareSheet".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .chatToolsEnabled, value: RGSimpleSettings.shared.chatToolsEnabled, text: "features.ChatToolsEnabled".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .tapMessageRowToOpenContextMenu, value: RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, text: "features.TapMessageRowToOpenContextMenu".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .confirmUnpin, value: RGSimpleSettings.shared.confirmUnpin, text: "features.ConfirmUnpin".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .hideSavedAndArchivedMessagesInList, value: RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList, text: "features.HideSavedAndArchivedMessagesInList".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .hidePrivateChatActivities, value: RGSimpleSettings.shared.hidePrivateChatActivities, text: "features.HidePrivateChatActivities".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .folders, settingName: .hideFolderUnreadCount, value: RGSimpleSettings.shared.hideFolderUnreadCount, text: "features.HideFolderUnreadCount".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .folders, settingName: .showArchiveInFolders, value: RGSimpleSettings.shared.showArchiveInFolders, text: "features.ShowArchiveInFolders".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .openArchiveOnPull, value: RGSimpleSettings.shared.openArchiveOnPull, text: "features.OpenArchiveOnPull".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .stayAtLatestMessageAfterRefresh, value: RGSimpleSettings.shared.stayAtLatestMessageAfterRefresh, text: "features.StayAtLatestMessageAfterRefresh".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .enablePanguOnEditing, value: RGSimpleSettings.shared.enablePanguOnEditing, text: "features.PanguOnEditing".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .input, settingName: .enablePanguOnReceiving, value: RGSimpleSettings.shared.enablePanguOnReceiving, text: "features.PanguOnReceiving".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .stories, settingName: .hideTopStories, value: RGSimpleSettings.shared.hideTopStories, text: "features.HideTopStories".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .stories, settingName: .disableChatAvatarStories, value: RGSimpleSettings.shared.disableChatAvatarStories, text: "features.DisableChatAvatarStories".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .content, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableCommunityChatGrouping, value: RGSimpleSettings.shared.disableCommunityChatGrouping, text: "features.DisableCommunityChatGrouping".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .chatSearchFieldAtBottom, value: RGSimpleSettings.shared.chatSearchFieldAtBottom, text: "features.ChatSearchFieldAtBottom".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .bottomUpGlobalSearchResults, value: RGSimpleSettings.shared.bottomUpGlobalSearchResults, text: "features.BottomUpGlobalSearchResults".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .bottomUpChatSearchResults, value: RGSimpleSettings.shared.bottomUpChatSearchResults, text: "features.BottomUpChatSearchResults".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .chatList, settingName: .keepNewChatsVisibleAtTop, value: RGSimpleSettings.shared.keepNewChatsVisibleAtTop, text: "features.KeepNewChatsVisibleAtTop".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .autoInlineBotEnabled, value: RGSimpleSettings.shared.autoInlineBotEnabled, text: "features.AutoInlineBot.Enabled".i18n(lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListSwipeAction, text: "features.ChatListSwipeAction".i18n(lang), value: ("features.ChatListSwipeAction." + RGSimpleSettings.shared.chatListSwipeAction).i18n(lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .chatListFolderTabDisplayMode, text: "features.ChatListFolderTabDisplayMode".i18n(lang), value: ("features.ChatListFolderTabDisplayMode." + RGSimpleSettings.shared.chatListFolderTabDisplayMode).i18n(lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .communityAvatarTapAction, text: "features.CommunityAvatarTapAction".i18n(lang), value: ("features.CommunityAvatarTapAction." + RGSimpleSettings.shared.communityAvatarTapAction).i18n(lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .media, settingName: .videoPIPSwipeDirection, text: "features.VideoPIPSwipeDirection".i18n(lang), value: ("features.VideoPIPSwipeDirection." + RGSimpleSettings.shared.videoPIPSwipeDirection).i18n(lang), enabled: true))
+    entries.append(.disclosure(id: id.count, section: .profiles, link: .groupProfileSettings, text: "features.GroupProfileSettings".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .folders, link: .startupFolder, text: "features.ChatListStartupFolder".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .input, link: .textStyleMenu, text: "features.TextStyleMenu".i18n(lang)))
+
+    entries.append(.notice(id: id.count, section: .messageActions, text: "features.AutoInlineBot.Footer".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .messageActions, link: .inlineBotRules, text: "features.InlineBotRules".i18n(lang)))
     let sections: [RGControllerSection]
     switch page {
     case .home, .transcription: sections = []
@@ -406,6 +465,28 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
           }
         },*/ setBoolValue: { setting, value in
         switch setting {
+        case .showFoldersInShareSheet: RGSimpleSettings.shared.showFoldersInShareSheet = value
+        case .chatToolsEnabled: RGSimpleSettings.shared.chatToolsEnabled = value
+        case .tapMessageRowToOpenContextMenu: RGSimpleSettings.shared.tapMessageRowToOpenContextMenu = value
+        case .confirmUnpin: RGSimpleSettings.shared.confirmUnpin = value
+        case .hideSavedAndArchivedMessagesInList: RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList = value
+        case .hidePrivateChatActivities: RGSimpleSettings.shared.hidePrivateChatActivities = value
+        case .hideFolderUnreadCount: RGSimpleSettings.shared.hideFolderUnreadCount = value
+        case .showArchiveInFolders: RGSimpleSettings.shared.showArchiveInFolders = value
+        case .openArchiveOnPull: RGSimpleSettings.shared.openArchiveOnPull = value
+        case .stayAtLatestMessageAfterRefresh: RGSimpleSettings.shared.stayAtLatestMessageAfterRefresh = value
+        case .enablePanguOnEditing: RGSimpleSettings.shared.enablePanguOnEditing = value
+        case .enablePanguOnReceiving: RGSimpleSettings.shared.enablePanguOnReceiving = value
+        case .hideTopStories: RGSimpleSettings.shared.hideTopStories = value
+        case .disableChatAvatarStories: RGSimpleSettings.shared.disableChatAvatarStories = value
+        case .hideTabBarPermissionWarnings: RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
+        case .disableCommunityChatGrouping: RGSimpleSettings.shared.disableCommunityChatGrouping = value
+        case .chatSearchFieldAtBottom: RGSimpleSettings.shared.chatSearchFieldAtBottom = value
+        case .bottomUpGlobalSearchResults: RGSimpleSettings.shared.bottomUpGlobalSearchResults = value
+        case .bottomUpChatSearchResults: RGSimpleSettings.shared.bottomUpChatSearchResults = value
+        case .keepNewChatsVisibleAtTop: RGSimpleSettings.shared.keepNewChatsVisibleAtTop = value
+        case .autoInlineBotEnabled: RGSimpleSettings.shared.autoInlineBotEnabled = value
+
         case .hideChatListSeparators:
             RGSimpleSettings.shared.hideChatListSeparators = value
             NotificationCenter.default.post(name: RGSimpleSettings.chatListSeparatorSettingsDidChange, object: nil)
@@ -445,8 +526,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             RGSimpleSettings.shared.warnOnStoriesOpen = value
         case .sendWithReturnKey:
             RGSimpleSettings.shared.sendWithReturnKey = value
-        case .rememberLastFolder:
-            RGSimpleSettings.shared.rememberLastFolder = value
         case .chooseFolderAfterJoining:
             RGSimpleSettings.shared.chooseFolderAfterJoining = value
         case .sendLargePhotos:
@@ -689,6 +768,39 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
 //                    setAction(value.rawValue)
 //                }))
 //            }
+            case .chatListSwipeAction:
+                for value in ["both", "switch", "quick", "none"] {
+                    items.append(ActionSheetButtonItem(title: ("features.ChatListSwipeAction." + value).i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.chatListSwipeAction = value
+                        simplePromise.set(true)
+                    }))
+                }
+            case .chatListFolderTabDisplayMode:
+                for value in ["text", "icon", "both"] {
+                    items.append(ActionSheetButtonItem(title: ("features.ChatListFolderTabDisplayMode." + value).i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.chatListFolderTabDisplayMode = value
+                        simplePromise.set(true)
+                    }))
+                }
+            case .communityAvatarTapAction:
+                for value in ["chat", "community", "arrow"] {
+                    items.append(ActionSheetButtonItem(title: ("features.CommunityAvatarTapAction." + value).i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.communityAvatarTapAction = value
+                        simplePromise.set(true)
+                    }))
+                }
+            case .videoPIPSwipeDirection:
+                for value in ["up", "none"] {
+                    items.append(ActionSheetButtonItem(title: ("features.VideoPIPSwipeDirection." + value).i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                        RGSimpleSettings.shared.videoPIPSwipeDirection = value
+                        simplePromise.set(true)
+                    }))
+                }
+
             case .translationBackend:
                 let setAction: (String) -> Void = { value in
                     RGSimpleSettings.shared.translationBackend = value
@@ -730,6 +842,10 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     }, openDisclosureLink: { [context] link in
         switch (link) {
 
+            case .inlineBotRules: pushControllerImpl?(rgFeatureInlineBotRulesController(context: context))
+            case .groupProfileSettings: pushControllerImpl?(rgFeatureGroupProfileSettingsController(context: context))
+            case .startupFolder: pushControllerImpl?(rgStartupFolderController(context: context))
+            case .textStyleMenu: pushControllerImpl?(rgFeatureTextStyleMenuSettingsController(context: context))
             case .llmTranslationSettings:
                 pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
             case .languageSettings:

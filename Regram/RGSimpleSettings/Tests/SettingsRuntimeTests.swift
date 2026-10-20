@@ -128,6 +128,47 @@ extension UserDefaults {
         settings.reorderVisibleContextMenuItems([.reply, .copy])
         expect(Array(settings.contextMenuOrder.prefix(3)) == [.reply, .viewStats, .copy], "Reordering visible items must preserve the position of hidden actions")
         settings.contextMenuOrder = originalMenuOrder
+        expect(!settings.chatToolsEnabled && !settings.autoInlineBotEnabled && !settings.chatSearchFieldAtBottom, "New interaction and external-query modes must be opt-in")
+        settings.rememberLastFolder = true
+        expect(settings.chatListStartupFolderModeValue == .last, "Existing remember-last choice remains effective before selecting a startup mode")
+        settings.rememberLastFolder = false
+        settings.chatListSwipeAction = "switch"
+        expect(settings.chatListSwipeActionMode.allowsFolderSwitch && !settings.chatListSwipeActionMode.allowsQuickActions && !settings.disableChatSwipeOptions, "Folder-only gestures preserve the legacy master state")
+        settings.chatListSwipeAction = "none"
+        expect(!settings.chatListSwipeActionMode.allowsFolderSwitch && !settings.chatListSwipeActionMode.allowsQuickActions && settings.disableChatSwipeOptions, "Disabled gestures must agree across old/new paths")
+        settings.chatListSwipeAction = "both"
+        settings.setChatListStartupSpecificFolderId(27, accountPeerId: 111)
+        settings.setChatListStartupSpecificFolderId(35, accountPeerId: 222)
+        expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27 && settings.chatListStartupSpecificFolderId(accountPeerId: 222) == 35, "Fixed startup folders are isolated by account")
+        settings.hideSavedAndArchivedMessagesInList = true
+        settings.disableCommunityChatGrouping = true
+        expect(RGFeaturePreferences.storage(for: "features.disableCommunityChatGrouping").bool(forKey: "features.disableCommunityChatGrouping"), "Grouping policy must be readable from the shared store used by extensions")
+        settings.enablePanguOnReceiving = true
+        settings.setGroupProfileSettingItemVisible(.permissions, visible: true)
+        settings.setTextStyleMenuItemEnabled(.bold, enabled: true)
+        let featuresBackup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
+        expect(featuresBackup.values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && featuresBackup.values["features.textStyleMenu.enabled"] == .string("bold"), "New privacy and composer choices participate in normal backups")
+        expect(settings.exportPreferences(categories: [.privacy]).values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && settings.exportPreferences(categories: [.appearance]).values["features.hideSavedAndArchivedMessagesInList"] == nil, "Privacy enhancements must stay in the selected backup category")
+        expect(featuresBackup.values["features.startupFolders"] == .dictionary(["111": "27", "222": "35"]), "Fixed-folder account mapping must survive settings backup")
+        expect(featuresBackup.values.keys.allSatisfy { !$0.lowercased().contains("icloud") && !$0.lowercased().contains("sessionbackup") }, "Excluded cloud/session features must not enter export")
+        settings.applyPreferences(featuresBackup.values, resetCategories: [.appearance])
+        expect(settings.hideSavedAndArchivedMessagesInList && settings.isGroupProfileSettingItemVisible(.permissions) && settings.isTextStyleMenuItemEnabled(.bold), "Import and reset retain new feature choices")
+        expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27, "Import restores the per-account startup folder")
+        let panguOriginal = "😀中文Telegram世界"
+        let pangu = RGFeaturePangu.transform(panguOriginal)
+        let originalRange = (panguOriginal as NSString).range(of: "Telegram")
+        let mapped = RGFeaturePangu.transformRange(originalRange.location ..< (originalRange.location + originalRange.length), insertedUtf16Offsets: pangu.insertedUtf16Offsets)
+        expect((pangu.text as NSString).substring(with: NSRange(location: mapped.lowerBound, length: mapped.count)) == "Telegram", "Received display spacing must preserve emoji-aware UTF-16 entity ranges")
+        let restored = RGFeaturePangu.reverseTransformRange(mapped, insertedUtf16Offsets: pangu.insertedUtf16Offsets, originalLength: (panguOriginal as NSString).length)
+        expect(restored == originalRange.location ..< (originalRange.location + originalRange.length), "Copying a displayed entity must recover its original range")
+        let protectedText = NSMutableAttributedString(string: "中文Telegram世界")
+        protectedText.addAttribute(NSAttributedString.Key("Attribute__Monospace"), value: true, range: NSRange(location: 2, length: 8))
+        let protectedResult = RGFeaturePangu.transform(protectedText)
+        var protectedSegments: [String] = []
+        protectedResult.enumerateAttribute(NSAttributedString.Key("Attribute__Monospace"), in: NSRange(location: 0, length: protectedResult.length)) { value, range, _ in
+            if value != nil { protectedSegments.append((protectedResult.string as NSString).substring(with: range)) }
+        }
+        expect(protectedSegments == ["Telegram"], "Pangu insertion must not alter protected code content or lose its attributes")
         print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
     }
     static func checkIconSwitching() {

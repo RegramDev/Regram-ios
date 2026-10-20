@@ -79,6 +79,10 @@ import PremiumUI
 import ImageTransparency
 import StickerPackPreviewUI
 import TextNodeWithEntities
+// MARK: Regram
+import RGSimpleSettings
+import RGFeatureSignals
+import RGStrings
 import EntityKeyboard
 import ChatTitleView
 import EmojiStatusComponent
@@ -2250,7 +2254,11 @@ extension ChatControllerImpl {
                     }
                 }
                 
-                let text = trimChatInputText(convertMarkdownToAttributes(expandedInputStateAttributedString(editMessage.inputState.inputText)))
+                var text = trimChatInputText(convertMarkdownToAttributes(expandedInputStateAttributedString(editMessage.inputState.inputText)))
+                // MARK: Regram — 编辑时盘古之白
+                if RGSimpleSettings.shared.enablePanguOnEditing {
+                    text = RGFeaturePangu.transform(text)
+                }
 
                 let content = editMessage.inputState.content
                 let richText: RichTextMessageAttribute? = content.isEntityExpressible() ? nil : RichTextMessageAttribute(instantPage: instantPage(from: content), fullInstantPage: nil)
@@ -3516,7 +3524,8 @@ extension ChatControllerImpl {
                             }
                         }
                     }
-                    if askForConfirmation {
+                    // MARK: Regram - optionally confirm the message menu's Unpin too (askForConfirmation == false).
+                    if askForConfirmation || RGSimpleSettings.shared.confirmUnpin {
                         strongSelf.present(textAlertController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, title: nil, text: strongSelf.presentationData.strings.Conversation_UnpinMessageAlert, actions: [TextAlertAction(type: .genericAction, title: strongSelf.presentationData.strings.Conversation_Unpin, action: {
                             action()
                         }), TextAlertAction(type: .defaultAction, title: strongSelf.presentationData.strings.Common_Cancel, action: {})], actionLayout: .vertical), in: .window(.root))
@@ -3596,6 +3605,17 @@ extension ChatControllerImpl {
                 if strongSelf.canManagePin() {
                     let count = strongSelf.presentationInterfaceState.pinnedMessage?.totalCount ?? 1
                     
+                    // MARK: Regram - optionally confirm before unpinning all messages.
+                    if RGSimpleSettings.shared.confirmUnpin {
+                        strongSelf.present(textAlertController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, title: nil, text: rgFeatureI18n("features.UnpinAllMessagesAlert", strongSelf.presentationData.strings.baseLanguageCode), actions: [TextAlertAction(type: .genericAction, title: strongSelf.presentationData.strings.Chat_PanelUnpinAllMessages, action: {
+                            guard let strongSelf = self else {
+                                return
+                            }
+                            strongSelf.requestedUnpinAllMessages?(count, topPinnedMessage.topMessageId)
+                            strongSelf.dismiss()
+                        }), TextAlertAction(type: .defaultAction, title: strongSelf.presentationData.strings.Common_Cancel, action: {})], actionLayout: .vertical), in: .window(.root))
+                        return
+                    }
                     strongSelf.requestedUnpinAllMessages?(count, topPinnedMessage.topMessageId)
                     strongSelf.dismiss()
                 } else {
@@ -5190,8 +5210,9 @@ extension ChatControllerImpl {
                 
                 if let activitySpace = activitySpace, let peerId = peerId {
                     self.peerInputActivitiesDisposable?.dispose()
-                    self.peerInputActivitiesDisposable = (self.context.account.peerInputActivities(peerId: activitySpace)
-                    |> mapToSignal { activities -> Signal<[(EnginePeer, PeerInputActivity)], NoError> in
+                    self.peerInputActivitiesDisposable = (combineLatest(
+                        self.context.account.peerInputActivities(peerId: activitySpace)
+                        |> mapToSignal { activities -> Signal<[(EnginePeer, PeerInputActivity)], NoError> in
                         var foundAllPeers = true
                         var cachedResult: [(EnginePeer, PeerInputActivity)] = []
                         previousPeerCache.with { dict -> Void in
@@ -5223,10 +5244,15 @@ extension ChatControllerImpl {
                                 return result
                             }
                         }
-                    }
-                    |> deliverOnMainQueue).startStrict(next: { [weak self] activities in
+                        },
+                        // MARK: Regram — 私聊 activity 隐藏设置需即时刷新标题状态。
+                        rgFeatureBoolSignal("features.hidePrivateChatActivities", defaultValue: false)
+                    )
+                    |> deliverOnMainQueue).startStrict(next: { [weak self] activities, hidePrivateChatActivities in
                         if let strongSelf = self {
-                            let displayActivities = activities.filter({
+                            let isPrivateChat = peerId.namespace == Namespaces.Peer.CloudUser || peerId.namespace == Namespaces.Peer.SecretChat
+                            let visibleActivities = hidePrivateChatActivities && isPrivateChat ? [] : activities
+                            let displayActivities = visibleActivities.filter({
                                 switch $0.1 {
                                     case .speakingInGroupCall, .interactingWithEmoji:
                                         return false

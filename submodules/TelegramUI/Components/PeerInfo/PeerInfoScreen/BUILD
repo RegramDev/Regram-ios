@@ -1,11 +1,13 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
+        "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+        "//Regram/RGJoinedChatFolderPicker", # MARK: Regram
+        "//submodules/ContactListUI", # MARK: Regram
     "//Regram/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram
-    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",
 
     "//Regram/RGRegDate:RGRegDate",

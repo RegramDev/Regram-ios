@@ -18,6 +18,8 @@ import ComponentFlow
 import SwiftUI
 import ContactsUI
 import EdgeEffect
+import UndoUI // MARK: Regram
+import RGStrings // MARK: Regram
 
 private final class ContextControllerContentSourceImpl: ContextControllerContentSource {
     let controller: ViewController
@@ -251,6 +253,15 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         self.contactListNode.openContactAccessPicker = {
             presentContactAccessPicker(context: context)
         }
+
+        // MARK: Regram — 双向联系人说明
+        self.contactListNode.displayMutualContactInfo = { [weak self] in
+            guard let self else {
+                return
+            }
+            let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+            self.controller?.present(UndoOverlayController(presentationData: presentationData, content: .info(title: nil, text: rgFeatureI18n("features.MutualContact.Description", presentationData.strings.baseLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .current)
+        }
     }
     
     deinit {
@@ -301,8 +312,10 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         let tabsNodeIsSearch = false
         
         let title: String
-        let leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-        let rightButtons: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>]
+        var leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+        var rightButtons: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>]
+        // MARK: Regram — 推入模式：左侧让给返回按钮，排序移到右侧
+        let rgFeatureIsPushed = self.controller?.rgFeatureIsPushed ?? false
         
         if let selectionState = self.contactListNode.selectionState {
             title = self.presentationData.strings.Contacts_SelectedContacts(Int32(selectionState.selectedPeerIndices.count))
@@ -339,16 +352,23 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                     self.controller?.addPressed()
                 }
             )))]
+            // MARK: Regram
+            if rgFeatureIsPushed, let sortButton = leftButton {
+                leftButton = nil
+                rightButtons.insert(sortButton, at: 0)
+            }
         }
         
         let primaryContent = ChatListHeaderComponent.Content(
             title: self.presentationData.strings.Contacts_Title,
-            navigationBackTitle: nil,
+            navigationBackTitle: rgFeatureIsPushed ? self.presentationData.strings.Common_Back : nil, // MARK: Regram
             titleComponent: nil,
             chatListTitle: NetworkStatusTitle(text: title, activity: false, hasProxy: false, connectsViaProxy: false, isPasscodeSet: false, isManuallyLocked: false, peerStatus: nil),
             leftButton: leftButton,
             rightButtons: rightButtons,
-            backPressed: nil
+            backPressed: rgFeatureIsPushed ? { [weak self] in // MARK: Regram
+                self?.controller?.dismiss()
+            } : nil
         )
         
         let navigationBarSize = self.navigationBarView.update(

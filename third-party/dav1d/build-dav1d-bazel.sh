@@ -10,7 +10,16 @@ MESON_OPTIONS="--buildtype=release --default-library=static -Denable_tools=false
 CROSSFILE=""
 
 if [ "$ARCH" = "arm64" ]; then
-    CROSSFILE="../package/crossfiles/arm64-iPhoneOS.meson"
+    # MARK: Regram — the active Xcode may have a versioned application name.
+    TARGET_CROSSFILE="$BUILD_DIR/dav1d/package/crossfiles/arm64-iPhoneOS-custom.meson"
+    cp "$BUILD_DIR/dav1d/package/crossfiles/arm64-iPhoneOS.meson" "$TARGET_CROSSFILE"
+    if [ -d "${XCODE_VERSION_OVERRIDE:-}/Platforms/iPhoneOS.platform" ]; then
+        selected_xcode_path="$XCODE_VERSION_OVERRIDE/"
+    else
+        selected_xcode_path="$(xcode-select -p)/"
+    fi
+    sed -i '' "s|/Applications/Xcode.app/Contents/Developer/|$selected_xcode_path|g" "$TARGET_CROSSFILE"
+    CROSSFILE="../package/crossfiles/arm64-iPhoneOS-custom.meson"
 elif [ "$ARCH" = "sim_arm64" ]; then
     rm -f "arm64-iPhoneSimulator-custom.meson"
     TARGET_CROSSFILE="$BUILD_DIR/dav1d/package/crossfiles/arm64-iPhoneSimulator-custom.meson"

@@ -1,3 +1,4 @@
+import RGSimpleSettings // MARK: Regram
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -2963,6 +2964,10 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
     
     override func maybePerformActionForSwipeDismiss() -> Bool {
+        // MARK: Regram — 关闭「上滑打开画中画」时不触发
+        if RGSimpleSettings.shared.videoPIPSwipeDirection != "up" {
+            return false
+        }
         if let data = self.context.currentAppConfiguration.with({ $0 }).data {
             if let _ = data["ios_killswitch_disable_swipe_pip"] {
                 return false

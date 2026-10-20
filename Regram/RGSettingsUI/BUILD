@@ -16,6 +16,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGLinkMetadata:RGLinkMetadata", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/TelegramUI/Components/SliderComponent",
         "//Regram/RGItemListUI:RGItemListUI",

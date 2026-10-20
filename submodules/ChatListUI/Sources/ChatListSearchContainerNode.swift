@@ -41,6 +41,7 @@ import SectionTitleContextItem
 import EdgeEffect
 import ComponentFlow
 import ComponentDisplayAdapters
+import RGSimpleSettings // MARK: Regram
 
 private enum ChatListTokenId: Int32 {
     case archive
@@ -129,6 +130,15 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
     
     public var dismissSearch: (() -> Void)?
     public var dismissSearchImmediately: (() -> Void)?
+    // MARK: Regram — 搜索栏在底部时由创建者设置，结果页据此（再结合设置开关）从下往上排列。
+    public var rgFeatureBottomUp: Bool {
+        get {
+            return self.paneContainerNode.rgFeatureBottomUp
+        }
+        set {
+            self.paneContainerNode.rgFeatureBottomUp = newValue
+        }
+    }
     var openAdInfo: ((ASDisplayNode, AdPeer) -> Void)?
     
     private let edgeEffectView: EdgeEffectView
@@ -248,8 +258,27 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
             let _ = context.sharedContext.openUserGeneratedUrl(context: context, peerId: nil, url: url, webpage: nil, concealed: false, forceConcealed: false, skipUrlAuth: false, skipConcealedAlert: false, forceDark: false, present: { c in
                 present(c, nil)
             }, openResolved: { [weak self] resolved in
-                context.sharedContext.openResolvedUrl(resolved, context: context, urlContext: .generic, navigationController: navigationController, forceExternal: false, forceUpdate: false, openPeer: { peerId, navigation in
-                    
+                context.sharedContext.openResolvedUrl(resolved, context: context, urlContext: .generic, navigationController: navigationController, forceExternal: false, forceUpdate: false, openPeer: { peer, navigation in
+                    // MARK: Regram — 搜索框粘贴的链接解析到会话或消息时要真的打开它；上游这里是空实现。
+                    guard let navigationController else {
+                        return
+                    }
+                    switch navigation {
+                    case let .chat(inputState, subject, peekData):
+                        context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), subject: subject, updateTextInputState: inputState, activateInput: inputState != nil ? .text : nil, peekData: peekData))
+                    case .info:
+                        if peer.restrictionText(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) == nil, let infoController = context.sharedContext.makePeerInfoController(context: context, updatedPresentationData: nil, peer: peer, mode: .generic, avatarInitiallyExpanded: false, fromChat: false, requestsContext: nil) {
+                            navigationController.pushViewController(infoController)
+                        }
+                    case let .withBotStartPayload(startPayload):
+                        context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), botStart: startPayload))
+                    case let .withAttachBot(attachBotStart):
+                        context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), attachBotStart: attachBotStart))
+                    case let .withBotApp(botAppStart):
+                        context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer), botAppStart: botAppStart))
+                    case .default:
+                        context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigationController, context: context, chatLocation: .peer(peer)))
+                    }
                 },
                 sendFile: nil,
                 sendSticker: nil,
@@ -1057,7 +1086,12 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
         // MARK: Regram — keep the bottom safe area clear, as on the chat-list tab.
         transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
 
-        self.paneContainerNode.update(size: CGSize(width: layout.size.width, height: layout.size.height), sideInset: layout.safeInsets.left, topInset: topInset, bottomInset: bottomInset, visibleHeight: layout.size.height, presentationData: self.presentationData, availablePanes: availablePanes, transition: transition)
+        // MARK: Regram — keep bottom-up rows above the floating filters and search controls.
+        var paneBottomInset = bottomInset
+        if self.rgFeatureBottomUp && RGSimpleSettings.shared.bottomUpGlobalSearchResults && self.displaySearchFilters {
+            paneBottomInset = max(bottomInset, layout.size.height - self.filterContainerNode.frame.minY + 8.0)
+        }
+        self.paneContainerNode.update(size: CGSize(width: layout.size.width, height: layout.size.height), sideInset: layout.safeInsets.left, topInset: topInset, bottomInset: paneBottomInset, visibleHeight: layout.size.height, presentationData: self.presentationData, availablePanes: availablePanes, transition: transition)
     }
     
     private var currentMessages: ([EnginePeer.Id: EnginePeer], [EngineMessage.Id: EngineMessage]) {

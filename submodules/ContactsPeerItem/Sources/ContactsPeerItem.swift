@@ -100,6 +100,25 @@ public enum ContactsPeerItemActionIcon {
     case voiceCall
     case videoCall
     case more
+    case mutualContact // MARK: Regram
+}
+
+// MARK: Regram — 双向联系人图标（对齐 Android RGFeature UserCell 的 swap_horiz），按颜色缓存。
+private let rgFeatureMutualContactIconCache = Atomic<(color: UIColor, image: UIImage)?>(value: nil)
+
+private func rgFeatureMutualContactIcon(theme: PresentationTheme) -> UIImage? {
+    let color = theme.list.itemSecondaryTextColor
+    if let cached = rgFeatureMutualContactIconCache.with({ $0 }), cached.color.isEqual(color) {
+        return cached.image
+    }
+    guard let symbol = UIImage(systemName: "arrow.left.arrow.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 15.0, weight: .medium)) else {
+        return nil
+    }
+    let image = UIGraphicsImageRenderer(size: symbol.size).image { _ in
+        symbol.withTintColor(color, renderingMode: .alwaysOriginal).draw(at: CGPoint())
+    }
+    let _ = rgFeatureMutualContactIconCache.swap((color, image))
+    return image
 }
 
 public struct ContactsPeerItemAction {
@@ -926,6 +945,8 @@ public class ContactsPeerItemNode: ItemListRevealOptionsItemNode {
                             image = PresentationResourcesItemList.videoCallIcon(theme)
                         case .more:
                             image = PresentationResourcesItemList.videoCallIcon(theme)
+                        case .mutualContact: // MARK: Regram
+                            image = rgFeatureMutualContactIcon(theme: theme)
                     }
                     self.type = icon
                     self.image = image

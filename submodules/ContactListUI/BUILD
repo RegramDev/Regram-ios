@@ -10,6 +10,9 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        # MARK: Regram — 权限警告隐藏开关
+        "//Regram/RGFeatureSignals:RGFeatureSignals",
+        "//Regram/RGStrings:RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

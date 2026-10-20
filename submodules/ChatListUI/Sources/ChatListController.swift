@@ -1,3 +1,4 @@
+import RGFeatureSignals // MARK: Regram
 // MARK: Regram
 import RGJoinedChatFolderPicker
 // MARK: Regram
@@ -99,6 +100,8 @@ private final class ContextControllerContentSourceImpl: ContextControllerContent
 }
 
 public class ChatListControllerImpl: TelegramBaseController, ChatListController {
+    private var rgFeatureLayoutSettingsDisposable: Disposable?
+
     private var validLayout: ContainerViewLayout?
     
     public let context: AccountContext
@@ -164,6 +167,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private let isReorderingTabsValue = ValuePromise<Bool>(false)
     
     private(set) var tabContainerData: ([ChatListFilterTabEntry], Bool, Int32?)?
+    private(set) var rgFeatureFolderTabIcons: [ChatListFilterTabEntryId: String] = [:] // MARK: Regram — 首页文件夹标签图标。
     var hasTabs: Bool {
         if let tabContainerData = self.tabContainerData {
             let isEmpty = tabContainerData.0.count <= 1 || tabContainerData.1
@@ -214,6 +218,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private var storyArchiveSubscriptionsDisposable: Disposable?
     
     private var rawStorySubscriptions: EngineStorySubscriptions?
+    private var rgFeatureAccountStoryCount: Int = 0 // MARK: Regram — 顶部隐藏后仍需保留发布数量限制。
     private var shouldFixStorySubscriptionOrder: Bool = false
     private var fixedStorySubscriptionOrder: [EnginePeer.Id] = []
     private(set) var orderedStorySubscriptions: EngineStorySubscriptions?
@@ -823,6 +828,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
+        self.rgFeatureLayoutSettingsDisposable?.dispose() // MARK: Regram
         if let observer = self.rgLayoutObserver { NotificationCenter.default.removeObserver(observer) }
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
@@ -2222,13 +2228,14 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 self.storiesReady.set(.single(true))
             } else {
                 // MARK: Regram
-                let hideStoriesSignal = rgSimpleSettingsBoolSignal(.hideStories, defaultValue: false)
+                let hideStoriesSignal = combineLatest(rgSimpleSettingsBoolSignal(.hideStories, defaultValue: false), rgFeatureBoolSignal("features.hideTopStories", defaultValue: false)) |> map { $0 || $1 }
                 
                 self.storySubscriptionsDisposable = (combineLatest(self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive)), hideStoriesSignal)
                 |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions, hideStories in
                     guard let self else {
                         return
                     }
+                    self.rgFeatureAccountStoryCount = rawStorySubscriptions.accountItem?.storyCount ?? 0
                     var rawStorySubscriptions = rawStorySubscriptions
                     if hideStories {
                         rawStorySubscriptions = EngineStorySubscriptions(accountItem: nil, items: [], hasMoreToken: nil)
@@ -2420,6 +2427,13 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        self.rgFeatureLayoutSettingsDisposable?.dispose()
+        self.rgFeatureLayoutSettingsDisposable = (combineLatest(
+            rgFeatureBoolSignal("features.hideFolderUnreadCount", defaultValue: false),
+            rgFeatureBoolSignal("compactFolderNames", defaultValue: false),
+            rgFeatureStringSignal("features.chatListFolderTabDisplayMode", defaultValue: "text"))
+        |> deliverOnMainQueue).start(next: { [weak self] _ in self?.requestLayout(transition: .immediate) })
+
                 
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings
@@ -3034,12 +3048,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
         
         let storiesCountLimit = self.context.userLimits.maxExpiringStoriesCount
-        var storiesCount = 0
-        if let rawStorySubscriptions = self.rawStorySubscriptions, let accountItem = rawStorySubscriptions.accountItem {
-            storiesCount = accountItem.storyCount
-            if accountItem.storyCount >= self.context.userLimits.maxExpiringStoriesCount {
-                reachedCountLimit = true
-            }
+        // MARK: Regram — 隐藏顶部区域不影响手动发布时的数量限制。
+        let storiesCount = self.rgFeatureAccountStoryCount
+        if storiesCount >= self.context.userLimits.maxExpiringStoriesCount {
+            reachedCountLimit = true
         }
         
         switch self.storyPostingAvailability {
@@ -4094,20 +4106,29 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             
             let (_, items) = countAndFilterItems
             var filterItems: [ChatListFilterTabEntry] = []
+            var rgFeatureFolderTabIcons: [ChatListFilterTabEntryId: String] = [:] // MARK: Regram
             
             for (filter, unreadCount, hasUnmutedUnread) in items {
                 switch filter {
                     case .allChats:
+                        rgFeatureFolderTabIcons[.all] = "💬" // MARK: Regram
                         if let isPremium = isPremium, !isPremium && filterItems.count > 0 {
                             filterItems.insert(.all(unreadCount: 0), at: 0)
                         } else {
                             filterItems.append(.all(unreadCount: 0))
                         }
-                    case let .filter(id, title, _, _):
+                    case let .filter(id, title, emoticon, _):
                         filterItems.append(.filter(id: id, text: title, unread: ChatListFilterTabEntryUnreadCount(value: unreadCount, hasUnmuted: hasUnmutedUnread)))
+                        let trimmedEmoticon = emoticon?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if let trimmedEmoticon, trimmedEmoticon.count == 1 {
+                            rgFeatureFolderTabIcons[.filter(id)] = trimmedEmoticon // MARK: Regram
+                        } else {
+                            rgFeatureFolderTabIcons[.filter(id)] = "📁" // MARK: Regram
+                        }
                 }
             }
             
+            strongSelf.rgFeatureFolderTabIcons = rgFeatureFolderTabIcons
             var resolvedItems = filterItems
             if case .chatList(.root) = strongSelf.location {
             } else {
@@ -4123,10 +4144,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     firstItemEntryId = .filter(id)
             }
             // MARK: Regram
-            if !strongSelf.initializedFilters && RGSimpleSettings.shared.rememberLastFolder {
-                if let lastFolder = RGSimpleSettings.shared.lastAccountFolders["\(strongSelf.context.account.peerId.id._internalGetInt64Value())"]{
-                    firstItemEntryId = lastFolder == -1 ? .all : .filter(lastFolder)
+            if !strongSelf.initializedFilters {
+                let accountId = strongSelf.context.account.peerId.toInt64()
+                let folderId: Int32?
+                switch RGSimpleSettings.shared.chatListStartupFolderModeValue {
+                case .telegramDefault: folderId = nil
+                case .last: folderId = RGSimpleSettings.shared.chatListStartupLastFolderId(accountPeerId: accountId)
+                case .specific: folderId = RGSimpleSettings.shared.chatListStartupSpecificFolderId(accountPeerId: accountId)
                 }
+                if let folderId { firstItemEntryId = folderId == -1 ? .all : .filter(folderId) }
             }
             
             var selectedEntryId = !strongSelf.initializedFilters ? firstItemEntryId : strongSelf.chatListDisplayNode.mainContainerNode.currentItemFilter
@@ -6753,6 +6779,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     var isStoryPostingAvailable: Bool {
+        guard !RGSimpleSettings.shared.disableStoryCameraSwipeEffective else { return false }
         guard !self.context.isFrozen else {
             return false
         }

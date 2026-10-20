@@ -1,4 +1,6 @@
 import Foundation
+// MARK: Regram
+import RGFeatureSignals
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -134,9 +136,12 @@ public class ContactsController: ViewController {
     }
     
     private let sortButton: SortHeaderButton
+    // MARK: Regram — 从设置页推入（联系人 tab 被隐藏时），显示返回按钮
+    let rgFeatureIsPushed: Bool
     
-    public init(context: AccountContext) {
+    public init(context: AccountContext, rgFeatureIsPushed: Bool = false) { // MARK: Regram
         self.context = context
+        self.rgFeatureIsPushed = rgFeatureIsPushed
         
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
         
@@ -192,7 +197,7 @@ public class ContactsController: ViewController {
         }).strict()
         
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            self.authorizationDisposable = (combineLatest(DeviceAccess.authorizationStatus(subject: .contacts), combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
+            let permissionWarningSuppressedAndSortOrder: Signal<(Bool, ContactsSortOrder), NoError> = combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
             |> map { noticeView, preferences, sharedData -> (Bool, ContactsSortOrder) in
                 let settings: ContactsSettings = preferences?.get(ContactsSettings.self) ?? ContactsSettings.defaultSettings
                 let synchronizeDeviceContacts: Bool = settings.synchronizeContacts
@@ -209,11 +214,13 @@ public class ContactsController: ViewController {
                 } else {
                     return (false, sortOrder)
                 }
-            })
-            |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder in
+            }
+            let hidePermissionWarnings = rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)
+            self.authorizationDisposable = (combineLatest(DeviceAccess.authorizationStatus(subject: .contacts), permissionWarningSuppressedAndSortOrder, hidePermissionWarnings)
+            |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder, hidePermissionWarnings in
                 if let strongSelf = self {
                     let (suppressed, sortOrder) = suppressedAndSortOrder
-                    strongSelf.tabBarItem.badgeValue = ![.allowed, .limited].contains(status) && !suppressed ? "!" : nil
+                    strongSelf.tabBarItem.badgeValue = ![.allowed, .limited].contains(status) && !suppressed && !hidePermissionWarnings ? "!" : nil
                     strongSelf.sortOrderPromise.set(.single(sortOrder))
                 }
             }).strict()

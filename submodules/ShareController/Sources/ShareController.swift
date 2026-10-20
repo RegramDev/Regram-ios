@@ -347,7 +347,14 @@ public final class ShareController: ViewController {
     private let fromForeignApp: Bool
     private let collectibleItemInfo: TelegramCollectibleItemInfo?
     
-    private let peers = Promise<([(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], EnginePeer)>()
+    // MARK: Regram — 文件夹标签选择驱动分享目标列表重查。
+    private let selectedChatListFilterId = ValuePromise<Int32?>(nil, ignoreRepeated: true)
+    private let peers = Promise<(
+        peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)],
+        accountPeer: EnginePeer,
+        chatListFilters: [ChatListFilter],
+        selectedChatListFilterId: Int32?
+    )>()
     private let peersDisposable = MetaDisposable()
     private let readyDisposable = MetaDisposable()
     private let accountActiveDisposable = MetaDisposable()
@@ -645,6 +652,9 @@ public final class ShareController: ViewController {
             presetText: self.presetText,
             defaultAction: self.defaultAction,
             mediaParameters: mediaParameters,
+            selectChatListFilter: { [weak self] id in // MARK: Regram
+                self?.selectedChatListFilterId.set(id)
+            },
             requestLayout: { [weak self] transition in
                 self?.requestLayout(
                     transition: transition
@@ -1220,7 +1230,15 @@ public final class ShareController: ViewController {
         self.peersDisposable.set((self.peers.get()
         |> deliverOnMainQueue).start(next: { [weak self] next in
             if let strongSelf = self {
-                strongSelf.controllerNode.updatePeers(context: strongSelf.currentContext, switchableAccounts: strongSelf.switchableAccounts, peers: next.0, accountPeer: next.1, defaultAction: strongSelf.defaultAction)
+                strongSelf.controllerNode.updatePeers(
+                    context: strongSelf.currentContext,
+                    switchableAccounts: strongSelf.switchableAccounts,
+                    peers: next.peers,
+                    accountPeer: next.accountPeer,
+                    chatListFilters: next.chatListFilters,
+                    selectedChatListFilterId: next.selectedChatListFilterId,
+                    defaultAction: strongSelf.defaultAction
+                ) // MARK: Regram
             }
         }))
         self._ready.set(self.controllerNode.ready.get())
@@ -2448,43 +2466,88 @@ public final class ShareController: ViewController {
     }
     
     private func switchToAccount(account: ShareControllerAccountContext, animateIn: Bool) {
+        self.peersDisposable.set(nil)
         self.currentContext = account
         self.accountActiveDisposable.set(self.environment.setAccountUserInterfaceInUse(id: account.accountId))
+        self.selectedChatListFilterId.set(nil) // MARK: Regram
         
-        let tailChatList = account.stateManager.postbox.tailChatListView(
-            groupId: .root,
-            filterPredicate: nil,
-            count: 150,
-            summaryComponents: ChatListEntrySummaryComponents(
-                components: [
-                    ChatListEntryMessageTagSummaryKey(
-                        tag: .unseenPersonalMessage,
-                        actionType: PendingMessageActionType.consumeUnseenPersonalMessage
-                    ): ChatListEntrySummaryComponents.Component(
-                        tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
-                        actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
-                    ),
-                    ChatListEntryMessageTagSummaryKey(
-                        tag: .unseenReaction,
-                        actionType: PendingMessageActionType.readReactionOrPollVote
-                    ): ChatListEntrySummaryComponents.Component(
-                        tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
-                        actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
-                    ),
-                    ChatListEntryMessageTagSummaryKey(
-                        tag: .unseenPollVote,
-                        actionType: PendingMessageActionType.readReactionOrPollVote
-                    ): ChatListEntrySummaryComponents.Component(
-                        tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
-                        actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
-                    )
-                ]
-            )
+        let summaryComponents = ChatListEntrySummaryComponents(
+            components: [
+                ChatListEntryMessageTagSummaryKey(
+                    tag: .unseenPersonalMessage,
+                    actionType: PendingMessageActionType.consumeUnseenPersonalMessage
+                ): ChatListEntrySummaryComponents.Component(
+                    tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
+                    actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
+                ),
+                ChatListEntryMessageTagSummaryKey(
+                    tag: .unseenReaction,
+                    actionType: PendingMessageActionType.readReactionOrPollVote
+                ): ChatListEntrySummaryComponents.Component(
+                    tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
+                    actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
+                ),
+                ChatListEntryMessageTagSummaryKey(
+                    tag: .unseenPollVote,
+                    actionType: PendingMessageActionType.readReactionOrPollVote
+                ): ChatListEntrySummaryComponents.Component(
+                    tagSummary: ChatListEntryMessageTagSummaryComponent(namespace: Namespaces.Message.Cloud),
+                    actionsSummary: ChatListEntryPendingMessageActionsSummaryComponent(namespace: Namespaces.Message.Cloud)
+                )
+            ]
         )
-        let peer = self.currentContext.stateManager.postbox.combinedView(keys: [PostboxViewKey.basicPeer(self.currentContext.accountPeerId)])
+
+        // MARK: Regram — Share Extension 没有 AccountContext，文件夹标签仅在主 App 启用。
+        let chatListFilters: Signal<[ChatListFilter], NoError>
+        if self.environment.isMainApp,
+           RGSimpleSettings.shared.showFoldersInShareSheet,
+           let accountContext = account as? ShareControllerAppAccountContext {
+            chatListFilters = accountContext.context.engine.peers.currentChatListFilters()
+            |> map { filters in
+                if filters.contains(where: { $0.id == 0 }) {
+                    return filters
+                } else {
+                    return [.allChats] + filters
+                }
+            }
+        } else {
+            chatListFilters = .single([.allChats])
+        }
+
+        let tailChatList: Signal<(view: ChatListView, chatListFilters: [ChatListFilter], selectedChatListFilterId: Int32?), NoError> = combineLatest(
+            chatListFilters,
+            self.selectedChatListFilterId.get()
+        )
+        |> mapToSignal { filters, selectedFilterId in
+            var resolvedSelectedFilterId: Int32?
+            var filterPredicate: ChatListFilterPredicate?
+            if let selectedFilterId, let selectedFilter = filters.first(where: { $0.id == selectedFilterId }) {
+                if case let .filter(_, _, _, data) = selectedFilter {
+                    resolvedSelectedFilterId = selectedFilterId
+                    filterPredicate = makeChatListFilterPredicate(filter: data, accountPeerId: account.accountPeerId)
+                }
+            }
+
+            return account.stateManager.postbox.tailChatListView(
+                groupId: .root,
+                filterPredicate: filterPredicate,
+                count: 150,
+                summaryComponents: summaryComponents,
+                accountPeerId: account.accountPeerId
+            )
+            |> take(1)
+            |> map { view, _ in
+                return (
+                    view: view,
+                    chatListFilters: filters,
+                    selectedChatListFilterId: resolvedSelectedFilterId
+                )
+            }
+        }
+        let peer = account.stateManager.postbox.combinedView(keys: [PostboxViewKey.basicPeer(account.accountPeerId)])
         |> take(1)
         |> map { views -> EnginePeer? in
-            guard let view = views.views[PostboxViewKey.basicPeer(self.currentContext.accountPeerId)] as? BasicPeerView else {
+            guard let view = views.views[PostboxViewKey.basicPeer(account.accountPeerId)] as? BasicPeerView else {
                 return nil
             }
             return view.peer.flatMap(EnginePeer.init)
@@ -2492,14 +2555,19 @@ public final class ShareController: ViewController {
         
         self.peers.set(combineLatest(
             peer,
-            tailChatList |> take(1)
+            tailChatList
         )
-        |> mapToSignal { maybeAccountPeer, view -> Signal<([(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], EnginePeer), NoError> in
+        |> mapToSignal { maybeAccountPeer, chatListState -> Signal<(
+            peers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)],
+            accountPeer: EnginePeer,
+            chatListFilters: [ChatListFilter],
+            selectedChatListFilterId: Int32?
+        ), NoError> in
             let accountPeer = maybeAccountPeer!
             
             var peers: [EngineRenderedPeer] = []
             var possiblePremiumRequiredPeers = Set<EnginePeer.Id>()
-            for entry in view.0.entries.reversed() {
+            for entry in chatListState.view.entries.reversed() {
                 switch entry {
                 case let .MessageEntry(entryData):
                     if let peer = entryData.renderedPeer.peers[entryData.renderedPeer.peerId], peer.id != accountPeer.id, canSendMessagesToPeer(EnginePeer(peer)) {
@@ -2547,19 +2615,32 @@ public final class ShareController: ViewController {
                 }
                 return (result, requiresPremiumForMessaging, requiresStars)
             }
-            |> map { presenceMap, requiresPremiumForMessaging, requiresStars -> ([(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)], EnginePeer) in
+            |> map { presenceMap, requiresPremiumForMessaging, requiresStars in
                 var resultPeers: [(peer: EngineRenderedPeer, presence: EnginePeer.Presence?, requiresPremiumForMessaging: Bool, requiresStars: Int64?)] = []
                 for peer in peers {
                     resultPeers.append((peer, presenceMap[peer.peerId].flatMap { $0 }, requiresPremiumForMessaging[peer.peerId] ?? false, requiresStars[peer.peerId]))
                 }
-                return (resultPeers, accountPeer)
+                return (
+                    peers: resultPeers,
+                    accountPeer: accountPeer,
+                    chatListFilters: chatListState.chatListFilters,
+                    selectedChatListFilterId: chatListState.selectedChatListFilterId
+                )
             }
         })
         var animatedIn = false
         self.peersDisposable.set((self.peers.get()
         |> deliverOnMainQueue).start(next: { [weak self] next in
             if let strongSelf = self {
-                strongSelf.controllerNode.updatePeers(context: strongSelf.currentContext, switchableAccounts: strongSelf.switchableAccounts, peers: next.0, accountPeer: next.1, defaultAction: strongSelf.defaultAction)
+                strongSelf.controllerNode.updatePeers(
+                    context: account,
+                    switchableAccounts: strongSelf.switchableAccounts,
+                    peers: next.peers,
+                    accountPeer: next.accountPeer,
+                    chatListFilters: next.chatListFilters,
+                    selectedChatListFilterId: next.selectedChatListFilterId,
+                    defaultAction: strongSelf.defaultAction
+                ) // MARK: Regram
                 
                 if animateIn && !animatedIn {
                     animatedIn = true

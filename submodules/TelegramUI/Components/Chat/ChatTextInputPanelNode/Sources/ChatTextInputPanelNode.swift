@@ -5188,8 +5188,94 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
             
             let formatMenu = UIMenu(title: self.strings?.TextFormat_Format ?? "Format", image: nil, children: children)
             actions.insert(formatMenu, at: 1)
+            // MARK: Regram — 选中文字菜单平铺样式
+            actions = self.rgFeatureInsertingFlatTextStyles(into: actions, formatMenuIndex: 1, hasSpoilers: hasSpoilers, perform: { [weak self] id in
+                guard let self else {
+                    return
+                }
+                switch id {
+                case .quote:
+                    self.formatAttributesQuote(self)
+                case .spoiler:
+                    self.formatAttributesSpoiler(self)
+                case .bold:
+                    self.formatAttributesBold(self)
+                case .italic:
+                    self.formatAttributesItalic(self)
+                case .monospace:
+                    self.formatAttributesMonospace(self)
+                case .link:
+                    self.formatAttributesLink(self)
+                case .date:
+                    self.formatAttributesDate(self)
+                case .strikethrough:
+                    self.formatAttributesStrikethrough(self)
+                case .underline:
+                    self.formatAttributesUnderline(self)
+                case .code:
+                    self.formatAttributesCodeBlock(self)
+                }
+            })
         }
         return UIMenu(children: actions)
+    }
+
+    // MARK: Regram — 选中文字菜单：把设置里开启的样式按顺序平铺到菜单第一层。
+    // 完整的「格式」子菜单保持在 formatMenuIndex 不动；私密聊天沿用上游规则隐藏引用、剧透和日期。
+    private func rgFeatureInsertingFlatTextStyles(into elements: [UIMenuElement], formatMenuIndex: Int, hasSpoilers: Bool, perform: @escaping (RGFeatureTextStyleMenuItemId) -> Void) -> [UIMenuElement] {
+        let ids = RGSimpleSettings.shared.enabledTextStyleMenuItems.filter { id in
+            switch id {
+            case .quote, .spoiler, .date:
+                return hasSpoilers
+            default:
+                return true
+            }
+        }
+        guard !ids.isEmpty else {
+            return elements
+        }
+        let flatActions: [UIMenuElement] = ids.map { id in
+            let title: String
+            switch id {
+            case .quote:
+                title = self.strings?.TextFormat_Quote ?? "Quote"
+            case .spoiler:
+                title = self.strings?.TextFormat_Spoiler ?? "Spoiler"
+            case .bold:
+                title = self.strings?.TextFormat_Bold ?? "Bold"
+            case .italic:
+                title = self.strings?.TextFormat_Italic ?? "Italic"
+            case .monospace:
+                title = self.strings?.TextFormat_Monospace ?? "Monospace"
+            case .link:
+                title = self.strings?.TextFormat_Link ?? "Link"
+            case .date:
+                title = self.strings?.TextFormat_Date ?? "Date"
+            case .strikethrough:
+                title = self.strings?.TextFormat_Strikethrough ?? "Strikethrough"
+            case .underline:
+                title = self.strings?.TextFormat_Underline ?? "Underline"
+            case .code:
+                title = self.strings?.TextFormat_Code ?? "Code"
+            }
+            return UIAction(title: title, image: nil) { _ in
+                perform(id)
+            }
+        }
+        let index: Int
+        switch RGSimpleSettings.shared.textStyleMenuPosition {
+        case .first:
+            index = 0
+        case .beforeFormat:
+            index = formatMenuIndex
+        case .afterFormat:
+            index = formatMenuIndex + 1
+        case .last:
+            index = elements.count
+        }
+        var result = elements
+        result.insert(UIMenu(title: "", options: .displayInline, children: flatActions), at: min(index, result.count))
+        return result
     }
 
     /// Transforms the editor's default edit-menu elements for the NEW (native) rich-text editor backend.
@@ -5259,6 +5345,31 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         var elements = defaultElements.filter { ($0 as? UIMenu)?.identifier != UIMenu.Identifier("org.telegram.RichTextEditor.format") }
         let insertIndex = min(1, elements.count)
         elements.insert(formatMenu, at: insertIndex)
+        // MARK: Regram — 选中文字菜单平铺样式
+        elements = self.rgFeatureInsertingFlatTextStyles(into: elements, formatMenuIndex: insertIndex, hasSpoilers: hasSpoilers, perform: { [weak self, weak richTextInputNode] id in
+            switch id {
+            case .quote:
+                richTextInputNode?.performFormatAction(.quote)
+            case .spoiler:
+                richTextInputNode?.performFormatAction(.spoiler)
+            case .bold:
+                richTextInputNode?.performFormatAction(.bold)
+            case .italic:
+                richTextInputNode?.performFormatAction(.italic)
+            case .monospace:
+                richTextInputNode?.performFormatAction(.monospace)
+            case .link:
+                self?.interfaceInteraction?.openLinkEditing()
+            case .date:
+                richTextInputNode?.performFormatAction(.date)
+            case .strikethrough:
+                richTextInputNode?.performFormatAction(.strikethrough)
+            case .underline:
+                richTextInputNode?.performFormatAction(.underline)
+            case .code:
+                richTextInputNode?.performFormatAction(.code)
+            }
+        })
         return elements
     }
 

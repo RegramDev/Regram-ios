@@ -53,6 +53,8 @@ swift_library(
         "//submodules/TelegramUI/Components/MessageInputPanelComponent",
         "//submodules/TelegramUI/Components/ChatEntityKeyboardInputNode",
         "//submodules/TelegramUI/Components/Chat/ChatMessagePaymentAlertController",
+        # MARK: Regram — 分享面板文件夹标签
+        "//submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode",
         "//submodules/ChatPresentationInterfaceState",
         "//submodules/CheckNode",
     ],

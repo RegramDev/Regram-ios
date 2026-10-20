@@ -86,6 +86,54 @@ private func findQuoteRange(string: String, quoteText: String, offset: Int?) -> 
     return currentRange
 }
 
+// MARK: Regram — 接收展示时盘古之白需要保护实体内部文本，并同步平移实体 range。
+private func rgFeaturePanguTransformEntities(_ entities: [MessageTextEntity]?, insertedUtf16Offsets: [Int]) -> [MessageTextEntity]? {
+    guard !insertedUtf16Offsets.isEmpty, let entities else {
+        return entities
+    }
+    return entities.map { entity in
+        return MessageTextEntity(range: RGFeaturePangu.transformRange(entity.range, insertedUtf16Offsets: insertedUtf16Offsets), type: entity.type)
+    }
+}
+
+private func rgFeaturePanguProtectedRange(_ entity: MessageTextEntity) -> Range<Int>? {
+    switch entity.type {
+    case .Unknown,
+         .Mention,
+         .Hashtag,
+         .BotCommand,
+         .Url,
+         .Email,
+         .Code,
+         .Pre,
+         .TextUrl,
+         .TextMention,
+         .PhoneNumber,
+         .BankCard,
+         .TonAddress,
+         .CustomEmoji,
+         .FormattedDate,
+         .Custom:
+        return entity.range
+    case .Bold,
+         .Italic,
+         .Strikethrough,
+         .BlockQuote,
+         .Underline,
+         .Spoiler:
+        return nil
+    }
+}
+
+private func rgFeaturePanguProtectedRanges(rawText: String, messageEntities: [MessageTextEntity]?) -> [Range<Int>] {
+    var ranges: [Range<Int>] = []
+    if let messageEntities {
+        ranges.append(contentsOf: messageEntities.compactMap(rgFeaturePanguProtectedRange))
+    }
+    ranges.append(contentsOf: generateTextEntities(rawText, enabledTypes: .all).compactMap(rgFeaturePanguProtectedRange))
+    return ranges
+}
+
 public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     public final class ContainerNode: ASDisplayNode {
     }
@@ -104,6 +152,9 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     private var cachedChatMessageText: CachedChatMessageText?
     
     private var textSelectionState: Promise<ChatControllerSubject.MessageOptionsInfo.SelectionState>?
+    // MARK: Regram — display-only spacing must not change quoted text or offsets.
+    private var rgFeaturePanguInsertedUtf16Offsets: [Int] = []
+    private var rgFeaturePanguSourceText: String?
     
     private var linkPreviewHighlightText: String?
     private var linkPreviewOptionsDisposable: Disposable?
@@ -459,6 +510,25 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     }
                 }
                 
+                // MARK: Regram — 接收展示保留到原文的 UTF-16 映射。
+                let rgFeaturePanguSourceText: String?
+                let rgFeaturePanguInsertedUtf16Offsets: [Int]
+                if RGSimpleSettings.shared.enablePanguOnReceiving {
+                    let transform = RGFeaturePangu.transform(rawText, protectedUtf16Ranges: rgFeaturePanguProtectedRanges(rawText: rawText, messageEntities: messageEntities))
+                    if !transform.insertedUtf16Offsets.isEmpty {
+                        rgFeaturePanguSourceText = rawText
+                        rgFeaturePanguInsertedUtf16Offsets = transform.insertedUtf16Offsets
+                        rawText = transform.text
+                        messageEntities = rgFeaturePanguTransformEntities(messageEntities, insertedUtf16Offsets: transform.insertedUtf16Offsets)
+                    } else {
+                        rgFeaturePanguSourceText = nil
+                        rgFeaturePanguInsertedUtf16Offsets = []
+                    }
+                } else {
+                    rgFeaturePanguSourceText = nil
+                    rgFeaturePanguInsertedUtf16Offsets = []
+                }
+
                 var formattedDateUpdatePeriod: Int32?
                 if let messageEntities {
                     for entity in messageEntities {
@@ -781,6 +851,8 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     return (boundingSize, { [weak self] animation, synchronousLoads, itemApply in
                         if let strongSelf = self {
                             strongSelf.item = item
+                            strongSelf.rgFeaturePanguSourceText = rgFeaturePanguSourceText
+                            strongSelf.rgFeaturePanguInsertedUtf16Offsets = rgFeaturePanguInsertedUtf16Offsets
                             if let updatedCachedChatMessageText = updatedCachedChatMessageText {
                                 strongSelf.cachedChatMessageText = updatedCachedChatMessageText
                             }
@@ -1531,11 +1603,21 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         return nil
     }
     
+    // MARK: Regram — highlight original quotes in text containing display-only pangu spaces.
+    private func rgFeatureDisplayQuoteRange(string: String, quote: String, offset: Int?) -> NSRange? {
+        if let sourceText = self.rgFeaturePanguSourceText,
+           let range = findQuoteRange(string: sourceText, quoteText: quote, offset: offset) {
+            let mapped = RGFeaturePangu.transformRange(range.location ..< NSMaxRange(range), insertedUtf16Offsets: self.rgFeaturePanguInsertedUtf16Offsets)
+            return NSRange(location: mapped.lowerBound, length: mapped.count)
+        }
+        return findQuoteRange(string: string, quoteText: quote, offset: offset)
+    }
+
     public func getQuoteRect(quote: String, offset: Int?) -> CGRect? {
         var rectsSet: [CGRect] = []
         if !quote.isEmpty, let cachedLayout = self.textNode.textNode.cachedLayout, let string = cachedLayout.attributedString?.string {
             
-            let range = findQuoteRange(string: string, quoteText: quote, offset: offset)
+            let range = self.rgFeatureDisplayQuoteRange(string: string, quote: quote, offset: offset)
             if let range, let rects = cachedLayout.rangeRects(in: range)?.rects, !rects.isEmpty {
                 rectsSet = rects
             }
@@ -1559,7 +1641,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
     public func updateQuoteTextHighlightState(text: String?, offset: Int?, color: UIColor, animated: Bool) {
         var rectsSet: [CGRect] = []
         if let text = text, !text.isEmpty, let cachedLayout = self.textNode.textNode.cachedLayout, let string = cachedLayout.attributedString?.string {
-            let quoteRange = findQuoteRange(string: string, quoteText: text, offset: offset)
+            let quoteRange = self.rgFeatureDisplayQuoteRange(string: string, quote: text, offset: offset)
             if let quoteRange, let rects = cachedLayout.rangeRects(in: quoteRange)?.rects, !rects.isEmpty {
                 rectsSet = rects
             }
@@ -1812,18 +1894,43 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
             return NSRange(location: location, length: upperBound - location)
         }
         
-        let range = normalizedSelectionRange(rawRange, length: string.length)
-        guard range.length > 0 else {
+        let displayRange = normalizedSelectionRange(rawRange, length: string.length)
+        guard displayRange.length > 0 else {
             return nil
         }
 
-        let nsString = string.string as NSString
-        let substring = nsString.substring(with: range)
-        let offset = range.location
+        // MARK: Regram — quote must match the underlying message text.
+        // Receiving pangu inserts display-only spaces; map selection back before quoting.
+        var range = displayRange
+        var substring = (string.string as NSString).substring(with: displayRange)
+        var offset = displayRange.location
+        var entitySource: [MessageTextEntity]? = item.message.textEntitiesAttribute?.entities
+
+        if !self.rgFeaturePanguInsertedUtf16Offsets.isEmpty, let sourceText = self.rgFeaturePanguSourceText {
+            let sourceNSString = sourceText as NSString
+            let mapped = RGFeaturePangu.reverseTransformRange(displayRange, insertedUtf16Offsets: self.rgFeaturePanguInsertedUtf16Offsets, originalLength: sourceNSString.length)
+            let mappedRange = normalizedSelectionRange(mapped, length: sourceNSString.length)
+            guard mappedRange.length > 0 else {
+                return nil
+            }
+
+            range = mappedRange
+            substring = sourceNSString.substring(with: mappedRange)
+            offset = mappedRange.location
+
+            if sourceText == item.message.text {
+                entitySource = item.message.textEntitiesAttribute?.entities
+            } else if let updatingMedia = item.attributes.updatingMedia, sourceText == updatingMedia.text {
+                entitySource = updatingMedia.entities?.entities
+            } else {
+                // Translation / summary text is not what the server validates quotes against.
+                entitySource = nil
+            }
+        }
         
         var entities: [MessageTextEntity] = []
-        if let textEntitiesAttribute = item.message.textEntitiesAttribute {
-            entities = messageTextEntitiesInRange(entities: textEntitiesAttribute.entities, range: range, onlyQuoteable: true)
+        if let entitySource { // MARK: Regram
+            entities = messageTextEntitiesInRange(entities: entitySource, range: range, onlyQuoteable: true)
         }
         
         return (substring, entities, offset)

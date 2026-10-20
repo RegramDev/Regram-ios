@@ -1,5 +1,7 @@
 import Foundation
+import RGChatTools // MARK: Regram
 import RGSimpleSettings
+import RGFeatureSignals // MARK: Regram
 import RGPangu
 import UIKit
 import AsyncDisplayKit
@@ -217,6 +219,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     private var chatLocationContextHolder: Atomic<ChatLocationContextHolder?>
     let controllerInteraction: ChatControllerInteraction
     private weak var controller: ChatControllerImpl?
+    private let rgFeatureChatToolsDisposable = MetaDisposable() // MARK: Regram
     
     let navigationBar: NavigationBar?
     let statusBar: StatusBar?
@@ -271,7 +274,24 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     private var currentListViewLayout: (size: CGSize, insets: UIEdgeInsets, scrollIndicatorInsets: UIEdgeInsets)?
     
     private(set) var searchNavigationNode: ChatSearchNavigationContentNode?
-    
+    // MARK: Regram — 单手模式：聊天内搜索框放在底部搜索面板里。
+    private var rgFeatureSearchFieldIsAtBottom = false
+    private var rgFeatureSearchFieldPendingActivation = false
+
+    /// 只在普通聊天页启用：内嵌在个人资料里的聊天和话题标签搜索页各有自己的搜索框位置，保持原样。
+    private func rgFeatureShouldPlaceSearchFieldAtBottom() -> Bool {
+        guard RGSimpleSettings.shared.chatSearchFieldAtBottom, self.navigationBar != nil else {
+            return false
+        }
+        guard case .standard(.default) = self.chatPresentationInterfaceState.mode else {
+            return false
+        }
+        if case let .customChatContents(contents) = self.chatPresentationInterfaceState.subject, case .hashTagSearch = contents.kind {
+            return false
+        }
+        return true
+    }
+
     private var navigationModalFrame: NavigationModalFrame?
     
     let inputPanelContainerNode: ChatInputPanelContainer
@@ -919,6 +939,11 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         assert(Queue.mainQueue().isCurrent())
         
         self.setupHistoryNode()
+        // MARK: Regram - Apply toolbar settings immediately to an open chat.
+        self.rgFeatureChatToolsDisposable.set((rgFeatureBoolSignal("features.chatToolsEnabled", defaultValue: false)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] _ in
+            self?.requestLayout(.animated(duration: 0.25, curve: .easeInOut))
+        }))
         
         self.interactiveEmojisDisposable = (self.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.appConfiguration))
         |> map { preferencesView -> InteractiveEmojiConfiguration in
@@ -1096,6 +1121,7 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
     }
     
     deinit {
+        self.rgFeatureChatToolsDisposable.dispose() // MARK: Regram
         self.interactiveEmojisDisposable?.dispose()
         self.openStickersDisposable?.dispose()
         self.displayVideoUnmuteTipDisposable?.dispose()
@@ -1222,6 +1248,44 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         self.wrappingNode.update(size: layout.size, cornerRadius: layout.deviceMetrics.screenCornerRadius, transition: .immediate)
     }
     
+    // MARK: Regram - Reuse the same actions as the native chat controls.
+    private func performRGFeatureChatTool(_ action: RGChatToolsComponent.Action) {
+        switch action {
+        case .search:
+            self.interfaceInteraction?.beginMessageSearch(.everything, "")
+        case .pinned:
+            if let id = self.chatPresentationInterfaceState.pinnedMessage?.message.id ?? self.chatPresentationInterfaceState.pinnedMessageId {
+                self.interfaceInteraction?.openPinnedList(id)
+            }
+        case .beginning:
+            self.interfaceInteraction?.scrollToTop()
+        case .notifications:
+            self.interfaceInteraction?.togglePeerNotifications()
+        case .cache:
+            self.controller?.navigationButtonAction(.clearCache)
+        case .media:
+            guard let controller = self.controller, let peer = self.chatPresentationInterfaceState.renderedPeer?.peer else {
+                return
+            }
+            let _ = controller.presentVoiceMessageDiscardAlert(action: { [weak controller] in
+                guard let controller else {
+                    return
+                }
+                if let mediaController = controller.context.sharedContext.makePeerInfoController(
+                    context: controller.context,
+                    updatedPresentationData: controller.updatedPresentationData,
+                    peer: EnginePeer(peer),
+                    mode: .media(kind: .photoVideo, messageIndex: .upperBound(peerId: peer.id)),
+                    avatarInitiallyExpanded: false,
+                    fromChat: true,
+                    requestsContext: nil
+                ) {
+                    controller.push(mediaController)
+                }
+            })
+        }
+    }
+
     func containerLayoutUpdated(_ layout: ContainerViewLayout, navigationBarHeight: CGFloat, transition protoTransition: ContainedViewLayoutTransition, listViewTransaction: (ListViewUpdateSizeAndInsets, CGFloat, Bool, @escaping () -> Void) -> Void, updateExtraNavigationBarBackgroundHeight: (CGFloat, CGFloat, CGSize?, ContainedViewLayoutTransition) -> Void) {
         let transition: ContainedViewLayoutTransition
         if let _ = self.scheduledAnimateInAsOverlayFromNode {
@@ -1484,6 +1548,37 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         var headerPanels: [HeaderPanelContainerComponent.Panel] = []
         var footerPanels: [HeaderPanelContainerComponent.Panel] = []
         let hideTopPanels = self.controller?.hideTopPanels ?? false
+
+        // MARK: Regram - Keep the optional tools alongside existing header panels.
+        let allowsChatTools: Bool
+        switch self.chatPresentationInterfaceState.subject {
+        case nil, .message:
+            allowsChatTools = true
+        default:
+            allowsChatTools = false
+        }
+        if !hideTopPanels, allowsChatTools, RGSimpleSettings.shared.chatToolsEnabled,
+           case .standard(.default) = self.chatPresentationInterfaceState.mode,
+           case let .peer(peerId) = self.chatLocation,
+           self.chatPresentationInterfaceState.renderedPeer?.peer != nil,
+           !self.chatPresentationInterfaceState.isNotAccessible,
+           self.chatPresentationInterfaceState.search == nil,
+           self.chatPresentationInterfaceState.interfaceState.selectionState == nil {
+            headerPanels.append(HeaderPanelContainerComponent.Panel(
+                key: "rgFeatureTools",
+                orderIndex: -1,
+                component: AnyComponent(RGChatToolsComponent(
+                    theme: self.chatPresentationInterfaceState.theme,
+                    languageCode: self.chatPresentationInterfaceState.strings.baseLanguageCode,
+                    isMuted: self.chatPresentationInterfaceState.peerIsMuted,
+                    hasPinnedMessages: self.chatPresentationInterfaceState.pinnedMessageId != nil || self.chatPresentationInterfaceState.pinnedMessage != nil,
+                    showNotifications: peerId != self.context.account.peerId,
+                    action: { [weak self] action in
+                        self?.performRGFeatureChatTool(action)
+                    }
+                ))
+            ))
+        }
         
         if !hideTopPanels, self.chatPresentationInterfaceState.search == nil, let headerTopicsPanel = headerTopicsPanelForChatPresentationInterfaceState(self.chatPresentationInterfaceState, context: self.context, controllerInteraction: self.controllerInteraction, interfaceInteraction: self.interfaceInteraction, force: false) {
             let panel = HeaderPanelContainerComponent.Panel(
@@ -1907,7 +2002,12 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
         
         let inputPanelBottomInset = max(insets.bottom, inputPanelBottomInsetTerm)
-        
+
+        // MARK: Regram — 单手模式：搜索框作为底部搜索面板的第二行，面板因此变高，聊天记录让出空间。
+        if let tagSearchPanelNode = inputPanelNodes.primary as? ChatTagSearchInputPanelNode {
+            tagSearchPanelNode.rgFeatureSearchFieldNode = self.rgFeatureSearchFieldIsAtBottom ? self.searchNavigationNode : nil
+        }
+
         if let inputPanelNode = inputPanelNodes.primary, !previewing {
             if inputPanelNode !== self.inputPanelNode {
                 if let inputTextPanelNode = self.inputPanelNode as? ChatTextInputPanelNode {
@@ -1944,7 +2044,13 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             dismissedInputPanelNode = self.inputPanelNode
             self.inputPanelNode = nil
         }
-        
+
+        // MARK: Regram — 底部搜索框挂进面板、进入窗口后才能获得焦点（见 updateChatPresentationInterfaceState）。
+        if self.rgFeatureSearchFieldPendingActivation, let searchNavigationNode = self.searchNavigationNode, searchNavigationNode.view.window != nil {
+            self.rgFeatureSearchFieldPendingActivation = false
+            searchNavigationNode.activate()
+        }
+
         if let secondaryInputPanelNode = inputPanelNodes.secondary, !previewing {
             if secondaryInputPanelNode !== self.secondaryInputPanelNode {
                 dismissedSecondaryInputPanelNode = self.secondaryInputPanelNode
@@ -2342,11 +2448,16 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
         }
         
         var immediatelyLayoutOverlayContextPanelAndAnimateAppearance = false
-        if let overlayContextPanelNode = chatOverlayContextPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.overlayContextPanelNode, interfaceInteraction: self.interfaceInteraction, chatPresentationContext: self.controllerInteraction.presentationContext) {
+        if let overlayContextPanelNode = chatOverlayContextPanelForChatPresentationIntefaceState(self.chatPresentationInterfaceState, context: self.context, currentPanel: self.overlayContextPanelNode, interfaceInteraction: self.interfaceInteraction, chatPresentationContext: self.controllerInteraction.presentationContext, rgFeatureSearchFieldAtBottom: self.rgFeatureSearchFieldIsAtBottom) { // MARK: Regram
             if overlayContextPanelNode !== self.overlayContextPanelNode {
                 dismissedOverlayContextPanelNode = self.overlayContextPanelNode
                 self.overlayContextPanelNode = overlayContextPanelNode
-                if let navigationBar = self.navigationBar {
+                // MARK: Regram — 底部搜索框的成员候选列表和输入框的 @ 提及列表放在同一层：排在输入面板之下，
+                // 展开和收起时从面板后面滑进滑出，而不是从搜索面板上方划过。
+                if let mentionPanelNode = overlayContextPanelNode as? MentionChatInputContextPanelNode, mentionPanelNode.rgFeatureAnchoredAtBottom {
+                    overlayContextPanelNode.clipsToBounds = true
+                    self.inputContextPanelContainer.addSubnode(overlayContextPanelNode)
+                } else if let navigationBar = self.navigationBar {
                     self.contentContainerNode.contentNode.insertSubnode(overlayContextPanelNode, belowSubnode: navigationBar)
                 } else {
                     self.contentContainerNode.contentNode.addSubnode(overlayContextPanelNode)
@@ -2906,7 +3017,20 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
             inputContextPanelNode.updateLayout(size: panelFrame.size, leftInset: layout.safeInsets.left, rightInset: layout.safeInsets.right, bottomInset: insets.bottom + inputPanelsHeight + 8.0, transition: transition, interfaceState: self.chatPresentationInterfaceState)
         }
         
-        if let overlayContextPanelNode = self.overlayContextPanelNode {
+        if let overlayContextPanelNode = self.overlayContextPanelNode, let mentionPanelNode = overlayContextPanelNode as? MentionChatInputContextPanelNode, mentionPanelNode.rgFeatureAnchoredAtBottom {
+            // MARK: Regram — 区域止于底部面板上沿附近并裁掉超出部分（见插入处的 clipsToBounds）：搜索面板只有几块玻璃按钮，
+            // 挡不住它后面的东西，列表必须在面板上沿处渐隐消失，滑进滑出和下拉时才像是藏到了面板后面。
+            // 区域再往下多伸出一段渐隐带，藏在面板后面；列表各行停在渐隐带之上。
+            let fadeHeight = MentionChatInputContextPanelNode.rgFeatureBottomFadeHeight
+            let panelFrame = CGRect(origin: CGPoint(x: 0.0, y: insets.top), size: CGSize(width: layout.size.width, height: max(0.0, inputBackgroundFrame.minY + fadeHeight - insets.top)))
+            let bottomInset: CGFloat = fadeHeight + 8.0
+            if immediatelyLayoutOverlayContextPanelAndAnimateAppearance {
+                overlayContextPanelNode.frame = panelFrame
+                overlayContextPanelNode.updateLayout(size: panelFrame.size, leftInset: layout.safeInsets.left, rightInset: layout.safeInsets.right, bottomInset: bottomInset, transition: .immediate, interfaceState: self.chatPresentationInterfaceState)
+            }
+            transition.updateFrame(node: overlayContextPanelNode, frame: panelFrame)
+            overlayContextPanelNode.updateLayout(size: panelFrame.size, leftInset: layout.safeInsets.left, rightInset: layout.safeInsets.right, bottomInset: bottomInset, transition: transition, interfaceState: self.chatPresentationInterfaceState)
+        } else if let overlayContextPanelNode = self.overlayContextPanelNode {
             let panelFrame = overlayContextPanelNode.placement == .overTextInput ? inputContextPanelsOverMainPanelFrame : inputContextPanelsFrame
             if immediatelyLayoutOverlayContextPanelAndAnimateAppearance {
                 overlayContextPanelNode.frame = panelFrame
@@ -3893,21 +4017,36 @@ class ChatControllerNode: ASDisplayNode, ASScrollViewDelegate {
                         activate = true
                     }
                     self.searchNavigationNode = ChatSearchNavigationContentNode(context: self.context, theme: self.chatPresentationInterfaceState.theme, strings: self.chatPresentationInterfaceState.strings, chatLocation: self.chatPresentationInterfaceState.chatLocation, interaction: interfaceInteraction, presentationInterfaceState: self.chatPresentationInterfaceState)
+                    // MARK: Regram — 单手模式：本次搜索的搜索框放在底部搜索面板里，搜索结束前不再变动。
+                    self.rgFeatureSearchFieldIsAtBottom = self.rgFeatureShouldPlaceSearchFieldAtBottom()
                 }
-                if let navigationBar = self.navigationBar {
+                if self.rgFeatureSearchFieldIsAtBottom {
+                    // 由 containerLayoutUpdated 交给底部的 ChatTagSearchInputPanelNode，导航栏保持聊天标题。
+                } else if let navigationBar = self.navigationBar {
                     navigationBar.setContentNode(self.searchNavigationNode, animated: transitionIsAnimated)
                 } else {
                     self.controller?.customNavigationBarContentNode = self.searchNavigationNode
                 }
                 self.searchNavigationNode?.update(presentationInterfaceState: self.chatPresentationInterfaceState)
-                
+
                 if case let .customChatContents(contents) = self.chatPresentationInterfaceState.subject, case .hashTagSearch = contents.kind {
                     activate = false
                 }
                 if activate {
-                    self.searchNavigationNode?.activate()
+                    // MARK: Regram — 底部搜索框要等下一次排版挂进面板、进入窗口后才能获得焦点。
+                    if self.rgFeatureSearchFieldIsAtBottom && self.searchNavigationNode?.view.window == nil {
+                        self.rgFeatureSearchFieldPendingActivation = true
+                    } else {
+                        self.searchNavigationNode?.activate()
+                    }
                 }
             } else if let _ = self.searchNavigationNode {
+                // MARK: Regram
+                if self.rgFeatureSearchFieldIsAtBottom {
+                    self.searchNavigationNode?.removeFromSupernode()
+                    self.rgFeatureSearchFieldIsAtBottom = false
+                    self.rgFeatureSearchFieldPendingActivation = false
+                }
                 self.searchNavigationNode = nil
                 self.controller?.customNavigationBarContentNode = nil
                 self.navigationBar?.setContentNode(nil, animated: transitionIsAnimated)

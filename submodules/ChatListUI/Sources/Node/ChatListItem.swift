@@ -1,3 +1,5 @@
+import RGStrings // MARK: Regram
+import RGFeatureSignals // MARK: Regram
 import RGSimpleSettings
 import Foundation
 import UIKit
@@ -499,6 +501,23 @@ public class ChatListItem: ListViewItem {
     let hideCommunityAvatarBadge: Bool
     let displayHiddenPeerIcon: Bool
     
+    // MARK: Regram — 只控制聊天列表头像，保留社区内部和资料页行为。
+    var rgFeatureUsesAvatarSettings: Bool {
+        guard case .chatList = self.chatListLocation else {
+            return false
+        }
+        return !self.useCommunityViewLayout && !self.hideCommunityAvatarBadge
+    }
+
+    var rgFeatureHidesAvatarStories: Bool {
+        return self.rgFeatureUsesAvatarSettings && RGSimpleSettings.shared.disableChatAvatarStoriesEffective
+    }
+
+    // MARK: Regram — 头像主体只在“打开社区”模式下拦截普通行点击。
+    var rgFeatureOpensCommunityFromAvatar: Bool {
+        return !RGSimpleSettings.shared.disableCommunityChatGrouping && (!self.rgFeatureUsesAvatarSettings || RGSimpleSettings.shared.communityAvatarTapActionValue == .community)
+    }
+
     public let selectable: Bool = true
     
     public var approximateHeight: CGFloat {
@@ -611,6 +630,10 @@ public class ChatListItem: ListViewItem {
     }
     
     public func selected(listView: ListView) {
+        self.rgFeatureSelectChat() // MARK: Regram — 与头像回退共用列表原有导航逻辑。
+    }
+
+    fileprivate func rgFeatureSelectChat() {
         switch self.content {
         case .loading:
             break
@@ -1393,12 +1416,14 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     private let communityAvatarShadowNode: ASImageNode
     private var communityAvatarBadgeBackgroundView: GlassBackgroundView?
     private var communityAvatarBadgeIconView: GlassBackgroundView.ContentImageView?
+    private var rgFeatureCommunityArrowButton: UIButton? // MARK: Regram
     public let avatarNode: AvatarNode
     var avatarIconView: ComponentHostView<Empty>?
     var avatarIconComponent: EmojiStatusComponent?
     var avatarVideoNode: AvatarVideoNode?
     var avatarTapRecognizer: UITapGestureRecognizer?
     private var avatarMediaNode: ChatListMediaPreviewNode?
+    private var rgFeatureAvatarSettingsDisposable: Disposable? // MARK: Regram
     
     private var inlineNavigationMarkLayer: SimpleLayer?
     
@@ -1556,6 +1581,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 case .loading:
                     return nil
                 case let .groupReference(groupReferenceData):
+                    if RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList { // MARK: Regram
+                        return rgFeatureI18n("features.MessagePlaceholderInArchived", item.presentationData.strings.baseLanguageCode)
+                    }
                     let peers = groupReferenceData.peers
                     let messageValue = groupReferenceData.message
                     if let message = messageValue, let peer = peers.first?.peer {
@@ -1593,6 +1621,9 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         return item.presentationData.strings.VoiceOver_ChatList_MessageEmpty
                     }
                 case let .peer(peerData):
+                    if RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList, peerData.peer.peerId == item.context.account.peerId, case .chatList = item.chatListLocation { // MARK: Regram
+                        return rgFeatureI18n("features.MessagePlaceholderInSaved", item.presentationData.strings.baseLanguageCode)
+                    }
                     if let message = peerData.messages.last {
                         var result = ""
                         if message.flags.contains(.Incoming) {
@@ -1843,6 +1874,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
 
     deinit {
         self.cachedDataDisposable.dispose()
+        self.rgFeatureAvatarSettingsDisposable?.dispose() // MARK: Regram
     }
     
     override public func secondaryAction(at point: CGPoint) {
@@ -1855,6 +1887,30 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
     func setupItem(item: ChatListItem, synchronousLoads: Bool) {
         let previousItem = self.item
         self.item = item
+
+        // MARK: Regram — 节点级订阅同时覆盖已有列表、搜索结果和节点复用。
+        if self.rgFeatureAvatarSettingsDisposable == nil {
+            self.rgFeatureAvatarSettingsDisposable = (combineLatest(
+                rgFeatureBoolSignal("features.hideStories", defaultValue: false),
+                rgFeatureBoolSignal("features.disableChatAvatarStories", defaultValue: false),
+                rgFeatureStringSignal("features.communityAvatarTapAction", defaultValue: RGFeatureCommunityAvatarTapAction.community.rawValue),
+                rgFeatureBoolSignal("features.disableCommunityChatGrouping", defaultValue: false),
+                rgFeatureBoolSignal("features.hideSavedAndArchivedMessagesInList", defaultValue: false)
+            )
+            |> deliverOnMainQueue).start(next: { [weak self] _ in
+                // 异步到下一轮，避免初始订阅重入和 UserDefaults setter 的独占访问。
+                Queue.mainQueue().justDispatch { [weak self] in
+                    guard let self, let item = self.item else {
+                        return
+                    }
+                    self.setupItem(item: item, synchronousLoads: false)
+                    if let params = self.layoutParams {
+                        let (_, apply) = self.asyncLayout()(item, params.6, params.1, params.2, params.3, params.4, params.5)
+                        let _ = apply(false, false)
+                    }
+                }
+            })
+        }
         
         var storyState: ChatListItemContent.StoryState?
         if case let .peer(peerData) = item.content {
@@ -1866,6 +1922,8 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         let rgCompactChatList = RGSimpleSettings.shared.compactChatList
         let rgCompactMessagePreview = RGCompactMessagePreviewLayout.isEnabled()
         let rgAvatarScaleDivisor: CGFloat = RGCompactMessagePreviewLayout.avatarScaleDivisor(compactChatList: rgCompactChatList, compactMessagePreview: rgCompactMessagePreview)
+        if item.rgFeatureHidesAvatarStories { storyState = nil }
+        if item.rgFeatureUsesAvatarSettings, let stats = storyState?.stats, stats.totalCount == 0 && !stats.hasLiveItems { storyState = nil }
         var peer: EnginePeer?
         var displayAsMessage = false
         var enablePreview = true
@@ -1914,7 +1972,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             lineWidth: 2.33,
             inactiveLineWidth: 1.33
         ), transition: .immediate)
-        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && ((storyState != nil && !peerIsCommunity) || peerLinkedCommunityId != nil)
+        self.avatarNode.isUserInteractionEnabled = !item.useCommunityViewLayout && !item.editing && !item.hasActiveRevealControls && ((storyState != nil && !peerIsCommunity) || (peerLinkedCommunityId != nil && item.rgFeatureOpensCommunityFromAvatar))
         
         if let stats = storyState?.stats, stats.hasLiveItems {
             if self.avatarLiveBadge == nil {
@@ -2375,7 +2433,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     let peerValue = peerData.peer
                     if case .community = peerValue.peer {
                         isCommunity = true
-                    } else if !item.hideCommunityAvatarBadge, peerValue.peer?.containerPeerId != nil {
+                    } else if !item.hideCommunityAvatarBadge, !RGSimpleSettings.shared.disableCommunityChatGrouping, peerValue.peer?.containerPeerId != nil { // MARK: Regram — 拆分显示时隐藏 Community 展开徽标
                         displayCommunityAvatarBadge = true
                     }
                     let threadInfoValue = peerData.threadInfo
@@ -2617,12 +2675,17 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             let contentData: ContentData
+            let rgFeatureHideSavedMessagePreview: Bool // MARK: Regram
+            if case let .chat(itemPeer) = contentPeer, case .chatList = item.chatListLocation {
+                rgFeatureHideSavedMessagePreview = RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList && itemPeer.peerId == item.context.account.peerId
+            } else {
+                rgFeatureHideSavedMessagePreview = false
+            }
             
             var hideAuthor = false
             switch contentPeer {
                 case let .chat(itemPeer):
                     var (peer, initialHideAuthor, messageText, messageEntities, spoilers, customEmojiRanges, richTextPreview) = chatListItemStrings(strings: item.presentationData.strings, nameDisplayOrder: item.presentationData.nameDisplayOrder, dateTimeFormat: item.presentationData.dateTimeFormat, contentSettings: item.context.currentContentSettings.with { $0 }, messages: messages, chatPeer: itemPeer, accountPeerId: item.context.account.peerId, enableMediaEmoji: !enableChatListPhotos, isPeerGroup: isPeerGroup)
-                    
                     if case let .psa(_, maybePsaText) = promoInfo, let psaText = maybePsaText {
                         initialHideAuthor = true
                         messageText = psaText
@@ -2649,6 +2712,14 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                     default:
                         break
+                    }
+                    if rgFeatureHideSavedMessagePreview { // MARK: Regram — 收藏夹列表仅显示固定占位文案。
+                        initialHideAuthor = true
+                        messageText = rgFeatureI18n("features.MessagePlaceholderInSaved", item.presentationData.strings.baseLanguageCode)
+                        messageEntities = []
+                        spoilers = nil
+                        customEmojiRanges = nil
+                        richTextPreview = nil
                     }
                     
                     contentData = .chat(itemPeer: itemPeer, threadInfo: threadInfo, peer: peer, hideAuthor: hideAuthor, messageText: messageText, messageEntities: messageEntities, spoilers: spoilers, customEmojiRanges: customEmojiRanges, richTextPreview: richTextPreview)
@@ -2798,6 +2869,11 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             peerText = EnginePeer(effectiveAuthor).displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                             ignoreForwardedIcon = true
                         }
+                    }
+                    if rgFeatureHideSavedMessagePreview { // MARK: Regram — 不泄露收藏夹来源作者或媒体类型。
+                        peerText = nil
+                        authorIsCurrentChat = true
+                        ignoreForwardedIcon = true
                     }
                 
                     if let _ = peerText, case let .channel(channel) = itemPeer.chatMainPeer, channel.isForumOrMonoForum, threadInfo == nil {
@@ -3102,7 +3178,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             }
                         }
                 
-                        var displayMediaPreviews = true
+                        var displayMediaPreviews = !rgFeatureHideSavedMessagePreview // MARK: Regram
                         if message._asMessage().containsSecretMedia {
                             displayMediaPreviews = false
                         } else if let _ = message.peers[message.id.peerId] as? TelegramSecretChat {
@@ -3226,6 +3302,10 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                     }
                 case let .group(peers):
+                    if RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList { // MARK: Regram — 归档入口仅显示固定占位文案。
+                        attributedText = NSAttributedString(string: rgFeatureI18n("features.MessagePlaceholderInArchived", item.presentationData.strings.baseLanguageCode), font: textFont, textColor: theme.messageTextColor)
+                        break
+                    }
                     let textString = NSMutableAttributedString(string: "")
                     var isFirst = true
                     for peer in peers {
@@ -3241,7 +3321,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                             }
                         }
                     }
-                    if textString.length == 0, case let .groupReference(data) = item.content, let storyState = data.storyState, storyState.stats.totalCount != 0 {
+                    if textString.length == 0, !item.rgFeatureHidesAvatarStories, case let .groupReference(data) = item.content, let storyState = data.storyState, storyState.stats.totalCount != 0 { // MARK: Regram — 归档隐藏头像动态时不残留动态计数
                         let storyText: String = item.presentationData.strings.ChatList_ArchiveStoryCount(Int32(storyState.stats.totalCount))
                         textString.append(NSAttributedString(string: storyText, font: textFont, textColor: theme.messageTextColor))
                     }
@@ -4296,7 +4376,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         strongSelf.communityAvatarShadowNode.isHidden = true
                     }
 
-                    if useChatListLayout && displayCommunityAvatarBadge && avatarContentImageSpec == nil && !item.useCommunityViewLayout {
+                    if useChatListLayout && displayCommunityAvatarBadge && avatarContentImageSpec == nil && !item.useCommunityViewLayout && !RGSimpleSettings.shared.disableCommunityChatGrouping && (!item.rgFeatureUsesAvatarSettings || RGSimpleSettings.shared.communityAvatarTapActionValue != .chat) {
                         let communityAvatarBadgeBackgroundView: GlassBackgroundView
                         let communityAvatarBadgeIconView: GlassBackgroundView.ContentImageView
                         if let currentBackgroundView = strongSelf.communityAvatarBadgeBackgroundView, let currentIconView = strongSelf.communityAvatarBadgeIconView {
@@ -4327,6 +4407,24 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         communityAvatarBadgeBackgroundView.update(size: badgeSize, cornerRadius: badgeSize.height * 0.5, isDark: item.presentationData.theme.overallDarkAppearance, tintColor: .init(kind: .panel), transition: ComponentTransition(transition))
                         transition.updateFrame(view: communityAvatarBadgeBackgroundView, frame: badgeFrame)
 
+                        // MARK: Regram — 箭头独立命中，头像主体仍保留动态或普通聊天行为。
+                        if item.rgFeatureUsesAvatarSettings && RGSimpleSettings.shared.communityAvatarTapActionValue == .arrow {
+                            let button: UIButton
+                            if let current = strongSelf.rgFeatureCommunityArrowButton {
+                                button = current
+                            } else {
+                                button = UIButton(type: .custom)
+                                button.addTarget(strongSelf, action: #selector(ChatListItemNode.rgFeatureCommunityArrowPressed), for: .touchUpInside)
+                                strongSelf.avatarContainerNode.view.addSubview(button)
+                                strongSelf.rgFeatureCommunityArrowButton = button
+                            }
+                            button.isHidden = item.editing || item.hasActiveRevealControls || item.interaction.inlineNavigationLocation != nil
+                            button.accessibilityLabel = rgFeatureI18n("features.CommunityAvatarTapAction.community", item.presentationData.strings.baseLanguageCode)
+                            transition.updateFrame(view: button, frame: badgeFrame)
+                        } else {
+                            strongSelf.rgFeatureCommunityArrowButton?.isHidden = true
+                        }
+
                         if let arrowImage = UIImage(bundleImageName: "Media Editor/DownArrow")?.withRenderingMode(.alwaysTemplate) {
                             communityAvatarBadgeIconView.image = arrowImage
                             communityAvatarBadgeIconView.tintColor = theme.titleColor
@@ -4335,6 +4433,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                         }
                     } else {
                         strongSelf.communityAvatarBadgeBackgroundView?.isHidden = true
+                        strongSelf.rgFeatureCommunityArrowButton?.isHidden = true // MARK: Regram
                     }
 
                     transition.updatePosition(node: strongSelf.avatarNode, position: avatarFrame.offsetBy(dx: -avatarFrame.minX, dy: -avatarFrame.minY).center.offsetBy(dx: avatarScaleOffset, dy: 0.0))
@@ -5541,13 +5640,14 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                     
                     strongSelf.updateLayout(size: CGSize(width: layout.contentSize.width, height: itemHeight), leftInset: params.leftInset, rightInset: params.rightInset)
                     
-                    if item.editing || RGSimpleSettings.shared.disableChatSwipeOptions {
+                    let allowsQuickActions = !item.editing && !RGSimpleSettings.shared.disableChatSwipeOptions && RGSimpleSettings.shared.chatListSwipeActionMode.allowsQuickActions // MARK: Regram
+                    if !allowsQuickActions {
                         strongSelf.setRevealOptions((left: [], right: []), enableAnimations: item.context.sharedContext.energyUsageSettings.fullTranslucency)
                     } else {
                         strongSelf.setRevealOptions((left: peerLeftRevealOptions, right: peerRevealOptions), enableAnimations: item.context.sharedContext.energyUsageSettings.fullTranslucency)
                     }
                     if !strongSelf.customAnimationInProgress {
-                        strongSelf.setRevealOptionsOpened(item.hasActiveRevealControls, animated: true)
+                        strongSelf.setRevealOptionsOpened(allowsQuickActions && item.hasActiveRevealControls, animated: true) // MARK: Regram
                     }
                     
                     strongSelf.view.accessibilityLabel = strongSelf.accessibilityLabel
@@ -5932,14 +6032,23 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
         }
         
+        // MARK: Regram — 明确的箭头点击优先于头像动态手势。
+        if !item.editing, !item.hasActiveRevealControls, item.interaction.inlineNavigationLocation == nil,
+           item.rgFeatureUsesAvatarSettings, !RGSimpleSettings.shared.disableCommunityChatGrouping,
+           RGSimpleSettings.shared.communityAvatarTapActionValue == .arrow,
+           let button = self.rgFeatureCommunityArrowButton, !button.isHidden,
+           button.bounds.contains(self.view.convert(point, to: button)) {
+            return button
+        }
+
         if let _ = item.interaction.inlineNavigationLocation {
         } else {
             var isCommunity = false
             if case let .peer(peerData) = item.content, case .community = peerData.peer.peer {
                 isCommunity = true
             }
-            var shouldHitTestAvatar = !isCommunity && self.avatarNode.storyStats != nil
-            if case let .peer(peerData) = item.content, let peer = peerData.peer.peer, peer.containerPeerId != nil {
+            var shouldHitTestAvatar = !isCommunity && !item.rgFeatureHidesAvatarStories && self.avatarNode.storyStats != nil // MARK: Regram
+            if item.rgFeatureOpensCommunityFromAvatar, case let .peer(peerData) = item.content, let peer = peerData.peer.peer, peer.containerPeerId != nil { // MARK: Regram — 仅在整个头像打开社区时扩大命中区域
                 shouldHitTestAvatar = true
             }
             if shouldHitTestAvatar {
@@ -5952,22 +6061,62 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
         return super.hitTest(point, with: event)
     }
     
+    // MARK: Regram — 箭头的点击不经过动态分支，并再次检查设置防止旧布局命中。
+    @objc private func rgFeatureCommunityArrowPressed() {
+        guard let item = self.item, item.rgFeatureUsesAvatarSettings, !item.editing, !item.hasActiveRevealControls,
+              item.interaction.inlineNavigationLocation == nil,
+              !RGSimpleSettings.shared.disableCommunityChatGrouping,
+              RGSimpleSettings.shared.communityAvatarTapActionValue == .arrow,
+              case let .peer(peerData) = item.content,
+              let communityId = peerData.peer.peer?.containerPeerId else {
+            return
+        }
+        item.interaction.openCommunity(communityId)
+    }
+
     @objc private func avatarStoryTapGesture(_ recognizer: UITapGestureRecognizer) {
         if case .ended = recognizer.state {
             guard let item = self.item else {
+                return
+            }
+            // MARK: Regram — 有动态优先动态；没有动态时遵循社区模式或列表行导航。
+            if item.rgFeatureUsesAvatarSettings {
+                guard !item.editing, !item.hasActiveRevealControls, item.interaction.inlineNavigationLocation == nil else {
+                    return
+                }
+                switch item.content {
+                case .loading:
+                    return
+                case let .peer(peerData):
+                    if !item.rgFeatureHidesAvatarStories, let stats = peerData.storyState?.stats, stats.totalCount > 0 || stats.hasLiveItems {
+                        item.interaction.openStories(.peer(peerData.peer.peerId), self)
+                    } else if item.rgFeatureOpensCommunityFromAvatar, let communityId = peerData.peer.peer?.containerPeerId {
+                        item.interaction.openCommunity(communityId)
+                    } else {
+                        item.rgFeatureSelectChat()
+                    }
+                case .groupReference:
+                    if !item.rgFeatureHidesAvatarStories, self.avatarNode.storyStats != nil {
+                        item.interaction.openStories(.archive, self)
+                    } else {
+                        item.rgFeatureSelectChat()
+                    }
+                }
                 return
             }
             switch item.content {
             case .loading:
                 break
             case let .peer(peerData):
-                if let peer = peerData.peer.peer, let linkedCommunityId = peer.containerPeerId {
+                if !RGSimpleSettings.shared.disableCommunityChatGrouping, let peer = peerData.peer.peer, let linkedCommunityId = peer.containerPeerId { // MARK: Regram — 拆分显示时头像恢复原有动态入口
                     item.interaction.openCommunity(linkedCommunityId)
-                } else {
+                } else if !item.rgFeatureHidesAvatarStories { // MARK: Regram — 防止设置刷新前的旧手势打开动态。
                     item.interaction.openStories(.peer(peerData.peer.peerId), self)
                 }
             case .groupReference:
-                item.interaction.openStories(.archive, self)
+                if !item.rgFeatureHidesAvatarStories { // MARK: Regram
+                    item.interaction.openStories(.archive, self)
+                }
             }
         }
     }

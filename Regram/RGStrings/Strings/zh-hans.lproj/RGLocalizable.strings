@@ -1029,3 +1029,138 @@
 "Debug.ClearCache" = "清除缓存";
 "Debug.ClearCache.Info" = "清除当前账号的媒体缓存及网页、网络缓存。缓存媒体可能需要重新下载才能查看。保留账号、消息、设置、证书及已保存的编辑历史图片。";
 "Debug.ClearCache.Done" = "缓存已清除";
+
+/* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
+"features.AutoInlineBot.Enabled" = "启用";
+"features.AutoInlineBot.Footer" = "单独输入匹配链接时，将该链接交给对应 Inline 机器人查询。不会查询链接旁的草稿文字。";
+"features.InlineBotRules" = "Inline 机器人规则";
+"features.InlineBotRules.Footer" = "规则由 Regram metadata 提供；匹配时保留输入框中的原始链接。";
+"features.StayAtLatestMessageAfterRefresh" = "刷新后保持最新消息";
+"features.HidePrivateChatActivities" = "隐藏私聊活动状态";
+"features.HideSavedAndArchivedMessagesInList" = "在列表中隐藏收藏夹和归档会话信息";
+"features.KeepNewChatsVisibleAtTop" = "列表顶部保持显示新消息会话";
+"features.DisableCommunityChatGrouping" = "禁用社区会话合并展示";
+"features.CommunityAvatarTapAction" = "点击社区头像行为";
+"features.CommunityAvatarTapAction.chat" = "始终进入聊天";
+"features.CommunityAvatarTapAction.community" = "始终打开社区";
+"features.CommunityAvatarTapAction.arrow" = "仅在点击头像右下角箭头时打开社区页";
+"features.MessagePlaceholderInSaved" = "这里是您的收藏夹会话";
+"features.MessagePlaceholderInArchived" = "这里是您的归档会话";
+"features.PanguOnReceiving" = "接收消息 Pangu 化";
+"features.TextStyleMenu" = "选中文字菜单";
+"features.TextStyleMenu.PositionHeader" = "插入位置";
+"features.TextStyleMenu.Position.first" = "最前面";
+"features.TextStyleMenu.Position.beforeFormat" = "「格式」之前（拷贝 / 粘贴之后）";
+"features.TextStyleMenu.Position.afterFormat" = "「格式」之后";
+"features.TextStyleMenu.Position.last" = "最后面";
+"features.TextStyleMenu.PositionFooter" = "完整的「格式」菜单始终保留在原位置。系统菜单一屏约放 5 项，靠后的需要点「>」翻页。";
+"features.TextStyleMenu.ItemsHeader" = "平铺到菜单的样式";
+"features.TextStyleMenu.ItemsFooter" = "开启的样式会直接显示在选中文字菜单的第一层。点「编辑」后可拖动排序。私密聊天不显示引用、剧透和日期。";
+"features.TextStyleMenu.Reset" = "重置选中文字菜单";
+"features.TextStyleMenu.ResetConfirm" = "重置所有选中文字菜单的样式、排序和插入位置？";
+"features.PanguOnEditing" = "编辑消息 Pangu 化";
+"features.TapMessageRowToOpenContextMenu" = "点击消息行打开菜单";
+"features.ChatListSwipeAction" = "对话列表横滑";
+"features.ChatListSwipeAction.both" = "切换 + 快捷";
+"features.ChatListSwipeAction.switch" = "切换";
+"features.ChatListSwipeAction.quick" = "快捷";
+"features.ChatListSwipeAction.none" = "无";
+"features.ShowArchiveInFolders" = "文件夹显示归档";
+"features.OpenArchiveOnPull" = "下拉归档自动进入";
+"features.GroupProfileSettings" = "自定义群资料页设置项";
+"features.GroupProfileSettings.Footer" = "仅显示已选择且当前群组与账号权限允许的项目。";
+"features.GroupProfileSettings.Item.groupType" = "群组类型";
+"features.GroupProfileSettings.Item.inviteLinks" = "邀请链接";
+"features.GroupProfileSettings.Item.linkedChannel" = "关联频道";
+"features.GroupProfileSettings.Item.reactions" = "反应";
+"features.GroupProfileSettings.Item.appearance" = "外观";
+"features.GroupProfileSettings.Item.history" = "聊天记录";
+"features.GroupProfileSettings.Item.topics" = "话题";
+"features.GroupProfileSettings.Item.location" = "位置";
+"features.GroupProfileSettings.Item.members" = "成员";
+"features.GroupProfileSettings.Item.permissions" = "权限";
+"features.GroupProfileSettings.Item.admins" = "管理员";
+"features.GroupProfileSettings.Item.memberRequests" = "入群申请";
+"features.GroupProfileSettings.Item.removedUsers" = "已移除用户";
+"features.GroupProfileSettings.Item.recentActions" = "管理日志";
+"features.GroupProfileSettings.Item.community" = "社区";
+"features.GroupProfileSettings.Item.deleteGroup" = "删除群组";
+"features.GroupProfileSettings.Item.other" = "其他设置";
+"features.HideTabBarPermissionWarnings" = "隐藏标签栏权限警告";
+"features.HideTopStories" = "隐藏顶部动态区域";
+"features.DisableChatAvatarStories" = "关闭聊天头像动态";
+"features.ChatListStartupFolder" = "启动时打开分组";
+"features.ChatListStartupFolder.telegram" = "Telegram 默认";
+"features.ChatListStartupFolder.last" = "上次所在分组";
+"features.ChatListStartupFolder.specific" = "指定分组";
+"features.ChatListStartupFolder.notSet" = "未指定";
+"features.ChatListFolderTabDisplayMode" = "分组标签显示方式";
+"features.ChatListFolderTabDisplayMode.text" = "仅文字";
+"features.ChatListFolderTabDisplayMode.icon" = "仅图标";
+"features.ChatListFolderTabDisplayMode.both" = "图标和文字";
+"features.ShowFoldersInShareSheet" = "分享面板显示文件夹";
+"features.HideFolderUnreadCount" = "隐藏分组标签未读数";
+"features.ChatToolsEnabled" = "聊天顶部工具栏";
+"features.ChatTools.search" = "搜索";
+"features.ChatTools.media" = "媒体";
+"features.ChatTools.pinned" = "置顶";
+"features.ChatTools.beginning" = "开头";
+"features.ChatTools.notifications" = "静音";
+"features.ChatTools.unmute" = "取消静音";
+"features.ChatTools.cache" = "清理缓存";
+"features.ChatFolderNoneAvailable" = "没有可添加的分组。请先创建分组，或检查此聊天是否已加入所有分组。";
+"features.InviteLinks.BulkRevoke" = "批量撤销邀请链接…";
+"features.InviteLinks.ScopeInfo" = "仅处理额外的非永久邀请链接，主链接不会受到影响。";
+"features.InviteLinks.RevokeAll" = "撤销所有链接";
+"features.InviteLinks.RevokeUnavailable" = "撤销所有不可用链接";
+"features.InviteLinks.ConfirmAll" = "将撤销你创建的全部 %@ 条额外邀请链接。主链接及其他永久链接不会受到影响。此操作无法撤销。";
+"features.InviteLinks.ConfirmUnavailable" = "将撤销 %@ 条已过期或达到使用次数上限的额外邀请链接。主链接、其他永久链接和仍可用的额外链接不会受到影响。此操作无法撤销。";
+"features.InviteLinks.NoAdditional" = "没有可撤销的额外邀请链接。";
+"features.InviteLinks.NoUnavailable" = "没有不可用的额外邀请链接。";
+"features.InviteLinks.FetchFailed" = "无法加载完整的额外邀请链接列表，请稍后重试。";
+"features.InviteLinks.Success" = "已撤销 %@ 条额外邀请链接。";
+"features.InviteLinks.PartialFailure" = "已撤销 %1$@ 条，另有 %2$@ 条撤销失败。列表正在刷新。";
+"features.MutualContact.Description" = "此联系人是双向联系人。";
+"features.UnpinAllMessagesAlert" = "要取消所有消息的置顶吗？";
+"features.ConfirmUnpin" = "取消置顶前确认";
+"features.SearchLink.Header" = "链接";
+"features.SearchLink.Open" = "打开链接";
+"features.SearchLink.OpenMessage" = "跳转到消息";
+"features.SearchLink.OpenInvite" = "打开邀请链接";
+
+"features.TextStyleMenu.Position" = "插入位置";
+
+"features.BottomUpChatSearchResults" = "聊天内搜索结果从底部开始";
+
+"features.BottomUpGlobalSearchResults" = "全局搜索结果从底部开始";
+
+"features.ChatSearchFieldAtBottom" = "聊天内搜索框置底";
+
+"features.VideoPIPSwipeDirection" = "上滑开启画中画";
+
+"features.VideoPIPSwipeDirection.up" = "开启";
+
+"features.VideoPIPSwipeDirection.none" = "关闭";
+
+
+"features.TextStyleMenu.Style.quote" = "引用";
+
+"features.TextStyleMenu.Style.spoiler" = "剧透";
+
+"features.TextStyleMenu.Style.bold" = "粗体";
+
+"features.TextStyleMenu.Style.italic" = "斜体";
+
+"features.TextStyleMenu.Style.monospace" = "等宽";
+
+"features.TextStyleMenu.Style.link" = "链接";
+
+"features.TextStyleMenu.Style.date" = "日期";
+
+"features.TextStyleMenu.Style.strikethrough" = "删除线";
+
+"features.TextStyleMenu.Style.underline" = "下划线";
+
+"features.TextStyleMenu.Style.code" = "代码块";
+
+"features.ChatListStartupFolder.Unavailable" = "分组暂不可用";

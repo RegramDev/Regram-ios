@@ -49,6 +49,7 @@ import MessageHaptics
 import ChatMessageTransitionNode
 import ChatMessageSuggestedPostInfoNode
 import TelegramStringFormatting
+import RGSimpleSettings // MARK: Regram
 
 private let nameFont = Font.medium(14.0)
 private let inlineBotPrefixFont = Font.regular(14.0)
@@ -2039,6 +2040,10 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        if case .tap = gesture, let item = self.item {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                            break
+                        }
                         // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
                         if case .doubleTap = gesture {
                             if item.controllerInteraction.selectionState == nil {
@@ -2082,6 +2087,35 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         default:
             break
         }
+    }
+
+    // MARK: Regram
+    private func rgFeatureTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let threadInfoNode = self.threadInfoNode, threadInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.imageNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func startAdditionalAnimationsCommitTimer() {
@@ -2610,6 +2644,9 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                         }
                     }
                 }
+            }
+            if let action = self.rgFeatureTapMessageRowToOpenContextMenuAction(location: location) {
+                return action
             }
             return nil
         case .longTap, .doubleTap, .secondaryTap:

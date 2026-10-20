@@ -33,7 +33,7 @@ enum SettingsSection: Int, CaseIterable {
     case support
 }
 
-func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: AccountContext, presentationData: PresentationData, interaction: PeerInfoInteraction, isExpanded: Bool) -> [(AnyHashable, [PeerInfoScreenItem])] {
+func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: AccountContext, presentationData: PresentationData, interaction: PeerInfoInteraction, isExpanded: Bool, rgFeatureShowCallsTab: Bool) -> [(AnyHashable, [PeerInfoScreenItem])] {
     guard let data = data else {
         return []
     }
@@ -286,9 +286,19 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 100, text: "Bookmarks.Title".i18n(presentationData.strings.rgLanguageCode), icon: PresentationResourcesSettings.savedMessages, action: {
         interaction.openSettings(.messageBookmarks)
     }))
-    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 2, text: presentationData.strings.CallSettings_RecentCalls, icon: PresentationResourcesSettings.recentCalls, action: {
-        interaction.openSettings(.recentCalls)
-    }))
+    // MARK: Regram — 联系人 / 通话记录入口只在对应 tab 不在底栏时显示
+    let rgFeatureBottomBarSettings = RGSimpleSettings.shared.bottomBarSettings
+    let rgFeatureVisibleTabs = rgFeatureBottomBarSettings.isBottomBarVisible ? rgFeatureBottomBarSettings.visibleNavigationItems : []
+    if !rgFeatureVisibleTabs.contains(.contacts) {
+        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 51, text: presentationData.strings.Contacts_Title, icon: PresentationResourcesSettings.clearSynced, action: {
+            interaction.openSettings(.rgFeatureContacts)
+        }))
+    }
+    if !(rgFeatureShowCallsTab && rgFeatureVisibleTabs.contains(.calls)) {
+        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 2, text: presentationData.strings.CallSettings_RecentCalls, icon: PresentationResourcesSettings.recentCalls, action: {
+            interaction.openSettings(.recentCalls)
+        }))
+    }
     
     let devicesLabel: String
     if let settings = data.globalSettings, let otherSessionsCount = settings.otherSessionsCount {

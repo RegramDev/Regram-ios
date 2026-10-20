@@ -6,6 +6,8 @@ load(
 )
 
 rgdeps = [
+    "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+    "//Regram/RGChatTools:RGChatTools", # MARK: Regram
     "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGLinkMetadata:RGLinkMetadata",
@@ -14,7 +16,7 @@ rgdeps = [
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
-        "//Regram/RGTranscription:RGTranscription",
+    "//Regram/RGTranscription:RGTranscription",
     "//Regram/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
     "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
     "//Regram/RGLogging:RGLogging",

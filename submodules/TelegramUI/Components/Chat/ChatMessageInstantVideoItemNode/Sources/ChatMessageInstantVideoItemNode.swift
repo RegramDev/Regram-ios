@@ -27,6 +27,7 @@ import ChatMessageShareButton
 import ChatMessageActionButtonsNode
 import ChatSwipeToReplyRecognizer
 import ChatMessageReactionsFooterContentNode
+import RGSimpleSettings // MARK: Regram
 
 private let nameFont = Font.medium(14.0)
 
@@ -958,6 +959,10 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        if case .tap = gesture, let item = self.item {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                            break
+                        }
                         // MARK: Regram — configurable double tap on round video messages.
                         guard case .doubleTap = gesture, let item = self.item, item.controllerInteraction.selectionState == nil else { break }
                         rgHandleDoubleTapMessageAction(message: openContextMenu.tapMessage, canEditMessage: item.controllerInteraction.rgCanEditMessage(openContextMenu.tapMessage), sendReaction: {
@@ -977,6 +982,35 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
         default:
             break
         }
+    }
+
+    // MARK: Regram
+    private func rgFeatureTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if self.interactiveVideoNode.frame.contains(location) {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.interactiveVideoNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
@@ -1024,6 +1058,9 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                         return .optionalAction(performAction)
                     }
                 }
+            }
+            if let action = self.rgFeatureTapMessageRowToOpenContextMenuAction(location: location) {
+                return action
             }
             return nil
         case .longTap, .doubleTap, .secondaryTap:

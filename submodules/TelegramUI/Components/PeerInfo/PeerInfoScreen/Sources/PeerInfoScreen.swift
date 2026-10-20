@@ -3,7 +3,9 @@ import RGProfileBadge
 import RGJoinedChatFolderPicker
 // MARK: Regram
 import RGDebugUI
+// MARK: Regram
 import RGSimpleSettings
+import RGFeatureSignals
 import RGSettingsUI
 import RGStrings
 import CountrySelectionUI
@@ -125,6 +127,80 @@ import Pasteboard
 import AccountPeerContextItem
 import UrlWhitelist
 
+// MARK: Regram — Map upstream group settings item ids to user-selectable profile items.
+private func rgFeatureGroupProfileSettingItem(peer: EnginePeer, itemId: AnyHashable) -> RGFeatureGroupProfileSettingItem {
+    guard let itemId = itemId.base as? Int else {
+        return .other
+    }
+    switch peer {
+    case let .channel(channel):
+        guard case .group = channel.info else {
+            return .other
+        }
+        switch itemId {
+        case 101:
+            return .groupType
+        case 102:
+            return .inviteLinks
+        case 103:
+            return .linkedChannel
+        case 104:
+            return .history
+        case 106:
+            return .members
+        case 107:
+            return .permissions
+        case 108:
+            return .admins
+        case 109:
+            return .memberRequests
+        case 110:
+            return .removedUsers
+        case 111:
+            return .recentActions
+        case 112, 113:
+            return .location
+        case 115:
+            return .deleteGroup
+        case 116:
+            return .reactions
+        case 117, 118:
+            return .topics
+        case 119:
+            return .appearance
+        case 120, 121, 122, 123:
+            return .community
+        default:
+            return .other
+        }
+    case .legacyGroup:
+        switch itemId {
+        case 101:
+            return .groupType
+        case 102:
+            return .inviteLinks
+        case 103:
+            return .history
+        case 104:
+            return .permissions
+        case 105:
+            return .admins
+        case 106:
+            return .memberRequests
+        case 107:
+            return .reactions
+        case 108, 109:
+            return .topics
+        case 110, 111:
+            return .community
+        default:
+            return .other
+        }
+    default:
+        return .other
+    }
+}
+
 public enum PeerInfoAvatarEditingMode {
     case generic
     case accept
@@ -166,6 +242,8 @@ enum PeerInfoContextSubject {
 }
 
 enum PeerInfoSettingsSection {
+    case rgFeatureContacts // MARK: Regram
+
     case regram
     case regramPro
     case avatar
@@ -219,6 +297,9 @@ enum TopicsLimitedReason {
 }
 
 final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodeProtocol, ASScrollViewDelegate {
+    private var rgFeatureShowCallsTab = CallListSettings.defaultSettings.showTab
+    private var rgFeatureTabEntriesDisposable: Disposable?
+
     // MARK: Regram
     private var rgAppIconObserver: NSObjectProtocol?
     private var rgAppIconForegroundObserver: NSObjectProtocol? // MARK: Regram
@@ -2553,6 +2634,26 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             strongSelf.cachedDataPromise.set(.single(data.cachedData))
         })
         
+        // MARK: Regram — 设置页联系人 / 通话记录入口随底栏设置刷新
+        if self.isSettings {
+            let showCallsTab = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.callListSettings])
+            |> map { sharedData -> Bool in
+                return sharedData.entries[ApplicationSpecificSharedDataKeys.callListSettings]?.get(CallListSettings.self)?.showTab ?? CallListSettings.defaultSettings.showTab
+            }
+            |> distinctUntilChanged
+            self.rgFeatureTabEntriesDisposable = combineLatest(
+                queue: Queue.mainQueue(),
+                showCallsTab,
+                rgFeatureBottomBarSettingsSignal()
+            ).startStrict(next: { [weak self] showCallsTab, _ in
+                guard let self else {
+                    return
+                }
+                self.rgFeatureShowCallsTab = showCallsTab
+                self.requestLayout(animated: false)
+            })
+        }
+
         self.customStatusDisposable = (self.customStatusPromise.get()
         |> deliverOnMainQueue).startStrict(next: { [weak self] value in
             guard let strongSelf = self else {
@@ -2674,6 +2775,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     }
     
     deinit {
+        self.rgFeatureTabEntriesDisposable?.dispose()
         // MARK: Regram
         if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = self.rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
@@ -5535,7 +5637,39 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             insets.left += sectionInset
             insets.right += sectionInset
             
-            let items = self.isSettings ? settingsItems(showProfileId: self.showProfileId, data: self.data, context: self.context, presentationData: self.presentationData, interaction: self.interaction, isExpanded: self.headerNode.isAvatarExpanded) : infoItems(nearestChatParticipant: self.nearestChatParticipant, showProfileId: self.showProfileId, data: self.data, context: self.context, presentationData: self.presentationData, interaction: self.interaction, reactionSourceMessageId: self.reactionSourceMessageId, canDeleteReaction: self.canDeleteReaction, callMessages: self.callMessages, chatLocation: self.chatLocation, isOpenedFromChat: self.isOpenedFromChat, isMyProfile: self.isMyProfile)
+            var items = self.isSettings ? settingsItems(showProfileId: self.showProfileId, data: self.data, context: self.context, presentationData: self.presentationData, interaction: self.interaction, isExpanded: self.headerNode.isAvatarExpanded, rgFeatureShowCallsTab: self.rgFeatureShowCallsTab) : infoItems(nearestChatParticipant: self.nearestChatParticipant, showProfileId: self.showProfileId, data: self.data, context: self.context, presentationData: self.presentationData, interaction: self.interaction, reactionSourceMessageId: self.reactionSourceMessageId, canDeleteReaction: self.canDeleteReaction, callMessages: self.callMessages, chatLocation: self.chatLocation, isOpenedFromChat: self.isOpenedFromChat, isMyProfile: self.isMyProfile)
+            let editItems = (self.isSettings || self.isMyProfile) ? settingsEditingItems(data: self.data, state: self.state, context: self.context, presentationData: self.presentationData, interaction: self.interaction, isMyProfile: self.isMyProfile) : editingItems(data: self.data, boostStatus: self.boostStatus, state: self.state, chatLocation: self.chatLocation, context: self.context, presentationData: self.presentationData, interaction: self.interaction)
+            let groupEditingItems = editItems
+            // MARK: Regram — Expose user-selected group settings items on the group profile.
+            if let peer = self.data?.peer {
+                let isGroup: Bool
+                switch peer {
+                case let .channel(channel):
+                    if case .group = channel.info {
+                        isGroup = true
+                    } else {
+                        isGroup = false
+                    }
+                case .legacyGroup:
+                    isGroup = true
+                default:
+                    isGroup = false
+                }
+                if isGroup {
+                    let filteredEditItems = groupEditingItems.compactMap { sectionId, sectionItems -> (AnyHashable, [PeerInfoScreenItem])? in
+                        let filteredSectionItems = sectionItems.filter { item in
+                            let settingItem = rgFeatureGroupProfileSettingItem(peer: peer, itemId: item.id)
+                            return RGSimpleSettings.shared.isGroupProfileSettingItemVisible(settingItem)
+                        }
+                        guard !filteredSectionItems.isEmpty else {
+                            return nil
+                        }
+                        return (sectionId, filteredSectionItems)
+                    }
+                    let insertionIndex = items.firstIndex(where: { $0.0 == AnyHashable(InfoSection.regramPro) }) ?? items.endIndex
+                    items.insert(contentsOf: filteredEditItems, at: insertionIndex)
+                }
+            }
             
             contentHeight += headerHeight
             if !((self.isSettings || self.isMyProfile) && self.state.isEditing) {
@@ -5610,7 +5744,6 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
             
             var validEditingSections: [AnyHashable] = []
-            let editItems = (self.isSettings || self.isMyProfile) ? settingsEditingItems(data: self.data, state: self.state, context: self.context, presentationData: self.presentationData, interaction: self.interaction, isMyProfile: self.isMyProfile) : editingItems(data: self.data, boostStatus: self.boostStatus, state: self.state, chatLocation: self.chatLocation, context: self.context, presentationData: self.presentationData, interaction: self.interaction)
 
             for (sectionId, sectionItems) in editItems {
                 var insets = UIEdgeInsets()
@@ -6859,6 +6992,12 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 )
             }
             
+            // MARK: Regram
+            let effectiveNotificationsWarningSuppressed = combineLatest(notificationsWarningSuppressed.get(), rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false))
+            |> map { notificationsWarningSuppressed, hidePermissionWarnings in
+                return notificationsWarningSuppressed || hidePermissionWarnings
+            }
+
             let icon: UIImage?
             if useSpecialTabBarIcons() {
                 icon = UIImage(bundleImageName: "Chat List/Tabs/Holiday/IconSettings")
@@ -6866,7 +7005,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 icon = UIImage(bundleImageName: "Chat List/Tabs/IconSettings")
             }
             
-            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
+            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), effectiveNotificationsWarningSuppressed, context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
             |> map { presentationData, notificationsAuthorizationStatus, notificationsWarningSuppressed, suggestions, accountTabBarAvatar, accountTabBarAvatarBadge -> (String, UIImage?, UIImage?, String?, Bool, Bool) in
                 let notificationsWarning = shouldDisplayNotificationsPermissionWarning(status: notificationsAuthorizationStatus, suppressed:  notificationsWarningSuppressed)
                 let phoneNumberWarning = suggestions.contains(.validatePhoneNumber)

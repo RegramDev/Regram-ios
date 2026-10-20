@@ -170,6 +170,9 @@ public func chatMessageGalleryControllerData(
                 if case .link = mode, !["video"].contains(content.type) {
                 } else if ["photo", "document", "video", "gif", "telegram_album"].contains(content.type) {
                     galleryMedia = image
+                } else if content.instantPage == nil, !(content.type ?? "").hasPrefix("telegram_") {
+                    // MARK: Regram link preview images open in the gallery
+                    galleryMedia = image
                 }
             }
             
