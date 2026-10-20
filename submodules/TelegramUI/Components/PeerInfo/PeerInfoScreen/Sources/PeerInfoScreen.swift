@@ -5666,7 +5666,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                         }
                         return (sectionId, filteredSectionItems)
                     }
-                    let insertionIndex = items.firstIndex(where: { $0.0 == AnyHashable(InfoSection.regramPro) }) ?? items.endIndex
+                    let insertionIndex = items.firstIndex(where: { $0.0 == AnyHashable(InfoSection.regram) }) ?? items.endIndex
                     items.insert(contentsOf: filteredEditItems, at: insertionIndex)
                 }
             }
