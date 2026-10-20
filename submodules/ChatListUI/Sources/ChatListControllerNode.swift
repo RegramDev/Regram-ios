@@ -1388,7 +1388,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             }
             
             // MARK: Regram — revealing archive rows does not require unlocking the story strip.
-            if self.mainContainerNode.currentItemNode.listNode.hasItemsToBeRevealed() {
+            if self.mainContainerNode.currentItemNode.hasItemsToBeRevealed() {
                 return true
             } else if let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
                 if let navigationBarComponentView = self.navigationBarView.view as? ChatListNavigationBar.View {
