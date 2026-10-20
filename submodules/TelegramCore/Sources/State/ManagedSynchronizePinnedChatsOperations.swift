@@ -234,10 +234,10 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
                 // MARK: Regram — merge with the latest local order on the Postbox queue. A new
                 // local pin may have been made while the remote pinned list was being fetched.
                 let latestLocalOrder = transaction.getPinnedItemIds(groupId: groupId)
-                let localOverflow = rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId).intersection(latestLocalOrder).subtracting(resultingItemIds)
+                let localOverflow = rgLocalOverflowPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId).intersection(latestLocalOrder).subtracting(resultingItemIds)
                 let mergedItemIds = rgMergeLocalPinnedItemIds(resultingItemIds, previousOrder: latestLocalOrder, keep: localOverflow)
                 let resultingSplit = rgSplitPinnedItemIds(mergedItemIds, limit: serverPinnedLimit)
-                rgSetLocalOverflowPinnedItemIds(resultingSplit.overflow, accountPeerId: accountPeerId, groupId: groupId)
+                rgSetLocalOverflowPinnedItemIds(transaction: transaction, resultingSplit.overflow, accountPeerId: accountPeerId, groupId: groupId)
                 resultingItemIds = resultingSplit.server
                 transaction.setPinnedItemIds(groupId: groupId, itemIds: mergedItemIds)
 

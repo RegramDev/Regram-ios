@@ -15,6 +15,8 @@ func _internal_resetAccountState(postbox: Postbox, network: Network, accountPeer
                 return .never()
             }
             return withResolvedAssociatedMessages(postbox: postbox, source: .network(network), accountPeerId: accountPeerId, parsedPeers: fetchedChats.peers, storeMessages: fetchedChats.storeMessages, resolveThreads: false, { transaction, additionalPeers, additionalMessages -> Void in
+                // MARK: Regram — persist overflow before cloud inclusions and pin indices are cleared.
+                rgPrepareLocalPinnedChatsForStateReset(transaction: transaction, accountPeerId: accountPeerId)
                 for peerId in transaction.chatListGetAllPeerIds() {
                     if peerId.namespace != Namespaces.Peer.SecretChat {
                         transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
@@ -124,9 +126,12 @@ func _internal_resetAccountState(postbox: Postbox, network: Network, accountPeer
                 
                 if let replacePinnedItemIds = fetchedChats.pinnedItemIds {
                     // MARK: Regram — keeps this device's overflow pins (RGLocalPinnedChats).
-                    rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: .root, itemIds: replacePinnedItemIds.map(PinnedItemId.peer))
+                    rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: .root, itemIds: replacePinnedItemIds.map(PinnedItemId.peer), restoringState: true)
                 }
                 
+                // MARK: Regram — archive pins are fetched separately; restore local-only pins now.
+                rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: .group(1), itemIds: transaction.getPinnedItemIds(groupId: .group(1)), restoringState: true)
+
                 for (peerId, summary) in fetchedChats.mentionTagSummaries {
                     transaction.replaceMessageTagSummary(peerId: peerId, threadId: nil, tagMask: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud, customTag: nil, count: summary.count, maxId: summary.range.maxId)
                 }

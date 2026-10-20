@@ -5232,7 +5232,7 @@ func replayFinalState(
                         }
                     case let .unpin(itemId):
                         // MARK: Regram — the server cannot remove a pin kept only on this device.
-                        if rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId).contains(itemId) { break }
+                        if rgLocalOverflowPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId).contains(itemId) { break }
                         switch itemId {
                             case let .peer(peerId):
                                 var currentItemIds = transaction.getPinnedItemIds(groupId: groupId)
@@ -5246,7 +5246,7 @@ func replayFinalState(
                     case let .reorder(itemIds):
                         // MARK: Regram — this device's overflow pins are not in the server's order.
                         let currentItemIds = transaction.getPinnedItemIds(groupId: groupId)
-                        let localOverflow = rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId)
+                        let localOverflow = rgLocalOverflowPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
                         if Set(itemIds) == Set(currentItemIds).subtracting(localOverflow) {
                             rgSetServerPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId, itemIds: itemIds)
                         } else {

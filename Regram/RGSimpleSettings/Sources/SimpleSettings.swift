@@ -1398,8 +1398,8 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.unlimitedPinnedChats.rawValue)
     public var unlimitedPinnedChats: Bool
 
-    /// Pins that exist only on this device, per account and chat-list group, in display order.
-    /// Written by the pin synchronizer, so a server update can tell them apart from pins it removed.
+    /// Legacy per-app overflow records, read when migrating local pins into account preferences.
+    /// New pin writes use the same Postbox transaction as the chat-list order (RGLocalPinnedChats).
     public func localOverflowPinnedPeerIds(accountPeerId: Int64, groupId: Int32) -> [Int64] {
         return (UserDefaults.standard.stringArray(forKey: self.localOverflowPinnedKey(accountPeerId: accountPeerId, groupId: groupId)) ?? []).compactMap { Int64($0) }
     }

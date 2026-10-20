@@ -71,7 +71,7 @@ func _internal_toggleItemPinned(postbox: Postbox, accountPeerId: PeerId, locatio
                 transaction.setPinnedItemIds(groupId: groupId, itemIds: itemIds)
                 // MARK: Regram — remember overflow before a competing server update can arrive.
                 let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
-                rgSetLocalOverflowPinnedItemIds(rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
+                rgSetLocalOverflowPinnedItemIds(transaction: transaction, rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
                 return .done
             }
         case let .filter(filterId):
@@ -126,7 +126,7 @@ func _internal_reorderPinnedItemIds(transaction: Transaction, accountPeerId: Pee
             transaction.setPinnedItemIds(groupId: groupId, itemIds: itemIds)
             // MARK: Regram — reordering can promote a local pin into the synchronized prefix.
             let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
-            rgSetLocalOverflowPinnedItemIds(rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
+            rgSetLocalOverflowPinnedItemIds(transaction: transaction, rgSplitPinnedItemIds(itemIds, limit: limit).overflow, accountPeerId: accountPeerId, groupId: groupId)
             addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
             return true
         } else {

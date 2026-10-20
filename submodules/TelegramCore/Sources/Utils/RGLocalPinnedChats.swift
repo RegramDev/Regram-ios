@@ -9,7 +9,7 @@ import RGSimpleSettings
 // order lives only in this device's chat list: the first N cloud chats of it are what the server is
 // told, and the cloud chats after them are "overflow" pins that exist only here.
 //
-// The overflow set is remembered (RGSimpleSettings, per account and group) because every server
+// The overflow order is remembered in account preferences (per account and group) because every server
 // path that writes pins — the pin synchronizer, `updatePinnedDialogs`, and the chat-list refetch on
 // a hole or a state reset — replaces the local order with the server's. Without the set a local pin
 // is indistinguishable from one another device unpinned, and is dropped.
@@ -81,29 +81,96 @@ func rgMergeLocalPinnedItemIds(_ order: [PinnedItemId], previousOrder: [PinnedIt
     return result
 }
 
-func rgLocalOverflowPinnedItemIds(accountPeerId: PeerId, groupId: PeerGroupId) -> Set<PinnedItemId> {
-    let peerIds = RGSimpleSettings.shared.localOverflowPinnedPeerIds(accountPeerId: accountPeerId.toInt64(), groupId: groupId.rawValue)
-    return Set(peerIds.map { PinnedItemId.peer(PeerId($0)) })
+// Account preferences commit with the pin order and are shared by the app and its extensions.
+// Standard UserDefaults belongs to each process and cannot protect pins during an extension sync.
+private struct RGLocalPinnedChatsState: Codable {
+    let peerIds: [Int64]
 }
 
-func rgSetLocalOverflowPinnedItemIds(_ itemIds: [PinnedItemId], accountPeerId: PeerId, groupId: PeerGroupId) {
-    let peerIds = itemIds.map { itemId -> Int64 in
+private func rgLocalPinnedChatsKey(accountPeerId: PeerId, groupId: PeerGroupId) -> ValueBoxKey {
+    return ValueBoxKey("regram.localOverflowPinned.\(accountPeerId.toInt64()).\(groupId.rawValue)")
+}
+
+private func rgLocalOverflowPinnedOrder(transaction: Transaction, accountPeerId: PeerId, groupId: PeerGroupId) -> [PinnedItemId] {
+    let key = rgLocalPinnedChatsKey(accountPeerId: accountPeerId, groupId: groupId)
+    if let state = transaction.getPreferencesEntry(key: key)?.get(RGLocalPinnedChatsState.self) {
+        return state.peerIds.map { .peer(PeerId($0)) }
+    }
+    // Import the previous main-app preference when available. An empty extension domain must
+    // not mark migration complete before the app has had a chance to read the old record.
+    let peerIds = RGSimpleSettings.shared.localOverflowPinnedPeerIds(accountPeerId: accountPeerId.toInt64(), groupId: groupId.rawValue)
+    let order = transaction.getPinnedItemIds(groupId: groupId)
+    let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+    let derived = rgSplitPinnedItemIds(order, limit: limit).overflow
+    var seen = Set<PinnedItemId>()
+    let imported = (derived + peerIds.map { .peer(PeerId($0)) }).filter { seen.insert($0).inserted }
+    if !imported.isEmpty {
+        rgSetLocalOverflowPinnedItemIds(transaction: transaction, imported, accountPeerId: accountPeerId, groupId: groupId)
+    }
+    return imported
+}
+
+func rgLocalOverflowPinnedItemIds(transaction: Transaction, accountPeerId: PeerId, groupId: PeerGroupId) -> Set<PinnedItemId> {
+    return Set(rgLocalOverflowPinnedOrder(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId))
+}
+
+func rgSetLocalOverflowPinnedItemIds(transaction: Transaction, _ itemIds: [PinnedItemId], accountPeerId: PeerId, groupId: PeerGroupId) {
+    var seen = Set<PinnedItemId>()
+    let peerIds = itemIds.filter { rgIsCloudPinnedItem($0) && seen.insert($0).inserted }.map { itemId -> Int64 in
         switch itemId {
         case let .peer(peerId):
             return peerId.toInt64()
         }
     }
-    RGSimpleSettings.shared.setLocalOverflowPinnedPeerIds(peerIds, accountPeerId: accountPeerId.toInt64(), groupId: groupId.rawValue)
+    let key = rgLocalPinnedChatsKey(accountPeerId: accountPeerId, groupId: groupId)
+    // Keep an empty record after an explicit unpin so stale legacy preferences cannot revive it.
+    transaction.updatePreferencesEntry(key: key, { _ in PreferencesEntry(RGLocalPinnedChatsState(peerIds: peerIds)) })
 }
 
-/// Replaces the pins of `groupId` with an order the server sent, keeping this device's overflow
-/// pins where they were. Used by every path that adopts the server's pinned list wholesale.
-func rgSetServerPinnedItemIds(transaction: Transaction, accountPeerId: PeerId, groupId: PeerGroupId, itemIds: [PinnedItemId]) {
+/// Seed shared, durable records before reset clears every cloud peer's chat-list inclusion.
+/// Deriving overflow from the existing list also covers an extension that cannot read legacy defaults.
+func rgPrepareLocalPinnedChatsForStateReset(transaction: Transaction, accountPeerId: PeerId) {
+    for groupId: PeerGroupId in [.root, .group(1)] {
+        let order = transaction.getPinnedItemIds(groupId: groupId)
+        let limit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+        var keep = rgLocalOverflowPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+        keep.formUnion(rgSplitPinnedItemIds(order, limit: limit).overflow)
+        let stored = rgLocalOverflowPinnedOrder(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
+        let preserved = order.filter { keep.contains($0) } + stored.filter { itemId in
+            guard !order.contains(itemId) else { return false }
+            if case let .peer(peerId) = itemId {
+                return transaction.getPeerChatListInclusion(peerId).groupId == groupId
+            }
+            return false
+        }
+        rgSetLocalOverflowPinnedItemIds(transaction: transaction, preserved, accountPeerId: accountPeerId, groupId: groupId)
+    }
+}
+
+/// Adopt server pins while preserving local overflow, including when a state reset erased the
+/// visible list. The durable order is authoritative for local-only pins, not the temporary list.
+func rgSetServerPinnedItemIds(transaction: Transaction, accountPeerId: PeerId, groupId: PeerGroupId, itemIds: [PinnedItemId], restoringState: Bool = false) {
     let previousOrder = transaction.getPinnedItemIds(groupId: groupId)
-    var keep = rgLocalOverflowPinnedItemIds(accountPeerId: accountPeerId, groupId: groupId)
-    keep.formIntersection(previousOrder)
-    keep.subtract(itemIds)
-    let merged = rgMergeLocalPinnedItemIds(itemIds, previousOrder: previousOrder, keep: keep)
+    let overflow = rgLocalOverflowPinnedOrder(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId).filter { itemId in
+        switch itemId {
+        case let .peer(peerId):
+            guard transaction.getPeer(peerId) != nil else { return false }
+            let currentGroup = transaction.getPeerChatListInclusion(peerId).groupId
+            return currentGroup == groupId || (restoringState && currentGroup == nil)
+        }
+    }
+    let overflowSet = Set(overflow)
+    var keep = overflowSet
+    // An archive refetch may see only its restored overflow. Without any common server
+    // anchor those pins belong after the newly fetched prefix, not before it.
+    if !previousOrder.contains(where: { itemIds.contains($0) }) {
+        keep.removeAll()
+    }
+    // Secret chats have no server pin and must survive a wholesale cloud-list replacement too.
+    keep.formUnion(previousOrder.filter { !rgIsCloudPinnedItem($0) })
+    var merged = rgMergeLocalPinnedItemIds(itemIds, previousOrder: previousOrder, keep: keep)
+    // After reset there may be no prior pin indices to anchor to. Append the persisted local order.
+    merged.append(contentsOf: overflow.filter { !merged.contains($0) })
     transaction.setPinnedItemIds(groupId: groupId, itemIds: merged)
-    rgSetLocalOverflowPinnedItemIds(merged.filter { keep.contains($0) }, accountPeerId: accountPeerId, groupId: groupId)
+    rgSetLocalOverflowPinnedItemIds(transaction: transaction, merged.filter { overflowSet.contains($0) && !itemIds.contains($0) }, accountPeerId: accountPeerId, groupId: groupId)
 }
