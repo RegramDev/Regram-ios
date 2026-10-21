@@ -124,7 +124,11 @@ public extension RGSimpleSettings {
     }
     var chatListStartupFolderMode: String {
         get { RGFeaturePreferences.string("features.chatListStartupFolderMode", default: "telegram") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.chatListStartupFolderMode") }
+        set {
+            guard let mode = RGFeatureChatListStartupFolderMode(rawValue: newValue) else { return }
+            rememberLastFolder = mode == .last
+            RGFeaturePreferences.shared.set(mode.rawValue, forKey: "features.chatListStartupFolderMode")
+        }
     }
     var chatListFolderTabDisplayMode: String {
         get { RGFeaturePreferences.string("features.chatListFolderTabDisplayMode", default: "text") }

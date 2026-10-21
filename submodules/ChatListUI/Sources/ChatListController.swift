@@ -4162,9 +4162,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 if let tabContainerData = strongSelf.tabContainerData {
                     var found = false
                     if let index = tabContainerData.0.firstIndex(where: { $0.id == selectedEntryId }) {
-                        for i in (0 ..< index - 1).reversed() {
-                            if resolvedItems.contains(where: { $0.id == tabContainerData.0[i].id }) {
-                                selectedEntryId = tabContainerData.0[i].id
+                        // MARK: Regram — include the immediate predecessor and allow index zero.
+                        for previousItem in tabContainerData.0.prefix(index).reversed() {
+                            if resolvedItems.contains(where: { $0.id == previousItem.id }) {
+                                selectedEntryId = previousItem.id
                                 found = true
                                 break
                             }

@@ -1772,6 +1772,18 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             })))
         }
 
+        // MARK: Regram — only named settings exports expose this action; decode before opening preview.
+        if let export = rgSettingsBackupExportFile(in: messages) {
+            rgCollect(.importSettings, .action(ContextMenuActionItem(text: "ContextMenu.importSettings".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
+                return generateTintedImage(image: UIImage(systemName: "square.and.arrow.down"), color: theme.contextMenu.primaryColor)
+            }, action: { _, f in
+                f(.default)
+                rgImportSettingsBackup(context: context, message: export.message, file: export.file, openPreview: { backup in
+                    controllerInteraction.navigationController()?.pushViewController(rgSettingsBackupImportController(context: context, backup: backup))
+                }, displayUndo: controllerInteraction.displayUndo)
+            })))
+        }
+
         // MARK: Regram — a rule export shared into a chat (the filter screen's Export writes it) is
         // imported in one step, merged exactly like the filter screen's own Import. It stands in
         // for the keyword action below, which would otherwise offer the file's caption.
@@ -3003,6 +3015,41 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         
         return ContextController.Items(content: .list(actions), tip: nil)
     }
+}
+
+// MARK: Regram — named settings exports reuse the validated category preview and restore flow.
+private func rgSettingsBackupExportFile(in messages: [EngineRawMessage]) -> (message: EngineRawMessage, file: TelegramMediaFile)? {
+    guard messages.count == 1, let message = messages.first, !message.containsSecretMedia else { return nil }
+    for media in message.media {
+        if let file = media as? TelegramMediaFile, let name = file.fileName, RGSettingsBackup.isExportFileName(name),
+           file.size.map({ $0 <= Int64(RGSettingsBackup.maximumBytes) }) ?? true {
+            return (message, file)
+        }
+    }
+    return nil
+}
+
+private func rgImportSettingsBackup(context: AccountContext, message: EngineRawMessage, file: TelegramMediaFile, openPreview: @escaping (RGSettingsBackup) -> Void, displayUndo: @escaping (UndoOverlayContent) -> Void) {
+    let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
+    let fetch = context.engine.resources.fetch(reference: FileMediaReference.message(message: MessageReference(message), media: file).resourceReference(file.resource), userLocation: .peer(message.id.peerId), userContentType: MediaResourceUserContentType(file: file)).startStandalone()
+    let _ = (context.engine.resources.data(resource: EngineMediaResource(file.resource))
+    |> filter { $0.isComplete }
+    |> take(1)
+    |> map(Optional.init)
+    |> timeout(30.0, queue: .mainQueue(), alternate: .single(nil))
+    |> deliverOn(Queue.concurrentDefaultQueue())
+    |> map { data -> RGSettingsBackup? in
+        guard let data else { return nil }
+        return try? RGSettingsBackup.read(from: URL(fileURLWithPath: data.path))
+    }
+    |> deliverOnMainQueue).startStandalone(next: { backup in
+        fetch.dispose()
+        if let backup {
+            openPreview(backup)
+        } else {
+            displayUndo(.info(title: nil, text: "Backup.Error".i18n(lang), timeout: nil, customUndoText: nil))
+        }
+    })
 }
 
 // MARK: Regram — quick import of a message filter export shared into a chat.

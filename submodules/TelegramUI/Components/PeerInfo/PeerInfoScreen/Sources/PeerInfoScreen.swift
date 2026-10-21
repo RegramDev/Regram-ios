@@ -6607,7 +6607,8 @@ private final class RGRootSettingsBackGestureDelegate: NSObject, UIGestureRecogn
         guard canBegin() else { return false }
         var view = touch.view
         while let current = view, current !== gestureRecognizer.view {
-            if current is UIControl || current is UITextField || current is UITextView { return false }
+            // MARK: Regram — list-row buttons participate in back pans; real controls keep their gestures.
+            if (current is UIControl && !(current is PeerInfoScreenSelectableButton)) || current is UITextView { return false }
             if let scrollView = current as? UIScrollView,
                scrollView.alwaysBounceHorizontal || scrollView.contentSize.width > scrollView.bounds.width + 1 {
                 return false
@@ -7188,6 +7189,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             let delegate = RGRootSettingsBackGestureDelegate(canBegin: { [weak self] in self?.rgCanReturnToChats == true })
             let gesture = UIPanGestureRecognizer(target: self, action: #selector(self.rgRootBackSwiped(_:)))
             gesture.maximumNumberOfTouches = 1
+            gesture.cancelsTouchesInView = true // MARK: Regram — a recognized pan cancels the row tap.
             gesture.delegate = delegate
             self.rgRootBackGestureDelegate = delegate
             self.rgRootBackGesture = gesture

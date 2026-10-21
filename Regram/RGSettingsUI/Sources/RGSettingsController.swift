@@ -143,6 +143,7 @@ private enum RGBoolSetting: String {
 private enum RGOneFromManySetting: String {
     case chatListSwipeAction
     case chatListFolderTabDisplayMode
+    case startupFolder
     case communityAvatarTapAction
     case videoPIPSwipeDirection
 
@@ -164,7 +165,7 @@ private enum RGSliderSetting: String {
 }
 
 private enum RGDisclosureLink: String {
-    case groupProfileSettings, startupFolder, textStyleMenu, inlineBotRules
+    case groupProfileSettings, textStyleMenu, inlineBotRules
 
 
     case contentSettings
@@ -185,7 +186,7 @@ private struct RGSettingsControllerState: Equatable {
 
 private typealias RGControllerEntry = RGItemListUIEntry<RGControllerSection, RGBoolSetting, RGSliderSetting, RGOneFromManySetting, RGDisclosureLink, AnyHashable>
 
-private func RGControllerEntries(presentationData: PresentationData, callListSettings: CallListSettings, experimentalUISettings: ExperimentalUISettings, appConfiguration: AppConfiguration, nameColors: PeerNameColors, state: RGSettingsControllerState, page: RGSettingsPage) -> [RGControllerEntry] {
+private func RGControllerEntries(presentationData: PresentationData, callListSettings: CallListSettings, experimentalUISettings: ExperimentalUISettings, appConfiguration: AppConfiguration, nameColors: PeerNameColors, state: RGSettingsControllerState, page: RGSettingsPage, startupFolderTitle: String) -> [RGControllerEntry] {
     
     let lang = presentationData.strings.rgLanguageCode
     let strings = presentationData.strings
@@ -223,6 +224,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     #endif
     entries.append(.toggle(id: id.count, section: .folders, settingName: .compactFolderNames, value: RGSimpleSettings.shared.compactFolderNames, text: i18n("Settings.Folders.CompactNames", lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .allChatsTitleLengthOverride, text: i18n("Settings.Folders.AllChatsTitle", lang), value: i18n("Settings.Folders.AllChatsTitle.\(RGSimpleSettings.shared.allChatsTitleLengthOverride)", lang), enabled: true))
+    entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .startupFolder, text: "features.ChatListStartupFolder".i18n(lang), value: startupFolderTitle, enabled: true))
     entries.append(.notice(id: id.count, section: .folders, text: i18n("Settings.Folders.RememberLast.Notice", lang)))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .chooseFolderAfterJoining, value: RGSimpleSettings.shared.chooseFolderAfterJoining, text: i18n("JoinFolder.Setting", lang), enabled: true))
     entries.append(.notice(id: id.count, section: .folders, text: i18n("JoinFolder.Setting.Notice", lang)))
@@ -377,6 +379,7 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .confirmUnpin, value: RGSimpleSettings.shared.confirmUnpin, text: "features.ConfirmUnpin".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .hideSavedAndArchivedMessagesInList, value: RGSimpleSettings.shared.hideSavedAndArchivedMessagesInList, text: "features.HideSavedAndArchivedMessagesInList".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .hidePrivateChatActivities, value: RGSimpleSettings.shared.hidePrivateChatActivities, text: "features.HidePrivateChatActivities".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .chatList, text: "features.HidePrivateChatActivities.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .hideFolderUnreadCount, value: RGSimpleSettings.shared.hideFolderUnreadCount, text: "features.HideFolderUnreadCount".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .showArchiveInFolders, value: RGSimpleSettings.shared.showArchiveInFolders, text: "features.ShowArchiveInFolders".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .openArchiveOnPull, value: RGSimpleSettings.shared.openArchiveOnPull, text: "features.OpenArchiveOnPull".i18n(lang), enabled: true))
@@ -392,7 +395,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .communityAvatarTapAction, text: "features.CommunityAvatarTapAction".i18n(lang), value: ("features.CommunityAvatarTapAction." + RGSimpleSettings.shared.communityAvatarTapAction).i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .media, settingName: .videoPIPSwipeDirection, text: "features.VideoPIPSwipeDirection".i18n(lang), value: ("features.VideoPIPSwipeDirection." + RGSimpleSettings.shared.videoPIPSwipeDirection).i18n(lang), enabled: true))
     entries.append(.disclosure(id: id.count, section: .profiles, link: .groupProfileSettings, text: "features.GroupProfileSettings".i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .folders, link: .startupFolder, text: "features.ChatListStartupFolder".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .input, link: .textStyleMenu, text: "features.TextStyleMenu".i18n(lang)))
 
     entries.append(.disclosure(id: id.count, section: .messageActions, link: .inlineBotRules, text: "features.InlineBots.Title".i18n(lang)))
@@ -441,6 +443,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
 //    }
     
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
+    let startupFolders = Atomic<[ChatListFilter]>(value: [])
     
     let arguments = RGItemListArguments<RGBoolSetting, RGSliderSetting, RGOneFromManySetting, RGDisclosureLink, AnyHashable>(
         context: context,
@@ -757,6 +760,10 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                         simplePromise.set(true)
                     }))
                 }
+            case .startupFolder:
+                items = rgStartupFolderActionItems(filters: startupFolders.with { $0 }, accountId: context.account.peerId.toInt64(), presentationData: presentationData, dismiss: { [weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                }, updated: { simplePromise.set(true) })
             case .chatListFolderTabDisplayMode:
                 for value in ["text", "icon", "both"] {
                     items.append(ActionSheetButtonItem(title: ("features.ChatListFolderTabDisplayMode." + value).i18n(presentationData.strings.rgLanguageCode), color: .accent, action: { [weak actionSheet] in
@@ -825,7 +832,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
 
             case .inlineBotRules: pushControllerImpl?(rgFeatureInlineBotRulesController(context: context))
             case .groupProfileSettings: pushControllerImpl?(rgFeatureGroupProfileSettingsController(context: context))
-            case .startupFolder: pushControllerImpl?(rgStartupFolderController(context: context))
             case .textStyleMenu: pushControllerImpl?(rgFeatureTextStyleMenuSettingsController(context: context))
             case .llmTranslationSettings:
                 pushControllerImpl?(rgLLMTranslationSettingsController(context: context))
@@ -857,15 +863,18 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     
     let signal = combineLatest(simplePromise.get(), /*sliderPromise.get(),*/ statePromise.get(), context.sharedContext.presentationData, sharedData, preferences, contentSettingsConfiguration.get(),
         context.engine.accountData.observeAvailableColorOptions(scope: .replies),
-        context.engine.accountData.observeAvailableColorOptions(scope: .profile)
+        context.engine.accountData.observeAvailableColorOptions(scope: .profile),
+        page == .folders ? context.engine.peers.updatedChatListFilters() : .single([])
     )
-    |> map { _, /*sliderValue,*/ state, presentationData, sharedData, view, contentSettingsConfiguration, availableReplyColors, availableProfileColors ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { _, /*sliderValue,*/ state, presentationData, sharedData, view, contentSettingsConfiguration, availableReplyColors, availableProfileColors, filters ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
         let appConfiguration: AppConfiguration = view.values[PreferencesKeys.appConfiguration]?.get(AppConfiguration.self) ?? AppConfiguration.defaultValue
         let callListSettings: CallListSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.callListSettings]?.get(CallListSettings.self) ?? CallListSettings.defaultSettings
         let experimentalUISettings: ExperimentalUISettings = sharedData.entries[ApplicationSpecificSharedDataKeys.experimentalUISettings]?.get(ExperimentalUISettings.self) ?? ExperimentalUISettings.defaultSettings
         
-        let entries = RGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, page: page)
+        _ = startupFolders.swap(filters)
+        let startupFolderTitle = rgStartupFolderTitle(filters: filters, accountId: context.account.peerId.toInt64(), presentationData: presentationData)
+        let entries = RGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, page: page, startupFolderTitle: startupFolderTitle)
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram" : page.titleKey.i18n(presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
@@ -887,6 +896,8 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     }
     
     let controller = RGSettingsListController(context: context, state: signal)
+    controller.focusSetting = focusSetting
+    controller.focusColor = context.sharedContext.currentPresentationData.with { $0 }.theme.list.itemAccentColor
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)
     }

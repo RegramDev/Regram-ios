@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前文档按 **13.0 / b34622** 整理。下载见 [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前文档按 **13.0 / b34623** 整理。下载见 [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -121,6 +121,8 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 仅 Pro 首页提供全局设置搜索，覆盖分类与高级页面，点击结果打开并定位对应项；分类页不重复放置搜索或常用区。长按设置项可复制设置深链，链接只包含页面和控件标识，不包含保存值。书签管理入口独立放在设置首页「我的收藏」下方。
 
 ## 验证范围
+
+b34623 修正分组直接选择、设置行滑动误触、深链定位提示及设置 JSON 消息导入；审查同时修复设置备份解码和分组删除回退，见[修正记录](docs/settings-fixes-34623.md)。
 
 b34622 移除三项聊天工具／搜索配置，整理 Inline 机器人与盘古之白页面，并停止读取 Swiftgram 设置及跳转别名；验证结果与设备边界见[修正记录](docs/settings-cleanup-34622.md)。
 

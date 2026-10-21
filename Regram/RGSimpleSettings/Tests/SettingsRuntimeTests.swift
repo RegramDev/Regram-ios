@@ -153,6 +153,22 @@ extension UserDefaults {
         settings.setChatListStartupSpecificFolderId(27, accountPeerId: 111)
         settings.setChatListStartupSpecificFolderId(35, accountPeerId: 222)
         expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27 && settings.chatListStartupSpecificFolderId(accountPeerId: 222) == 35, "Fixed startup folders are isolated by account")
+        settings.chatListStartupFolderMode = "specific"
+        expect(!settings.rememberLastFolder && settings.chatListStartupFolderModeValue == .specific, "An explicit startup mode must update the legacy fallback")
+        settings.chatListStartupFolderMode = "invalid"
+        expect(settings.chatListStartupFolderModeValue == .specific, "Invalid startup modes must not overwrite the saved selection")
+        settings.chatListFolderTabDisplayMode = "both"
+        settings.communityAvatarTapAction = "arrow"
+        settings.videoPIPSwipeDirection = "none"
+        settings.textStyleMenuPosition = .last
+        settings.textStyleMenuItemOrder = [.bold, .link]
+        settings.ghostDontSendTyping = false
+        settings.ghostDontSendOnline = false
+        settings.hidePrivateChatActivities = true
+        expect(!settings.ghostDontSendTyping && !settings.ghostDontSendOnline, "Hiding incoming activity must not enable outgoing Ghost Mode")
+        settings.ghostDontSendTyping = true
+        settings.hidePrivateChatActivities = false
+        expect(settings.ghostDontSendTyping && !settings.hidePrivateChatActivities, "Ghost Mode must remain independent of local activity presentation")
         settings.hideSavedAndArchivedMessagesInList = true
         settings.disableCommunityChatGrouping = true
         expect(RGFeaturePreferences.storage(for: "features.disableCommunityChatGrouping").bool(forKey: "features.disableCommunityChatGrouping"), "Grouping policy must be readable from the shared store used by extensions")
@@ -163,10 +179,48 @@ extension UserDefaults {
         expect(featuresBackup.values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && featuresBackup.values["features.textStyleMenu.enabled"] == .string("bold"), "New privacy and composer choices participate in normal backups")
         expect(settings.exportPreferences(categories: [.privacy]).values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && settings.exportPreferences(categories: [.appearance]).values["features.hideSavedAndArchivedMessagesInList"] == nil, "Privacy enhancements must stay in the selected backup category")
         expect(featuresBackup.values["features.startupFolders"] == .dictionary(["111": "27", "222": "35"]), "Fixed-folder account mapping must survive settings backup")
+        for name in ["regram-settings.json", "Regram-Settings 2.JSON", "regram-settings (3).json"] {
+            expect(RGSettingsBackup.isExportFileName(name), "Recognize settings export copies by filename")
+        }
+        for name in ["settings.json", "data.json", "regram-message-filter.json", "regram-settings.json.exe", "regram-settings.txt"] {
+            expect(!RGSettingsBackup.isExportFileName(name), "Unrelated attachments must not expose the settings-import action")
+        }
+        let importDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: importDirectory) }
+        let importFile = importDirectory.appendingPathComponent(RGSettingsBackup.filename)
+        try featuresBackup.encoded().write(to: importFile)
+        let fileBackup = try RGSettingsBackup.read(from: importFile)
+        expect(fileBackup.values == featuresBackup.values, "Chat attachments and document picker use the same validated import reader")
+        try Data(repeating: 0, count: RGSettingsBackup.maximumBytes + 1).write(to: importFile)
+        do { _ = try RGSettingsBackup.read(from: importFile); fatalError("Oversized attachment must be rejected before reading JSON") } catch {}
+        try Data("{}".utf8).write(to: importFile)
+        do { _ = try RGSettingsBackup.read(from: importFile); fatalError("Malformed settings must not reach restore") } catch {}
+        let restoredFeatures = try RGSettingsBackup.decode(featuresBackup.encoded())
+        expect(restoredFeatures.values == featuresBackup.values, "Configured feature values must survive the actual JSON decoder used by import")
         expect(featuresBackup.values.keys.allSatisfy { !$0.lowercased().contains("icloud") && !$0.lowercased().contains("sessionbackup") }, "Excluded cloud/session features must not enter export")
-        settings.applyPreferences(featuresBackup.values, resetCategories: [.appearance])
+        expect(featuresBackup.values["features.chatListStartupFolderMode"] == .string("specific"), "Backup must include startup mode as well as the account mapping")
+        settings.chatListStartupFolderMode = "last"
+        expect(settings.rememberLastFolder, "Selecting last-folder mode keeps the fallback in sync")
+        settings.applyPreferences(restoredFeatures.values, resetCategories: [.appearance])
+        expect(settings.chatListStartupFolderModeValue == .specific, "Actual JSON import restores the fixed-folder startup mode")
         expect(settings.hideSavedAndArchivedMessagesInList && settings.isGroupProfileSettingItemVisible(.permissions) && settings.isTextStyleMenuItemEnabled(.bold), "Import and reset retain new feature choices")
         expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27, "Import restores the per-account startup folder")
+        for (key, value) in [
+            "features.startupFolders": RGBackupValue.dictionary(["111": "-2"]),
+            "features.chatListStartupFolderMode": .string("invalid"),
+            "features.chatListSwipeAction": .string("invalid"),
+            "features.chatListFolderTabDisplayMode": .bool(true),
+            "features.groupProfileSettingItems": .string("permissions,invalid"),
+            "features.textStyleMenu.enabled": .string("bold,invalid")
+        ] {
+            do { _ = try RGSettingsBackup.decode(RGSettingsBackup(values: [key: value]).encoded()); fatalError("Invalid feature backup must be rejected: \(key)") } catch {}
+        }
+        let oldFolders = RGSettingsBackup(values: ["rememberLastFolder": .bool(true), "features.startupFolders": .dictionary(["111": "-1"])])
+        settings.applyPreferences(try RGSettingsBackup.decode(oldFolders.encoded()).values)
+        expect(settings.chatListStartupFolderModeValue == .last && settings.chatListStartupSpecificFolderId(accountPeerId: 111) == -1, "Old backups retain remember-last mode and All Chats selection")
+        settings.applyPreferences(["rememberLastFolder": .bool(false)])
+        expect(settings.chatListStartupFolderModeValue == .telegramDefault, "Importing an old disabled flag must replace a newer explicit mode")
         let panguOriginal = "😀中文Telegram世界"
         let pangu = RGFeaturePangu.transform(panguOriginal)
         let originalRange = (panguOriginal as NSString).range(of: "Telegram")

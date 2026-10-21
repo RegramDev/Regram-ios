@@ -1,6 +1,6 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.0 / b34622** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.0 / b34623** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
@@ -11,6 +11,8 @@
 
 - [设置与兼容清理](settings-cleanup-34622.md)：b34622 的聊天功能移除、Inline 页面、盘古设置归组与 Swiftgram 兼容移除。
 - [聊天与界面增强](chat-and-interface-tools.md)：本轮功能入口、逐项实现与验证记录，格式工具栏保持原样。
+
+- [分组、手势、设置定位与导入](settings-fixes-34623.md)：b34623 的修正范围、审查结论及验证边界。
 
 ## 构建与维护
 

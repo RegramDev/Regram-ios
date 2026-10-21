@@ -20,7 +20,7 @@ private struct RGSettingsBackupView: View {
     let importFile: (@escaping (Result<RGSettingsBackup, Error>) -> Void) -> Void
     let restore: (RGSettingsBackup?, Set<RGBackupCategory>) -> Void
     @State private var categories = Set(RGBackupCategory.allCases)
-    @State private var candidate: RGSettingsBackup?
+    @State var candidate: RGSettingsBackup?
     @State private var importing = false
     let presentError: () -> Void
 
@@ -68,7 +68,11 @@ private struct RGSettingsBackupView: View {
     }
 }
 
-func rgSettingsBackupController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
+public func rgSettingsBackupImportController(context: AccountContext, backup: RGSettingsBackup) -> ViewController {
+    return rgSettingsBackupController(context: context, initialBackup: backup)
+}
+
+func rgSettingsBackupController(context: AccountContext, focusSetting: String? = nil, initialBackup: RGSettingsBackup? = nil) -> ViewController {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
@@ -133,9 +137,7 @@ func rgSettingsBackupController(context: AccountContext, focusSetting: String? =
                 guard let url else { completion(.failure(CancellationError())); return }
                 defer { try? FileManager.default.removeItem(at: url) }
                 do {
-                    let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                    guard size <= RGSettingsBackup.maximumBytes else { throw RGSettingsBackup.ValidationError.tooLarge }
-                    completion(.success(try RGSettingsBackup.decode(Data(contentsOf: url))))
+                    completion(.success(try RGSettingsBackup.read(from: url)))
                 } catch { completion(.failure(error)) }
             }
             controller?.present(picker, in: .window(.root))
@@ -159,7 +161,7 @@ func rgSettingsBackupController(context: AccountContext, focusSetting: String? =
                 })
             ]), ActionSheetItemGroup(items: [ActionSheetButtonItem(title: current.strings.Common_Cancel, color: .accent, action: { [weak sheet] in sheet?.dismissAnimated() })])])
             controller?.present(sheet, in: .window(.root))
-        }, presentError: { [weak controller] in
+        }, candidate: initialBackup, presentError: { [weak controller] in
             guard let controller else { return }
             let data = context.sharedContext.currentPresentationData.with { $0 }
             rgPresentSettingsMessage(context: context, controller: controller, titleKey: "Backup.Error", text: "Backup.Error.Notice".i18n(data.strings.rgLanguageCode))

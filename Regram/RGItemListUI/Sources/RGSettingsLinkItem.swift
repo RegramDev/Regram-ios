@@ -65,6 +65,48 @@ public func rgSettingsScrollTarget<T: ItemListNodeEntry>(_ entries: [T], item: S
 
 // Short settings lists use the main queue so text-driven row updates cannot race touch timers.
 public final class RGSettingsListController: ItemListController {
+    public var focusSetting: String?
+    public var focusColor: UIColor = .systemBlue
+    private var focusGeneration = 0
+    private var didHighlightFocus = false
+    private weak var focusOverlay: UIView?
+
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let focusSetting, !self.didHighlightFocus else { return }
+        self.focusGeneration += 1
+        let generation = self.focusGeneration
+        // Transactions and navigation can finish in either order; wait for the actual tagged node.
+        for delay in [0.1, 0.4, 0.8, 1.4] {
+            Queue.mainQueue().after(delay, { [weak self] in
+                guard let self, self.focusGeneration == generation, !self.didHighlightFocus,
+                      self.view.window != nil,
+                      let node = self.itemNode(forTag: RGSettingsItemTag(focusSetting)), !node.isLayerBacked,
+                      node.bounds.height > 0 else { return }
+                self.didHighlightFocus = true
+                let overlay = UIView(frame: node.bounds.insetBy(dx: 4, dy: 1))
+                overlay.isUserInteractionEnabled = false
+                overlay.isAccessibilityElement = false
+                overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                overlay.backgroundColor = self.focusColor.withAlphaComponent(0.16)
+                overlay.layer.borderColor = self.focusColor.withAlphaComponent(0.85).cgColor
+                overlay.layer.borderWidth = 2
+                overlay.layer.cornerRadius = 12
+                node.view.addSubview(overlay)
+                self.focusOverlay = overlay
+                UIView.animate(withDuration: 0.4, delay: 2.0, options: [.beginFromCurrentState, .allowUserInteraction], animations: {
+                    overlay.alpha = 0
+                }, completion: { _ in overlay.removeFromSuperview() })
+            })
+        }
+    }
+
+    override public func viewWillDisappear(_ animated: Bool) {
+        self.focusGeneration += 1
+        self.focusOverlay?.removeFromSuperview()
+        super.viewWillDisappear(animated)
+    }
+
     override public func loadDisplayNode() {
         super.loadDisplayNode()
         (self.displayNode as? ItemListControllerNode)?.listNode.useMainQueueTransactions = true

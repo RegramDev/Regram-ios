@@ -288,3 +288,11 @@ b34617 已完成 `//Telegram:Regram` arm64 Release、主应用及六个扩展的
 用户于 2026-10-15 确认的真机验收对应 b34616，记录于[更新日志](changelog.md)，适用于当时实际测试的设备与场景。b34617 的搜索底栏恢复和右滑返回修正通过状态回归、UIKit SDK 检查及完整编译，尚未记录新修正的真机验收结果。文中的服务、权限和容量限制继续适用。
 
 维护入口：[本地检查](../build-system/check-regram-features.py)、[更新测试](../Regram/RGAppUpdate/Tests)、[图标回归](../Regram/RGSimpleSettings/Tests/run-app-icon-checks.py)、[UI 测试](ui-testing.md)、[签名参考包](lcsign-reference-packaging.md)。构建要求以根 README、[versions.json](../versions.json) 和现行 BUILD 文件为准；`docs/superpowers/` 是历史资料。
+
+### b34623 设置导航与导入修正
+
+启动分组在「聊天与消息 → 分组」内直接弹出选择，保留按账号记录的具体分组以及旧「记住上次分组」偏好；目标不可用时回到全部聊天。设置深链与全局搜索会滚动并短暂高亮目标行。
+
+「隐藏对方输入与录音提示」只控制本机私聊标题和聊天列表中的对方活动提示；幽灵模式控制向服务端发送的本机输入和在线状态，两者独立。
+
+聊天中单条消息的 `regram-settings*.json` 文件提供「导入设置」长按操作，先校验不超过 2 MiB 的 JSON，再显示现有分类预览和恢复确认。普通 JSON、过滤器导出、多选消息、一次性媒体及明确超限的文件不提供该设置导入项。设置页文件选择器仍可导入改名后的有效备份。

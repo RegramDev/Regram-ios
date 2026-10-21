@@ -34,9 +34,14 @@ extension String {
         assert(contains("DoH", "networkPolicy", "enabled"))
         assert(RGSettingsCatalog.results(query: "色调", language: "zh-hans").isEmpty)
         assert(RGSettingsDestination(page: "settings.appearance", item: "liquidGlassTintPercent") == RGSettingsDestination(page: "bottomBar"))
-        assert(RGSettingsDestination(page: "settings.folders", item: "rememberLastFolder") == RGSettingsDestination(page: "startupFolder", item: "mode"))
+        assert(RGSettingsDestination(page: "settings.folders", item: "rememberLastFolder") == RGSettingsDestination(page: "settings.folders", item: "startupFolder"))
         assert(RGSettingsDestination(page: "settings.chatList", item: "disableChatSwipeOptions") == RGSettingsDestination(page: "settings.chatList", item: "chatListSwipeAction"))
         assert(RGSettingsDestination(page: "pro.messages", item: "inputToolbar") == RGSettingsDestination(page: "pro.input", item: "inputToolbar"))
+        for item in [nil, "mode", "specific"] as [String?] {
+            assert(RGSettingsDestination(page: "startupFolder", item: item) == RGSettingsDestination(page: "settings.folders", item: "startupFolder"))
+        }
+        assert(contains("指定分组", "settings.folders", "startupFolder"))
+        assert(RGSettingsCatalog.entries.filter { $0.destination.item == "startupFolder" }.count == 1)
         assert(contains("DNS", "networkPolicy", "test"))
         assert(contains("总结", "summary", "enabled"))
         assert(contains("盘古", "pro.input", "panguSpacing"))

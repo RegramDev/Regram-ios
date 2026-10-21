@@ -812,6 +812,11 @@ public class RGSimpleSettings {
     }
 
     public func applyPreferences(_ values: [String: RGBackupValue], resetCategories: Set<RGBackupCategory> = []) {
+        // MARK: Regram — old backups carry only the remember-last flag; it must replace a newer mode too.
+        var values = values
+        if values["features.chatListStartupFolderMode"] == nil, case let .bool(rememberLast)? = values["rememberLastFolder"] {
+            values["features.chatListStartupFolderMode"] = .string(rememberLast ? "last" : "telegram")
+        }
         let wrappers = Mirror(reflecting: self).children.compactMap { $0.value as? RGPreferenceCache }
         let resetKeys = Set(resetCategories.flatMap { RGSettingsBackup.categoryKeys[$0] ?? [] })
         for key in resetKeys where !key.hasPrefix("native.") {

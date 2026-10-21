@@ -61,6 +61,7 @@ public enum RGContextMenuItemId: String, CaseIterable, Hashable {
     case delete
     case json
     case addFilter
+    case importSettings
 
     /// Regular message actions implemented by Regram. Conditional actions are added only after
     /// the account actually produces them; diagnostics and wallet actions stay out of this UI.

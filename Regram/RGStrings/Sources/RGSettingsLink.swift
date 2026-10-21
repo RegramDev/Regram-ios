@@ -14,7 +14,9 @@ public struct RGSettingsDestination: Hashable {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }
         if (page == "settings.appearance" && item == "liquidGlassTintPercent") || (page == "bottomBar" && item == "tint") { self.page = "bottomBar"; self.item = nil; return }
         if page == "settings.chatList", item == "disableChatSwipeOptions" { self.page = page; self.item = "chatListSwipeAction"; return }
-        if page == "settings.folders", item == "rememberLastFolder" { self.page = "startupFolder"; self.item = "mode"; return }
+        if page == "startupFolder" || (page == "settings.folders" && item == "rememberLastFolder") {
+            self.page = "settings.folders"; self.item = "startupFolder"; return
+        }
         // MARK: Regram — retired controls cannot be re-enabled by old copied links.
         if page == "settings.messageActions", ["chatToolsEnabled", "chatSearchFieldAtBottom", "bottomUpChatSearchResults"].contains(item ?? "") { return nil }
         if page == "settings.messageActions", item == "autoInlineBotEnabled" { self.page = "inlineBots"; self.item = "enabled"; return }

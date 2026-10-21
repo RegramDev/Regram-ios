@@ -18,7 +18,7 @@
 /* Example: Hide "All Chats" */
 "Settings.Folders.AllChatsHidden" = "Hide \"%@\"";
 "Settings.Folders.RememberLast" = "Open Last Folder";
-"Settings.Folders.RememberLast.Notice" = "Regram will open the last used folder when you restart the app or switch accounts.";
+"Settings.Folders.RememberLast.Notice" = "Open the selected destination when restarting the app or switching accounts. If a folder is unavailable, All Chats opens instead.";
 
 "Settings.Folders.CompactNames" = "Smaller spacing";
 "Settings.Folders.AllChatsTitle" = "\"All Chats\" title";
@@ -1043,7 +1043,7 @@ Matching is case-insensitive.";
 "features.InlineBotRules" = "Matching Rules";
 "features.InlineBotRules.Footer" = "Read-only rules update automatically. Each group shows the bot and its link patterns. Your original link stays in the input field.";
 "features.StayAtLatestMessageAfterRefresh" = "Stay at Latest After Refresh";
-"features.HidePrivateChatActivities" = "Hide Activity Status in Private Chats";
+"features.HidePrivateChatActivities" = "Hide Others’ Typing and Recording";
 "features.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
 "features.KeepNewChatsVisibleAtTop" = "Keep New Chats Visible at Top";
 "features.DisableCommunityChatGrouping" = "Disable Community Chat Grouping";
@@ -1167,3 +1167,5 @@ Matching is case-insensitive.";
 "features.PanguOnSending" = "Apply when sending messages";
 
 "features.PanguInfo" = "Insert spaces between Chinese/Japanese/Korean text and Latin letters or numbers. These three options are independent. Sending follows your existing per-chat setting; code, links and text entities keep their formatting.";
+"features.HidePrivateChatActivities.Notice" = "Hides the other person’s typing, recording and other activity indicators in your private chats and chat list. Ghost Mode controls whether your own activity is sent to others.";
+"ContextMenu.importSettings" = "Import Settings";

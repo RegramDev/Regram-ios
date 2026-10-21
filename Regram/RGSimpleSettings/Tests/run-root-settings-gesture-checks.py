@@ -27,6 +27,7 @@ class UIView: NSObject {
 }
 class UIControl: UIView {}
 class UITextField: UIControl {}
+class PeerInfoScreenSelectableButton: UIControl {}
 class UIScrollView: UIView {
     var alwaysBounceHorizontal = false
     var contentSize = CGSize(width: 390, height: 1600)
@@ -62,6 +63,8 @@ func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
     allowed = false
     expect(!delegate.gestureRecognizerShouldBegin(pan) && !delegate.gestureRecognizer(pan, shouldReceive: UITouch(content)), "The root/top/editing/visibility guard must gate touch and recognition")
     allowed = true
+    let row = PeerInfoScreenSelectableButton(); row.superview = list
+    expect(delegate.gestureRecognizer(pan, shouldReceive: UITouch(row)), "A settings disclosure button must permit back pans so sliding cannot open its menu")
     for control in [UIControl(), UITextField(), UITextView()] as [UIView] {
         let nested = UIView(); nested.superview = control; control.superview = list
         expect(!delegate.gestureRecognizer(pan, shouldReceive: UITouch(nested)), "Controls and editable text must retain their own gestures")
@@ -81,6 +84,7 @@ func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
 '''.replace('DELEGATE', delegate)
 ui = '''
 import UIKit
+class PeerInfoScreenSelectableButton: UIButton {}
 protocol TelegramRootControllerInterface: AnyObject { func openChats() }
 protocol TabBarController: UIViewController {
     func rgBeginInteractiveReturnToChats() -> Bool

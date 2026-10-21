@@ -15,7 +15,7 @@
 /* Example: Hide "All Chats" */
 "Settings.Folders.AllChatsHidden" = "隱藏 \"%@\"";
 "Settings.Folders.RememberLast" = "開啟最後瀏覽的對話盒";
-"Settings.Folders.RememberLast.Notice" = "Regram 會在重啟或帳號切換後開啟最後瀏覽的對話盒";
+"Settings.Folders.RememberLast.Notice" = "重新啟動應用程式或切換帳號時開啟所選分組；指定分組無法使用時開啟全部聊天。";
 
 "Settings.Folders.CompactNames" = "縮小間距";
 "Settings.Folders.AllChatsTitle" = "\"所有對話\"標題";
@@ -1034,7 +1034,7 @@
 "features.InlineBotRules" = "比對規則";
 "features.InlineBotRules.Footer" = "規則唯讀並自動更新。每組顯示對應機器人與比對表達式，輸入框保留原始連結。";
 "features.StayAtLatestMessageAfterRefresh" = "重新整理後保持最新訊息";
-"features.HidePrivateChatActivities" = "隱藏私聊活動狀態";
+"features.HidePrivateChatActivities" = "隱藏對方輸入與錄音提示";
 "features.HideSavedAndArchivedMessagesInList" = "在列表中隱藏收藏夾和歸檔會話資訊";
 "features.KeepNewChatsVisibleAtTop" = "列表頂部保持顯示新訊息對話";
 "features.DisableCommunityChatGrouping" = "停用社群聊天合併顯示";
@@ -1158,3 +1158,5 @@
 "features.PanguOnSending" = "傳送訊息時處理";
 
 "features.PanguInfo" = "在中日韓文字與拉丁字母或數字之間加入空格，三個開關獨立控制。傳送時沿用個別對話設定，保留程式碼、連結與文字格式。";
+"features.HidePrivateChatActivities.Notice" = "僅隱藏本機私聊及聊天列表中對方正在輸入、錄音等提示。若要隱藏自己向對方傳送的狀態，請使用幽靈模式。";
+"ContextMenu.importSettings" = "匯入設定";

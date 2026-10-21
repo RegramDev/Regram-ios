@@ -399,6 +399,8 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
     }
 
     let controller = RGSettingsListController(context: context, state: signal)
+    controller.focusSetting = focusSetting
+    controller.focusColor = context.sharedContext.currentPresentationData.with { $0 }.theme.list.itemAccentColor
     controller.navigationPresentation = .default
     presentControllerImpl = { [weak controller] c, presentationArguments in
         controller?.present(c, in: .window(.root), with: presentationArguments)
