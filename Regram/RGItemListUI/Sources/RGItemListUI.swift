@@ -235,7 +235,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
             return ItemListTextItem(presentationData: presentationData, text: .markdown(string), sectionId: self.section)
         case let .disclosure(_, _, link, text):
             let subtitle = arguments.disclosureSubtitle(link)
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: arguments.disclosureIcon(link), title: text, label: subtitle ?? "", labelStyle: subtitle == nil ? .text : .detailText, sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: arguments.disclosureIcon(link), title: text, label: subtitle ?? "", labelStyle: subtitle == nil ? .text : .multilineDetailText, sectionId: self.section, style: .blocks, action: {
                 arguments.openDisclosureLink(link)
             }, tag: self.tag)
         case let .percentageSlider(_, _, setting, value):
