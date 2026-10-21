@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34625**. Tests were skipped at the user’s request; see the [build and delivery record](docs/settings-navigation-34625.md). See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34626**. Tests were skipped at the user’s request; see the [build and delivery record](docs/settings-controls-34626.md). See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -119,13 +119,13 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 | Network & Transfers | DNS/IP, transfer parameters, call connections, performance and DC tests |
 | Management & Tools | Local Premium, backups, updates, data cleanup |
 
-Basic controls appear within their category. Chats and media use tabs within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
+Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
 
 Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
 ## Verification scope
 
-b34625 passed the Xcode 27 arm64 Release build and package checks for the main app, six extensions, 12 matching debug symbols, signatures and resources. Installation identities and selected entitlements match b34624. Regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s request. The [current build record](docs/settings-navigation-34625.md) lists the source revision, preserved local build exceptions and artifact checksum.
+b34626 passed the Xcode 27 arm64 Release build and package checks for the main app, six extensions, 12 matching debug symbols, signatures and resources. Installation identities and selected entitlements match b34625. Regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s request. The [current build record](docs/settings-controls-34626.md) lists the source revision, preserved local build exceptions and artifact checksum.
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
