@@ -1,3 +1,4 @@
+import RGSimpleSettings // MARK: Regram — search availability during live layout changes.
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -45,9 +46,6 @@ public protocol TabBarContainedController {
 }
 
 open class TabBarControllerImpl: ViewController, TabBarController {
-    // MARK: Regram — the configurable search button always opens chat search.
-    public var rgActivateSearch: (() -> Void)?
-
     // MARK: Regram — a pan owns its transition until completion, cancellation or navigation.
     private final class RGBackState {
         let sourceIndex: Int
@@ -266,7 +264,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             guard let self else {
                 return
             }
-            if let activate = self.rgActivateSearch { activate() } else { self.currentController?.tabBarActivateSearch() }
+            // MARK: Regram — native search belongs to the currently selected page.
+            self.currentController?.tabBarActivateSearch()
         }, deactivateSearch: { [weak self] in
             guard let self else {
                 return
@@ -274,10 +273,17 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             self.currentController?.tabBarDeactivateSearch()
         })
         
-        // MARK: Regram — update the active controller's bottom inset when label height changes.
+        // MARK: Regram — end external search before settings remove its input surface.
         self.tabBarControllerNode.rgAppearanceChanged = { [weak self] in
-            guard let self, let layout = self.validLayout else { return }
-            self.containerLayoutUpdated(layout, transition: .immediate)
+            guard let self else { return }
+            let settings = RGSimpleSettings.shared.bottomBarSettings
+            if self.currentController?.tabBarSearchState?.isActive == true,
+               !settings.isBottomBarVisible || !settings.isVisible(.search) {
+                self.currentController?.tabBarDeactivateSearch()
+            }
+            if let layout = self.validLayout {
+                self.containerLayoutUpdated(layout, transition: .immediate)
+            }
         }
         self.updateSelectedIndex()
         self.displayNodeDidLoad()

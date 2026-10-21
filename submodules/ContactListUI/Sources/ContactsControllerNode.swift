@@ -479,7 +479,7 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }
     }
     
-    func activateSearch(placeholderNode: SearchBarPlaceholderNode?) {
+    func activateSearch(placeholderNode: SearchBarPlaceholderNode?, searchBarIsExternal: Bool = false) {
         guard let (containerLayout, navigationBarHeight) = self.containerLayout, self.searchDisplayController == nil else {
             return
         }
@@ -505,7 +505,7 @@ final class ContactsControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             if let requestDeactivateSearch = self?.requestDeactivateSearch {
                 requestDeactivateSearch()
             }
-        }, fieldStyle: placeholderNode?.fieldStyle ?? .modern)
+        }, fieldStyle: placeholderNode?.fieldStyle ?? .modern, searchBarIsExternal: searchBarIsExternal) // MARK: Regram — explicit source keeps top search usable.
         
         self.searchDisplayController?.containerLayoutUpdated(containerLayout, navigationBarHeight: navigationBarHeight, transition: .immediate)
         self.searchDisplayController?.activate(insertSubnode: { [weak self] subnode, isSearchBar in

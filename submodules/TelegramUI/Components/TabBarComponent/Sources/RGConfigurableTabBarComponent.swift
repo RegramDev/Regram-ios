@@ -35,6 +35,28 @@ public final class RGConfigurableTabBarComponent: Component {
             return convert(frame, from: view)
         }
         fileprivate func update(component: RGConfigurableTabBarComponent, availableSize: CGSize, transition: ComponentTransition) -> CGSize {
+            // MARK: Regram — use upstream search glass and its expanded field, not a second tab lens.
+            // Keep an independently placed navigation tab in the capsule while search needs the right slot.
+            if let search = component.search {
+                let items = component.items + (component.externalItem.map { [$0] } ?? [])
+                itemIds = items.map { item in
+                    switch item.content { case let .tabBarItem(value): return AnyHashable(ObjectIdentifier(value)); case let .customItem(value): return value.id }
+                }
+                standaloneId = nil
+                standalone.view?.removeFromSuperview()
+                let naturalWidths = items.map { item -> Double in
+                    let title: String
+                    switch item.content { case let .tabBarItem(value): title = value.title ?? ""; case let .customItem(value): title = value.title }
+                    return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
+                }
+                let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: 72, searchActive: search.isActive, naturalItemWidths: naturalWidths))
+                let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
+                if let view = bar.view {
+                    if view.superview == nil { addSubview(view) }
+                    transition.setFrame(view: view, frame: CGRect(origin: .zero, size: size))
+                }
+                return size
+            }
             itemIds = component.items.map { item in
                 switch item.content { case let .tabBarItem(value): return AnyHashable(ObjectIdentifier(value)); case let .customItem(value): return value.id }
             }

@@ -18,17 +18,17 @@ private struct RGDiagnosticsView: View {
     @State private var benchmarkQueue = DispatchQueue(label: "Regram.filter-benchmark", qos: .userInitiated)
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     var body: some View {
-        List {
-            Section {
+        RGSettingsList {
+            RGSettingsSection {
                 Button("Diagnostics.DC.Title".i18n(lang), action: openDatacenters).rgSettingsLink("datacenters")
             }
 
-            Section(header: Text("Diagnostics.Download".i18n(lang)), footer: Text("Diagnostics.Download.Notice".i18n(lang))) {
+            RGSettingsSection(header: Text("Diagnostics.Download".i18n(lang)), footer: Text("Diagnostics.Download.Notice".i18n(lang))) {
                 HStack { Text("Diagnostics.Speed".i18n(lang)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: snapshot.roundedBytesPerSecond, countStyle: .file) + "/s").monospacedDigit() }
                 HStack { Text("Diagnostics.Received".i18n(lang)); Spacer(); Text(ByteCountFormatter.string(fromByteCount: snapshot.receivedBytes, countStyle: .file)).monospacedDigit() }
                 Text((RGSimpleSettings.DownloadSpeedBoostValues(rawValue: RGSimpleSettings.shared.downloadSpeedBoost) == .enabled ? "Diagnostics.Boost.On" : "Diagnostics.Boost.Off").i18n(lang))
             }.rgSettingsLink("transfer")
-            Section(header: Text("Diagnostics.Filter".i18n(lang)), footer: Text("Diagnostics.Filter.Notice".i18n(lang))) {
+            RGSettingsSection(header: Text("Diagnostics.Filter".i18n(lang)), footer: Text("Diagnostics.Filter.Notice".i18n(lang))) {
                 HStack {
                     Button((testing ? "Common.Cancel" : "Diagnostics.Filter.Run").i18n(lang)) {
                         if testing { benchmark.cancel(); testing = false; return }
@@ -54,7 +54,7 @@ private struct RGDiagnosticsView: View {
                 }
                 Text("\(RGSimpleSettings.shared.messageFilterRules.count) " + "Diagnostics.Rules".i18n(lang))
             }.rgSettingsLink("filter")
-            Section(footer: Text("Diagnostics.Media.Notice".i18n(lang))) {
+            RGSettingsSection(footer: Text("Diagnostics.Media.Notice".i18n(lang))) {
                 Text((RGSimpleSettings.shared.mediaLoadingExperiment ? "Diagnostics.Media.On" : "Diagnostics.Media.Off").i18n(lang))
             }
         }

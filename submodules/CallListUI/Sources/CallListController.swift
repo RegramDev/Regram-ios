@@ -174,6 +174,8 @@ public final class CallListController: TelegramBaseController {
             self?.controllerNode.scrollToLatest()
         }
         
+        // MARK: Regram — upstream tab search invokes the existing new-call picker.
+        if case .tab = self.mode { self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate) }
         self.navigationItem.titleView = self.segmentedTitleView
         if case .navigation = self.mode {
             self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Back, style: .plain, target: nil, action: nil)

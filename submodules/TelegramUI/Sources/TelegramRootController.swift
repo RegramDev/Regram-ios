@@ -197,8 +197,6 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     
     public func addRootControllers(hidePhoneInSettings: Bool, showContactsTab: Bool, showCallsTab: Bool) {
         let tabBarController = TabBarControllerImpl(theme: self.presentationData.theme, strings: self.presentationData.strings)
-        // MARK: Regram — bottom search is available on every tab.
-        tabBarController.rgActivateSearch = { [weak self] in self?.openChatsController(activateSearch: true) }
         tabBarController.navigationPresentation = .master
         let chatListController = self.context.sharedContext.makeChatListController(context: self.context, location: .chatList(groupId: .root), controlsHistoryPreload: true, hideNetworkActivityStatus: false, previewing: false, enableDebugActions: !GlobalExperimentalSettings.isAppStoreBuild)
         if let sharedContext = self.context.sharedContext as? SharedAccountContextImpl {

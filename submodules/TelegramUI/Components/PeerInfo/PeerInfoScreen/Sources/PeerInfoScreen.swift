@@ -4988,7 +4988,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         }
     }
     
-    func activateSearch() {
+    // MARK: Regram — settings top search remains local when the native bottom field is not requested.
+    func activateSearch(isFromTabBar: Bool = false) {
         guard let (layout, navigationBarHeight) = self.validLayout, self.searchDisplayController == nil else {
             return
         }
@@ -5087,7 +5088,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                     cancel: { [weak self] in
                         self?.deactivateSearch()
                     },
-                    fieldStyle: .glass
+                    fieldStyle: .glass,
+                    searchBarIsExternal: isFromTabBar
                 )
             }
         } else if let currentPaneKey = self.paneContainerNode.currentPaneKey, case .members = currentPaneKey {
@@ -5217,7 +5219,16 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         }, placeholder: nil)
         
         if self.isSettings {
-            (controller.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.4, curve: .spring))
+            // MARK: Regram — only the tab-bar action expands the bottom search input.
+            if isFromTabBar {
+                controller.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: .animated(duration: 0.4, curve: .spring))
+                if let searchBarNode = controller.currentTabBarSearchNode?() as? SearchBarNode {
+                    self.searchDisplayController?.setSearchBar(searchBarNode)
+                    searchBarNode.activate()
+                }
+            } else {
+                (controller.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.4, curve: .spring))
+            }
         }
         
         self.containerLayoutUpdated(layout: layout, navigationHeight: navigationBarHeight, transition: .immediate)
@@ -5233,6 +5244,8 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         controller.dismissAllTooltips()
         
         if self.isSettings {
+            // MARK: Regram — retain the selected settings tab after cancelling search.
+            controller.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.4, curve: .spring))
             (self.controller?.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.4, curve: .spring))
         }
         
@@ -6979,6 +6992,8 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             }
         }
         
+        // MARK: Regram — expose the native bottom search only on the settings root.
+        if isSettings { self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate) }
         self.readyInternalDisposable = (self._readyInternal.get()
         |> filter { $0 }
         |> take(1)
@@ -7498,7 +7513,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
     }
     
     override public func tabBarActivateSearch() {
-        self.controllerNode.activateSearch()
+        self.controllerNode.activateSearch(isFromTabBar: true)
     }
     
     override public func tabBarDeactivateSearch() {

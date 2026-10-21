@@ -55,6 +55,7 @@ private final class RGSummaryRangeLoader: ObservableObject {
 }
 private struct RGSummaryRangeView: View {
     @Environment(\.lang) private var lang
+    @Environment(\.rgSettingsColors) private var colors
     @ObservedObject var loader: RGSummaryRangeLoader
     let selectedMessages: [Message]
     let open: ([Message]) -> Void
@@ -62,8 +63,8 @@ private struct RGSummaryRangeView: View {
     @State private var start = Date().addingTimeInterval(-3600)
     @State private var end = Date()
     var body: some View {
-        List {
-            Section(footer: Text("Summary.RangeNotice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("Summary.RangeNotice".i18n(lang))) {
                 Picker("Summary.Range".i18n(lang), selection: $preset) {
                     Text("Summary.LastHour".i18n(lang)).tag("hour")
                     Text("Summary.Today".i18n(lang)).tag("today")
@@ -81,15 +82,15 @@ private struct RGSummaryRangeView: View {
                     loader.load(from: from, to: preset == "custom" ? end : now)
                 }
                 if loader.loading { ProgressView("Summary.LoadingRange".i18n(lang)) }
-                if let key = loader.errorKey { Text(key.i18n(lang)).foregroundColor(.secondary) }
+                if let key = loader.errorKey { Text(key.i18n(lang)).foregroundColor(colors.secondary) }
             }
             if !loader.messages.isEmpty {
-                Section {
+                RGSettingsSection {
                     Text("Summary.Selected".i18n(lang) + " \(loader.messages.count)")
                     Button("Summary.ReviewRange".i18n(lang)) { open(loader.messages) }
                 }
             }
-            if !selectedMessages.isEmpty { Section { Button("Summary.OnlySelected".i18n(lang)) { open(selectedMessages) } } }
+            if !selectedMessages.isEmpty { RGSettingsSection { Button("Summary.OnlySelected".i18n(lang)) { open(selectedMessages) } } }
         }.environment(\.locale, Locale(identifier: lang)).onDisappear { loader.cancel() }
     }
 }

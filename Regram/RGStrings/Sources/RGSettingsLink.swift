@@ -15,6 +15,7 @@ public struct RGSettingsDestination: Hashable {
         if (page == "settings.appearance" && item == "liquidGlassTintPercent") || (page == "bottomBar" && item == "tint") { self.page = "bottomBar"; self.item = nil; return }
         // MARK: Regram — old copied links follow moved controls without another visible entry.
         if page == "diagnostics", item == "datacenters" { self.page = "datacenters"; self.item = "start"; return }
+        if page == "bottomBar", item == "bottomSearch" || item == "searchMode" { self.page = page; self.item = "visibility"; return }
         let moves: [String: String] = [
             "pro.messages:inputToolbar": "pro.input", "pro.messages:mentionAsUserIdLink": "pro.input", "pro.messages:panguSpacing": "pro.input", "pro.messages:defaultOutgoingFormatting": "pro.input", "pro.messages:chatPreferences": "pro.input",
             "antiFeatures:revokedMarker": "revokedMarker",

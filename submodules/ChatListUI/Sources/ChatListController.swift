@@ -804,6 +804,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         })
         
         self.updateNavigationMetadata()
+        // MARK: Regram — expose the upstream current-page search control.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         self.rgLayoutObserver = NotificationCenter.default.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
             self?.requestLayout(transition: .immediate)
         }
@@ -4742,12 +4744,17 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     public private(set) var isSearchActive: Bool = false
     
     public func activateSearch(filter: ChatListSearchFilter, query: String? = nil) {
+        self.rgActivateSearch(isFromTabBar: false, filter: filter, query: query)
+    }
+
+    // MARK: Regram — only the bottom control borrows the native tab-bar input field.
+    private func rgActivateSearch(isFromTabBar: Bool, filter: ChatListSearchFilter, query: String? = nil) {
         var searchContentNode: NavigationBarSearchContentNode?
-        if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+        if !isFromTabBar, let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
             searchContentNode = navigationBarView.searchContentNode
         }
         
-        self.activateSearch(filter: filter, query: query, skipScrolling: false, searchContentNode: searchContentNode)
+        self.activateSearch(filter: filter, query: query, skipScrolling: false, searchContentNode: searchContentNode, isFromTabBar: isFromTabBar)
     }
     
     public func activateSearch(query: String? = nil) {
@@ -4763,7 +4770,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     // MARK: Regram — update the chat header when bottom-bar layout changes.
     private var rgLayoutObserver: NSObjectProtocol?
     private var previousSearchToggleTimestamp: Double?
-    func activateSearch(filter: ChatListSearchFilter = .chats, query: String? = nil, skipScrolling: Bool = false, searchContentNode: NavigationBarSearchContentNode?) {
+    func activateSearch(filter: ChatListSearchFilter = .chats, query: String? = nil, skipScrolling: Bool = false, searchContentNode: NavigationBarSearchContentNode?, isFromTabBar: Bool = false) {
         Task { @MainActor [weak self] in
             guard let self else {
                 return
@@ -4790,7 +4797,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 do {
                     let displaySearchFilters = true
                     
-                    if let filterContainerNodeAndActivate = await self.chatListDisplayNode.activateSearch(placeholderNode: searchContentNode?.placeholderNode, displaySearchFilters: displaySearchFilters, hasDownloads: self.hasDownloads, initialFilter: filter, navigationController: self.navigationController as? NavigationController, searchBarIsExternal: false) {
+                    if let filterContainerNodeAndActivate = await self.chatListDisplayNode.activateSearch(placeholderNode: searchContentNode?.placeholderNode, displaySearchFilters: displaySearchFilters, hasDownloads: self.hasDownloads, initialFilter: filter, navigationController: self.navigationController as? NavigationController, searchBarIsExternal: isFromTabBar) {
                         let activate = filterContainerNodeAndActivate
                         
                         activate(filter != .downloads)
@@ -4802,7 +4809,16 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     
                     let transition: ContainedViewLayoutTransition = .animated(duration: 0.4, curve: .spring)
                     self.setDisplayNavigationBar(false, transition: transition)
-                    (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: transition)
+                    // MARK: Regram — preserve the original top-search hide path.
+                    if isFromTabBar {
+                        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: transition)
+                        if let searchBarNode = self.currentTabBarSearchNode?() as? SearchBarNode {
+                            self.chatListDisplayNode.searchDisplayController?.setSearchBar(searchBarNode)
+                            searchBarNode.activate()
+                        }
+                    } else {
+                        (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: transition)
+                    }
 
                     self.isSearchActive = true
                     if let navigationController = self.navigationController as? NavigationController {
@@ -4827,7 +4843,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             return
         }
         let currentTimestamp = CACurrentMediaTime()
-        if let previousSearchActivationTimestamp = self.previousSearchToggleTimestamp, currentTimestamp < previousSearchActivationTimestamp + 0.6 {
+        // MARK: Regram — required teardown bypasses debounce only when its input control was disabled.
+        let bottomBarSettings = RGSimpleSettings.shared.bottomBarSettings
+        let mustFinishBottomSearch = self.tabBarSearchState?.isActive == true && (!bottomBarSettings.isBottomBarVisible || !bottomBarSettings.isVisible(.search))
+        if !mustFinishBottomSearch, let previousSearchActivationTimestamp = self.previousSearchToggleTimestamp, currentTimestamp < previousSearchActivationTimestamp + 0.6 {
             return
         }
         self.previousSearchToggleTimestamp = currentTimestamp
@@ -4856,6 +4875,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         
         let transition: ContainedViewLayoutTransition = animated ? .animated(duration: 0.4, curve: .spring) : .immediate
         self.setDisplayNavigationBar(true, transition: transition)
+        // MARK: Regram — collapse the bottom search field before restoring the bar.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: transition)
         
         completion?()
         
@@ -6502,7 +6523,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
 
     override public func tabBarActivateSearch() {
-        self.activateSearch(filter: .chats, query: nil)
+        self.rgActivateSearch(isFromTabBar: true, filter: .chats, query: nil)
     }
 
     override public func tabBarDeactivateSearch() {

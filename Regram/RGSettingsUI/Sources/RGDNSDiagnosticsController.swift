@@ -38,10 +38,10 @@ private struct RGDNSDiagnosticsView: View {
     let policy: RGNetworkPolicy
     let currentRoute: String
     var body: some View {
-        List {
-            Section(footer: Text("DNSDiagnostics.Notice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("DNSDiagnostics.Notice".i18n(lang))) {
                 Text(policy.dnsMode.titleKey.i18n(lang))
-                if policy.dohEnabled { Text(policy.endpoint).font(.footnote).foregroundColor(.secondary) }
+                if policy.dohEnabled { Text(policy.endpoint).font(.footnote).rgSecondaryText() }
                 Text(currentRoute)
                 Text("NetworkPolicy.IP".i18n(lang) + ": " + policy.ipVersion.titleKey.i18n(lang))
                 TextField("DNSDiagnostics.Host".i18n(lang), text: $host).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(test.running)
@@ -51,16 +51,16 @@ private struct RGDNSDiagnosticsView: View {
                 if test.running { ProgressView() }
             }
             if !test.running && !test.rows.isEmpty {
-                Section(header: Text("DNSDiagnostics.PolicyAddresses".i18n(lang))) {
+                RGSettingsSection(header: Text("DNSDiagnostics.PolicyAddresses".i18n(lang))) {
                     let allowed = MTRGDNSDiagnostics.orderedAddresses(test.rows.flatMap(\.addresses), policy: policy.ipVersion.rawValue)
-                    if allowed.isEmpty { Text("DNSDiagnostics.NoPolicyAddresses".i18n(lang)).foregroundColor(.secondary) }
+                    if allowed.isEmpty { Text("DNSDiagnostics.NoPolicyAddresses".i18n(lang)).rgSecondaryText() }
                     ForEach(allowed, id: \.self) { address in Text(address).textSelection(.enabled) }
                 }
             }
             ForEach(test.rows, id: \.family) { row in
-                Section(header: Text(row.family == 4 ? "IPv4 · A" : "IPv6 · AAAA")) {
+                RGSettingsSection(header: Text(row.family == 4 ? "IPv4 · A" : "IPv6 · AAAA")) {
                     Text(row.address ?? "DNSDiagnostics.Failed".i18n(lang)).textSelection(.enabled)
-                    if let milliseconds = row.milliseconds { Text(String(format: "%.0f ms", milliseconds)).monospacedDigit().foregroundColor(.secondary) }
+                    if let milliseconds = row.milliseconds { Text(String(format: "%.0f ms", milliseconds)).monospacedDigit().rgSecondaryText() }
                 }
             }
         }.onDisappear { test.cancel() }

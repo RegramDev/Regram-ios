@@ -25,8 +25,8 @@ private struct RGSettingsBackupView: View {
     let presentError: () -> Void
 
     var body: some View {
-        List {
-            Section(footer: Text("Backup.Notice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("Backup.Notice".i18n(lang))) {
                 Button("Backup.Export".i18n(lang)) { export(categories) }.rgSettingsLink("export").disabled(categories.isEmpty)
                 Button("Backup.Import".i18n(lang)) {
                     importing = true
@@ -40,7 +40,7 @@ private struct RGSettingsBackupView: View {
                 }.disabled(importing).rgSettingsLink("import")
                 if importing { ProgressView() }
             }
-            Section(header: Text("Backup.Categories".i18n(lang))) {
+            RGSettingsSection(header: Text("Backup.Categories".i18n(lang))) {
                 ForEach(RGBackupCategory.allCases) { category in
                     Toggle(isOn: Binding(get: { categories.contains(category) }, set: { selected in
                         if selected { categories.insert(category) } else { categories.remove(category) }
@@ -48,20 +48,20 @@ private struct RGSettingsBackupView: View {
                         HStack {
                             Text(category.titleKey.i18n(lang))
                             Spacer()
-                            if let candidate { Text("\(candidate.values.keys.filter { RGSettingsBackup.category(for: $0) == category }.count)").foregroundColor(.secondary) }
+                            if let candidate { Text("\(candidate.values.keys.filter { RGSettingsBackup.category(for: $0) == category }.count)").rgSecondaryText() }
                         }
                     }
                 }
             }
             if let candidate {
-                Section(header: Text("Backup.Preview".i18n(lang)), footer: Text("Backup.Fonts.Notice".i18n(lang))) {
+                RGSettingsSection(header: Text("Backup.Preview".i18n(lang)), footer: Text("Backup.Fonts.Notice".i18n(lang))) {
                     Text(candidate.createdAt, style: .date)
                     Text("\(candidate.selectedValues(categories: categories).count) " + "Backup.Items".i18n(lang))
                     Button("Backup.Restore".i18n(lang)) { restore(candidate, categories) }.disabled(categories.isEmpty)
                     Button("Backup.CancelPreview".i18n(lang)) { self.candidate = nil }
                 }
             }
-            Section(footer: Text("Backup.Reset.Notice".i18n(lang))) {
+            RGSettingsSection(footer: Text("Backup.Reset.Notice".i18n(lang))) {
                 Button("Backup.Reset".i18n(lang), role: .destructive) { restore(nil, categories) }.disabled(categories.isEmpty).rgSettingsLink("reset")
             }
         }

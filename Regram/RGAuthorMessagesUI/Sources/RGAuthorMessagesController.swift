@@ -23,6 +23,7 @@ final class RGAuthorMessagesController: ViewController {
     private var currentResult: SearchMessagesResult?
     private var validLayout: (ContainerViewLayout, CGFloat)?
     private let emptyNode = ImmediateTextNode()
+    private var emptyTextKey: String?
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let retryButton = UIButton(type: .system)
 
@@ -31,7 +32,8 @@ final class RGAuthorMessagesController: ViewController {
         self.author = author
         self.location = .peer(peerId: chatPeerId, fromId: author.id, tags: nil, reactions: nil, threadId: threadId, minDate: nil, maxDate: nil)
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings))
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, style: .glass))
+        self._hasGlassStyle = true
         self.title = "AuthorMessages.Title".i18n(self.presentationData.strings.baseLanguageCode, args: author.compactDisplayTitle)
         self.emptyNode.maximumNumberOfLines = 0
         self.emptyNode.textAlignment = .center
@@ -40,7 +42,7 @@ final class RGAuthorMessagesController: ViewController {
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.presentationData = data
-            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationTheme: data.theme, presentationStrings: data.strings), transition: .immediate)
+            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
             if self.isNodeLoaded { self.updateTheme() }
         })
     }
@@ -65,15 +67,24 @@ final class RGAuthorMessagesController: ViewController {
 
     private func updateTheme() {
         self.displayNode.backgroundColor = self.presentationData.theme.chatList.backgroundColor
+        self.displayNode.view.overrideUserInterfaceStyle = self.presentationData.theme.overallDarkAppearance ? .dark : .light
+        self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
         self.activityIndicator.color = self.presentationData.theme.list.itemAccentColor
         self.retryButton.tintColor = self.presentationData.theme.list.itemAccentColor
+        self.retryButton.titleLabel?.font = Font.regular(self.presentationData.listsFontSize.baseDisplaySize)
         self.retryButton.setTitle("AuthorMessages.Retry".i18n(self.presentationData.strings.baseLanguageCode), for: .normal)
-        if let result = self.currentResult { self.updateTitle(result) }
+        if let result = self.currentResult {
+            self.updateTitle(result)
+        } else {
+            self.title = "AuthorMessages.Title".i18n(self.presentationData.strings.baseLanguageCode, args: self.author.compactDisplayTitle)
+        }
+        if let key = self.emptyTextKey { self.setEmptyText(key) }
     }
 
     @objc private func retryPressed() { self.loadMessages() }
 
     private func loadMessages() {
+        self.emptyTextKey = nil
         self.emptyNode.isHidden = true
         self.retryButton.isHidden = true
         self.activityIndicator.startAnimating()
@@ -113,8 +124,9 @@ final class RGAuthorMessagesController: ViewController {
     }
 
     private func setEmptyText(_ key: String) {
+        self.emptyTextKey = key
         self.emptyNode.isHidden = false
-        self.emptyNode.attributedText = NSAttributedString(string: key.i18n(self.presentationData.strings.baseLanguageCode), font: Font.regular(16.0), textColor: self.presentationData.theme.list.itemSecondaryTextColor)
+        self.emptyNode.attributedText = NSAttributedString(string: key.i18n(self.presentationData.strings.baseLanguageCode), font: Font.regular(self.presentationData.listsFontSize.baseDisplaySize), textColor: self.presentationData.theme.list.itemSecondaryTextColor)
         self.applyLayout()
     }
 

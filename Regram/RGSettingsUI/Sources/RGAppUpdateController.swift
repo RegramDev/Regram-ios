@@ -16,14 +16,13 @@ import PresentationDataUtils
     @Environment(\.lang) private var lang
     @Environment(\.rgPresentationTheme) private var theme
     private var secondary: Color { Color(uiColor: theme?.list.itemSecondaryTextColor ?? .secondaryLabel) }
-    private var rowBackground: Color { Color(uiColor: theme?.list.itemBlocksBackgroundColor ?? .secondarySystemGroupedBackground) }
     @State private var credentialBusy = false
     let owner: () -> ViewController?
     let presentMessage: (String) -> Void
 
     var body: some View {
-        Form {
-            Section {
+        RGSettingsForm {
+            RGSettingsSection {
                 LabeledContentCompat(title: "AppUpdate.CurrentVersion".i18n(lang), value: "\(updater.installedVersion) (\(updater.installedBuild))")
                 Button("AppUpdate.Check".i18n(lang)) { updater.check() }.disabled(updater.stage.isBusy || credentialBusy).rgSettingsLink("check")
                 Button("AppUpdate.OpenGitHub".i18n(lang)) { UIApplication.shared.open(updater.githubReleaseURL, options: [:]) }.rgSettingsLink("github")
@@ -41,8 +40,7 @@ import PresentationDataUtils
                 } else { updateStatus }
                 if updater.stage.isBusy { Button("AppUpdate.Cancel".i18n(lang), role: .cancel) { updater.cancel() } }
             }
-            .listRowBackground(rowBackground)
-            Section(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang)).foregroundColor(secondary)) {
+            RGSettingsSection(footer: Text((updater.installationMethod == .trollStore ? "AppUpdate.TrollStoreNotice" : "AppUpdate.AutomaticNotice").i18n(lang)).foregroundColor(secondary)) {
                 Picker("AppUpdate.InstallationMethod".i18n(lang), selection: $updater.installationMethod) {
                     ForEach(RGUpdateInstallationMethod.allCases, id: \.rawValue) { method in Text(method.localizationKey.i18n(lang)).tag(method) }
                 }
@@ -55,12 +53,11 @@ import PresentationDataUtils
                 Toggle("AppUpdate.AutomaticCheck".i18n(lang), isOn: $updater.automaticallyCheck).rgSettingsLink("automaticCheck")
                 Toggle((updater.installationMethod == .trollStore ? "AppUpdate.AutomaticDownload" : "AppUpdate.AutomaticPrepare").i18n(lang), isOn: $updater.automaticallyPrepare).disabled(!updater.isConfigured).rgSettingsLink("automaticDownload")
             }
-            .listRowBackground(rowBackground)
             if updater.installationMethod == .certificate {
-                Section(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang)).foregroundColor(secondary)) {
+                RGSettingsSection(footer: Text("AppUpdate.AutomaticExitNotice".i18n(lang)).foregroundColor(secondary)) {
                     Toggle("AppUpdate.AutomaticExit".i18n(lang), isOn: $updater.automaticallyExitAfterInstalling).rgSettingsLink("automaticExit")
-                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy)
-                Section(footer: Text("AppUpdate.CertificateNotice".i18n(lang)).foregroundColor(secondary)) {
+                }.disabled(updater.stage.isBusy)
+                RGSettingsSection(footer: Text("AppUpdate.CertificateNotice".i18n(lang)).foregroundColor(secondary)) {
                     if !updater.certificateName.isEmpty { Text(updater.certificateName).font(.footnote) }
                     Text("AppUpdate.SavedProfiles".i18n(lang, args: String(updater.savedProfileCount))).font(.footnote).foregroundColor(secondary)
                     Button("AppUpdate.ImportSigningMaterials".i18n(lang)) { selectFiles(kind: .signingMaterials) }.rgSettingsLink("certificate")
@@ -71,15 +68,15 @@ import PresentationDataUtils
                             do { try updater.clearCertificate() } catch { show(error) }
                         }
                     }
-                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
-                Section(footer: Text("AppUpdate.ServiceNotice".i18n(lang)).foregroundColor(secondary)) {
+                }.disabled(updater.stage.isBusy || credentialBusy || filePicker.isPresented)
+                RGSettingsSection(footer: Text("AppUpdate.ServiceNotice".i18n(lang)).foregroundColor(secondary)) {
                     Picker("AppUpdate.InstallationNode".i18n(lang), selection: $updater.preferredNode) {
                         Text("AppUpdate.AutomaticNode".i18n(lang)).tag("")
                         ForEach(updater.availableNodes) { node in Text(node.name).tag(node.code) }
                     }
                     .pickerStyle(.menu)
                     if !updater.activeNode.isEmpty { Text(updater.activeNode).foregroundColor(secondary) }
-                }.listRowBackground(rowBackground).disabled(updater.stage.isBusy)
+                }.disabled(updater.stage.isBusy)
             }
         }
     }

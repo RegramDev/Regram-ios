@@ -225,6 +225,8 @@ public class ContactsController: ViewController {
             })
         }
         
+        // MARK: Regram — native current-page search availability.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         self.sortButton.addTarget(self, action: #selector(self.sortPressed), forControlEvents: .touchUpInside)
     }
     
@@ -541,14 +543,25 @@ public class ContactsController: ViewController {
         self.sortButton.contextAction?(self.sortButton.containerNode, nil)
     }
     
-    private func activateSearch() {
-        self.contactsNode.activateSearch(placeholderNode: self.searchContentNode()?.placeholderNode)
-        (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
+    // MARK: Regram — keep top search local and attach only bottom search to the tab-bar field.
+    private func activateSearch(isFromTabBar: Bool = false) {
+        self.contactsNode.activateSearch(placeholderNode: isFromTabBar ? nil : self.searchContentNode()?.placeholderNode, searchBarIsExternal: isFromTabBar)
+        if isFromTabBar {
+            self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: .animated(duration: 0.5, curve: .spring))
+            if let searchBarNode = self.currentTabBarSearchNode?() as? SearchBarNode {
+                self.contactsNode.searchDisplayController?.setSearchBar(searchBarNode)
+                searchBarNode.activate()
+            }
+        } else {
+            (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
+        }
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
     
     private func deactivateSearch(animated: Bool) {
         self.contactsNode.deactivateSearch(placeholderNode: self.searchContentNode()?.placeholderNode, animated: animated)
+        // MARK: Regram — finish the native bottom-search presentation.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.5, curve: .spring))
         (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.5, curve: .spring))
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
@@ -765,7 +778,7 @@ public class ContactsController: ViewController {
     }
     
     override public func tabBarActivateSearch() {
-        self.activateSearch()
+        self.activateSearch(isFromTabBar: true)
     }
 
     override public func tabBarDeactivateSearch() {
