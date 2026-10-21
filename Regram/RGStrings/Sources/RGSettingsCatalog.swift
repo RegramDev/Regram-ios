@@ -12,7 +12,11 @@ public struct RGSettingsCatalogEntry: Hashable {
     public var pageTitleKey: String {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
-        if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
+        if page.hasPrefix("settings.") {
+            let categories = ["appearance": "appearance", "profiles": "appearance", "messageActions": "messages", "chatList": "messages", "folders": "messages", "input": "input", "translation": "translation", "privacy": "privacy", "stories": "privacy", "app": "privacy", "media": "media", "photos": "media", "stickers": "media", "recording": "media", "transfer": "network"]
+            if let category = categories[String(page.dropFirst(9))] { return "Settings.ProCategory." + category }
+            return "Settings.Category." + page.dropFirst(9)
+        }
         return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }

@@ -32,6 +32,16 @@ public enum RGSettingsPage: String {
     public var titleKey: String { "Settings.Category." + self.rawValue }
 }
 
+/// Pro categories share the original controls and preference handlers in this controller.
+public struct RGSettingsSupplement {
+    public let leading: [RGSettingsBoundEntry]
+    public let trailing: [RGSettingsBoundEntry]
+    public init(leading: [RGSettingsBoundEntry] = [], trailing: [RGSettingsBoundEntry] = []) {
+        self.leading = leading
+        self.trailing = trailing
+    }
+}
+
 private enum RGControllerSection: Int32, RGItemListSection {
     case trending
     case content
@@ -212,8 +222,9 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     } else {
         id.increment(1)
     }
+    entries.insert(.header(id: 50_001, section: .content, text: "Settings.Section.PrivacyDisplay".i18n(lang), badge: nil), at: entries.firstIndex(where: { $0.section == RGControllerSection.content.rawValue }) ?? entries.count)
     
-    entries.append(.header(id: id.count, section: .tabs, text: i18n("Settings.Tabs.Header", lang), badge: nil))
+    entries.append(.header(id: id.count, section: .tabs, text: "Settings.Section.Interface".i18n(lang), badge: nil))
     entries.append(.disclosure(id: id.count, section: .tabs, link: .bottomBarLayout, text: i18n("Settings.Tabs.Customize", lang)))
     
     entries.append(.header(id: id.count, section: .folders, text: strings.Settings_ChatFolders.uppercased(), badge: nil))
@@ -417,12 +428,18 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     case .recording: sections = [.recording, .videoNotes]
     case .app: sections = [.content] // MARK: Regram — legacy page links retain their remaining privacy options.
     }
+    for (section, key) in [(RGControllerSection.input, "Settings.Section.Sending"), (.messageActions, "Settings.Category.messageActions"), (.media, "Settings.Section.Playback")] {
+        if let index = entries.firstIndex(where: { $0.section == section.rawValue }) {
+            entries.insert(.header(id: 50_010 + Int(section.rawValue), section: section, text: key.i18n(lang), badge: nil), at: index)
+        }
+    }
     let allowed = Set(sections.map(\.rawValue))
-    return entries.filter { allowed.contains($0.section) }.sorted { $0.stableId < $1.stableId }
+    // Keep each group together, including options appended later for compatibility.
+    return sections.flatMap { section in entries.filter { $0.section == section.rawValue && allowed.contains($0.section) } }
 
 }
 
-public func rgSettingsController(context: AccountContext, page: RGSettingsPage = .home, initialSearchQuery: String? = nil, focusSetting: String? = nil) -> ViewController {
+public func rgSettingsController(context: AccountContext, page: RGSettingsPage = .home, initialSearchQuery: String? = nil, focusSetting: String? = nil, additionalPages: [RGSettingsPage] = [], usesTabs: Bool = false, initialPage: RGSettingsPage? = nil, titleKey: String? = nil, additionalUpdates: Signal<Bool, NoError> = .single(true), additionalContent: ((PresentationData, RGSettingsPage) -> RGSettingsSupplement)? = nil) -> ViewController {
     // MARK: Regram — legacy root links open the single Pro hub; transcription has one editor.
     if page == .home { return context.sharedContext.makeRGProController(context: context) }
     if page == .transcription { return rgSTTSettingsController(context: context) }
@@ -444,6 +461,9 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
     let startupFolders = Atomic<[ChatListFilter]>(value: [])
+    let pages = [page] + additionalPages
+    let selectedPage = ValuePromise(initialPage.flatMap { pages.firstIndex(of: $0) } ?? 0, ignoreRepeated: true)
+    let previousSelectedPage = Atomic<Int?>(value: nil)
     
     let arguments = RGItemListArguments<RGBoolSetting, RGSliderSetting, RGOneFromManySetting, RGDisclosureLink, AnyHashable>(
         context: context,
@@ -851,7 +871,21 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 pushControllerImpl?(rgBottomBarSettingsController(context: context))
         }
-    }, settingsPage: "settings." + page.rawValue)
+    }, settingsPage: "settings." + page.rawValue, disclosureIcon: { link in
+        switch link {
+        case .bottomBarLayout: return PresentationResourcesSettings.appearance
+        case .llmTranslationSettings: return PresentationResourcesSettings.language
+        case .contextMenuOrder: return PresentationResourcesSettings.messages
+        default: return nil
+        }
+    }, disclosureSubtitle: { link in
+        let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
+        switch link {
+        case .bottomBarLayout, .llmTranslationSettings, .contextMenuOrder:
+            return ("Settings.Editor." + link.rawValue + ".Description").i18n(lang)
+        default: return nil
+        }
+    })
     
     let sharedData = context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.callListSettings, ApplicationSpecificSharedDataKeys.experimentalUISettings])
     let preferences = context.account.postbox.preferencesView(keys: [PreferencesKeys.appConfiguration])
@@ -861,12 +895,12 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     contentSettingsConfiguration.set(.single(nil)
     |> then(updatedContentSettingsConfiguration))
     
-    let signal = combineLatest(simplePromise.get(), /*sliderPromise.get(),*/ statePromise.get(), context.sharedContext.presentationData, sharedData, preferences, contentSettingsConfiguration.get(),
+    let signal = combineLatest(combineLatest(simplePromise.get(), additionalUpdates, selectedPage.get()), /*sliderPromise.get(),*/ statePromise.get(), context.sharedContext.presentationData, sharedData, preferences, contentSettingsConfiguration.get(),
         context.engine.accountData.observeAvailableColorOptions(scope: .replies),
         context.engine.accountData.observeAvailableColorOptions(scope: .profile),
-        page == .folders ? context.engine.peers.updatedChatListFilters() : .single([])
+        pages.contains(.folders) ? context.engine.peers.updatedChatListFilters() : .single([])
     )
-    |> map { _, /*sliderValue,*/ state, presentationData, sharedData, view, contentSettingsConfiguration, availableReplyColors, availableProfileColors, filters ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    |> map { updates, /*sliderValue,*/ state, presentationData, sharedData, view, contentSettingsConfiguration, availableReplyColors, availableProfileColors, filters ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
         let appConfiguration: AppConfiguration = view.values[PreferencesKeys.appConfiguration]?.get(AppConfiguration.self) ?? AppConfiguration.defaultValue
         let callListSettings: CallListSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.callListSettings]?.get(CallListSettings.self) ?? CallListSettings.defaultSettings
@@ -874,9 +908,21 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         
         _ = startupFolders.swap(filters)
         let startupFolderTitle = rgStartupFolderTitle(filters: filters, accountId: context.account.peerId.toInt64(), presentationData: presentationData)
-        let entries = RGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, page: page, startupFolderTitle: startupFolderTitle)
+        let selectedIndex = max(0, min(pages.count - 1, updates.2))
+        let changedTab = previousSelectedPage.swap(selectedIndex).map { $0 != selectedIndex } ?? false
+        let activePage = pages[selectedIndex]
+        let coreEntries = (usesTabs ? [activePage] : pages).flatMap { contentPage -> [RGSettingsBoundEntry] in
+            let pageId = "settings." + contentPage.rawValue
+            let pageArguments = arguments.withSettingsPage(pageId)
+            return RGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, page: contentPage, startupFolderTitle: startupFolderTitle).map { RGSettingsBoundEntry($0, arguments: pageArguments, scope: pageId, order: 0) }
+        }
+        let supplement = additionalContent?(presentationData, activePage) ?? RGSettingsSupplement()
+        let entries = (supplement.leading + coreEntries + supplement.trailing).enumerated().map { $0.element.withOrder($0.offset) }
         
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page == .home ? "Regram" : page.titleKey.i18n(presentationData.strings.rgLanguageCode)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let lang = presentationData.strings.rgLanguageCode
+        let title = (titleKey ?? page.titleKey).i18n(lang)
+        let controllerTitle: ItemListControllerTitle = usesTabs ? .textWithTabs(title, pages.map { ("Settings.CategoryTab." + $0.rawValue).i18n(lang) }, selectedIndex) : .text(title)
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: controllerTitle, leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
         // TODO(regram): focusOnItemTag support
         /* var index = 0
@@ -890,13 +936,17 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             }
         } */
         
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting), animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, ensureVisibleItemTag: /*focusOnItemTag*/ nil, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting), crossfadeState: changedTab, animateChanges: false)
         
         return (controllerState, (listState, arguments))
     }
     
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting
+    controller.titleControlValueChanged = { index in
+        guard pages.indices.contains(index) else { return }
+        selectedPage.set(index)
+    }
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)
     }

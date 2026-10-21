@@ -1,4 +1,5 @@
 import RGProUI // MARK: Regram
+import RGChatHistoryProcessing // MARK: Regram
 import Foundation
 import UIKit
 import Postbox
@@ -1398,7 +1399,16 @@ extension ChatControllerImpl {
         
         self.chatDisplayNode.navigateButtons.mentionsPressed = { [weak self] in
             if let strongSelf = self, strongSelf.isNodeLoaded, let peerId = strongSelf.chatLocation.peerId {
-                let signal = strongSelf.context.engine.messages.earliestUnseenPersonalMentionMessage(peerId: peerId, threadId: strongSelf.chatLocation.threadId)
+                // MARK: Regram — dismiss hidden mentions and navigate to the next visible reply.
+                let account = strongSelf.context.account
+                let signal: Signal<EarliestUnseenPersonalMentionMessageResult, NoError>
+                if RGContentFilterState(accountPeerId: account.peerId).isEmpty {
+                    signal = strongSelf.context.engine.messages.earliestUnseenPersonalMentionMessage(peerId: peerId, threadId: strongSelf.chatLocation.threadId)
+                } else {
+                    signal = rgEarliestVisibleUnseenPersonalMentionMessage(account: account, peerId: peerId, threadId: strongSelf.chatLocation.threadId, isHidden: { message in
+                        RGContentFilterState(accountPeerId: account.peerId).shouldHide(message: EngineMessage(message))
+                    })
+                }
                 strongSelf.navigationActionDisposable.set((signal |> deliverOnMainQueue).startStrict(next: { result in
                     if let strongSelf = self {
                         switch result {

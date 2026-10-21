@@ -59,6 +59,7 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
     let settingsPage: String?
     let searchInput: (String) -> Void
     let disclosureIcon: (DisclosureLink) -> UIImage?
+    let disclosureSubtitle: (DisclosureLink) -> String?
 
     
     public init(
@@ -72,7 +73,8 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         searchInput: @escaping (String) -> Void = { _ in },
         settingsPage: String? = nil,
         openSettingsResult: @escaping (RGSettingsDestination) -> Void = { _ in },
-        disclosureIcon: @escaping (DisclosureLink) -> UIImage? = { _ in nil }
+        disclosureIcon: @escaping (DisclosureLink) -> UIImage? = { _ in nil },
+        disclosureSubtitle: @escaping (DisclosureLink) -> String? = { _ in nil }
     ) {
         self.context = context
         //
@@ -85,6 +87,11 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         self.settingsPage = settingsPage
         self.searchInput = searchInput
         self.disclosureIcon = disclosureIcon
+        self.disclosureSubtitle = disclosureSubtitle
+    }
+
+    public func withSettingsPage(_ page: String) -> RGItemListArguments {
+        RGItemListArguments(context: self.context, setBoolValue: self.setBoolValue, updateSliderValue: self.updateSliderValue, setOneFromManyValue: self.setOneFromManyValue, openDisclosureLink: self.openDisclosureLink, action: self.action, searchInput: self.searchInput, settingsPage: page, openSettingsResult: self.openSettingsResult, disclosureIcon: self.disclosureIcon, disclosureSubtitle: self.disclosureSubtitle)
     }
 }
 
@@ -227,7 +234,8 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
         case let .notice(_, _, string):
             return ItemListTextItem(presentationData: presentationData, text: .markdown(string), sectionId: self.section)
         case let .disclosure(_, _, link, text):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: arguments.disclosureIcon(link), title: text, label: "", sectionId: self.section, style: .blocks, action: {
+            let subtitle = arguments.disclosureSubtitle(link)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: arguments.disclosureIcon(link), title: text, label: subtitle ?? "", labelStyle: subtitle == nil ? .text : .detailText, sectionId: self.section, style: .blocks, action: {
                 arguments.openDisclosureLink(link)
             }, tag: self.tag)
         case let .percentageSlider(_, _, setting, value):

@@ -20,7 +20,21 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
         return rgControllerForSettingsLink(context: context, destination: target)
     }
     if destination.page.hasPrefix("pro."), let page = RGProSettingsPage(rawValue: String(destination.page.dropFirst(4))) { return rgProController(context: context, page: page, focusSetting: focus) }
-    if destination.page.hasPrefix("settings."), let page = RGSettingsPage(rawValue: String(destination.page.dropFirst(9))) { return rgSettingsController(context: context, page: page, focusSetting: focus) }
+    if destination.page.hasPrefix("settings."), let page = RGSettingsPage(rawValue: String(destination.page.dropFirst(9))) {
+        let category: RGProSettingsPage?
+        switch page {
+        case .appearance, .profiles: category = .appearance
+        case .messageActions, .chatList, .folders: category = .messages
+        case .input: category = .input
+        case .translation: category = .translation
+        case .privacy, .stories, .app: category = .privacy
+        case .media, .photos, .stickers, .recording: category = .media
+        case .transfer: category = .network
+        case .home, .transcription: category = nil
+        }
+        if let category { return rgProController(context: context, page: category, focusSetting: focus, initialSettingsPage: page) }
+        return rgSettingsController(context: context, page: page, focusSetting: focus)
+    }
     switch destination.page {
     case "inlineBots": return rgFeatureInlineBotRulesController(context: context, focusSetting: focus)
     case "groupProfile": return rgFeatureGroupProfileSettingsController(context: context, focusOnRow: focus)

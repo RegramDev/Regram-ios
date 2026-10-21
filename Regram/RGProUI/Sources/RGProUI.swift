@@ -28,7 +28,8 @@ public enum RGProSettingsPage: String {
 }
 
 private enum RGProControllerSection: Int32, RGItemListSection {
-    case search
+    // Keep section identities distinct when combined with RGSettingsUI controls.
+    case search = 100
     case base
     case antiFeatures
     case appearance
@@ -171,7 +172,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .mentionsAndRepliesNotifications, text: "Notifications.MentionsAndReplies.Title".i18n(lang), value: "Notifications.MentionsAndReplies.value.\(RGSimpleSettings.shared.mentionsAndRepliesNotifications)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .filterNotifications, value: RGSimpleSettings.shared.filterNotifications, text: "Notifications.ContentFilter".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
     entries.append(.notice(id: id.count, section: .notifications, text: (RGSimpleSettings.shared.canSharePreferencesWithExtensions ? "Notifications.ContentFilter.Notice" : "Notifications.ContentFilter.Unavailable").i18n(lang)))
-    entries.append(.header(id: id.count, section: .appearance, text: presentationData.strings.Appearance_Title.uppercased(), badge: nil))
+    entries.append(.header(id: id.count, section: .appearance, text: "Settings.Section.Personalization".i18n(lang), badge: nil))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .fonts, text: "Fonts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
@@ -226,9 +227,19 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     case .tools: section = .footer
     }
     if page == .input {
-        return entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
+        return [.header(id: 0, section: .input, text: "Settings.Section.Composer".i18n(lang), badge: nil)] + entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
     }
-    return entries.filter { $0.section == section.rawValue }
+    let headerKey: String?
+    switch page {
+    case .messages: headerKey = "Summary.Title"
+    case .privacy: headerKey = "Settings.Section.PrivacyControls"
+    case .media: headerKey = "Settings.Section.Links"
+    case .network: headerKey = "Settings.Section.Connection"
+    case .tools: headerKey = "Settings.ProCategory.tools"
+    default: headerKey = nil
+    }
+    let header: [RGProControllerEntry] = headerKey.map { [.header(id: 0, section: section, text: $0.i18n(lang), badge: nil)] } ?? []
+    return header + entries.filter { $0.section == section.rawValue }
 
 }
 
@@ -236,7 +247,7 @@ public func okUndoController(_ text: String, _ presentationData: PresentationDat
     return UndoOverlayController(presentationData: presentationData, content: .succeed(text: text, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false })
 }
 
-public func rgProController(context: AccountContext, initialSearchQuery: String? = nil, page: RGProSettingsPage = .home, focusSetting: String? = nil) -> ViewController {
+public func rgProController(context: AccountContext, initialSearchQuery: String? = nil, page: RGProSettingsPage = .home, focusSetting: String? = nil, initialSettingsPage: RGSettingsPage? = nil) -> ViewController {
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var askForRestart: (() -> Void)?
@@ -424,6 +435,38 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         case .notificationsPage: return PresentationResourcesSettings.notifications
         case .networkPage: return PresentationResourcesSettings.proxy
         case .toolsPage: return PresentationResourcesSettings.settings
+        case .fonts: return PresentationResourcesSettings.language
+        case .appIcons, .appBages: return PresentationResourcesSettings.appearance
+        case .transcriptionSettings: return PresentationResourcesSettings.calls
+        case .summarySettings: return PresentationResourcesSettings.messages
+        case .messageFilter, .hiddenUsers, .antiFeatures, .antiRevokeChats, .ghostMode: return PresentationResourcesSettings.security
+        case .revokedMessages: return PresentationResourcesSettings.messages
+        case .linkPreviewSettings: return PresentationResourcesSettings.dataAndStorage
+        case .networkPolicy: return PresentationResourcesSettings.proxy
+        case .diagnostics: return PresentationResourcesSettings.dataAndStorage
+        case .backup: return PresentationResourcesSettings.dataAndStorage
+        case .appUpdate: return PresentationResourcesSettings.settings
+        default: return nil
+        }
+    }, disclosureSubtitle: { link in
+        let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
+        let category: RGProSettingsPage?
+        switch link {
+        case .messagesPage: category = .messages
+        case .inputPage: category = .input
+        case .translationPage: category = .translation
+        case .privacyPage: category = .privacy
+        case .mediaPage: category = .media
+        case .appearancePage: category = .appearance
+        case .notificationsPage: category = .notifications
+        case .networkPage: category = .network
+        case .toolsPage: category = .tools
+        default: category = nil
+        }
+        if let category { return (category.titleKey + ".Description").i18n(lang) }
+        switch link {
+        case .fonts, .appBages, .transcriptionSettings, .summarySettings, .linkPreviewSettings, .messageFilter, .networkPolicy, .diagnostics:
+            return ("Settings.Editor." + link.rawValue + ".Description").i18n(lang)
         default: return nil
         }
     })
@@ -440,8 +483,29 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         return (controllerState, (listState, arguments))
     }
     
-    let controller = RGSettingsListController(context: context, state: signal)
-    controller.focusSetting = focusSetting
+    let controller: ViewController
+    if let layout = RGProCategoryLayout(page: page) {
+        controller = rgSettingsController(context: context, page: layout.pages[0], focusSetting: focusSetting, additionalPages: Array(layout.pages.dropFirst()), usesTabs: layout.usesTabs, initialPage: initialSettingsPage, titleKey: page.titleKey, additionalUpdates: simplePromise.get(), additionalContent: { presentationData, activePage in
+            let rows = RGProControllerEntries(presentationData: presentationData, page: page, searchQuery: "").filter { entry in
+                if layout.usesTabs && activePage != layout.pages[0] { return false }
+                guard case let .disclosure(_, _, link, _) = entry else { return true }
+                return !RGProCategoryLayout.inlinedLinks.contains(link.rawValue)
+            }
+            let bound = rows.map { RGSettingsBoundEntry($0, arguments: arguments, scope: "pro." + page.rawValue, order: 0) }
+            if page == .translation {
+                let header = RGProControllerEntry.header(id: 50_001, section: .translation, text: "Settings.Section.Speech".i18n(presentationData.strings.rgLanguageCode), badge: nil)
+                return RGSettingsSupplement(trailing: [RGSettingsBoundEntry(header, arguments: arguments, scope: "pro.translation", order: 0)] + bound)
+            }
+            if page == .input {
+                return RGSettingsSupplement(leading: zip(rows, bound).filter { $0.0.section != RGProControllerSection.pangu.rawValue }.map { $0.1 }, trailing: zip(rows, bound).filter { $0.0.section == RGProControllerSection.pangu.rawValue }.map { $0.1 })
+            }
+            return RGSettingsSupplement(leading: bound)
+        })
+    } else {
+        let listController = RGSettingsListController(context: context, state: signal)
+        listController.focusSetting = focusSetting
+        controller = listController
+    }
     cancelSearchSelection = { [weak controller] in
         ((controller?.displayNode as? ItemListControllerNode)?.listNode as? ListViewImpl)?.cancelSelection()
     }

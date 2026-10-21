@@ -2905,6 +2905,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             if !canRead {
                 return
             }
+
+            // MARK: Regram — the read gate can open without a new visible message index.
+            strongSelf.rgMarkFilteredMentionsAsSeen(through: messageIndex, canRead: canRead)
             
             var apply = false
             let _ = previousMaxIncomingMessageIndexByNamespace.modify { dict in
@@ -4495,7 +4498,28 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
     }
     
     private func updateMaxVisibleReadIncomingMessageIndex(_ index: MessageIndex) {
+        // MARK: Regram — filtering may change while the visible read index stays the same.
+        self.rgMarkFilteredMentionsAsSeen(through: index, canRead: self.canReadHistoryValue)
         self.maxVisibleIncomingMessageIndex.set(index)
+    }
+
+    // MARK: Regram — hidden replies have no item node to consume their personal-mention tag.
+    private func rgMarkFilteredMentionsAsSeen(through index: MessageIndex, canRead: Bool) {
+        guard canRead, self.tag == nil,
+              !self.context.sharedContext.immediateExperimentalUISettings.skipReadHistory,
+              !self.context.account.isSupportUser,
+              let peerId = self.chatLocation.peerId,
+              let historyView = (self.listView.opaqueTransactionState as? ChatHistoryTransactionOpaqueState)?.historyView else {
+            return
+        }
+        let filter = RGContentFilterState(accountPeerId: self.context.account.peerId)
+        guard !filter.isEmpty else { return }
+        let messageIds = rgFilteredMentionIdsToRead(messages: historyView.originalView.entries.map(\.message), peerId: peerId, threadId: self.chatLocation.threadId, readThrough: index, isHidden: { message in
+            filter.shouldHide(message: EngineMessage(message))
+        })
+        if !messageIds.isEmpty {
+            self.context.account.viewTracker.updateMarkMentionsSeenForMessageIds(messageIds: messageIds)
+        }
     }
     
     private func enqueueHistoryViewTransition(_ transition: ChatHistoryListViewTransition) {

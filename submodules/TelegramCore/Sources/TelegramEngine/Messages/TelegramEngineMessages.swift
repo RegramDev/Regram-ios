@@ -363,15 +363,16 @@ public extension TelegramEngine {
             return _internal_appendTodoMessageItems(account: self.account, messageId: messageId, items: items)
         }
         
-        public func earliestUnseenPersonalMentionMessage(peerId: PeerId, threadId: Int64?) -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> {
+        // MARK: Regram — ignored ids are already being acknowledged; do not bulk-clear on exhaustion.
+        public func earliestUnseenPersonalMentionMessage(peerId: PeerId, threadId: Int64?, ignoreMessageIds: Set<MessageId> = []) -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> {
             let account = self.account
-            return _internal_earliestUnseenPersonalMentionMessage(account: self.account, peerId: peerId, threadId: threadId)
+            return _internal_earliestUnseenPersonalMentionMessage(account: self.account, peerId: peerId, threadId: threadId, ignoreMessageIds: ignoreMessageIds)
             |> mapToSignal { result -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> in
                 switch result {
                 case .loading:
                     return .single(result)
                 case let .result(messageId):
-                    if messageId == nil {
+                    if messageId == nil && ignoreMessageIds.isEmpty {
                         let _ = clearPeerUnseenPersonalMessagesInteractively(account: account, peerId: peerId, threadId: threadId).start()
                     }
                     return .single(result)
