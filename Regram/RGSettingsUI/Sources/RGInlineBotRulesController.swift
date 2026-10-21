@@ -1,4 +1,5 @@
 // MARK: Regram — automatic inline queries and readable rule inspection share one page.
+import Foundation
 import AccountContext
 import Display
 import ItemListUI
