@@ -44,7 +44,8 @@ final class RGSettingsCategoryTabsNode: NavigationBarContentNode {
                 theme: self.theme,
                 tabs: self.titles.enumerated().map { index, title in
                     HorizontalTabsComponent.Tab(id: AnyHashable(index), content: .title(.init(text: title, entities: [], enableAnimations: false)), badge: nil, action: { [weak self] in
-                        guard let self, self.titles.indices.contains(index), index != self.selectedIndex else { return }
+                        // Let the state source deduplicate. A rendered selection may lag a rapid tap.
+                        guard let self, self.titles.indices.contains(index) else { return }
                         self.selected(index)
                     })
                 },
