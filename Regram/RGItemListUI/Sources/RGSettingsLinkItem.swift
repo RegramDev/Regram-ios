@@ -5,6 +5,7 @@ import Foundation
 import ItemListUI
 import RGStrings
 import SwiftSignalKit
+import TelegramPresentationData
 import UIKit
 
 public final class RGSettingsItemTag: ItemListItemTag {
@@ -68,6 +69,26 @@ public final class RGSettingsListController: ItemListController {
     public var focusSetting: String?
     private var focusGeneration = 0
     private var didHighlightFocus = false
+    private let categoryTabsDisposable = MetaDisposable()
+    private var categoryTabsNode: RGSettingsCategoryTabsNode?
+
+    deinit {
+        self.categoryTabsDisposable.dispose()
+    }
+
+    public func bindCategoryTabs(state: Signal<(PresentationTheme, [String], Int), NoError>, selected: @escaping (Int) -> Void) {
+        self.categoryTabsDisposable.set((state |> deliverOnMainQueue).start(next: { [weak self] theme, titles, index in
+            guard let self else { return }
+            if let node = self.categoryTabsNode {
+                node.update(theme: theme, titles: titles, selectedIndex: index, selected: selected)
+            } else {
+                let node = RGSettingsCategoryTabsNode(theme: theme, titles: titles, selectedIndex: index, selected: selected)
+                self.categoryTabsNode = node
+                self.navigationBar?.setContentNode(node, animated: false)
+                self.requestLayout(transition: .immediate)
+            }
+        }))
+    }
 
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -96,5 +117,9 @@ public final class RGSettingsListController: ItemListController {
     override public func loadDisplayNode() {
         super.loadDisplayNode()
         (self.displayNode as? ItemListControllerNode)?.listNode.useMainQueueTransactions = true
+        if let node = self.categoryTabsNode, self.navigationBar?.contentNode !== node {
+            self.navigationBar?.setContentNode(node, animated: false)
+            self.requestLayout(transition: .immediate)
+        }
     }
 }

@@ -500,7 +500,8 @@ public class ItemListDisclosureItemNode: ListViewItemNode, ItemListItemNode {
             if case .multilineDetailText = item.labelStyle {
                 labelMaximumNumberOfLines = 0
             } else {
-                labelMaximumNumberOfLines = max(1, item.rgLabelMaximumNumberOfLines)
+                // MARK: Regram — zero means unlimited detail text without top-aligning the icon.
+                labelMaximumNumberOfLines = max(0, item.rgLabelMaximumNumberOfLines)
             }
             //
             let (labelLayout, labelApply) = makeLabelLayout(TextNodeLayoutArguments(attributedString: item.attributedLabel ?? NSAttributedString(string: item.label, font: labelFont, textColor: labelBadgeColor), backgroundColor: nil, maximumNumberOfLines: labelMaximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: labelConstrain, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))

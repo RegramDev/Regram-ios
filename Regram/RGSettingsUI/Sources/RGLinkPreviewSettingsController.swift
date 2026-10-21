@@ -32,7 +32,8 @@ private final class RGLinkPreviewTableController: UITableViewController {
         view.tintColor = list.itemAccentColor
         view.backgroundColor = list.blocksBackgroundColor
         enabledSwitch.onTintColor = list.itemSwitchColors.contentColor
-        enabledSwitch.thumbTintColor = list.itemSwitchColors.handleColor
+        // UIKit owns its native thumb/material, as it does in Telegram's SwitchNode.
+        enabledSwitch.thumbTintColor = nil
         enabledSwitch.tintColor = list.itemSwitchColors.frameColor
         tableView.backgroundColor = theme.list.blocksBackgroundColor
         tableView.separatorColor = list.itemBlocksSeparatorColor
@@ -125,7 +126,7 @@ private final class RGLinkPreviewTableController: UITableViewController {
         }
         if !rows.isEmpty && !rows[0].isEmpty && cell === rows[0][0] {
             enabledSwitch.onTintColor = list.itemSwitchColors.contentColor
-            enabledSwitch.thumbTintColor = list.itemSwitchColors.handleColor
+            enabledSwitch.thumbTintColor = nil
             enabledSwitch.tintColor = list.itemSwitchColors.frameColor
         }
         styleTextFields(in: cell, theme: theme)

@@ -424,7 +424,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     }, settingsPage: "pro." + page.rawValue, openSettingsResult: { destination in
         if let controller = rgControllerForSettingsLink(context: context, destination: destination) { pushControllerImpl?(controller) }
     }, disclosureIcon: { link in
-        // Reuse the actual Telegram settings artwork and its native 30 pt layout.
+        // Category artwork stays native; specialised editors use distinct, centered symbols.
         switch link {
         case .messagesPage: return PresentationResourcesSettings.messages
         case .inputPage: return PresentationResourcesSettings.upload
@@ -435,17 +435,18 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         case .notificationsPage: return PresentationResourcesSettings.notifications
         case .networkPage: return PresentationResourcesSettings.proxy
         case .toolsPage: return PresentationResourcesSettings.settings
-        case .fonts: return PresentationResourcesSettings.language
-        case .appIcons, .appBages: return PresentationResourcesSettings.appearance
-        case .transcriptionSettings: return PresentationResourcesSettings.calls
-        case .summarySettings: return PresentationResourcesSettings.messages
-        case .messageFilter, .hiddenUsers, .antiFeatures, .antiRevokeChats, .ghostMode: return PresentationResourcesSettings.security
-        case .revokedMessages: return PresentationResourcesSettings.messages
-        case .linkPreviewSettings: return PresentationResourcesSettings.dataAndStorage
-        case .networkPolicy: return PresentationResourcesSettings.proxy
-        case .diagnostics: return PresentationResourcesSettings.dataAndStorage
-        case .backup: return PresentationResourcesSettings.dataAndStorage
-        case .appUpdate: return PresentationResourcesSettings.settings
+        case .fonts: return RGSettingsIcons.fonts
+        case .appIcons: return RGSettingsIcons.appIcon
+        case .appBages: return RGSettingsIcons.screenshotBadge
+        case .transcriptionSettings: return RGSettingsIcons.transcription
+        case .summarySettings: return RGSettingsIcons.summary
+        // The privacy group already has a clear heading. Keep all its titles aligned without icons.
+        case .messageFilter, .hiddenUsers, .antiFeatures, .antiRevokeChats, .ghostMode, .revokedMessages: return nil
+        case .linkPreviewSettings: return nil
+        case .networkPolicy: return RGSettingsIcons.network
+        case .diagnostics: return RGSettingsIcons.diagnostics
+        case .backup: return RGSettingsIcons.backup
+        case .appUpdate: return RGSettingsIcons.update
         default: return nil
         }
     }, disclosureSubtitle: { link in

@@ -873,9 +873,8 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         }
     }, settingsPage: "settings." + page.rawValue, disclosureIcon: { link in
         switch link {
-        case .bottomBarLayout: return PresentationResourcesSettings.appearance
-        case .llmTranslationSettings: return PresentationResourcesSettings.language
-        case .contextMenuOrder: return PresentationResourcesSettings.messages
+        case .bottomBarLayout: return RGSettingsIcons.bottomBar
+        case .contextMenuOrder: return RGSettingsIcons.messageMenu
         default: return nil
         }
     }, disclosureSubtitle: { link in
@@ -921,8 +920,7 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         
         let lang = presentationData.strings.rgLanguageCode
         let title = (titleKey ?? page.titleKey).i18n(lang)
-        let controllerTitle: ItemListControllerTitle = usesTabs ? .textWithTabs(title, pages.map { ("Settings.CategoryTab." + $0.rawValue).i18n(lang) }, selectedIndex) : .text(title)
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: controllerTitle, leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         
         // TODO(regram): focusOnItemTag support
         /* var index = 0
@@ -943,9 +941,15 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting
-    controller.titleControlValueChanged = { index in
-        guard pages.indices.contains(index) else { return }
-        selectedPage.set(index)
+    if usesTabs {
+        let tabsState = combineLatest(context.sharedContext.presentationData, selectedPage.get())
+        |> map { data, index -> (PresentationTheme, [String], Int) in
+            (data.theme, pages.map { ("Settings.CategoryTab." + $0.rawValue).i18n(data.strings.rgLanguageCode) }, index)
+        }
+        controller.bindCategoryTabs(state: tabsState, selected: { index in
+            guard pages.indices.contains(index) else { return }
+            selectedPage.set(index)
+        })
     }
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)

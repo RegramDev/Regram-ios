@@ -225,11 +225,11 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
         guard indexPath.section == 1, list.rows.indices.contains(indexPath.row) else { return nil }
         let row = list.rows[indexPath.row]
         let removeAction = UIContextualAction(style: .destructive, title: "Bookmarks.Remove".i18n(lang), handler: { [weak self] _, _, finish in guard let self else { finish(false); return }; RGMessageBookmarks.shared.remove(accountId: self.context.account.peerId.toInt64(), messageId: row.id); finish(true) })
-        removeAction.backgroundColor = data.theme.list.itemDestructiveColor
+        removeAction.backgroundColor = rgSettingsSwipeActionColor(data.theme.list.itemDestructiveColor)
         let editAction = UIContextualAction(style: .normal, title: "Bookmarks.EditTags".i18n(lang), handler: { [weak self] _, _, finish in
             guard let self else { finish(false); return }; (self.navigationController as? NavigationController)?.pushViewController(rgBookmarkEditorController(context: self.context, bookmark: row.bookmark)); finish(true)
         })
-        editAction.backgroundColor = data.theme.list.itemAccentColor
+        editAction.backgroundColor = rgSettingsSwipeActionColor(data.theme.list.itemAccentColor)
         return UISwipeActionsConfiguration(actions: [removeAction, editAction])
     }
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); opening = false }
