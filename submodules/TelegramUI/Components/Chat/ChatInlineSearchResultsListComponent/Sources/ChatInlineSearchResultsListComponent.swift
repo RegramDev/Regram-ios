@@ -18,9 +18,6 @@ import ItemListUI
 import ChatListSearchItemHeader
 import LottieComponent
 import MultilineTextComponent
-// MARK: Regram
-import RGFlippedList
-import RGSimpleSettings
 
 public final class ChatInlineSearchResultsListComponent: Component {
     public struct Presentation: Equatable {
@@ -273,8 +270,6 @@ public final class ChatInlineSearchResultsListComponent: Component {
         private var isUpdating: Bool = false
         
         private let listNode: ListView
-        // MARK: Regram — 「从下往上显示」聊天内搜索结果：列表上下镜像，最新结果贴近底部。
-        private let rgFeatureBottomUp: Bool
         private let emptyResultsTitle = ComponentView<Empty>()
         private let emptyResultsText = ComponentView<Empty>()
         private let emptyResultsAnimation = ComponentView<Empty>()
@@ -299,8 +294,7 @@ public final class ChatInlineSearchResultsListComponent: Component {
         private var hintAnimateListTransition: Bool = false
         
         override public init(frame: CGRect) {
-            self.rgFeatureBottomUp = RGSimpleSettings.shared.bottomUpChatSearchResults
-            self.listNode = self.rgFeatureBottomUp ? RGFlippedListView() : ListViewImpl() // MARK: Regram
+            self.listNode = ListViewImpl()
             
             super.init(frame: frame)
             
@@ -432,11 +426,6 @@ public final class ChatInlineSearchResultsListComponent: Component {
             
             self.listNode.frame = CGRect(origin: CGPoint(), size: availableSize)
             let (listDuration, listCurve) = listViewAnimationDurationAndCurve(transition: transition.containedViewLayoutTransition)
-            var listInsets = component.insets
-            // MARK: Regram — 镜像列表的 top inset 是屏幕底部的留白；结果贴底，要让开键盘。
-            if self.rgFeatureBottomUp {
-                listInsets = UIEdgeInsets(top: max(listInsets.bottom, component.inputHeight), left: listInsets.left, bottom: listInsets.top, right: listInsets.right)
-            }
             self.listNode.transaction(
                 deleteIndices: [],
                 insertIndicesAndItems: [],
@@ -444,7 +433,7 @@ public final class ChatInlineSearchResultsListComponent: Component {
                 options: [.Synchronous, .LowLatency, .PreferSynchronousDrawing, .PreferSynchronousResourceLoading],
                 updateSizeAndInsets: ListViewUpdateSizeAndInsets(
                     size: availableSize,
-                    insets: listInsets,
+                    insets: component.insets,
                     duration: listDuration,
                     curve: listCurve
                 ),

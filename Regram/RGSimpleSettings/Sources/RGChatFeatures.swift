@@ -54,10 +54,6 @@ public extension RGSimpleSettings {
         get { RGFeaturePreferences.bool("features.showFoldersInShareSheet") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.showFoldersInShareSheet") }
     }
-    var chatToolsEnabled: Bool {
-        get { RGFeaturePreferences.bool("features.chatToolsEnabled") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.chatToolsEnabled") }
-    }
     var autoInlineBotEnabled: Bool {
         get { RGFeaturePreferences.bool("features.autoInlineBotEnabled") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.autoInlineBotEnabled") }
@@ -118,17 +114,9 @@ public extension RGSimpleSettings {
         get { RGFeaturePreferences.bool("features.disableCommunityChatGrouping") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.disableCommunityChatGrouping") }
     }
-    var chatSearchFieldAtBottom: Bool {
-        get { RGFeaturePreferences.bool("features.chatSearchFieldAtBottom") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.chatSearchFieldAtBottom") }
-    }
     var bottomUpGlobalSearchResults: Bool {
         get { RGFeaturePreferences.bool("features.bottomUpGlobalSearchResults") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.bottomUpGlobalSearchResults") }
-    }
-    var bottomUpChatSearchResults: Bool {
-        get { RGFeaturePreferences.bool("features.bottomUpChatSearchResults") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.bottomUpChatSearchResults") }
     }
     var keepNewChatsVisibleAtTop: Bool {
         get { RGFeaturePreferences.bool("features.keepNewChatsVisibleAtTop") }

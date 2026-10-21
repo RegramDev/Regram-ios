@@ -4,7 +4,7 @@ import BuildConfig
 
 enum RGUpdateSettingsLink {
     static func url(appSpecificScheme: String, registeredSchemes: [String]) -> URL {
-        let reserved: Set<String> = ["tonsite", "ton", "tc", "http", "https", "file", "telegram"]
+        let reserved: Set<String> = ["tonsite", "ton", "tc", "http", "https", "file", "telegram", "sg"]
         let lower = appSpecificScheme.lowercased()
         let valid = appSpecificScheme.range(of: "^[A-Za-z][A-Za-z0-9+.-]*$", options: .regularExpression) != nil
         let scheme = valid && !reserved.contains(lower) && registeredSchemes.contains(where: { $0.lowercased() == lower }) ? appSpecificScheme : "tg"

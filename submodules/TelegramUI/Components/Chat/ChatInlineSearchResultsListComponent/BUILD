@@ -30,8 +30,6 @@ swift_library(
         "//submodules/ChatListSearchItemHeader",
         "//submodules/TelegramUI/Components/LottieComponent",
         "//submodules/Components/MultilineTextComponent",
-        "//Regram/RGFlippedList:RGFlippedList", # MARK: Regram
-        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
     ],
     visibility = [
         "//visibility:public",

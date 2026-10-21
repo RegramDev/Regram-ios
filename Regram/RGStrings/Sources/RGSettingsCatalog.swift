@@ -13,13 +13,14 @@ public struct RGSettingsCatalogEntry: Hashable {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
         if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["inlineBots": "features.InlineBotRules", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
 
 public enum RGSettingsCatalog {
     public static let entries: [RGSettingsCatalogEntry] = [
+        .init("inlineBots", "enabled", "features.AutoInlineBot.Enabled", keywords: "inline bot 自动查询 机器人"),
         .init("pro.messages", "inputToolbar", "InputToolbar.Title"),
         .init("textStyleMenu", "quote", "features.TextStyleMenu.Style.quote"),
         .init("textStyleMenu", "spoiler", "features.TextStyleMenu.Style.spoiler"),
@@ -32,9 +33,8 @@ public enum RGSettingsCatalog {
         .init("textStyleMenu", "underline", "features.TextStyleMenu.Style.underline"),
         .init("textStyleMenu", "code", "features.TextStyleMenu.Style.code"),
 
-        .init("settings.messageActions", "inlineBotRules", "features.InlineBotRules", keywords: "bot Twitter Pixiv Music163 rules 机器人 規則 规则"),
+        .init("settings.messageActions", "inlineBotRules", "features.InlineBots.Title", keywords: "bot Twitter Pixiv Music163 rules 机器人 規則 规则"),
         .init("settings.folders", "showFoldersInShareSheet", "features.ShowFoldersInShareSheet"),
-        .init("settings.messageActions", "chatToolsEnabled", "features.ChatToolsEnabled"),
         .init("settings.messageActions", "tapMessageRowToOpenContextMenu", "features.TapMessageRowToOpenContextMenu"),
         .init("settings.messageActions", "confirmUnpin", "features.ConfirmUnpin"),
         .init("settings.chatList", "hideSavedAndArchivedMessagesInList", "features.HideSavedAndArchivedMessagesInList"),
@@ -43,17 +43,14 @@ public enum RGSettingsCatalog {
         .init("settings.folders", "showArchiveInFolders", "features.ShowArchiveInFolders"),
         .init("settings.chatList", "openArchiveOnPull", "features.OpenArchiveOnPull"),
         .init("settings.messageActions", "stayAtLatestMessageAfterRefresh", "features.StayAtLatestMessageAfterRefresh"),
-        .init("settings.input", "enablePanguOnEditing", "features.PanguOnEditing"),
-        .init("settings.input", "enablePanguOnReceiving", "features.PanguOnReceiving"),
+        .init("pro.input", "enablePanguOnEditing", "features.PanguOnEditing"),
+        .init("pro.input", "enablePanguOnReceiving", "features.PanguOnReceiving"),
         .init("settings.stories", "hideTopStories", "features.HideTopStories"),
         .init("settings.stories", "disableChatAvatarStories", "features.DisableChatAvatarStories"),
         .init("settings.privacy", "hideTabBarPermissionWarnings", "features.HideTabBarPermissionWarnings"),
         .init("settings.chatList", "disableCommunityChatGrouping", "features.DisableCommunityChatGrouping"),
-        .init("settings.messageActions", "chatSearchFieldAtBottom", "features.ChatSearchFieldAtBottom"),
         .init("settings.chatList", "bottomUpGlobalSearchResults", "features.BottomUpGlobalSearchResults"),
-        .init("settings.messageActions", "bottomUpChatSearchResults", "features.BottomUpChatSearchResults"),
         .init("settings.chatList", "keepNewChatsVisibleAtTop", "features.KeepNewChatsVisibleAtTop"),
-        .init("settings.messageActions", "autoInlineBotEnabled", "features.AutoInlineBot.Enabled"),
         .init("settings.chatList", "chatListSwipeAction", "features.ChatListSwipeAction"),
         .init("settings.folders", "chatListFolderTabDisplayMode", "features.ChatListFolderTabDisplayMode"),
         .init("settings.chatList", "communityAvatarTapAction", "features.CommunityAvatarTapAction"),
@@ -152,7 +149,7 @@ public enum RGSettingsCatalog {
         .init("pro.messages", "mentionAsUserIdLink", "Mention.UserIdLink"),
         .init("pro.privacy", "localPremium", "LocalPremium.Title"),
         .init("pro.media", "disableLinkPreview", "LinkPreview.Disable"),
-        .init("pro.messages", "panguSpacing", "Pangu.Title"),
+        .init("pro.input", "panguSpacing", "features.PanguOnSending", keywords: "pangu 盘古之白 盤古之白"),
         .init("pro.messages", "defaultOutgoingFormatting", "OutgoingFormatting.Title"),
         .init("pro.messages", "chatPreferences", "ChatPreferences.Title"),
         .init("pro.privacy", "antiFeatures", "AntiFeatures.Header"),

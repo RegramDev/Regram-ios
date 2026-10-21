@@ -14,7 +14,7 @@ with tempfile.TemporaryDirectory(prefix='regram-activity-checks-') as temporary:
     module('UIKit', [directory / 'UIKit.swift'])
     (directory / 'RGStrings.swift').write_text('public extension String { func i18n(_ code: String) -> String { self } }\n')
     module('RGStrings', [directory / 'RGStrings.swift'])
-    (directory / 'BuildConfig.swift').write_text('public final class BuildConfig { public init(baseAppBundleId: String) {} ; public var appSpecificUrlScheme: String { "sg" } }\n')
+    (directory / 'BuildConfig.swift').write_text('public final class BuildConfig { public init(baseAppBundleId: String) {} ; public var appSpecificUrlScheme: String { "rg" } }\n')
     module('BuildConfig', [directory / 'BuildConfig.swift'])
     module('RGUpdateActivity', [ROOT / 'Regram/RGUpdateActivity/Sources/RGUpdateActivityAttributes.swift'], ['-lActivityKit'])
     binary = directory / 'checks'

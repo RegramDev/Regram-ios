@@ -53,7 +53,7 @@ private final class Fixture {
         precondition(restarted.coordinator.currentIconName == "RGBlack", "A cold nil getter cannot erase the acknowledged selection")
         restarted.coordinator.resume(); restarted.clock.advance(2)
         precondition(restarted.coordinator.currentIconName == "RGBlack")
-        restarted.system = "SGBlack"; restarted.coordinator.resume()
+        restarted.system = "RGBlack"; restarted.coordinator.resume()
         let confirmedRestart = Fixture(defaults)
         precondition(confirmedRestart.coordinator.currentIconName == "RGBlack", "Even a previously confirmed icon must survive a cold nil getter")
         let prior = defaults.dictionary(forKey: RGAppIconSelectionStore.key)! as NSDictionary

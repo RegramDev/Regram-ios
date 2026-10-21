@@ -1038,10 +1038,10 @@ Matching is case-insensitive.";
 "Debug.ClearCache.Done" = "Cache cleared";
 
 /* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
-"features.AutoInlineBot.Enabled" = "Enabled";
+"features.AutoInlineBot.Enabled" = "Automatically query matching links";
 "features.AutoInlineBot.Footer" = "When you enter a matching link on its own, that link is queried through the matching inline bot. Text beside the link is not queried.";
-"features.InlineBotRules" = "Inline Bot Rules";
-"features.InlineBotRules.Footer" = "Rules are supplied by Regram metadata. The original link remains in the compose field.";
+"features.InlineBotRules" = "Matching Rules";
+"features.InlineBotRules.Footer" = "Read-only rules update automatically. Each group shows the bot and its link patterns. Your original link stays in the input field.";
 "features.StayAtLatestMessageAfterRefresh" = "Stay at Latest After Refresh";
 "features.HidePrivateChatActivities" = "Hide Activity Status in Private Chats";
 "features.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
@@ -1053,7 +1053,7 @@ Matching is case-insensitive.";
 "features.CommunityAvatarTapAction.arrow" = "Open Community Only with the Bottom-Right Arrow";
 "features.MessagePlaceholderInSaved" = "Here are your Saved Messages chats";
 "features.MessagePlaceholderInArchived" = "Here are your Archived chats";
-"features.PanguOnReceiving" = "Enable Pangu on Receiving";
+"features.PanguOnReceiving" = "Apply to received messages";
 "features.TextStyleMenu" = "Selection Menu";
 "features.TextStyleMenu.PositionHeader" = "Insert Position";
 "features.TextStyleMenu.Position.first" = "At the Beginning";
@@ -1065,7 +1065,7 @@ Matching is case-insensitive.";
 "features.TextStyleMenu.ItemsFooter" = "Enabled styles appear directly on the first level of the text selection menu. Tap Edit to reorder. Quote, Spoiler and Date are hidden in secret chats.";
 "features.TextStyleMenu.Reset" = "Reset Selection Menu";
 "features.TextStyleMenu.ResetConfirm" = "Reset all selection menu styles, order and position?";
-"features.PanguOnEditing" = "Enable Pangu on Editing";
+"features.PanguOnEditing" = "Apply when editing messages";
 "features.TapMessageRowToOpenContextMenu" = "Tap Message Row for Menu";
 "features.ChatListSwipeAction" = "Chat List Swipe";
 "features.ChatListSwipeAction.both" = "Switch + Quick Actions";
@@ -1107,14 +1107,6 @@ Matching is case-insensitive.";
 "features.ChatListFolderTabDisplayMode.both" = "Icon and Text";
 "features.ShowFoldersInShareSheet" = "Show Folders in Share Sheet";
 "features.HideFolderUnreadCount" = "Hide Folder Unread Counts";
-"features.ChatToolsEnabled" = "Chat Top Toolbar";
-"features.ChatTools.search" = "Search";
-"features.ChatTools.media" = "Media";
-"features.ChatTools.pinned" = "Pinned";
-"features.ChatTools.beginning" = "Beginning";
-"features.ChatTools.notifications" = "Mute";
-"features.ChatTools.unmute" = "Unmute";
-"features.ChatTools.cache" = "Clear Cache";
 "features.ChatFolderNoneAvailable" = "No folders are available. Create a folder first, or check whether this chat is already in every folder.";
 "features.InviteLinks.BulkRevoke" = "Revoke Invitation Links…";
 "features.InviteLinks.ScopeInfo" = "Only additional, non-permanent invite links will be processed. The main link will not be affected.";
@@ -1137,11 +1129,9 @@ Matching is case-insensitive.";
 
 "features.TextStyleMenu.Position" = "Insert Position";
 
-"features.BottomUpChatSearchResults" = "Chat search results from the bottom";
 
 "features.BottomUpGlobalSearchResults" = "Global search results from the bottom";
 
-"features.ChatSearchFieldAtBottom" = "Chat search field at the bottom";
 
 "features.VideoPIPSwipeDirection" = "Swipe up for Picture-in-Picture";
 
@@ -1171,3 +1161,9 @@ Matching is case-insensitive.";
 "features.TextStyleMenu.Style.code" = "Code Block";
 
 "features.ChatListStartupFolder.Unavailable" = "Folder temporarily unavailable";
+
+"features.InlineBots.Title" = "Inline Bots";
+
+"features.PanguOnSending" = "Apply when sending messages";
+
+"features.PanguInfo" = "Insert spaces between Chinese/Japanese/Korean text and Latin letters or numbers. These three options are independent. Sending follows your existing per-chat setting; code, links and text entities keep their formatting.";

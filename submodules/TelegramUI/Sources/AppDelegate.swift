@@ -1723,10 +1723,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
         
         if let url = launchOptions?[.url] {
-            // MARK: Regram — recognize current links at launch and retain the old scheme alias.
-            if let url = url as? URL, url.scheme == "tg" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "sg" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
+            // MARK: Regram — recognize current application links at launch.
+            if let url = url as? URL, url.scheme == "tg" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
                 self.openUrlWhenReady(url: rgActionRequestHandlerSanitizer(url), external: true)
-            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("sg:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
+            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
                 self.openUrlWhenReady(url: url, external: true)
             }
         }

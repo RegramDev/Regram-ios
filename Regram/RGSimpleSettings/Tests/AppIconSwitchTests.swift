@@ -41,7 +41,7 @@ private final class Fixture {
         delayed.system = "RGGold"; delayed.coordinator.resume()
         precondition(delayed.coordinator.currentIconName == "RGGold", "After confirmation, genuine system changes must be reflected")
 
-        let reset = Fixture("SGDefault"); var resetResult = false
+        let reset = Fixture("RGDefault"); var resetResult = false
         reset.request(nil) { resetResult = $0 }; precondition(reset.requests.count == 1)
         reset.requests[0].1(true); reset.coordinator.resume(); reset.clock.advance(2)
         precondition(resetResult && reset.coordinator.currentIconName == nil, "A primary reset must stay selected while the legacy getter lags")
@@ -91,7 +91,7 @@ private final class Fixture {
         let group = DispatchGroup(); group.enter()
         DispatchQueue.global().async { precondition(delayed.coordinator.currentIconName == "RGGold"); group.leave() }
         precondition(group.wait(timeout: .now() + 2) == .success)
-        precondition(RGAppIconNames.canonicalName("SGAnime") == "RGDefault")
+        precondition(RGAppIconNames.canonicalName("SGAnime") == "SGAnime")
         print("App icons: UIKit acknowledgement with delayed getter, quiet success, foreground gating, ordered requests, primary reset, legacy names, true failure, timeout/late callbacks and background snapshots passed.")
     }
 }

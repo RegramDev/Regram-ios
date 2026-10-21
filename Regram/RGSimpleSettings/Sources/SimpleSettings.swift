@@ -20,8 +20,6 @@ public class RGSimpleSettings {
     }
 
     private init() {
-        // MARK: Regram — migrate before registration so the new default does not hide saved data.
-        rgMigratedPreferenceKey(Keys.dismissedRGSuggestions.rawValue, legacyKey: "dismissedSGSuggestions", defaults: UserDefaults.standard)
         setDefaultValues()
         migrate()
         preCacheValues()

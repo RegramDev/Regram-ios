@@ -8,11 +8,11 @@ import RGUpdateActivity
     @MainActor static func main() async throws {
         let release = RGUpdateRelease(version: "13.0", build: 34613, downloadURL: URL(string: "https://github.com/RegramDev/Regram-ios/releases/download/v13.0-b34613/Regram-13.0-b34613.ipa")!, sha256: String(repeating: "a", count: 64), size: 1000, notes: "unused")
         let registered = ["telegram", "tg", "tonsite", "ton", "tc", "regram", "rg", "sg"]
-        for scheme in ["sg", "regram", "rg"] {
+        for scheme in ["regram", "rg"] {
             let link = RGUpdateSettingsLink.url(appSpecificScheme: scheme, registeredSchemes: registered)
             assert(link.scheme == scheme && link.host == "rg" && link.path == "/settings" && URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems == [URLQueryItem(name: "page", value: "updates")])
         }
-        for scheme in ["tonsite", "ton", "tc", "https", "unregistered", "bad scheme"] {
+        for scheme in ["sg", "tonsite", "ton", "tc", "https", "unregistered", "bad scheme"] {
             assert(RGUpdateSettingsLink.url(appSpecificScheme: scheme, registeredSchemes: registered).scheme == "tg")
         }
         let coordinator = RGUpdateLiveActivity()

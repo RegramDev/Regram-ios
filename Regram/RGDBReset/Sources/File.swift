@@ -5,10 +5,10 @@ import UIKit
 import Foundation
 import Security
 
-private let dbResetKey = rgMigratedPreferenceKey("rg_db_reset", legacyKey: "sg_db_reset")
-private let dbHardResetKey = rgMigratedPreferenceKey("rg_db_hard_reset", legacyKey: "sg_db_hard_reset")
+private let dbResetKey = "rg_db_reset"
+private let dbHardResetKey = "rg_db_hard_reset"
 // MARK: Regram — full wipe, see rgFullWipeIfNeeded.
-private let fullWipeKey = rgMigratedPreferenceKey("rg_full_wipe", legacyKey: "sg_full_wipe")
+private let fullWipeKey = "rg_full_wipe"
 
 private func rgDefaultDataPath() -> String? {
     guard let containerUrl = rgDataContainerURL() else {

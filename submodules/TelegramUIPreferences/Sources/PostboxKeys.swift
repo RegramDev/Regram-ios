@@ -2,7 +2,7 @@ import Foundation
 import TelegramCore
 
 private enum ApplicationSpecificPreferencesKeyValues: Int32 {
-    case RGUISettings = 900
+    // MARK: Regram — retired Swiftgram preferences at key 900 are no longer read.
     case voipDerivedState = 16
     case chatArchiveSettings = 17
     case chatListFilterSettings = 18
@@ -14,7 +14,6 @@ private enum ApplicationSpecificPreferencesKeyValues: Int32 {
 }
 
 public struct ApplicationSpecificPreferencesKeys {
-    public static let RGUISettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.RGUISettings.rawValue)
     public static let voipDerivedState: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.voipDerivedState.rawValue)
     public static let chatArchiveSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatArchiveSettings.rawValue)
     public static let chatListFilterSettings: EngineDataBuffer = applicationSpecificPreferencesKey(ApplicationSpecificPreferencesKeyValues.chatListFilterSettings.rawValue)

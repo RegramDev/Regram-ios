@@ -1165,20 +1165,10 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         self.callPeerDisposable?.dispose()
     }
     
-    // MARK: Regram
-    var didPerformRGUISettingsMigration = false
-    //
-    // MARK: Regram
-    func rgPrimaryAccountContextForMigration() -> AccountContext? {
-        return self.activeAccountsValue?.primary
-    }
-    //
     private var didPerformAccountSettingsImport = false
     
     private func performAccountSettingsImportIfNecessary() {
-        // MARK: Regram
-        self.performRGUISettingsMigrationIfNecessary()
-        //
+        // MARK: Regram — settings use RG storage directly.
         if self.didPerformAccountSettingsImport {
             return
         }

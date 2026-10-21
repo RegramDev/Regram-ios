@@ -37,6 +37,7 @@ private enum RGProControllerSection: Int32, RGItemListSection {
     case media
     case input
     case network
+    case pangu
 }
 
 private enum RGProDisclosureLink: String {
@@ -92,6 +93,8 @@ private enum RGProToggles: String {
     case localPremium
     case disableLinkPreview
     case panguSpacing
+    case enablePanguOnReceiving
+    case enablePanguOnEditing
     case filterNotifications
 }
 
@@ -142,9 +145,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     // MARK: Regram — link previews off.
     entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
-    // MARK: Regram — pangu spacing.
-    entries.append(.toggle(id: id.count, section: .input, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .input, text: "Pangu.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .input, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .input, text: "OutgoingFormatting.Notice".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .input, link: .chatPreferences, text: "ChatPreferences.Title".i18n(lang)))
@@ -197,6 +197,13 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .network, link: .networkPolicy, text: "NetworkPolicy.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .network, link: .transferSettings, text: RGSettingsPage.transfer.titleKey.i18n(lang)))
 
+    // MARK: Regram — the receiving, sending and editing choices share one visible group.
+    entries.append(.header(id: id.count, section: .pangu, text: "Pangu.Title".i18n(lang), badge: nil))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .enablePanguOnReceiving, value: RGSimpleSettings.shared.enablePanguOnReceiving, text: "features.PanguOnReceiving".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .panguSpacing, value: RGSimpleSettings.shared.enablePanguOnSending, text: "features.PanguOnSending".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .enablePanguOnEditing, value: RGSimpleSettings.shared.enablePanguOnEditing, text: "features.PanguOnEditing".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .pangu, text: "features.PanguInfo".i18n(lang)))
+
     let section: RGProControllerSection
     switch page {
     case .home, .messages: section = .base
@@ -208,6 +215,9 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     case .appearance: section = .appearance
     case .notifications: section = .notifications
     case .tools: section = .footer
+    }
+    if page == .input {
+        return entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
     }
     return entries.filter { $0.section == section.rawValue }
 
@@ -240,9 +250,13 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .disableLinkPreview:
                 // Read live on every preview query, so no restart is needed.
                 RGSimpleSettings.shared.disableLinkPreview = value
+            case .enablePanguOnReceiving:
+                RGSimpleSettings.shared.enablePanguOnReceiving = value
+            case .enablePanguOnEditing:
+                RGSimpleSettings.shared.enablePanguOnEditing = value
             case .panguSpacing:
                 // Read on each send, so no restart is needed.
-                RGSimpleSettings.shared.panguSpacing = value
+                RGSimpleSettings.shared.enablePanguOnSending = value
             case .filterNotifications:
                 RGSimpleSettings.shared.filterNotifications = value
                 RGSimpleSettings.shared.synchronizeShared()

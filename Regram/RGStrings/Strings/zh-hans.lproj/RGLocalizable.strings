@@ -1031,10 +1031,10 @@
 "Debug.ClearCache.Done" = "缓存已清除";
 
 /* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
-"features.AutoInlineBot.Enabled" = "启用";
+"features.AutoInlineBot.Enabled" = "自动查询匹配链接";
 "features.AutoInlineBot.Footer" = "单独输入匹配链接时，将该链接交给对应 Inline 机器人查询。不会查询链接旁的草稿文字。";
-"features.InlineBotRules" = "Inline 机器人规则";
-"features.InlineBotRules.Footer" = "规则由 Regram metadata 提供；匹配时保留输入框中的原始链接。";
+"features.InlineBotRules" = "匹配规则";
+"features.InlineBotRules.Footer" = "规则只读并自动更新。每组显示对应机器人与匹配表达式，输入框保留原始链接。";
 "features.StayAtLatestMessageAfterRefresh" = "刷新后保持最新消息";
 "features.HidePrivateChatActivities" = "隐藏私聊活动状态";
 "features.HideSavedAndArchivedMessagesInList" = "在列表中隐藏收藏夹和归档会话信息";
@@ -1046,7 +1046,7 @@
 "features.CommunityAvatarTapAction.arrow" = "仅在点击头像右下角箭头时打开社区页";
 "features.MessagePlaceholderInSaved" = "这里是您的收藏夹会话";
 "features.MessagePlaceholderInArchived" = "这里是您的归档会话";
-"features.PanguOnReceiving" = "接收消息 Pangu 化";
+"features.PanguOnReceiving" = "接收消息时处理";
 "features.TextStyleMenu" = "选中文字菜单";
 "features.TextStyleMenu.PositionHeader" = "插入位置";
 "features.TextStyleMenu.Position.first" = "最前面";
@@ -1058,7 +1058,7 @@
 "features.TextStyleMenu.ItemsFooter" = "开启的样式会直接显示在选中文字菜单的第一层。点「编辑」后可拖动排序。私密聊天不显示引用、剧透和日期。";
 "features.TextStyleMenu.Reset" = "重置选中文字菜单";
 "features.TextStyleMenu.ResetConfirm" = "重置所有选中文字菜单的样式、排序和插入位置？";
-"features.PanguOnEditing" = "编辑消息 Pangu 化";
+"features.PanguOnEditing" = "编辑消息时处理";
 "features.TapMessageRowToOpenContextMenu" = "点击消息行打开菜单";
 "features.ChatListSwipeAction" = "对话列表横滑";
 "features.ChatListSwipeAction.both" = "切换 + 快捷";
@@ -1100,14 +1100,6 @@
 "features.ChatListFolderTabDisplayMode.both" = "图标和文字";
 "features.ShowFoldersInShareSheet" = "分享面板显示文件夹";
 "features.HideFolderUnreadCount" = "隐藏分组标签未读数";
-"features.ChatToolsEnabled" = "聊天顶部工具栏";
-"features.ChatTools.search" = "搜索";
-"features.ChatTools.media" = "媒体";
-"features.ChatTools.pinned" = "置顶";
-"features.ChatTools.beginning" = "开头";
-"features.ChatTools.notifications" = "静音";
-"features.ChatTools.unmute" = "取消静音";
-"features.ChatTools.cache" = "清理缓存";
 "features.ChatFolderNoneAvailable" = "没有可添加的分组。请先创建分组，或检查此聊天是否已加入所有分组。";
 "features.InviteLinks.BulkRevoke" = "批量撤销邀请链接…";
 "features.InviteLinks.ScopeInfo" = "仅处理额外的非永久邀请链接，主链接不会受到影响。";
@@ -1130,11 +1122,9 @@
 
 "features.TextStyleMenu.Position" = "插入位置";
 
-"features.BottomUpChatSearchResults" = "聊天内搜索结果从底部开始";
 
 "features.BottomUpGlobalSearchResults" = "全局搜索结果从底部开始";
 
-"features.ChatSearchFieldAtBottom" = "聊天内搜索框置底";
 
 "features.VideoPIPSwipeDirection" = "上滑开启画中画";
 
@@ -1164,3 +1154,9 @@
 "features.TextStyleMenu.Style.code" = "代码块";
 
 "features.ChatListStartupFolder.Unavailable" = "分组暂不可用";
+
+"features.InlineBots.Title" = "Inline 机器人";
+
+"features.PanguOnSending" = "发送消息时处理";
+
+"features.PanguInfo" = "在中日韩文字与拉丁字母或数字之间添加空格，三个开关独立控制。发送时沿用会话独立设置，保留代码、链接和文字格式。";

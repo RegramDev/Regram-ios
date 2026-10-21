@@ -70,11 +70,6 @@ def build_configuration_from_json(path):
         sys.exit(1)
     with open(path) as file:
         configuration_dict = json.load(file)
-        # MARK: Regram — accept existing ignored build inputs, emit only the current key.
-        if 'rg_config' not in configuration_dict and 'sg_config' in configuration_dict:
-            configuration_dict['rg_config'] = configuration_dict['sg_config']
-        elif 'sg_config' in configuration_dict and configuration_dict['sg_config'] != configuration_dict['rg_config']:
-            raise ValueError('Conflicting application configuration keys')
         required_keys = [
             'rg_config',
             'bundle_id',

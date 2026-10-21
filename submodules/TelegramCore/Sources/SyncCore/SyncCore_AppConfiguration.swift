@@ -25,11 +25,9 @@ public struct AppConfiguration: Codable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: StringCodingKey.self)
         
-        // MARK: Regram — read previous storage keys; new records use the current names.
-        self.rgWebSettings = try (container.decodeIfPresent(RGWebSettings.self, forKey: "rg")
-            ?? container.decodeIfPresent(RGWebSettings.self, forKey: "sg") ?? RGWebSettings.defaultValue)
-        self.rgGHSettings = try (container.decodeIfPresent(RGGHSettings.self, forKey: "rggh")
-            ?? container.decodeIfPresent(RGGHSettings.self, forKey: "sggh") ?? RGGHSettings.defaultValue)
+        // MARK: Regram — only current RG storage keys are supported.
+        self.rgWebSettings = try container.decodeIfPresent(RGWebSettings.self, forKey: "rg") ?? RGWebSettings.defaultValue
+        self.rgGHSettings = try container.decodeIfPresent(RGGHSettings.self, forKey: "rggh") ?? RGGHSettings.defaultValue
         self.data = try container.decodeIfPresent(JSON.self, forKey: "data")
         self.hash = (try container.decodeIfPresent(Int32.self, forKey: "storedHash")) ?? 0
     }

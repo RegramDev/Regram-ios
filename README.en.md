@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34621**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34622**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -22,7 +22,7 @@ This documentation describes **13.0 / b34621**. See [GitHub Releases](https://gi
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
 - Folder selection after joining groups/channels, remembered folders, and folder/list display options.
 
-The [implementation checklist](docs/chat-and-interface-tools.md) lists the new chat tools, share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
+The [implementation checklist](docs/chat-and-interface-tools.md) lists share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
 
 ### Filters and privacy
 
@@ -121,6 +121,8 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
 ## Verification scope
+
+b34622 removes the optional chat toolbar, bottom in-chat search field and bottom-up in-chat results, groups Inline Bot and Pangu settings, and retires Swiftgram setting/link aliases. See the [verification notes](docs/settings-cleanup-34622.md) for the tested scope and device limitations.
 
 b34621 adds overflow-pin persistence and chat/interface options. The main app and six extensions passed the arm64 Release build and 40 local checks; details are recorded in the [implementation notes](docs/chat-and-interface-tools.md). The user confirmed that this test package passed validation and asked to defer minor issues to the next version. Individual device scenarios and the 1–2 day pin-retention case were not separately documented.
 

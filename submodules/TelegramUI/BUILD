@@ -7,7 +7,6 @@ load(
 
 rgdeps = [
     "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
-    "//Regram/RGChatTools:RGChatTools", # MARK: Regram
     "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGLinkMetadata:RGLinkMetadata",
@@ -39,7 +38,6 @@ rgsrcs = [
     "//Regram/RGDBReset:RGDBReset",
     "//Regram/RGShowMessageJson:RGShowMessageJson",
     "//Regram/ChatControllerImplExtension:ChatControllerImplExtension",
-    "//Regram/RGSharedAccountContextMigration:RGSharedAccountContextMigration",
     "//Regram/RGOutgoingTranslationLanguageSelection:RGOutgoingTranslationLanguageSelection",
     "//Regram/RGSafariControllerUrlOpening:RGSafariControllerUrlOpening"
 ]

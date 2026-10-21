@@ -276,7 +276,7 @@ func inputContextPanelForChatPresentationIntefaceState(_ chatPresentationInterfa
     return nil
 }
 
-func chatOverlayContextPanelForChatPresentationIntefaceState(_ chatPresentationInterfaceState: ChatPresentationInterfaceState, context: AccountContext, currentPanel: ChatInputContextPanelNode?, interfaceInteraction: ChatPanelInterfaceInteraction?, chatPresentationContext: ChatPresentationContext, rgFeatureSearchFieldAtBottom: Bool = false) -> ChatInputContextPanelNode? { // MARK: Regram
+func chatOverlayContextPanelForChatPresentationIntefaceState(_ chatPresentationInterfaceState: ChatPresentationInterfaceState, context: AccountContext, currentPanel: ChatInputContextPanelNode?, interfaceInteraction: ChatPanelInterfaceInteraction?, chatPresentationContext: ChatPresentationContext) -> ChatInputContextPanelNode? {
     guard let searchQuerySuggestionResult = chatPresentationInterfaceState.searchQuerySuggestionResult, let _ = chatPresentationInterfaceState.renderedPeer?.peer else {
         return nil
     }
@@ -284,11 +284,11 @@ func chatOverlayContextPanelForChatPresentationIntefaceState(_ chatPresentationI
     switch searchQuerySuggestionResult {
         case let .mentions(peers):
             if !peers.isEmpty {
-                if let currentPanel = currentPanel as? MentionChatInputContextPanelNode, currentPanel.mode == .search, currentPanel.rgFeatureAnchoredAtBottom == rgFeatureSearchFieldAtBottom { // MARK: Regram
+                if let currentPanel = currentPanel as? MentionChatInputContextPanelNode, currentPanel.mode == .search {
                     currentPanel.updateResults(peers)
                     return currentPanel
                 } else {
-                    let panel = MentionChatInputContextPanelNode(context: context, theme: chatPresentationInterfaceState.theme, strings: chatPresentationInterfaceState.strings, fontSize: chatPresentationInterfaceState.fontSize, mode: .search, chatPresentationContext: chatPresentationContext, rgFeatureAnchoredAtBottom: rgFeatureSearchFieldAtBottom) // MARK: Regram
+                    let panel = MentionChatInputContextPanelNode(context: context, theme: chatPresentationInterfaceState.theme, strings: chatPresentationInterfaceState.strings, fontSize: chatPresentationInterfaceState.fontSize, mode: .search, chatPresentationContext: chatPresentationContext)
                     panel.interfaceInteraction = interfaceInteraction
                     panel.updateResults(peers)
                     return panel

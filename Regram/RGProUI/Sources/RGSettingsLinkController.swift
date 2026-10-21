@@ -22,7 +22,7 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
     if destination.page.hasPrefix("pro."), let page = RGProSettingsPage(rawValue: String(destination.page.dropFirst(4))) { return rgProController(context: context, page: page, focusSetting: focus) }
     if destination.page.hasPrefix("settings."), let page = RGSettingsPage(rawValue: String(destination.page.dropFirst(9))) { return rgSettingsController(context: context, page: page, focusSetting: focus) }
     switch destination.page {
-    case "inlineBots": return rgFeatureInlineBotRulesController(context: context)
+    case "inlineBots": return rgFeatureInlineBotRulesController(context: context, focusSetting: focus)
     case "groupProfile": return rgFeatureGroupProfileSettingsController(context: context, focusOnRow: focus)
     case "startupFolder": return rgStartupFolderController(context: context, focusSetting: focus)
     case "textStyleMenu": return rgFeatureTextStyleMenuSettingsController(context: context, focusOnRow: focus)

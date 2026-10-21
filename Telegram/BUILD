@@ -493,8 +493,6 @@ plist_fragment(
             <array>
                 <string>regram</string>
                 <string>rg</string>
-                <!-- MARK: Regram — keep previously distributed links working. -->
-                <string>sg</string>
             </array>
         </dict>
     </array>

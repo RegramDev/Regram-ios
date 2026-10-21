@@ -128,7 +128,20 @@ extension UserDefaults {
         settings.reorderVisibleContextMenuItems([.reply, .copy])
         expect(Array(settings.contextMenuOrder.prefix(3)) == [.reply, .viewStats, .copy], "Reordering visible items must preserve the position of hidden actions")
         settings.contextMenuOrder = originalMenuOrder
-        expect(!settings.chatToolsEnabled && !settings.autoInlineBotEnabled && !settings.chatSearchFieldAtBottom, "New interaction and external-query modes must be opt-in")
+        expect(!settings.autoInlineBotEnabled, "Automatic external queries must be opt-in")
+        for key in ["features.chatToolsEnabled", "features.chatSearchFieldAtBottom", "features.bottomUpChatSearchResults"] {
+            expect(RGSettingsBackup(values: [key: .bool(true)]).values[key] == nil, "Retired chat tools and search modes must not return through backups")
+        }
+        let originalPangu = settings.panguSpacing
+        settings.enablePanguOnSending = true
+        expect(settings.panguSpacing, "The grouped sending toggle must use the existing stored preference")
+        settings.enablePanguOnEditing = true
+        settings.enablePanguOnReceiving = false
+        let panguBackup = settings.exportPreferences(categories: [.messages])
+        expect(panguBackup.values["panguSpacing"] == .bool(true) && panguBackup.values["features.enablePanguOnEditing"] == .bool(true) && panguBackup.values["features.enablePanguOnReceiving"] == .bool(false), "Three grouped controls remain independently backed up")
+        settings.applyPreferences(["panguSpacing": .bool(false), "features.enablePanguOnEditing": .bool(false), "features.enablePanguOnReceiving": .bool(true)])
+        expect(!settings.enablePanguOnSending && !settings.enablePanguOnEditing && settings.enablePanguOnReceiving, "Restoring grouped Pangu settings must retain independent values")
+        settings.panguSpacing = originalPangu
         settings.rememberLastFolder = true
         expect(settings.chatListStartupFolderModeValue == .last, "Existing remember-last choice remains effective before selecting a startup mode")
         settings.rememberLastFolder = false
@@ -172,7 +185,7 @@ extension UserDefaults {
         print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
     }
     static func checkIconSwitching() {
-        expect(RGAppIconNames.canonicalName("SGSilver") == "RGSilver" && RGAppIconNames.canonicalName("SGAnime") == "RGDefault" && RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Legacy artwork names must select the correct picker item")
+        expect(RGAppIconNames.canonicalName("SGSilver") == "SGSilver" && RGAppIconNames.canonicalName("SGAnime") == "SGAnime" && RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Only Regram artwork names are normalized")
         var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
         let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })
         coordinator.request("RGBlack") { results.append($0) }
@@ -192,7 +205,7 @@ extension UserDefaults {
         let count = results.count; applies[3].1(false)
         expect(results.count == count, "Late callbacks must not complete a newer request")
         actual = nil; applies[4].1(true); coordinator.resume()
-        actual = "SGDefault"
+        actual = "RGDefault"
         coordinator.request(nil) { results.append($0) }
         expect(applies.count == 6 && applies[5].0 == nil, "Restoring primary must replace an old alternate named Default")
         actual = nil; applies[5].1(true)

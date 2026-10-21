@@ -460,8 +460,8 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
                         navigationController?.pushViewController(debugController)
                         return
                     }
-                // MARK: Regram — retain old debug links as aliases.
-                case "rgdebug", "rg_debug", "sgdebug", "sg_debug":
+                // MARK: Regram — current Regram debug route.
+                case "rgdebug":
                     navigationController?.pushViewController(rgDebugController(context: context))
                     return
                 case "settings":
@@ -475,7 +475,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
                         lastViewController.present(ContactsController(context: context), in: .window(.root), with: ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
                     }
                     return
-                case "pro", "premium", "buy":
+                case "pro":
                     navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
                 case "restart":
                     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -493,16 +493,13 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
                         ),
                         nil
                     )
-                // MARK: Regram — old purchase links now open local enhancement settings.
-                case "restore_purchases", "pro_restore", "validate", "restore":
-                    navigationController?.pushViewController(context.sharedContext.makeRGProController(context: context))
                 default:
                     break
             }
             return
         }
-        // MARK: Regram — current schemes and the legacy alias share the same resolver.
-        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram", "sg"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        // MARK: Regram — handle current application schemes.
+        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             if parsedUrl.host == "tonsite" {
                 if let value = URL(string: "tonsite:/" + parsedUrl.path) {
                     parsedUrl = value
@@ -510,7 +507,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
             }
         }
         
-        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram", "sg"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             var convertedUrl: String?
             let host = parsedUrl.host?.lowercased() ?? ""
             if host == "sendgrams" {
