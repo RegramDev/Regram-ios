@@ -31,5 +31,5 @@
 - 本轮沿用户要求跳过自动回归、应用内更新解析、模拟器交互、真实账号及真机测试。不能由构建成功推断点击、视觉和切换体验已完成设备验收。
 - 保留既有本地 `Telegram/BUILD`／`Regram/RGMacWindow/` 修改、命名检查辅助文件及 rules_apple 兼容补丁；这些不属于本轮提交，不将产物描述为仅由干净提交构建。
 - IPA：`Regram-13.0-b34626.ipa`，**88,838,833 字节**，SHA-256：`956babac04c0a08fa55370e20f85dbd6660f5aedd47a8dadc3c8508a46b09563`。配套 dSYM 本地留存。
-- 发行目标：[v13.0-b34626](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34626)，公开后补记发布和下载核验结果。
+- 已正式发布 [v13.0-b34626](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34626)，Release ID `419830662`。标签固定到构建源码提交，Latest、公开完整下载、字节数、SHA-256 及校验附件均核对通过。
 - 已关闭本次 Bazel 服务，按既有用户偏好保留复用缓存。IPA、符号和校验记录位于缓存之外；打包与身份比对的临时解包目录已自动清除。
