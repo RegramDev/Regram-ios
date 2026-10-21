@@ -28,3 +28,9 @@
 安装包：`Regram-13.0-b34623.ipa`，88,761,973 字节。SHA-256：`96965add5eea6c31d45c444866bb87c98811add4881f72f93515eb8a6ea9901a`。
 
 未连接真机，实际手势视觉、深链高亮、真实文件消息菜单及覆盖升级仍需设备验收。自动检查及 SDK 类型检查不等于模拟器／设备交互验收，也未据此声称 GitHub Actions 成功。
+
+## 发布核验
+
+[GitHub Release v13.0-b34623](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34623) 已公开，Release ID 为 `419147626`。唯一 IPA 和 SHA-256 文件均上传完成，GitHub 摘要与本地包一致；公开链接完整下载后的字节数及摘要、Latest 指向、校验附件均已核验。生产 `RGUpdateRelease.parseGitHub` 接受真实公开 JSON，匹配安装包并识别为 b34622 的新版。
+
+版本标签实际指向 `1b2713135656a7204d13c8c18533a1353996167a`；它相对构建源码只新增验证文档。本节的发布记录是后续文档提交，不代表再次构建了应用。
