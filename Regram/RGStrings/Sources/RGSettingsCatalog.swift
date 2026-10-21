@@ -243,7 +243,7 @@ public enum RGSettingsCatalog {
         .init("updates", "install", "AppUpdate.Install"),
         .init("bottomBar", "hidden", "Settings.Tabs.HideTabBar"),
         .init("bottomBar", "topSearch", "RG.BottomBarLayout.TopSearch"),
-        .init("bottomBar", "visibility", "RG.BottomBarLayout.Visibility"),
+        .init("bottomBar", "visibility", "RG.BottomBarLayout.Visibility", keywords: "global search bottom tabs standalone 全局搜索 底栏 搜索开关 独立搜索 右下角 全域搜尋 底欄 搜尋開關 獨立搜尋"),
         .init("bottomBar", "automaticWidth", "Settings.Tabs.Width.Automatic"),
         .init("bottomBar", "labels", "RG.BottomBarLayout.ShowLabels"),
         .init("bottomBar", "width", "RG.BottomBarLayout.Width"),

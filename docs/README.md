@@ -19,6 +19,7 @@
 - [GitHub Actions](github-actions-build.md)：读取版本、构建一份 IPA、校验报告与确认发布流程。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从构建 IPA 生成可重新签名的 ad-hoc 参考包，并核对结构、权限及调试符号。
 - [UI 测试](ui-testing.md)：测试环境与 XCUITest 使用方式，不能替代真实账号和设备验收。
+- [设置界面样式](settings-appearance.md)：Telegram 主题、共享分组组件及视觉／交互验收范围。
 - [富文本输入](richtext-composer.md)及[富文本消息渲染](instantpage-richtext.md)：数据流、现有能力和维护边界。
 - [媒体加载试验](media-loading-experiment.md)：预取、播放准入、播放器复用、首帧交接和性能验证边界。
 - [兼容补丁](../build-system/patches/README.md)：rules_apple 工作树修改的来源与应用方式。

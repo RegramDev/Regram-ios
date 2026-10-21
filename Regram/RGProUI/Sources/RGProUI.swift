@@ -2,6 +2,7 @@ import RGSwiftUI
 // MARK: Regram — local enhancement settings, organized into focused pages.
 import RGSettingsUI
 import Foundation
+import UIKit
 import UniformTypeIdentifiers
 import RGItemListUI
 import UndoUI
@@ -120,8 +121,16 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
         entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: ""), text: searchQuery, placeholder: presentationData.strings.Common_Search))
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
-            for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.inputPage, .input), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.networkPage, .network), (.toolsPage, .tools)] {
-                entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
+            // Match the small, grouped categories on Telegram's settings home.
+            let groups: [(RGProControllerSection, [(RGProDisclosureLink, RGProSettingsPage)])] = [
+                (.base, [(.messagesPage, .messages), (.inputPage, .input), (.translationPage, .translation)]),
+                (.appearance, [(.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications)]),
+                (.network, [(.networkPage, .network), (.toolsPage, .tools)])
+            ]
+            for (section, destinations) in groups {
+                for (link, destination) in destinations {
+                    entries.append(.disclosure(id: id.count, section: section, link: link, text: destination.titleKey.i18n(lang)))
+                }
             }
         } else {
             let matches = Set(RGSettingsCatalog.results(query: query, language: lang).map(\.id))
@@ -403,6 +412,20 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         Queue.mainQueue().async { searchPromise.set(value) }
     }, settingsPage: "pro." + page.rawValue, openSettingsResult: { destination in
         if let controller = rgControllerForSettingsLink(context: context, destination: destination) { pushControllerImpl?(controller) }
+    }, disclosureIcon: { link in
+        // Reuse the actual Telegram settings artwork and its native 30 pt layout.
+        switch link {
+        case .messagesPage: return PresentationResourcesSettings.messages
+        case .inputPage: return PresentationResourcesSettings.upload
+        case .translationPage: return PresentationResourcesSettings.language
+        case .privacyPage: return PresentationResourcesSettings.security
+        case .mediaPage: return PresentationResourcesSettings.photos
+        case .appearancePage: return PresentationResourcesSettings.appearance
+        case .notificationsPage: return PresentationResourcesSettings.notifications
+        case .networkPage: return PresentationResourcesSettings.proxy
+        case .toolsPage: return PresentationResourcesSettings.settings
+        default: return nil
+        }
     })
     
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())

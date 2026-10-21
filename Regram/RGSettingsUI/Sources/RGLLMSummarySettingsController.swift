@@ -32,8 +32,8 @@ private struct RGLLMSummarySettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section(footer: Text("Summary.EnabledNotice".i18n(lang))) {
+        RGSettingsForm {
+            RGSettingsSection(footer: Text("Summary.EnabledNotice".i18n(lang))) {
                 Toggle("Summary.Enabled".i18n(lang), isOn: $enabled).rgSettingsLink("enabled")
                     .onChange(of: enabled) { RGSimpleSettings.shared.messageSummaryEnabled = $0 }
             }
@@ -45,7 +45,7 @@ private struct RGLLMSummarySettingsView: View {
     }
 
     private var connectionSection: some View {
-        Section(footer: Text("Summary.ConnectionNotice".i18n(lang))) {
+        RGSettingsSection(footer: Text("Summary.ConnectionNotice".i18n(lang))) {
             Picker("LLMTranslation.Format".i18n(lang), selection: $format) {
                 Text("OpenAI").tag(RGLLMAPIFormat.openai.rawValue)
                 Text("Anthropic").tag(RGLLMAPIFormat.anthropic.rawValue)
@@ -59,15 +59,15 @@ private struct RGLLMSummarySettingsView: View {
                 request.set(nil)
                 busy = false
             }
-            TextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, prompt: Text(apiFormat.defaultBaseURL))
+            RGSettingsTextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, placeholder: apiFormat.defaultBaseURL)
                 .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: baseURL) { RGSimpleSettings.shared.summaryLLMBaseURL = $0 }
                 .rgSettingsLink("baseURL")
-            TextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, prompt: Text(apiFormat.defaultTranslationEndpoint))
+            RGSettingsTextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, placeholder: apiFormat.defaultTranslationEndpoint)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: endpoint) { RGSimpleSettings.shared.summaryLLMEndpoint = $0 }
                 .rgSettingsLink("endpoint")
-            SecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
+            RGSettingsSecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
                 .rgSettingsLink("apiKey")
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: apiKey) { value in
@@ -79,8 +79,8 @@ private struct RGLLMSummarySettingsView: View {
     }
 
     private var modelSection: some View {
-        Section {
-            TextField("LLMTranslation.Model".i18n(lang), text: $model)
+        RGSettingsSection {
+            RGSettingsTextField("LLMTranslation.Model".i18n(lang), text: $model)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: model) { RGSimpleSettings.shared.summaryLLMModel = $0 }
                 .rgSettingsLink("model")
@@ -97,15 +97,15 @@ private struct RGLLMSummarySettingsView: View {
     }
 
     private var promptSection: some View {
-        Section(footer: Text("Summary.PromptNotice".i18n(lang))) {
+        RGSettingsSection(footer: Text("Summary.PromptNotice".i18n(lang))) {
             Text("LLMTranslation.Prompt".i18n(lang))
-            TextEditor(text: $prompt).frame(minHeight: 110)
+            RGSettingsTextEditor(text: $prompt).frame(minHeight: 110)
                 .onChange(of: prompt) { RGSimpleSettings.shared.summaryLLMPrompt = $0 }
                 .rgSettingsLink("prompt")
             HStack {
                 Text("LLMTranslation.Temperature".i18n(lang))
                 Spacer()
-                Text(String(format: "%.1f", temperature)).foregroundColor(.secondary)
+                Text(String(format: "%.1f", temperature)).rgSecondaryText()
             }
             Slider(value: $temperature, in: 0...1, step: 0.1).rgSettingsLink("temperature")
                 .onChange(of: temperature) { RGSimpleSettings.shared.summaryLLMTemperatureTenths = Int32(($0 * 10).rounded()) }

@@ -89,8 +89,8 @@ private struct RGBookmarkEditorView: View {
         return (selectedTags + availableTags).filter { seen.insert($0.lowercased()).inserted }
     }
     var body: some View {
-        List {
-            Section(header: Text("Bookmarks.Tags".i18n(lang)), footer: Text("Bookmarks.TagsNotice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(header: Text("Bookmarks.Tags".i18n(lang)), footer: Text("Bookmarks.TagsNotice".i18n(lang))) {
                 ForEach(choices, id: \.self) { tag in
                     Button {
                         if selectedTags.contains(where: { $0.caseInsensitiveCompare(tag) == .orderedSame }) { selectedTags.removeAll { $0.caseInsensitiveCompare(tag) == .orderedSame } }
@@ -104,7 +104,7 @@ private struct RGBookmarkEditorView: View {
                     selectedTags = RGMessageBookmarks.normalizedTags(selectedTags + [newTag]); newTag = ""
                 }.disabled(RGMessageBookmarks.normalizedTags([newTag]).isEmpty || selectedTags.count >= RGMessageBookmarks.maximumTags)
             }
-            Section {
+            RGSettingsSection {
                 Button("Bookmarks.Save".i18n(lang)) { save(selectedTags) }
                 Button("Bookmarks.Remove".i18n(lang), role: .destructive, action: remove)
             }
@@ -152,12 +152,13 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
     private var lang: String { data.strings.rgLanguageCode }
     init(context: AccountContext) {
         self.context = context; list = RGBookmarkList(context: context); data = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: data))
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: data, style: .glass))
+        self._hasGlassStyle = true
         title = "Bookmarks.Title".i18n(lang)
         navigationItem.backBarButtonItem = UIBarButtonItem(title: data.strings.Common_Back, style: .plain, target: nil, action: nil)
         list.didUpdate = { [weak self] in self?.table.reloadData() }
         appearance.set((context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
-            guard let self else { return }; self.data = data; self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data), transition: .immediate); self.applyTheme(); self.table.reloadData()
+            guard let self else { return }; self.data = data; self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data, style: .glass), transition: .immediate); self.applyTheme(); self.table.reloadData()
         }))
     }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -168,9 +169,12 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
         displayNode.view.addSubview(table); applyTheme(); list.reload()
     }
     private func applyTheme() {
+        title = "Bookmarks.Title".i18n(lang)
         dateFormatter.locale = Locale(identifier: lang); dateFormatter.dateStyle = .short
         table.overrideUserInterfaceStyle = data.theme.overallDarkAppearance ? .dark : .light
         table.backgroundColor = data.theme.list.blocksBackgroundColor; table.separatorColor = data.theme.list.itemBlocksSeparatorColor; table.tintColor = data.theme.list.itemAccentColor
+        table.indicatorStyle = data.theme.overallDarkAppearance ? .white : .black
+        if isNodeLoaded { displayNode.backgroundColor = data.theme.list.blocksBackgroundColor }
         statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
     }
     override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
@@ -186,17 +190,25 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: nil)
         cell.backgroundColor = data.theme.list.itemBlocksBackgroundColor; cell.textLabel?.textColor = data.theme.list.itemPrimaryTextColor; cell.detailTextLabel?.textColor = data.theme.list.itemSecondaryTextColor
         cell.textLabel?.font = Font.regular(data.listsFontSize.baseDisplaySize); cell.detailTextLabel?.font = Font.regular(max(12, data.listsFontSize.baseDisplaySize - 2)); cell.detailTextLabel?.numberOfLines = 4
+        cell.textLabel?.numberOfLines = 2
+        let selectedBackground = UIView()
+        selectedBackground.backgroundColor = data.theme.list.itemHighlightedBackgroundColor
+        cell.selectedBackgroundView = selectedBackground
         if indexPath.section == 0 {
             cell.textLabel?.text = "Bookmarks.Filter".i18n(lang); cell.detailTextLabel?.text = list.selectedTag.map { $0.isEmpty ? "Bookmarks.Untagged".i18n(lang) : $0 } ?? "Bookmarks.All".i18n(lang); cell.accessoryType = .disclosureIndicator
         } else if indexPath.section == 1 {
-            guard list.rows.indices.contains(indexPath.row) else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.Empty").i18n(lang); cell.selectionStyle = .none; return cell }
+            guard list.rows.indices.contains(indexPath.row) else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.Empty").i18n(lang); cell.textLabel?.textColor = data.theme.list.itemSecondaryTextColor; cell.selectionStyle = .none; return cell }
             let row = list.rows[indexPath.row]
             cell.textLabel?.text = row.peer?.rgGroupDisplayTitle(accountId: context.account.peerId.toInt64(), strings: data.strings, displayOrder: data.nameDisplayOrder) ?? "Bookmarks.Unavailable".i18n(lang)
             let preview = row.message.map { $0.text.isEmpty ? "Bookmarks.Media".i18n(lang) : $0.text } ?? "Bookmarks.Unavailable".i18n(lang)
             let metadata = dateFormatter.string(from: Date(timeIntervalSince1970: row.bookmark.addedAt)) + (row.bookmark.tags.isEmpty ? "" : " · " + row.bookmark.tags.map { "#" + $0 }.joined(separator: "  "))
             cell.detailTextLabel?.text = metadata + "\n" + preview
             cell.accessoryType = .disclosureIndicator
-        } else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.LoadMore").i18n(lang) }
+        } else {
+            cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.LoadMore").i18n(lang)
+            cell.textLabel?.textColor = list.loading ? data.theme.list.itemSecondaryTextColor : data.theme.list.itemAccentColor
+            cell.selectionStyle = list.loading ? .none : .default
+        }
         return cell
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
@@ -212,13 +224,19 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         guard indexPath.section == 1, list.rows.indices.contains(indexPath.row) else { return nil }
         let row = list.rows[indexPath.row]
-        return UISwipeActionsConfiguration(actions: [UIContextualAction(style: .destructive, title: "Bookmarks.Remove".i18n(lang), handler: { [weak self] _, _, finish in guard let self else { finish(false); return }; RGMessageBookmarks.shared.remove(accountId: self.context.account.peerId.toInt64(), messageId: row.id); finish(true) }), UIContextualAction(style: .normal, title: "Bookmarks.EditTags".i18n(lang), handler: { [weak self] _, _, finish in
+        let removeAction = UIContextualAction(style: .destructive, title: "Bookmarks.Remove".i18n(lang), handler: { [weak self] _, _, finish in guard let self else { finish(false); return }; RGMessageBookmarks.shared.remove(accountId: self.context.account.peerId.toInt64(), messageId: row.id); finish(true) })
+        removeAction.backgroundColor = data.theme.list.itemDestructiveColor
+        let editAction = UIContextualAction(style: .normal, title: "Bookmarks.EditTags".i18n(lang), handler: { [weak self] _, _, finish in
             guard let self else { finish(false); return }; (self.navigationController as? NavigationController)?.pushViewController(rgBookmarkEditorController(context: self.context, bookmark: row.bookmark)); finish(true)
-        })])
+        })
+        editAction.backgroundColor = data.theme.list.itemAccentColor
+        return UISwipeActionsConfiguration(actions: [removeAction, editAction])
     }
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); opening = false }
     func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
-        (view as? UITableViewHeaderFooterView)?.textLabel?.textColor = data.theme.list.itemSecondaryTextColor
+        guard let footer = view as? UITableViewHeaderFooterView else { return }
+        footer.textLabel?.textColor = data.theme.list.freeTextColor
+        footer.textLabel?.font = Font.regular(max(13.0, data.listsFontSize.baseDisplaySize - 3.0))
     }
     func tableView(_ tableView: UITableView, contextMenuConfigurationForRowAt indexPath: IndexPath, point: CGPoint) -> UIContextMenuConfiguration? {
         if indexPath.section == 0 {

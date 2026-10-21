@@ -66,8 +66,7 @@ final class MessageFilterEditingState: NSObject, ObservableObject {
     }
 
     private func updateButton() {
-        // System symbols rather than the "Edit"/"Done" text, like the other Regram Pro screens.
-        let item = UIBarButtonItem(image: UIImage(systemName: self.isEditing ? "checkmark" : "pencil"), style: .plain, target: self, action: #selector(self.toggle))
+        let item = UIBarButtonItem(title: self.isEditing ? self.strings.Common_Done : self.strings.Common_Edit, style: self.isEditing ? .done : .plain, target: self, action: #selector(self.toggle))
         item.accessibilityLabel = self.isEditing ? self.strings.Common_Done : self.strings.Common_Edit
         self.controller?.navigationItem.rightBarButtonItem = item
     }
@@ -100,6 +99,7 @@ struct MessageFilterKeywordInputFieldModifier: ViewModifier {
 
 @available(iOS 13.0, *)
 struct MessageFilterKeywordInputView: View {
+    @Environment(\.rgSettingsColors) private var colors
     @Environment(\.lang) var lang: String
     @Binding var newKeyword: String
     let isRegex: Bool
@@ -129,7 +129,7 @@ struct MessageFilterKeywordInputView: View {
 
             Button(action: onAdd) {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundColor(canAdd ? .accentColor : .secondary)
+                    .foregroundColor(canAdd ? colors.accent : colors.secondary)
                     .imageScale(.large)
             }
             .disabled(!canAdd)
@@ -140,6 +140,7 @@ struct MessageFilterKeywordInputView: View {
 
 @available(iOS 13.0, *)
 struct MessageFilterView: View {
+    @Environment(\.rgSettingsColors) private var colors
     weak var wrapperController: LegacyController?
     let selectChats: (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void
     // MARK: Regram — editing a pattern is a native pushed screen, not a SwiftUI sheet or alert. A
@@ -211,36 +212,13 @@ struct MessageFilterView: View {
     }
 
     var bodyContent: some View {
-            List {
-                Section {
-                    // Icon and title
-                    VStack(spacing: 8) {
-                        Image(systemName: "nosign.app.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.secondary)
-
-                        Text("MessageFilter.Title".i18n(lang))
-                            .font(.title)
-                            .bold()
-
-                        Text("MessageFilter.SubTitle".i18n(lang))
-                            .font(.body)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .listRowInsets(EdgeInsets())
-
-                }
-
-                Section(footer: Text("MessageFilter.Regex.Notice".i18n(lang))) {
+            RGSettingsList {
+                RGSettingsSection(footer: Text("MessageFilter.SubTitle".i18n(lang) + "\n\n" + "MessageFilter.Regex.Notice".i18n(lang))) {
                     MessageFilterKeywordInputView(newKeyword: $newKeyword, isRegex: newIsRegex, onAdd: addRule)
                     Toggle("MessageFilter.Regex".i18n(lang), isOn: $newIsRegex)
                 }
 
-                Section(header: keywordsHeader, footer: Text("MessageFilter.Rules.Notice".i18n(lang))) {
+                RGSettingsSection(header: keywordsHeader, footer: Text("MessageFilter.Rules.Notice".i18n(lang))) {
                     ForEach(rules.reversed(), id: \.id) { rule in
                         // Tap edits the keyword, long press reaches everything else. The scope
                         // picker is a full-screen chat selector, which is too heavy to be what a
@@ -251,16 +229,16 @@ struct MessageFilterView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(rule.pattern)
-                                        .foregroundColor(rule.isEnabled ? .primary : .secondary)
+                                        .foregroundColor(rule.isEnabled ? colors.primary : colors.secondary)
                                         .lineLimit(2)
                                     Text(subtitle(for: rule))
                                         .font(.caption)
-                                        .foregroundColor(.secondary)
+                                        .rgSecondaryText()
                                 }
                                 Spacer()
                                 Image(systemName: "pencil")
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .rgSecondaryText()
                             }
                         }
                         .contextMenu {

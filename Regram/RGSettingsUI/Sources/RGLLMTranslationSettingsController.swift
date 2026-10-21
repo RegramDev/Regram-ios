@@ -32,7 +32,7 @@ private struct RGLLMTranslationSettingsView: View {
     }
 
     var body: some View {
-        Form {
+        RGSettingsForm {
             connectionSection
             modelSection
             promptSection
@@ -41,7 +41,7 @@ private struct RGLLMTranslationSettingsView: View {
     }
 
     private var connectionSection: some View {
-        Section(footer: Text("LLMTranslation.ConnectionNotice".i18n(lang))) {
+        RGSettingsSection(footer: Text("LLMTranslation.ConnectionNotice".i18n(lang))) {
             Picker("LLMTranslation.Format".i18n(lang), selection: $format) {
                 Text("OpenAI").tag(RGLLMAPIFormat.openai.rawValue)
                 Text("Anthropic").tag(RGLLMAPIFormat.anthropic.rawValue)
@@ -55,15 +55,15 @@ private struct RGLLMTranslationSettingsView: View {
                 request.set(nil)
                 busy = false
             }
-            TextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, prompt: Text(apiFormat.defaultBaseURL))
+            RGSettingsTextField("LLMTranslation.BaseURL".i18n(lang), text: $baseURL, placeholder: apiFormat.defaultBaseURL)
                 .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: baseURL) { RGSimpleSettings.shared.translationLLMBaseURL = $0 }
                 .rgSettingsLink("baseURL")
-            TextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, prompt: Text(apiFormat.defaultTranslationEndpoint))
+            RGSettingsTextField("LLMTranslation.Endpoint".i18n(lang), text: $endpoint, placeholder: apiFormat.defaultTranslationEndpoint)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: endpoint) { RGSimpleSettings.shared.translationLLMEndpoint = $0 }
                 .rgSettingsLink("endpoint")
-            SecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
+            RGSettingsSecureField("LLMTranslation.APIKey".i18n(lang), text: $apiKey)
                 .rgSettingsLink("apiKey")
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: apiKey) { value in
@@ -75,8 +75,8 @@ private struct RGLLMTranslationSettingsView: View {
     }
 
     private var modelSection: some View {
-        Section {
-            TextField("LLMTranslation.Model".i18n(lang), text: $model)
+        RGSettingsSection {
+            RGSettingsTextField("LLMTranslation.Model".i18n(lang), text: $model)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .onChange(of: model) { RGSimpleSettings.shared.translationLLMModel = $0 }
                 .rgSettingsLink("model")
@@ -93,9 +93,9 @@ private struct RGLLMTranslationSettingsView: View {
     }
 
     private var promptSection: some View {
-        Section(footer: Text("LLMTranslation.PromptNotice".i18n(lang))) {
+        RGSettingsSection(footer: Text("LLMTranslation.PromptNotice".i18n(lang))) {
             Text("LLMTranslation.Prompt".i18n(lang))
-            TextEditor(text: $prompt).frame(minHeight: 110)
+            RGSettingsTextEditor(text: $prompt).frame(minHeight: 110)
                 .onChange(of: prompt) { RGSimpleSettings.shared.translationLLMPrompt = $0 }
                 .rgSettingsLink("prompt")
             Toggle("LLMTranslation.UseContext".i18n(lang), isOn: $useContext)
@@ -104,7 +104,7 @@ private struct RGLLMTranslationSettingsView: View {
             HStack {
                 Text("LLMTranslation.Temperature".i18n(lang))
                 Spacer()
-                Text(String(format: "%.1f", temperature)).foregroundColor(.secondary)
+                Text(String(format: "%.1f", temperature)).rgSecondaryText()
             }
             Slider(value: $temperature, in: 0...1, step: 0.1).rgSettingsLink("temperature")
                 .onChange(of: temperature) { RGSimpleSettings.shared.translationLLMTemperatureTenths = Int32(($0 * 10).rounded()) }

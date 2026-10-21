@@ -734,6 +734,7 @@
 "RG.BottomBarLayout" = "底欄佈局";
 "RG.BottomBarLayout.TopBar" = "頂欄";
 "RG.BottomBarLayout.TopSearch" = "頂部搜尋";
+"RG.BottomBarLayout.BottomSearch" = "底欄搜尋";
 "RG.BottomBarLayout.TopSearchHint.visible" = "頂部搜尋已顯示，可在下方狀態中關閉";
 "RG.BottomBarLayout.TopSearchHint.hidden" = "頂部搜尋已隱藏，可在下方狀態中開啟";
 "RG.BottomBarLayout.BottomBar" = "底欄";
@@ -759,7 +760,7 @@
 "RG.BottomBarLayout.Alignment.center" = "整體置中";
 "RG.BottomBarLayout.Alignment.disabled" = "佔滿時不適用";
 "RG.BottomBarLayout.Reset" = "重置底欄佈局";
-"RG.BottomBarLayout.Footer" = "在預覽區拖動按鈕調整順序。對話和設定必須保留。自動寬度跟隨可見標籤數量，關閉後可手動調整寬度。整個底欄保持置中。";
+"RG.BottomBarLayout.Footer" = "在預覽區拖動導覽按鈕調整順序。對話和設定必須保留。搜尋在底欄項目中開啟，原生搜尋按鈕開啟目前頁面的搜尋；頂部搜尋可單獨關閉。搜尋開啟時，獨立導覽按鈕暫時併入標籤列。自動寬度跟隨可見項目數量，關閉後可手動調整寬度。";
 "RG.BottomBarLayout.Item.contacts" = "聯絡人";
 "RG.BottomBarLayout.Item.calls" = "通話";
 "RG.BottomBarLayout.Item.chats" = "聊天";
@@ -1020,6 +1021,16 @@
 "CommonGroups.Failed" = "查詢未完成，請點按重試。";
 
 "CommonGroups.LoadMore" = "載入更多";
+"CommonGroups.PageTitle" = "共同群組發言";
+"CommonGroups.Results" = "發言 · %1$@";
+"CommonGroups.LoadingGroups" = "正在取得共同群組⋯";
+"CommonGroups.SummaryLoading" = "正在搜尋 · 已顯示 %1$@ 則發言";
+"CommonGroups.SummaryPaused" = "已暫停 · 已顯示 %1$@ 則發言";
+"CommonGroups.SummaryFailed" = "部分查詢未完成 · 已顯示 %1$@ 則發言";
+"CommonGroups.Paused" = "查詢已暫停，已載入的發言仍可檢視。";
+"CommonGroups.AllLoaded" = "已載入全部可顯示的發言";
+"CommonGroups.EmptyHint" = "可切換其他群組，或重新整理查詢。";
+"CommonGroups.OpenMessage" = "前往群組檢視原訊息";
 
 // Regram debug tools
 "Debug.NotificationExperiment" = "實驗性通知恢復";

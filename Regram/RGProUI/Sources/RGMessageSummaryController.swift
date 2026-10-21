@@ -15,6 +15,7 @@ import SwiftSignalKit
 
 private struct RGMessageSummaryView: View {
     @Environment(\.lang) private var lang
+    @Environment(\.rgSettingsColors) private var colors
     let text: String
     let count: Int
     let configure: () -> Void
@@ -23,17 +24,17 @@ private struct RGMessageSummaryView: View {
     @State private var errorText = ""
     @State private var request = MetaDisposable()
     var body: some View {
-        List {
-            Section(footer: Text("Summary.UploadNotice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("Summary.UploadNotice".i18n(lang))) {
                 Text("Summary.Selected".i18n(lang) + " \(count)")
-                Text(text).lineLimit(12).foregroundColor(.secondary)
+                Text(text).lineLimit(12).foregroundColor(colors.secondary)
                 Button("Summary.Configure".i18n(lang), action: configure)
                 Button("Summary.Start".i18n(lang), action: start).disabled(busy || text.isEmpty || text.utf8.count > 64000)
-                if text.utf8.count > 64000 { Text("Summary.TooLarge".i18n(lang)).foregroundColor(.secondary) }
+                if text.utf8.count > 64000 { Text("Summary.TooLarge".i18n(lang)).foregroundColor(colors.secondary) }
             }
-            if busy { Section { ProgressView(); Button("Common.Cancel".i18n(lang)) { request.set(nil); busy = false } } }
-            if !errorText.isEmpty { Text(errorText).foregroundColor(.secondary) }
-            if !result.isEmpty { Section(header: Text("Summary.Result".i18n(lang))) { Text(result).textSelection(.enabled); RGCopyButton("Summary.Copy", value: { result }) } }
+            if busy { RGSettingsSection { ProgressView(); Button("Common.Cancel".i18n(lang)) { request.set(nil); busy = false } } }
+            if !errorText.isEmpty { Text(errorText).foregroundColor(colors.destructive) }
+            if !result.isEmpty { RGSettingsSection(header: Text("Summary.Result".i18n(lang))) { Text(result).textSelection(.enabled); RGCopyButton("Summary.Copy", value: { result }) } }
         }.onDisappear { request.set(nil); busy = false }
     }
     private func start() {

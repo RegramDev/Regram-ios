@@ -525,6 +525,9 @@ public final class LegacyControllerContext: NSObject, LegacyComponentsContext {
 }
 
 open class LegacyController: ViewController, PresentableController {
+    // MARK: Regram — allow hosted Regram screens to opt into Telegram's glass
+    // navigation at construction time, keeping upstream legacy callers unchanged.
+    open class var navigationBarStyle: NavigationBar.Style { .legacy }
     public private(set) var legacyController: UIViewController!
     private let presentation: LegacyControllerPresentation
     
@@ -568,7 +571,8 @@ open class LegacyController: ViewController, PresentableController {
         
         let navigationBarPresentationData: NavigationBarPresentationData?
         if let theme = theme, let strings = strings, case .navigation = presentation {
-            navigationBarPresentationData = NavigationBarPresentationData(theme: NavigationBarTheme(rootControllerTheme: theme), strings: NavigationBarStrings(presentationStrings: strings))
+            // MARK: Regram — the style must be chosen before button nodes are created.
+            navigationBarPresentationData = NavigationBarPresentationData(theme: NavigationBarTheme(rootControllerTheme: theme, style: Self.navigationBarStyle), strings: NavigationBarStrings(presentationStrings: strings))
         } else {
             navigationBarPresentationData = nil
         }

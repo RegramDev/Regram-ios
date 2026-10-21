@@ -266,16 +266,6 @@ final class TabBarControllerNode: ASDisplayNode {
             guard let self else {
                 return nil
             }
-            if id == .search {
-                return TabBarComponent.Item(
-                    content: .customItem(TabBarComponent.Item.Content.CustomItem(id: AnyHashable("rg.search"), title: self.strings.Common_Search, icon: .bundleIcon(name: "Navigation/Search"))),
-                    action: { [weak self] _ in
-                        self?.activateSearch()
-                    },
-                    doubleTapAction: nil,
-                    contextAction: nil
-                )
-            }
             guard let item = tabBarItemsById[id] else {
                 return nil
             }
@@ -296,6 +286,7 @@ final class TabBarControllerNode: ASDisplayNode {
 
         let visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
         let externalComponentItem: TabBarComponent.Item?
+        // MARK: Regram — search belongs to the main capsule; retain standalone navigation items.
         if bottomBarSettings.isBottomBarVisible, let externalItemId = bottomBarSettings.externalItem, externalItemId != .search, !bottomBarSettings.hiddenItems.contains(externalItemId) {
             externalComponentItem = makeComponentItem(externalItemId)
         } else {
@@ -353,7 +344,7 @@ final class TabBarControllerNode: ASDisplayNode {
                 strings: self.strings,
                 items: visibleComponentItems,
                 externalItem: externalComponentItem,
-                search: nil,
+                search: bottomBarSettings.isBottomBarVisible && bottomBarSettings.isVisible(.search) && self.currentController?.tabBarSearchState != nil ? TabBarComponent.Search(isActive: tabBarSearchState?.isActive == true, activate: { [weak self] in self?.activateSearch() }, deactivate: { [weak self] in self?.deactivateSearch() }) : nil,
                 selectedId: selectedId,
                 outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset),
                 showItemTitles: bottomBarSettings.showLabels,

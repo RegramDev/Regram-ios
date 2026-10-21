@@ -16,25 +16,25 @@ private struct RGNetworkPolicyView: View {
     let saved: () -> Void
     let openTest: (RGNetworkPolicy) -> Void
     var body: some View {
-        Form {
-            Section(footer: Text("NetworkPolicy.DoHNotice".i18n(lang))) {
+        RGSettingsForm {
+            RGSettingsSection(footer: Text("NetworkPolicy.DoHNotice".i18n(lang))) {
                 Picker("NetworkPolicy.DNSMode".i18n(lang), selection: $policy.dnsMode) {
                     ForEach(RGNetworkPolicy.DNSMode.allCases, id: \.self) { mode in Text(mode.titleKey.i18n(lang)).tag(mode) }
                 }.pickerStyle(.menu).rgSettingsLink("enabled")
-                TextField("NetworkPolicy.Endpoint".i18n(lang), text: $policy.endpoint, prompt: Text("https://dns.google/resolve")).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().rgSettingsLink("endpoint")
+                RGSettingsTextField("NetworkPolicy.Endpoint".i18n(lang), text: $policy.endpoint, placeholder: "https://dns.google/resolve").keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled().rgSettingsLink("endpoint")
                 if policy.dohEnabled, let dnsFailure {
-                    Text(("NetworkPolicy.DoHFailure." + dnsFailure).i18n(lang)).font(.footnote).foregroundColor(.secondary)
+                    Text(("NetworkPolicy.DoHFailure." + dnsFailure).i18n(lang)).font(.footnote).rgSecondaryText()
                 }
-                if policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint) { Text("NetworkPolicy.InvalidURL".i18n(lang)).foregroundColor(.secondary) }
+                if policy.dohEnabled && !RGNetworkPolicy.validEndpoint(policy.endpoint) { Text("NetworkPolicy.InvalidURL".i18n(lang)).rgSecondaryText() }
             }
-            Section(footer: Text("NetworkPolicy.IPNotice".i18n(lang))) {
+            RGSettingsSection(footer: Text("NetworkPolicy.IPNotice".i18n(lang))) {
                 Picker("NetworkPolicy.IP".i18n(lang), selection: $policy.ipVersion) {
                     ForEach(RGNetworkPolicy.IPVersion.allCases, id: \.self) { version in
                         Text(version.titleKey.i18n(lang)).tag(version)
                     }
                 }.pickerStyle(.menu).rgSettingsLink("ipVersion")
             }
-            Section(footer: Text("NetworkPolicy.BackupNotice".i18n(lang))) {
+            RGSettingsSection(footer: Text("NetworkPolicy.BackupNotice".i18n(lang))) {
                 Toggle("NetworkPolicy.DisableBackup".i18n(lang), isOn: $policy.disableBackupAddresses).rgSettingsLink("disableBackup")
             }
             Button("DNSDiagnostics.Title".i18n(lang)) { openTest(policy) }.rgSettingsLink("test")

@@ -42,6 +42,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     private let context: AccountContext
     private let author: EnginePeer
     private let table = UITableView(frame: .zero, style: .insetGrouped)
+    private let header = RGCommonGroupHeaderView()
     private var presentationData: PresentationData
     private var presentationDisposable: Disposable?
     private var filtersDisposable: Disposable?
@@ -63,6 +64,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     private var pausedByUser = false
     private var visibleLimit = RGCommonGroupSearchPolicy.displayPageSize
     private let dateFormatter = DateFormatter()
+    private let fullDateFormatter = DateFormatter()
     private var lang: String {
         RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
     }
@@ -72,12 +74,13 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     init(context: AccountContext, author: EnginePeer) {
         self.context = context; self.author = author
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings))
-        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: self.presentationData.strings.Common_Back)
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, style: .glass))
+        self._hasGlassStyle = true
+        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: presentationData.strings.Common_Back)
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }; self.presentationData = data
             self.navigationItem.backBarButtonItem?.title = data.strings.Common_Back
-            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings), transition: .immediate)
+            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
             if self.isNodeLoaded { self.updateAppearance() }
         })
         self.backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
@@ -96,6 +99,11 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         self.table.dataSource = self; self.table.delegate = self; self.table.rowHeight = UITableView.automaticDimension
         self.table.contentInsetAdjustmentBehavior = .never
         self.table.estimatedRowHeight = 100
+        self.table.register(RGCommonGroupMessageCell.self, forCellReuseIdentifier: "message")
+        self.table.register(RGCommonGroupStateCell.self, forCellReuseIdentifier: "state")
+        self.header.filterAction = { [weak self] in self?.openGroupPicker() }
+        self.header.primaryAction = { [weak self] in self?.performPrimaryAction() }
+        self.table.tableHeaderView = header
         self.displayNode.view.addSubview(table)
         self.displayNodeDidLoad(); self.updateAppearance()
     }
@@ -107,19 +115,45 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
         let top = navigationLayout(layout: layout).navigationFrame.maxY
+        let previousWidth = table.bounds.width
         transition.updateFrame(view: table, frame: CGRect(x: 0, y: top, width: layout.size.width, height: max(0, layout.size.height - top)))
         table.contentInset.bottom = layout.insets(options: []).bottom
+        updateHeader()
+        if previousWidth != table.bounds.width { table.reloadData() }
     }
     private func updateAppearance() {
-        title = "CommonGroups.Title".i18n(lang, args: author.compactDisplayTitle)
+        title = "CommonGroups.PageTitle".i18n(lang)
         dateFormatter.locale = Locale(identifier: lang); dateFormatter.dateStyle = .short; dateFormatter.timeStyle = .short
+        dateFormatter.doesRelativeDateFormatting = true
+        fullDateFormatter.locale = dateFormatter.locale; fullDateFormatter.dateStyle = .medium; fullDateFormatter.timeStyle = .short
         table.overrideUserInterfaceStyle = presentationData.theme.overallDarkAppearance ? .dark : .light
         table.backgroundColor = presentationData.theme.list.blocksBackgroundColor
         displayNode.backgroundColor = presentationData.theme.list.blocksBackgroundColor
         table.separatorColor = presentationData.theme.list.itemBlocksSeparatorColor
         table.tintColor = presentationData.theme.list.itemAccentColor
         statusBar.statusBarStyle = presentationData.theme.rootController.statusBarStyle.style
+        updateHeader()
         table.reloadData()
+    }
+    private func updateHeader() {
+        let summary: String
+        if groupsContext != nil { summary = "CommonGroups.LoadingGroups".i18n(lang) }
+        else if busy { summary = "CommonGroups.SummaryLoading".i18n(lang, args: String(rows.count)) }
+        else if pausedByUser { summary = "CommonGroups.SummaryPaused".i18n(lang, args: String(rows.count)) }
+        else if failed { summary = "CommonGroups.SummaryFailed".i18n(lang, args: String(rows.count)) }
+        else { summary = "CommonGroups.Loaded".i18n(lang, args: String(rows.count), String(groups.count)) }
+        header.update(
+            context: context, author: author, summary: summary,
+            filterTitle: selectedGroup.flatMap { groups[$0]?.peer }.map { groupTitle($0) } ?? "CommonGroups.All".i18n(lang),
+            filterHint: "CommonGroups.Filter".i18n(lang), filterEnabled: !groups.isEmpty,
+            actionTitle: (busy ? "CommonGroups.Cancel" : pausedByUser ? "CommonGroups.Continue" : failed ? "CommonGroups.Retry" : "CommonGroups.Refresh").i18n(lang),
+            actionSymbol: busy ? "pause.fill" : pausedByUser ? "play.fill" : "arrow.clockwise",
+            loading: busy, data: presentationData
+        )
+        guard table.bounds.width > 0.0 else { return }
+        let size = header.systemLayoutSizeFitting(CGSize(width: table.bounds.width, height: 0.0), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
+        let frame = CGRect(x: 0, y: 0, width: table.bounds.width, height: ceil(size.height))
+        if header.frame != frame { header.frame = frame; table.tableHeaderView = header }
     }
     private func pause() {
         active = false; generation = UUID(); groupTimer?.invalidate(); groupTimer = nil
@@ -127,7 +161,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         let current = requests; requests.removeAll()
         current.values.forEach { $0.dispose() }
         groups.values.forEach { $0.status.loading = false }
-        if isNodeLoaded { table.reloadData() }
+        if isNodeLoaded { updateHeader(); table.reloadData() }
     }
     private func resume() {
         guard active, !pausedByUser else { return }
@@ -214,51 +248,69 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     private func reloadRows() {
         let filter = RGContentFilterState(accountPeerId: context.account.peerId)
         rows = filteredMessages().prefix(visibleLimit).filter { !filter.shouldHide(message: EngineMessage($0)) }
-        if isNodeLoaded { table.reloadData() }
+        if isNodeLoaded { updateHeader(); table.reloadData() }
     }
     private var canLoadMore: Bool {
         filteredMessages().count > visibleLimit || groups.values.contains { (selectedGroup == nil || $0.status.peerId == selectedGroup) && $0.status.hasMore && !$0.status.failed }
     }
-    func numberOfSections(in tableView: UITableView) -> Int { 3 }
+    func numberOfSections(in tableView: UITableView) -> Int { 2 }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 { return 2 }
-        if section == 2 { return !busy && !pausedByUser && canLoadMore ? 1 : 0 }
-        return max(1, rows.count)
+        section == 0 ? max(1, rows.count) : (rows.isEmpty ? 0 : 1)
+    }
+    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
+        styleSectionLabel(view, isHeader: true)
+    }
+    func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
+        styleSectionLabel(view, isHeader: false)
+    }
+    private func styleSectionLabel(_ view: UIView, isHeader: Bool) {
+        guard let view = view as? UITableViewHeaderFooterView else { return }
+        view.textLabel?.textColor = isHeader ? presentationData.theme.list.sectionHeaderTextColor : presentationData.theme.list.freeTextColor
+        view.textLabel?.font = Font.regular(max(13.0, presentationData.listsFontSize.baseDisplaySize - 4.0))
+        view.textLabel?.numberOfLines = 0
+    }
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        section == 0 ? "CommonGroups.Results".i18n(lang, args: String(rows.count)) : nil
     }
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if section == 0 { return "CommonGroups.Scope".i18n(lang) }
-        guard section == 1 else { return nil }
-        let status = "CommonGroups.Loaded".i18n(lang, args: String(rows.count), String(groups.count))
-        return failed ? status + "\n" + "CommonGroups.PartialFailure".i18n(lang) : status
+        if section == 1 { return "CommonGroups.Scope".i18n(lang) }
+        return failed && !rows.isEmpty ? "CommonGroups.PartialFailure".i18n(lang) : nil
     }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: indexPath.section == 0 ? .value1 : .subtitle, reuseIdentifier: nil)
-        cell.backgroundColor = presentationData.theme.list.itemBlocksBackgroundColor
-        cell.textLabel?.textColor = presentationData.theme.list.itemPrimaryTextColor
-        cell.detailTextLabel?.textColor = presentationData.theme.list.itemSecondaryTextColor
-        if indexPath.section == 0 {
-            cell.textLabel?.textColor = presentationData.theme.list.itemAccentColor
-            if indexPath.row == 0 {
-                cell.textLabel?.text = "CommonGroups.Filter".i18n(lang)
-                cell.detailTextLabel?.text = selectedGroup.flatMap { groups[$0]?.peer }.map { groupTitle($0) } ?? "CommonGroups.All".i18n(lang)
-                cell.accessoryType = .disclosureIndicator
-            } else { cell.textLabel?.text = (busy ? "CommonGroups.Cancel" : pausedByUser ? "CommonGroups.Continue" : failed ? "CommonGroups.Retry" : "CommonGroups.Refresh").i18n(lang) }
-        } else if indexPath.section == 2 {
-            cell.textLabel?.text = "CommonGroups.LoadMore".i18n(lang)
-            cell.textLabel?.textColor = presentationData.theme.list.itemAccentColor
-        } else if rows.indices.contains(indexPath.row) {
+        if indexPath.section == 0 && rows.indices.contains(indexPath.row) {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "message", for: indexPath) as! RGCommonGroupMessageCell
             let message = rows[indexPath.row]
-            cell.textLabel?.text = messageGroups[message.id].flatMap { groups[$0] }.map { groupTitle($0.peer) } ?? "CommonGroups.Group".i18n(lang)
+            let group = messageGroups[message.id].flatMap { groups[$0]?.peer }
             let spoilers = message.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap(\.entities).compactMap { entity -> Range<Int>? in
                 if case .Spoiler = entity.type { return entity.range }; return nil
             }
             let body = message.text.isEmpty ? "CommonGroups.Media".i18n(lang) : RGCommonGroupPreview.text(message.text, spoilers: spoilers, reveal: RGSimpleSettings.shared.automaticallyRevealSpoilers)
-            cell.detailTextLabel?.text = body + "\n" + dateFormatter.string(from: Date(timeIntervalSince1970: Double(message.timestamp)))
-            cell.detailTextLabel?.numberOfLines = 4; cell.accessoryType = .disclosureIndicator
-        } else {
-            cell.textLabel?.text = (busy ? "CommonGroups.Loading" : failed ? "CommonGroups.Failed" : groups.isEmpty ? "CommonGroups.NoGroups" : "CommonGroups.Empty").i18n(lang)
-            cell.textLabel?.textColor = presentationData.theme.list.itemSecondaryTextColor; cell.textLabel?.numberOfLines = 0; cell.selectionStyle = .none
+            let date = Date(timeIntervalSince1970: Double(message.timestamp))
+            cell.update(context: context, group: group, title: group.map { groupTitle($0) } ?? "CommonGroups.Group".i18n(lang), date: dateFormatter.string(from: date), fullDate: fullDateFormatter.string(from: date), body: body, openHint: "CommonGroups.OpenMessage".i18n(lang), availableWidth: tableView.bounds.width, data: presentationData)
+            return cell
         }
+
+        let cell = tableView.dequeueReusableCell(withIdentifier: "state", for: indexPath) as! RGCommonGroupStateCell
+        let isLoading = busy || (!groupsComplete && !groupsFailed && !pausedByUser)
+        let titleKey: String
+        let detailKey: String?
+        let symbol: String
+        let actionable: Bool
+        if isLoading {
+            titleKey = groupsContext != nil || groups.isEmpty ? "CommonGroups.LoadingGroups" : "CommonGroups.Loading"
+            detailKey = nil; symbol = "magnifyingglass"; actionable = false
+        } else if pausedByUser {
+            titleKey = "CommonGroups.Continue"; detailKey = "CommonGroups.Paused"; symbol = "pause.circle"; actionable = true
+        } else if failed {
+            titleKey = "CommonGroups.Retry"; detailKey = "CommonGroups.PartialFailure"; symbol = "exclamationmark.circle"; actionable = true
+        } else if indexPath.section == 1 {
+            titleKey = canLoadMore ? "CommonGroups.LoadMore" : "CommonGroups.AllLoaded"
+            detailKey = nil; symbol = canLoadMore ? "arrow.down.circle" : "checkmark.circle"; actionable = canLoadMore
+        } else {
+            titleKey = groups.isEmpty ? "CommonGroups.NoGroups" : "CommonGroups.Empty"
+            detailKey = groups.isEmpty ? nil : "CommonGroups.EmptyHint"; symbol = groups.isEmpty ? "person.2" : "text.bubble"; actionable = false
+        }
+        cell.update(title: titleKey.i18n(lang), detail: detailKey?.i18n(lang), symbol: symbol, loading: isLoading, actionable: actionable, compact: indexPath.section == 1, data: presentationData)
         return cell
     }
     private func groupTitle(_ peer: EnginePeer) -> String {
@@ -266,18 +318,17 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        if indexPath.section == 0 {
-            if indexPath.row == 0 { openGroupPicker() }
-            else if busy { pausedByUser = true; pause(); active = true }
-            else {
-                let continuing = pausedByUser
-                pausedByUser = false; active = true
-                if failed { groups.values.forEach { $0.status.failed = false }; if groupsFailed { groupsFailed = false; groupsComplete = false }; resume() }
-                else if continuing { resume() }
-                else { refresh() }
-            }
-        } else if indexPath.section == 2 { loadMore() }
-        else if rows.indices.contains(indexPath.row) { openMessage(rows[indexPath.row]) }
+        if indexPath.section == 0 && rows.indices.contains(indexPath.row) { openMessage(rows[indexPath.row]) }
+        else if !busy && (pausedByUser || failed) { performPrimaryAction() }
+        else if indexPath.section == 1 { loadMore() }
+    }
+    private func performPrimaryAction() {
+        if busy { pausedByUser = true; pause(); active = true; return }
+        let continuing = pausedByUser
+        pausedByUser = false; active = true
+        if failed { groups.values.forEach { $0.status.failed = false }; if groupsFailed { groupsFailed = false; groupsComplete = false }; resume() }
+        else if continuing { resume() }
+        else { refresh() }
     }
     private func refresh() {
         pause(); groups.removeAll(); messages.removeAll(); messageGroups.removeAll(); rows = []; groupsComplete = false; groupsFailed = false
@@ -294,8 +345,8 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     }
     private func openGroupPicker() {
         guard !groups.isEmpty, let navigation = navigationController as? NavigationController else { return }
-        let choices = groups.values.map { ($0.peer.id.toInt64(), groupTitle($0.peer)) }.sorted { $0.1.localizedStandardCompare($1.1) == .orderedAscending }
-        let picker = RGCommonGroupPicker(presentationData: presentationData, choices: [(nil, "CommonGroups.All".i18n(lang))] + choices.map { (Optional($0.0), $0.1) }, selected: selectedGroup, select: { [weak self] id in
+        let choices = groups.values.map(\.peer).sorted { groupTitle($0).localizedStandardCompare(groupTitle($1)) == .orderedAscending }
+        let picker = RGCommonGroupPicker(context: context, choices: choices, selected: selectedGroup, select: { [weak self] id in
             guard let self else { return }; self.selectedGroup = id; self.visibleLimit = RGCommonGroupSearchPolicy.displayPageSize; self.reloadRows()
         })
         navigation.pushViewController(picker)
@@ -312,24 +363,49 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
 }
 
 private final class RGCommonGroupPicker: ViewController, UITableViewDataSource, UITableViewDelegate {
-    private let data: PresentationData
-    private let choices: [(Int64?, String)]
+    private let context: AccountContext
+    private var data: PresentationData
+    private var presentationDisposable: Disposable?
+    private let choices: [EnginePeer]
     private let selected: Int64?
     private let select: (Int64?) -> Void
     private let table = UITableView(frame: .zero, style: .insetGrouped)
-    init(presentationData: PresentationData, choices: [(Int64?, String)], selected: Int64?, select: @escaping (Int64?) -> Void) {
-        self.data = presentationData; self.choices = choices; self.selected = selected; self.select = select
-        super.init(navigationBarPresentationData: .init(presentationTheme: data.theme, presentationStrings: data.strings))
-        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: data.strings.Common_Back)
-        title = "CommonGroups.Filter".i18n(RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode))
+    private var lang: String { RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode) }
+    init(context: AccountContext, choices: [EnginePeer], selected: Int64?, select: @escaping (Int64?) -> Void) {
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        self.context = context; self.data = presentationData
+        self.choices = choices; self.selected = selected; self.select = select
+        super.init(navigationBarPresentationData: .init(presentationTheme: presentationData.theme, presentationStrings: presentationData.strings, style: .glass))
+        self._hasGlassStyle = true
+        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: presentationData.strings.Common_Back)
+        self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
+            guard let self else { return }
+            self.data = data
+            self.navigationItem.backBarButtonItem?.title = data.strings.Common_Back
+            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
+            if self.isNodeLoaded { self.updateAppearance() }
+        })
+        title = "CommonGroups.Filter".i18n(lang)
     }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { presentationDisposable?.dispose() }
     override func loadDisplayNode() {
         displayNode = ASDisplayNode(); displayNode.view.addSubview(table); displayNodeDidLoad()
-        table.dataSource = self; table.delegate = self; table.backgroundColor = data.theme.list.blocksBackgroundColor
+        table.dataSource = self; table.delegate = self
         table.contentInsetAdjustmentBehavior = .never
+        table.rowHeight = UITableView.automaticDimension; table.estimatedRowHeight = 72.0
+        table.register(RGCommonGroupPeerCell.self, forCellReuseIdentifier: "group")
+        updateAppearance()
+    }
+    private func updateAppearance() {
+        title = "CommonGroups.Filter".i18n(lang)
         table.overrideUserInterfaceStyle = data.theme.overallDarkAppearance ? .dark : .light
-        table.separatorColor = data.theme.list.itemBlocksSeparatorColor; table.tintColor = data.theme.list.itemAccentColor
+        table.backgroundColor = data.theme.list.blocksBackgroundColor
+        table.separatorColor = data.theme.list.itemBlocksSeparatorColor
+        table.tintColor = data.theme.list.itemAccentColor
+        displayNode.backgroundColor = data.theme.list.blocksBackgroundColor
+        statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
+        table.reloadData()
     }
     override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
@@ -337,14 +413,36 @@ private final class RGCommonGroupPicker: ViewController, UITableViewDataSource, 
         transition.updateFrame(view: table, frame: CGRect(x: 0, y: top, width: layout.size.width, height: max(0, layout.size.height - top)))
         table.contentInset.bottom = layout.insets(options: []).bottom
     }
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { choices.count }
+    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : choices.count }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = UITableViewCell(style: .default, reuseIdentifier: nil); cell.textLabel?.text = choices[indexPath.row].1
-        cell.backgroundColor = data.theme.list.itemBlocksBackgroundColor; cell.textLabel?.textColor = data.theme.list.itemPrimaryTextColor
-        cell.accessoryType = choices[indexPath.row].0 == selected ? .checkmark : .none; return cell
+        if indexPath.section == 0 {
+            let cell = UITableViewCell(style: .default, reuseIdentifier: nil)
+            cell.textLabel?.text = "CommonGroups.All".i18n(lang)
+            cell.textLabel?.font = Font.regular(data.listsFontSize.baseDisplaySize)
+            cell.textLabel?.textColor = data.theme.list.itemAccentColor
+            cell.imageView?.image = UIImage(systemName: "square.stack.3d.up")
+            cell.tintColor = data.theme.list.itemAccentColor
+            cell.backgroundColor = data.theme.list.itemBlocksBackgroundColor
+            let selection = UIView()
+            selection.backgroundColor = data.theme.list.itemHighlightedBackgroundColor
+            cell.selectedBackgroundView = selection
+            cell.textLabel?.numberOfLines = 0
+            cell.accessoryType = selected == nil ? .checkmark : .none
+            cell.accessibilityTraits = selected == nil ? [.button, .selected] : .button
+            return cell
+        }
+        let peer = choices[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: "group", for: indexPath) as! RGCommonGroupPeerCell
+        cell.update(context: context, peer: peer, title: peer.rgGroupDisplayTitle(accountId: context.account.peerId.toInt64(), strings: data.strings, displayOrder: data.nameDisplayOrder), summary: nil, data: data, selected: peer.id.toInt64() == selected)
+        return cell
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        guard choices.indices.contains(indexPath.row) else { return }; select(choices[indexPath.row].0)
+        if indexPath.section == 0 { select(nil) }
+        else {
+            guard choices.indices.contains(indexPath.row) else { return }
+            select(choices[indexPath.row].id.toInt64())
+        }
         _ = (navigationController as? NavigationController)?.popViewController(animated: true)
     }
 }

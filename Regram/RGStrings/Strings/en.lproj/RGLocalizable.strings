@@ -790,6 +790,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout" = "Bottom Bar Layout";
 "RG.BottomBarLayout.TopBar" = "Top Bar";
 "RG.BottomBarLayout.TopSearch" = "Top Search";
+"RG.BottomBarLayout.BottomSearch" = "Bottom Search";
 "RG.BottomBarLayout.TopSearchHint.visible" = "Top search is shown. Toggle it in State below.";
 "RG.BottomBarLayout.TopSearchHint.hidden" = "Top search is hidden. Toggle it in State below.";
 "RG.BottomBarLayout.BottomBar" = "Bottom Bar";
@@ -815,7 +816,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout.Alignment.center" = "Center All";
 "RG.BottomBarLayout.Alignment.disabled" = "Not used in full width";
 "RG.BottomBarLayout.Reset" = "Reset Bottom Bar Layout";
-"RG.BottomBarLayout.Footer" = "Drag buttons in the preview to change their order. Chats and Settings are always selected. Automatic width follows the number of visible tabs; turn it off to adjust the width manually. The complete bar is centered.";
+"RG.BottomBarLayout.Footer" = "Drag navigation buttons in the preview to change their order. Chats and Settings are always visible. Enable Search with the other bottom bar controls; its native button opens search for the current page. Top Search is independent. A standalone navigation button temporarily joins the tabs while Search is enabled. Automatic width follows visible items; turn it off to adjust the width manually.";
 "RG.BottomBarLayout.Item.contacts" = "Contacts";
 "RG.BottomBarLayout.Item.calls" = "Calls";
 "RG.BottomBarLayout.Item.chats" = "Chats";
@@ -1029,6 +1030,16 @@ Matching is case-insensitive.";
 "CommonGroups.Failed" = "The search did not finish. Tap Retry to continue.";
 
 "CommonGroups.LoadMore" = "Load More";
+"CommonGroups.PageTitle" = "Messages in Common Groups";
+"CommonGroups.Results" = "Messages · %1$@";
+"CommonGroups.LoadingGroups" = "Finding common groups…";
+"CommonGroups.SummaryLoading" = "Searching · %1$@ messages shown";
+"CommonGroups.SummaryPaused" = "Paused · %1$@ messages shown";
+"CommonGroups.SummaryFailed" = "Some queries unfinished · %1$@ messages shown";
+"CommonGroups.Paused" = "Search paused. Loaded messages are still available.";
+"CommonGroups.AllLoaded" = "All available messages loaded";
+"CommonGroups.EmptyHint" = "Try another group or refresh the search.";
+"CommonGroups.OpenMessage" = "Open the original message in its group";
 
 // Regram debug tools
 "Debug.NotificationExperiment" = "Experimental notification recovery";

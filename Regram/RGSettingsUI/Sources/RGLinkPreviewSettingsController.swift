@@ -18,15 +18,29 @@ private final class RGLinkPreviewTableController: UITableViewController {
     private let instagramField = UITextField()
     private var rows: [[UITableViewCell]] = []
     private var appliedInitialInsets = false
+    private var currentTheme: PresentationTheme?
     var layoutSubscriptions = Set<AnyCancellable>()
 
     func applyTheme(_ theme: PresentationTheme) {
+        if let currentTheme, currentTheme === theme, !rows.isEmpty {
+            return
+        }
         loadViewIfNeeded()
+        currentTheme = theme
         overrideUserInterfaceStyle = theme.overallDarkAppearance ? .dark : .light
-        view.tintColor = theme.list.itemAccentColor
-        enabledSwitch.onTintColor = theme.list.itemAccentColor
+        let list = theme.list
+        view.tintColor = list.itemAccentColor
+        view.backgroundColor = list.blocksBackgroundColor
+        enabledSwitch.onTintColor = list.itemSwitchColors.contentColor
+        enabledSwitch.thumbTintColor = list.itemSwitchColors.handleColor
+        enabledSwitch.tintColor = list.itemSwitchColors.frameColor
         tableView.backgroundColor = theme.list.blocksBackgroundColor
-        rows[1][2].textLabel?.textColor = theme.list.itemAccentColor
+        tableView.separatorColor = list.itemBlocksSeparatorColor
+        tableView.indicatorStyle = theme.overallDarkAppearance ? .white : .black
+        for cell in rows.flatMap({ $0 }) {
+            style(cell: cell, theme: theme)
+        }
+        styleVisibleSectionViews(theme: theme)
     }
 
     init(language: String, focusSetting: String?) {
@@ -42,7 +56,12 @@ private final class RGLinkPreviewTableController: UITableViewController {
         tableView.automaticallyAdjustsScrollIndicatorInsets = false
         tableView.keyboardDismissMode = .interactive
         tableView.rowHeight = UITableView.automaticDimension
-        tableView.estimatedRowHeight = 60
+        tableView.estimatedRowHeight = 58
+        tableView.separatorStyle = .singleLine
+        tableView.sectionHeaderHeight = UITableView.automaticDimension
+        tableView.sectionFooterHeight = UITableView.automaticDimension
+        tableView.estimatedSectionHeaderHeight = 30
+        tableView.estimatedSectionFooterHeight = 46
         let enabled = UITableViewCell(style: .default, reuseIdentifier: nil)
         enabled.textLabel?.text = "LinkPreview.Repair".i18n(language)
         enabled.selectionStyle = .none
@@ -56,6 +75,9 @@ private final class RGLinkPreviewTableController: UITableViewController {
         reset.textLabel?.textColor = view.tintColor
         rows = [[enabled], [x, instagram, reset]]
         tableView.reloadData()
+        if let currentTheme {
+            applyTheme(currentTheme)
+        }
     }
 
     private func domainCell(title: String, field: UITextField, value: String, placeholder: String) -> UITableViewCell {
@@ -64,8 +86,10 @@ private final class RGLinkPreviewTableController: UITableViewController {
         let label = UILabel()
         label.text = title
         label.font = .preferredFont(forTextStyle: .caption1)
+        label.adjustsFontForContentSizeCategory = true
         field.text = value; field.placeholder = placeholder
         field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
         field.keyboardType = .URL; field.autocapitalizationType = .none; field.autocorrectionType = .no
         field.clearButtonMode = .whileEditing
         field.addTarget(self, action: #selector(hostChanged), for: .editingChanged)
@@ -80,6 +104,97 @@ private final class RGLinkPreviewTableController: UITableViewController {
             stack.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -12)
         ])
         return cell
+    }
+
+    private func style(cell: UITableViewCell, theme: PresentationTheme) {
+        let list = theme.list
+        cell.backgroundColor = list.itemBlocksBackgroundColor
+        cell.contentView.backgroundColor = list.itemBlocksBackgroundColor
+        cell.textLabel?.textColor = list.itemPrimaryTextColor
+        cell.textLabel?.font = .preferredFont(forTextStyle: .body)
+        cell.textLabel?.numberOfLines = 0
+        cell.textLabel?.adjustsFontForContentSizeCategory = true
+        cell.detailTextLabel?.textColor = list.itemSecondaryTextColor
+        cell.detailTextLabel?.font = .preferredFont(forTextStyle: .subheadline)
+        cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
+        let selectedBackground = UIView()
+        selectedBackground.backgroundColor = list.itemHighlightedBackgroundColor
+        cell.selectedBackgroundView = selectedBackground
+        if rows.count > 1 && rows[1].count > 2 && cell === rows[1][2] {
+            cell.textLabel?.textColor = list.itemAccentColor
+        }
+        if !rows.isEmpty && !rows[0].isEmpty && cell === rows[0][0] {
+            enabledSwitch.onTintColor = list.itemSwitchColors.contentColor
+            enabledSwitch.thumbTintColor = list.itemSwitchColors.handleColor
+            enabledSwitch.tintColor = list.itemSwitchColors.frameColor
+        }
+        styleTextFields(in: cell, theme: theme)
+    }
+
+    private func styleTextFields(in cell: UITableViewCell, theme: PresentationTheme) {
+        for subview in cell.contentView.subviews {
+            if let stack = subview as? UIStackView {
+                for arranged in stack.arrangedSubviews {
+                    if let label = arranged as? UILabel {
+                        label.textColor = theme.list.itemSecondaryTextColor
+                        label.font = .preferredFont(forTextStyle: .caption1)
+                        label.adjustsFontForContentSizeCategory = true
+                    } else if let textField = arranged as? UITextField {
+                        textField.textColor = theme.list.itemPrimaryTextColor
+                        textField.tintColor = theme.list.itemAccentColor
+                        textField.backgroundColor = .clear
+                        textField.attributedPlaceholder = NSAttributedString(
+                            string: textField.placeholder ?? "",
+                            attributes: [.foregroundColor: theme.list.itemPlaceholderTextColor]
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private func styleVisibleSectionViews(theme: PresentationTheme) {
+        for section in 0 ..< tableView.numberOfSections {
+            if let header = tableView.headerView(forSection: section) {
+                style(header: header, theme: theme)
+            }
+            if let footer = tableView.footerView(forSection: section) {
+                style(footer: footer, section: section, theme: theme)
+            }
+        }
+    }
+
+    private func style(header: UITableViewHeaderFooterView, theme: PresentationTheme) {
+        header.contentView.backgroundColor = .clear
+        header.textLabel?.textColor = theme.list.sectionHeaderTextColor
+        header.textLabel?.font = .preferredFont(forTextStyle: .footnote)
+        header.textLabel?.adjustsFontForContentSizeCategory = true
+    }
+
+    private func style(footer: UITableViewHeaderFooterView, section: Int, theme: PresentationTheme) {
+        footer.contentView.backgroundColor = .clear
+        let valid = RGLinkPreviewRules.isValidHost(xField.text ?? "") && RGLinkPreviewRules.isValidHost(instagramField.text ?? "")
+        footer.textLabel?.textColor = section == 1 && !valid ? theme.list.itemDestructiveColor : theme.list.itemSecondaryTextColor
+        footer.textLabel?.font = .preferredFont(forTextStyle: .footnote)
+        footer.textLabel?.adjustsFontForContentSizeCategory = true
+    }
+
+    override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if let currentTheme {
+            style(cell: cell, theme: currentTheme)
+        }
+    }
+
+    override func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
+        if let currentTheme, let header = view as? UITableViewHeaderFooterView {
+            style(header: header, theme: currentTheme)
+        }
+    }
+
+    override func tableView(_ tableView: UITableView, willDisplayFooterView view: UIView, forSection section: Int) {
+        if let currentTheme, let footer = view as? UITableViewHeaderFooterView {
+            style(footer: footer, section: section, theme: currentTheme)
+        }
     }
 
     func updateInsets(layout: ContainerViewLayout, navigationHeight: CGFloat) {
@@ -145,7 +260,9 @@ private final class RGLinkPreviewTableController: UITableViewController {
             changed = changed || value != settings.linkPreviewInstagramHost
             settings.linkPreviewInstagramHost = value
         }
-        tableView.footerView(forSection: 1)?.textLabel?.textColor = RGLinkPreviewRules.isValidHost(x) && RGLinkPreviewRules.isValidHost(instagram) ? .secondaryLabel : .systemRed
+        if let currentTheme, let footer = tableView.footerView(forSection: 1) {
+            style(footer: footer, section: 1, theme: currentTheme)
+        }
         if changed { NotificationCenter.default.post(name: RGLinkPreviewRules.didChangeNotification, object: nil) }
     }
 }

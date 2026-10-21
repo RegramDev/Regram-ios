@@ -14,20 +14,20 @@ private struct RGDatacenterDiagnosticsView: View {
     @StateObject var network: RGDatacenterDiagnostics
     private func milliseconds(_ value: Double?) -> String { value.map { String(format: "%.0f ms", $0) } ?? "—" }
     var body: some View {
-        List {
-            Section(header: Text("Diagnostics.Connection.Title".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(header: Text("Diagnostics.Connection.Title".i18n(lang))) {
                 Text(network.routeKey.i18n(lang))
                 HStack { Text("Diagnostics.Connection.CurrentDC".i18n(lang)); Spacer(); Text(RGDatacenterLocation.title(network.currentDatacenter)) }
-                Text(network.connectionKey.i18n(lang)).foregroundColor(.secondary)
+                Text(network.connectionKey.i18n(lang)).rgSecondaryText()
             }
-            Section(footer: Text("Diagnostics.DC.Notice".i18n(lang))) {
+            RGSettingsSection(footer: Text("Diagnostics.DC.Notice".i18n(lang))) {
                 Button((network.running ? "Diagnostics.DC.Cancel" : "Diagnostics.DC.Start").i18n(lang)) {
                     if network.running { network.cancel() } else { network.start() }
                 }.rgSettingsLink("start")
             }
             ForEach(1...5, id: \.self) { dc in
                 if let value = network.results[dc] {
-                    Section(header: Text(RGDatacenterLocation.title(dc))) {
+                    RGSettingsSection(header: Text(RGDatacenterLocation.title(dc))) {
                         HStack {
                             Text("Diagnostics.DC.Average".i18n(lang)); Spacer()
                             if network.running && !value.completed { ProgressView() }
@@ -42,8 +42,8 @@ private struct RGDatacenterDiagnosticsView: View {
                     }
                 }
             }
-            Section {
-                if network.cancelled { Text("Diagnostics.DC.Cancelled".i18n(lang)).foregroundColor(.secondary) }
+            RGSettingsSection {
+                if network.cancelled { Text("Diagnostics.DC.Cancelled".i18n(lang)).rgSecondaryText() }
                 RGCopyButton("Diagnostics.CopyAverages", value: { network.report() }).disabled(network.results.values.allSatisfy { $0.samples.isEmpty && !$0.completed }).rgSettingsLink("copy")
             }
         }.transaction { $0.animation = nil }

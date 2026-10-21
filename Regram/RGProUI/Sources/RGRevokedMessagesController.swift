@@ -85,24 +85,24 @@ private struct RGRevokedMessagesView: View {
     @State private var query = ""
     private var visible: [Message] { history.messages.filter { query.isEmpty || $0.text.localizedCaseInsensitiveContains(query) } }
     var body: some View {
-        List {
-            Section(footer: Text("Revoked.Notice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("Revoked.Notice".i18n(lang))) {
                 Button(history.peer?.debugDisplayTitle ?? "ChatPreferences.SelectChat".i18n(lang)) { select { history.select($0) } }
                 TextField("Revoked.Search".i18n(lang), text: $query)
             }
             ForEach(visible, id: \.id) { message in
                 Button { open(message) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(message.text.isEmpty ? "Revoked.Media".i18n(lang) : message.text).lineLimit(4).foregroundColor(.primary)
-                        Text(Date(timeIntervalSince1970: Double(message.timestamp)), style: .date).font(.caption).foregroundColor(.secondary)
+                        Text(message.text.isEmpty ? "Revoked.Media".i18n(lang) : message.text).lineLimit(4).rgPrimaryText()
+                        Text(Date(timeIntervalSince1970: Double(message.timestamp)), style: .date).font(.caption).rgSecondaryText()
                     }.padding(.vertical, 5)
                 }
             }
             if history.peer != nil {
-                Section(footer: Text("\(history.scanned) " + "Revoked.Scanned".i18n(lang))) {
+                RGSettingsSection(footer: Text("\(history.scanned) " + "Revoked.Scanned".i18n(lang))) {
                     if history.loading { ProgressView() }
                     else if history.hasMore { Button("Revoked.LoadMore".i18n(lang)) { history.load() } }
-                    else if visible.isEmpty { Text("Revoked.Empty".i18n(lang)).foregroundColor(.secondary) }
+                    else if visible.isEmpty { Text("Revoked.Empty".i18n(lang)).rgSecondaryText() }
                     if !history.messages.isEmpty { Button("Revoked.ClearLoaded".i18n(lang), role: .destructive) { clear { history.clearLoaded() } }.disabled(history.loading) }
                 }
             }
