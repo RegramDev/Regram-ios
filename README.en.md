@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34623**. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34624**. The user confirmed local device testing of the b34624 test package. See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -66,10 +66,11 @@ Preview availability depends on Telegram and third-party services. A sticker arc
 
 ### Appearance and input
 
+- Settings and Regram feature pages share Telegram themes, grouped lists and glass navigation while preserving back gestures. Older systems use the upstream fallback.
 - App icons and screenshot App Badges. The Regram Pro entry follows the selected app icon; login artwork and update Live Activities use Regram artwork.
 - Confirmed icon selections persist across launches and restore the Pro entry and Appearance selection while delayed system reads reconcile. Failed changes and stale callbacks do not replace the saved choice.
 - Upstream Telegram bottom-bar components, animations and gestures, with live preview, drag ordering, label visibility, standalone buttons and automatic/manual width.
-- Chats and Settings remain selected. The bar stays centered; automatic width balances readable labels, selection effects and tap spacing. Settings remains reachable while hidden. Swipe right from the Settings content area to return to Chats with finger-tracked motion and cancellation; unhiding applies immediately.
+- Chats and Settings must remain visible. The centered bar automatically narrows with fewer navigation items. Search is an opt-in control under Display Items, using the Swiftgram native right-side button and expanding field for the current page; Calls opens the new-call picker. Settings remains reachable while hidden. Swipe right from the Settings content area to return to Chats with finger-tracked motion and cancellation; unhiding applies immediately.
 - Chat-list separators, compact display, one/two body-preview lines and colors. Older three-line preferences and backups migrate to two lines.
 - Separate Latin/CJK fonts, downloads, TTF/OTF/TTC import, previews, management and missing-glyph fallback.
 - Input tools, default formatting, Pangu spacing, Return-to-send and per-chat input preferences.
@@ -122,17 +123,9 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
-b34622 removes the optional chat toolbar, bottom in-chat search field and bottom-up in-chat results, groups Inline Bot and Pangu settings, and retires Swiftgram setting/link aliases. See the [verification notes](docs/settings-cleanup-34622.md) for the tested scope and device limitations.
+b34624 passed the Xcode 27 arm64 Release build, checks for the main app and six extensions, and 12 matching debug symbols. Independent package and source auditing passed **35/35 checks**. On 2026-10-21, the user confirmed that the final test package passed local device testing. No individual test scenarios, upgrade-installation results or measured frame rates were supplied. The [b34624 UI and build record](docs/settings-appearance.md#b34624-构建与交付记录) centralizes the source revision, local build exceptions, artifact checksums and validation limits.
 
-b34621 adds overflow-pin persistence and chat/interface options. The main app and six extensions passed the arm64 Release build and 40 local checks; details are recorded in the [implementation notes](docs/chat-and-interface-tools.md). The user confirmed that this test package passed validation and asked to defer minor issues to the next version. Individual device scenarios and the 1–2 day pin-retention case were not separately documented.
-
-b34620 playback regressions cover background transitions, play/pause icons, delayed callbacks, player ownership, PiP and looping animations. Actual audio, screen locking and installation over an older version still require device validation.
-
-b34619 passed the Xcode 27 arm64 Release build, main-app/six-extension checks, 12 matching debug symbols and final IPA validation. Identity and entitlements match b34618, retaining the notification-filtering declaration. Recovery policies, settings migration, one/two-line layout and icon lifecycle/persistence checks passed, including fresh-process reads. The new fixes have not been validated on a device and do not guarantee elimination of every placeholder notification.
-
-b34618 passed an Xcode 27 arm64 Release build, main-app and six-extension checks, with installation identity unchanged from b34617. Common-group pagination, failure handling and interactive-return lifecycle regressions passed. Real-account searches and gesture rendering have not been exercised on a device.
-
-b34617 passed the `//Telegram:Regram` arm64 Release build, package checks for the main app and six extensions, and relevant local regressions. The user-reported device acceptance on 2026-10-15 applies to b34616 and its tested scenarios. Device acceptance results for the b34617 tab-bar background restoration after search and return gesture fixes have not yet been recorded.
+Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
 ## Building
 
