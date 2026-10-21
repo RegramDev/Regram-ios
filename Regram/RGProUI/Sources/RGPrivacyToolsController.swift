@@ -91,7 +91,6 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
 
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting
-    controller.focusColor = context.sharedContext.currentPresentationData.with { $0 }.theme.list.itemAccentColor
     push = { [weak controller] target in (controller?.navigationController as? NavigationController)?.pushViewController(target) }
     return controller
 }

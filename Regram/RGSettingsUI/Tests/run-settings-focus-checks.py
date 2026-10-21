@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the production native settings focus lifecycle with delayed row availability."""
+"""Run native focus lifecycle with real item insets, delayed rows and interrupted callbacks."""
 from pathlib import Path
 import subprocess
 import tempfile
@@ -11,37 +11,32 @@ focus = source[start:end] + '}\n'
 fixture = r'''
 import Foundation
 import CoreGraphics
-public struct UIColor {
-    public static let systemBlue = Self()
-    func withAlphaComponent(_ value: CGFloat) -> Self { self }
-    var cgColor: Int { 1 }
-}
-final class Layer { var borderColor: Int?; var borderWidth: CGFloat = 0; var cornerRadius: CGFloat = 0 }
-public class UIView {
-    struct Options: OptionSet { let rawValue: Int; static let beginFromCurrentState = Self(rawValue: 1), allowUserInteraction = Self(rawValue: 2) }
-    struct Mask: OptionSet { let rawValue: Int; static let flexibleWidth = Self(rawValue: 1), flexibleHeight = Self(rawValue: 2) }
-    static var completions: [() -> Void] = []
-    static func animate(withDuration: Double, delay: Double, options: Options, animations: () -> Void, completion: @escaping (Bool) -> Void) { animations(); completions.append { completion(true) } }
-    var window: Int? = 1
-    var bounds: CGRect
-    var isUserInteractionEnabled = true, isAccessibilityElement = true
-    var autoresizingMask: Mask = [], backgroundColor: UIColor?, alpha: CGFloat = 1
-    let layer = Layer()
-    var children: [UIView] = []
-    weak var parent: UIView?
-    init(frame: CGRect = CGRect(x: 0, y: 0, width: 390, height: 50)) { bounds = frame }
-    func addSubview(_ value: UIView) { children.append(value); value.parent = self }
-    func removeFromSuperview() { parent?.children.removeAll { $0 === self }; parent = nil }
-}
+public class UIView { var window: Int? = 1 }
 final class Queue {
     static let main = Queue()
     static func mainQueue() -> Queue { main }
-    var pending: [() -> Void] = []
-    func after(_ delay: Double, _ action: @escaping () -> Void) { pending.append(action) }
-    func drain() { while !pending.isEmpty { pending.removeFirst()() } }
+    var now: Double = 0
+    var pending: [(Double, () -> Void)] = []
+    func after(_ delay: Double, _ action: @escaping () -> Void) { pending.append((now + delay, action)) }
+    func advance(to time: Double) {
+        while let index = pending.indices.filter({ pending[$0].0 <= time }).min(by: { pending[$0].0 < pending[$1].0 }) {
+            let (deadline, action) = pending.remove(at: index); now = deadline; action()
+        }
+        now = time
+    }
 }
 final class RGSettingsItemTag { let key: String; init(_ value: String) { key = value } }
-final class ListViewItemNode { let view = UIView(); var bounds: CGRect { view.bounds }; var isLayerBacked = false }
+protocol ItemListItemNode { func displayHighlight() }
+class ListViewItemNode {
+    let view = UIView()
+    // Grouped rows include spacing in their bounds; native drawing owns their content and masks.
+    var bounds = CGRect(x: 0, y: -36, width: 390, height: 88)
+    var isLayerBacked = false
+    var highlightCount = 0
+}
+final class NativeItemNode: ListViewItemNode, ItemListItemNode {
+    func displayHighlight() { highlightCount += 1 }
+}
 public class ItemListController {
     let view = UIView()
     var nodes: [String: ListViewItemNode] = [:]
@@ -52,33 +47,35 @@ public class ItemListController {
 FOCUS
 @main enum Checks {
     static func main() {
+        let queue = Queue.main
         let controller = RGSettingsListController()
         controller.focusSetting = "hidePrivateChatActivities"
         controller.viewDidAppear(true)
-        Queue.main.pending.removeFirst()()
-        let other = ListViewItemNode(), target = ListViewItemNode()
+        queue.advance(to: 0.5)
+        let other = NativeItemNode(), target = NativeItemNode()
         controller.nodes["other"] = other
-        Queue.main.pending.removeFirst()()
-        precondition(other.view.children.isEmpty)
         controller.nodes["hidePrivateChatActivities"] = target
-        Queue.main.drain()
-        precondition(target.view.children.count == 1 && other.view.children.isEmpty, "Wait for and highlight only the requested row")
-        let overlay = target.view.children[0]
-        precondition(!overlay.isUserInteractionEnabled && !overlay.isAccessibilityElement && overlay.layer.borderWidth == 2, "The visible focus marker must not block the switch")
-        controller.viewWillDisappear(true)
-        precondition(target.view.children.isEmpty, "Navigation cleans the marker")
-        UIView.completions.removeFirst()()
+        queue.advance(to: 1.5)
+        precondition(target.highlightCount == 1 && other.highlightCount == 0, "Use only the target row's native highlight, independent of grouped insets")
+        queue.advance(to: 2.5)
+        precondition(target.highlightCount == 1, "Use the native focus animation once; do not simulate pressed state")
         let interrupted = RGSettingsListController()
         interrupted.focusSetting = "late"
         interrupted.viewDidAppear(true); interrupted.viewWillDisappear(true)
-        interrupted.nodes["late"] = target
-        Queue.main.drain()
-        precondition(target.view.children.isEmpty, "Stale callbacks after navigation must not mark a row")
-        interrupted.viewDidAppear(true); Queue.main.drain()
-        precondition(target.view.children.count == 1, "A later appearance can retry an unfinished focus")
-        UIView.completions.removeFirst()()
-        precondition(target.view.children.isEmpty, "The marker fades out after locating the setting")
-        print("Settings focus passed: delayed rows, exact target, non-blocking marker, bounded retries, navigation cancellation and cleanup.")
+        let late = NativeItemNode(); interrupted.nodes["late"] = late
+        queue.advance(to: 4.0)
+        precondition(late.highlightCount == 0, "Stale callbacks after navigation must not highlight")
+        interrupted.viewDidAppear(true); queue.advance(to: 4.2)
+        precondition(late.highlightCount == 1)
+        interrupted.viewWillDisappear(true)
+        let count = late.highlightCount
+        queue.advance(to: 8.0)
+        precondition(late.highlightCount == count, "An obsolete fade must not affect a later screen")
+        let zero = RGSettingsListController(); zero.focusSetting = "zero"
+        let zeroNode = NativeItemNode(); zeroNode.bounds.size.height = 0
+        zero.nodes["zero"] = zeroNode; zero.viewDidAppear(false); queue.advance(to: 10)
+        precondition(zeroNode.highlightCount == 0, "Wait for actual layout before highlighting")
+        print("Settings focus passed: native row drawing with grouped insets, exact target, delayed layout, native animation ownership, navigation cancellation and stale callbacks.")
     }
 }
 '''.replace('FOCUS', focus)

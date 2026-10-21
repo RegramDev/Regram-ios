@@ -61,6 +61,7 @@ def main():
             run(name, [str(binary)] + arguments)
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
+    run('common-group-table-navigation', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-table-navigation-checks.py'])
     run('settings-focus', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-focus-checks.py'])
     run('settings-import-menu', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-import-menu-checks.py'])
     run('startup-folder', ['python3', 'Regram/RGSettingsUI/Tests/run-startup-folder-checks.py'])

@@ -897,7 +897,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
     
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting
-    controller.focusColor = context.sharedContext.currentPresentationData.with { $0 }.theme.list.itemAccentColor
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)
     }

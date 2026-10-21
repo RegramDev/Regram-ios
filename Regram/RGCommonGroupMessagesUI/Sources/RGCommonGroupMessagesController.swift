@@ -12,6 +12,16 @@ import LocalizedPeerData
 import RGStrings
 import RGSimpleSettings
 
+// The app routes status-bar taps through ViewController; keep UIKit's table out of that arbitration.
+private func rgConfigureCommonGroupTableNavigation(controller: ViewController, table: UITableView, backTitle: String) {
+    controller.navigationItem.backBarButtonItem = UIBarButtonItem(title: backTitle, style: .plain, target: nil, action: nil)
+    table.scrollsToTop = false
+    controller.scrollToTop = { [weak table] in
+        guard let table else { return }
+        table.setContentOffset(CGPoint(x: table.contentOffset.x, y: -table.adjustedContentInset.top), animated: true)
+    }
+}
+
 private final class GroupSearch {
     let peer: EnginePeer
     var status: RGCommonGroupSearchStatus
@@ -63,8 +73,10 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         self.context = context; self.author = author
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings))
+        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: self.presentationData.strings.Common_Back)
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }; self.presentationData = data
+            self.navigationItem.backBarButtonItem?.title = data.strings.Common_Back
             self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings), transition: .immediate)
             if self.isNodeLoaded { self.updateAppearance() }
         })
@@ -308,6 +320,7 @@ private final class RGCommonGroupPicker: ViewController, UITableViewDataSource, 
     init(presentationData: PresentationData, choices: [(Int64?, String)], selected: Int64?, select: @escaping (Int64?) -> Void) {
         self.data = presentationData; self.choices = choices; self.selected = selected; self.select = select
         super.init(navigationBarPresentationData: .init(presentationTheme: data.theme, presentationStrings: data.strings))
+        rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: data.strings.Common_Back)
         title = "CommonGroups.Filter".i18n(RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode))
     }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

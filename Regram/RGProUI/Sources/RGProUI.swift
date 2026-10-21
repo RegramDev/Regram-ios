@@ -419,7 +419,6 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting
-    controller.focusColor = context.sharedContext.currentPresentationData.with { $0 }.theme.list.itemAccentColor
     cancelSearchSelection = { [weak controller] in
         ((controller?.displayNode as? ItemListControllerNode)?.listNode as? ListViewImpl)?.cancelSelection()
     }
