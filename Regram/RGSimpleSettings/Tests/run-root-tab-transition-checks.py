@@ -35,9 +35,12 @@ import Foundation
 import CoreGraphics
 final class Layer {
     var shadowColor: Int?; var shadowOpacity: Float = 0; var shadowRadius: CGFloat = 0; var shadowOffset = CGSize.zero
+    var shadowPathWrites = 0
+    var shadowPath: CGPath? { didSet { shadowPathWrites += 1 } }
     func removeAllAnimations() {}
 }
 struct UIColor { static let black = UIColor(); var cgColor: Int { 0 } }
+struct UIBezierPath { let cgPath: CGPath; init(rect: CGRect) { cgPath = CGPath(rect: rect, transform: nil) } }
 class UIView {
     struct AnimationOptions: OptionSet {
         let rawValue: Int
@@ -103,8 +106,11 @@ func close(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.0001 }
     expect(controller.rgBeginInteractiveReturnToChats(), "Begin from Settings")
     expect(controller.selectedIndex == 0 && controller.view.children.count == 2, "Reveal real Chats under Settings snapshot")
     expect(!controller.rgBeginInteractiveReturnToChats(), "No overlapping transitions")
+    let snapshot = settings.lastSnapshot!
+    expect(snapshot.layer.shadowPath?.boundingBoxOfPath == snapshot.bounds, "Use the fixed snapshot bounds as the shadow outline")
     controller.rgUpdateInteractiveReturnToChats(progress: 0.4)
     expect(close(settings.lastSnapshot!.transform.tx, 156) && close(chats.transform.tx, -65.52), "Track finger and parallax")
+    expect(snapshot.layer.shadowPathWrites == 1, "Interactive updates must reuse the outline instead of recalculating it")
     controller.rgEndInteractiveReturnToChats(completed: false, velocity: 0)
     controller.rgUpdateInteractiveReturnToChats(progress: 1)
     expect(close(settings.lastSnapshot!.transform.tx, 0), "No update after ending")
@@ -138,7 +144,7 @@ func close(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.0001 }
     settings.canSnapshot = true; controller.loseDestination = true
     expect(!controller.rgBeginInteractiveReturnToChats() && controller.selectedIndex == 1, "Missing destination rolls back")
     expect(controller.animationRequests == 4, "Only the four external selections may run the normal tab scale animation")
-    print("Production root-tab transition passed: finger tracking, cancellation, completion, interruption, stale callbacks and failed setup rollback.")
+    print("Production root-tab transition passed: fixed shadow outline, finger tracking, cancellation, completion, interruption, stale callbacks and failed setup rollback.")
 } }
 '''.replace('TRANSITION', transition).replace('STATE', state).replace('METHODS', methods).replace('CLEANUP', external_cleanup).replace('SELECTION', selection)
 with tempfile.TemporaryDirectory(prefix='regram-root-tab-transition-') as directory:
@@ -147,3 +153,9 @@ with tempfile.TemporaryDirectory(prefix='regram-root-tab-transition-') as direct
     subprocess.run(['xcrun', 'swiftc', '-parse-as-library', '-swift-version', '5', '-warnings-as-errors',
                     str(folder / 'Tests.swift'), '-o', str(folder / 'tests')], check=True)
     subprocess.run([str(folder / 'tests')], check=True)
+
+    sdk = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path'], text=True).strip()
+    subprocess.run(['xcrun', 'swiftc', '-typecheck', '-parse-as-library', '-swift-version', '5',
+                    '-warnings-as-errors', '-target', 'arm64-apple-ios15.0-simulator', '-sdk', sdk,
+                    str(root / 'submodules/TabBarUI/Sources/RGRootTabBackTransition.swift')], check=True)
+    print('Production root-tab transition passed real UIKit SDK typechecking (iOS 15 target).')

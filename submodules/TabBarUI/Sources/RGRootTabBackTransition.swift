@@ -22,6 +22,9 @@ final class RGRootTabBackTransition {
         self.snapshot.layer.shadowOpacity = 0.14
         self.snapshot.layer.shadowRadius = 6
         self.snapshot.layer.shadowOffset = CGSize(width: -3, height: 0)
+        // MARK: Regram — the snapshot bounds stay fixed until this transition ends.
+        // Avoid deriving a full-screen alpha shadow on every interactive frame.
+        self.snapshot.layer.shadowPath = UIBezierPath(rect: self.snapshot.bounds).cgPath
         self.dimView.frame = host.bounds
         self.dimView.backgroundColor = .black
         self.dimView.isUserInteractionEnabled = false
