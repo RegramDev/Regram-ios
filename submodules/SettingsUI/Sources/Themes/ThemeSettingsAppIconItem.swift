@@ -345,6 +345,8 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(x: params.leftInset, y: 2.0), size: CGSize(width: layoutSize.width - params.leftInset - params.rightInset, height: layoutSize.height))
                     
+                    // MARK: Regram — use the current presentation language for the icon titles.
+                    let iconLanguage = RGLocalizationManager.shared.preferredLocale(primary: item.strings.primaryComponent.languageCode, secondary: item.strings.secondaryComponent?.languageCode)
                     let sideInset: CGFloat = 8.0
                     let spacing: CGFloat = floorToScreenPixels((params.width - sideInset * 2.0 - params.leftInset - params.rightInset - nodeSize.width * 4.0) / 3.0)
                     let verticalSpacing: CGFloat = 0.0
@@ -381,10 +383,10 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                             // MARK: Regram — display the two approved identity families.
                             switch icon.name {
                             case "RGConversation":
-                                name = "AppIcon.Name.conversation".i18n(item.strings.rgLanguageCode)
+                                name = "AppIcon.Name.conversation".i18n(iconLanguage)
                                 bordered = false
                             case "RGGathering":
-                                name = "AppIcon.Name.gathering".i18n(item.strings.rgLanguageCode)
+                                name = "AppIcon.Name.gathering".i18n(iconLanguage)
                                 bordered = false
                             default:
                                 name = icon.name
