@@ -1074,7 +1074,6 @@
 "features.ChatListSwipeAction.quick" = "快捷";
 "features.ChatListSwipeAction.none" = "無";
 "features.ShowArchiveInFolders" = "資料夾顯示歸檔";
-"features.OpenArchiveOnPull" = "下拉歸檔自動進入";
 "features.GroupProfileSettings" = "自訂群組資料頁設定項目";
 "features.GroupProfileSettings.Footer" = "只顯示已選取且目前群組與帳號權限允許的項目。";
 "features.GroupProfileSettings.Item.groupType" = "群組類型";
@@ -1131,7 +1130,6 @@
 "features.TextStyleMenu.Position" = "插入位置";
 
 
-"features.BottomUpGlobalSearchResults" = "全域搜尋結果從底部開始";
 
 
 "features.VideoPIPSwipeDirection" = "上滑開啟子母畫面";

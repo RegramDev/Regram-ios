@@ -130,15 +130,6 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
     
     public var dismissSearch: (() -> Void)?
     public var dismissSearchImmediately: (() -> Void)?
-    // MARK: Regram — 搜索栏在底部时由创建者设置，结果页据此（再结合设置开关）从下往上排列。
-    public var rgFeatureBottomUp: Bool {
-        get {
-            return self.paneContainerNode.rgFeatureBottomUp
-        }
-        set {
-            self.paneContainerNode.rgFeatureBottomUp = newValue
-        }
-    }
     var openAdInfo: ((ASDisplayNode, AdPeer) -> Void)?
     
     private let edgeEffectView: EdgeEffectView
@@ -1086,12 +1077,8 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
         // MARK: Regram — keep the bottom safe area clear, as on the chat-list tab.
         transition.updateAlpha(layer: self.edgeEffectView.layer, alpha: 0.0)
 
-        // MARK: Regram — keep bottom-up rows above the floating filters and search controls.
-        var paneBottomInset = bottomInset
-        if self.rgFeatureBottomUp && RGSimpleSettings.shared.bottomUpGlobalSearchResults && self.displaySearchFilters {
-            paneBottomInset = max(bottomInset, layout.size.height - self.filterContainerNode.frame.minY + 8.0)
-        }
-        self.paneContainerNode.update(size: CGSize(width: layout.size.width, height: layout.size.height), sideInset: layout.safeInsets.left, topInset: topInset, bottomInset: paneBottomInset, visibleHeight: layout.size.height, presentationData: self.presentationData, availablePanes: availablePanes, transition: transition)
+        // MARK: Regram — native result order uses the regular bottom control inset.
+        self.paneContainerNode.update(size: CGSize(width: layout.size.width, height: layout.size.height), sideInset: layout.safeInsets.left, topInset: topInset, bottomInset: bottomInset, visibleHeight: layout.size.height, presentationData: self.presentationData, availablePanes: availablePanes, transition: transition)
     }
     
     private var currentMessages: ([EnginePeer.Id: EnginePeer], [EngineMessage.Id: EngineMessage]) {

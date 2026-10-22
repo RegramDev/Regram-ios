@@ -73,12 +73,10 @@ private enum RGBoolSetting: String {
     case hidePrivateChatActivities
     case hideFolderUnreadCount
     case showArchiveInFolders
-    case openArchiveOnPull
     case stayAtLatestMessageAfterRefresh
     case hideTopStories
     case disableChatAvatarStories
     case hideTabBarPermissionWarnings
-    case bottomUpGlobalSearchResults
     case keepNewChatsVisibleAtTop
 
     case hidePhoneInSettings
@@ -392,12 +390,10 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.notice(id: id.count, section: .chatList, text: "features.HidePrivateChatActivities.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .hideFolderUnreadCount, value: RGSimpleSettings.shared.hideFolderUnreadCount, text: "features.HideFolderUnreadCount".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .folders, settingName: .showArchiveInFolders, value: RGSimpleSettings.shared.showArchiveInFolders, text: "features.ShowArchiveInFolders".i18n(lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .openArchiveOnPull, value: RGSimpleSettings.shared.openArchiveOnPull, text: "features.OpenArchiveOnPull".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .stayAtLatestMessageAfterRefresh, value: RGSimpleSettings.shared.stayAtLatestMessageAfterRefresh, text: "features.StayAtLatestMessageAfterRefresh".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .stories, settingName: .hideTopStories, value: RGSimpleSettings.shared.hideTopStories, text: "features.HideTopStories".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .stories, settingName: .disableChatAvatarStories, value: RGSimpleSettings.shared.disableChatAvatarStories, text: "features.DisableChatAvatarStories".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .content, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .bottomUpGlobalSearchResults, value: RGSimpleSettings.shared.bottomUpGlobalSearchResults, text: "features.BottomUpGlobalSearchResults".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .keepNewChatsVisibleAtTop, value: RGSimpleSettings.shared.keepNewChatsVisibleAtTop, text: "features.KeepNewChatsVisibleAtTop".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListSwipeAction, text: "features.ChatListSwipeAction".i18n(lang), value: ("features.ChatListSwipeAction." + RGSimpleSettings.shared.chatListSwipeAction).i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .folders, settingName: .chatListFolderTabDisplayMode, text: "features.ChatListFolderTabDisplayMode".i18n(lang), value: ("features.ChatListFolderTabDisplayMode." + RGSimpleSettings.shared.chatListFolderTabDisplayMode).i18n(lang), enabled: true))
@@ -480,12 +476,10 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         case .hidePrivateChatActivities: RGSimpleSettings.shared.hidePrivateChatActivities = value
         case .hideFolderUnreadCount: RGSimpleSettings.shared.hideFolderUnreadCount = value
         case .showArchiveInFolders: RGSimpleSettings.shared.showArchiveInFolders = value
-        case .openArchiveOnPull: RGSimpleSettings.shared.openArchiveOnPull = value
         case .stayAtLatestMessageAfterRefresh: RGSimpleSettings.shared.stayAtLatestMessageAfterRefresh = value
         case .hideTopStories: RGSimpleSettings.shared.hideTopStories = value
         case .disableChatAvatarStories: RGSimpleSettings.shared.disableChatAvatarStories = value
         case .hideTabBarPermissionWarnings: RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
-        case .bottomUpGlobalSearchResults: RGSimpleSettings.shared.bottomUpGlobalSearchResults = value
         case .keepNewChatsVisibleAtTop: RGSimpleSettings.shared.keepNewChatsVisibleAtTop = value
 
         case .hideChatListSeparators:

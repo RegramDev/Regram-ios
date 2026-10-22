@@ -5,7 +5,6 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 rgdeps = [
     "//Regram/RGSearchLink:RGSearchLink", # MARK: Regram
     "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
-    "//Regram/RGFlippedList:RGFlippedList", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAPIToken:RGAPIToken",

@@ -2219,7 +2219,6 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         }, navigationController: navigationController, parentController: { [weak self] in
             return self?.controller
         })
-        contentNode.rgFeatureBottomUp = searchBarIsExternal // MARK: Regram
         contentNode.dismissSearch = { [weak self] in
             self?.dismissSearch?()
         }
@@ -2383,16 +2382,11 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                             if let currentOverscrollItemExpansionTimestamp = self.currentOverscrollItemExpansionTimestamp, currentOverscrollItemExpansionTimestamp <= timestamp - 0.0 {
                                 self.allowOverscrollItemExpansion = false
                                 
-                                let revealedGroupId: EngineChatList.Group?
+                                // MARK: Regram — pulling only reveals hidden items; opening remains explicit.
                                 if isPrimary {
-                                    revealedGroupId = self.mainContainerNode.currentItemNode.revealScrollHiddenItem()
+                                    self.mainContainerNode.currentItemNode.revealScrollHiddenItem()
                                 } else {
-                                    revealedGroupId = self.inlineStackContainerNode?.currentItemNode.revealScrollHiddenItem()
-                                }
-                                if case .chatList(.root) = self.location, revealedGroupId == .archive, RGSimpleSettings.shared.openArchiveOnPull {
-                                    Queue.mainQueue().after(0.2) { [weak self] in
-                                        self?.mainContainerNode.groupSelected?(.archive)
-                                    }
+                                    self.inlineStackContainerNode?.currentItemNode.revealScrollHiddenItem()
                                 }
                             }
                         }

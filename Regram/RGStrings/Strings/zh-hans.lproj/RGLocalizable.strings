@@ -1076,7 +1076,6 @@
 "features.ChatListSwipeAction.quick" = "快捷";
 "features.ChatListSwipeAction.none" = "无";
 "features.ShowArchiveInFolders" = "文件夹显示归档";
-"features.OpenArchiveOnPull" = "下拉归档自动进入";
 "features.GroupProfileSettings" = "自定义群资料页设置项";
 "features.GroupProfileSettings.Footer" = "仅显示已选择且当前群组与账号权限允许的项目。";
 "features.GroupProfileSettings.Item.groupType" = "群组类型";
@@ -1133,7 +1132,6 @@
 "features.TextStyleMenu.Position" = "插入位置";
 
 
-"features.BottomUpGlobalSearchResults" = "全局搜索结果从底部开始";
 
 
 "features.VideoPIPSwipeDirection" = "上滑开启画中画";

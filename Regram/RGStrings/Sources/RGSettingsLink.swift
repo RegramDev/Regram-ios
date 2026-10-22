@@ -19,7 +19,7 @@ public struct RGSettingsDestination: Hashable {
         }
         // MARK: Regram — retired controls cannot be re-enabled by old copied links.
         if page == "settings.messageActions", ["chatToolsEnabled", "chatSearchFieldAtBottom", "bottomUpChatSearchResults"].contains(item ?? "") { return nil }
-        if item == "disableCommunityChatGrouping" { return nil }
+        if ["disableCommunityChatGrouping", "openArchiveOnPull", "bottomUpGlobalSearchResults"].contains(item ?? "") { return nil }
         if page == "settings.messageActions", item == "autoInlineBotEnabled" { self.page = "inlineBots"; self.item = "enabled"; return }
         if page == "settings.input", ["enablePanguOnEditing", "enablePanguOnReceiving"].contains(item ?? "") { self.page = "pro.input"; self.item = item; return }
         // MARK: Regram — old copied links follow moved controls without another visible entry.

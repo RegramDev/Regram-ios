@@ -1083,7 +1083,6 @@ Matching is case-insensitive.";
 "features.ChatListSwipeAction.quick" = "Quick Actions";
 "features.ChatListSwipeAction.none" = "None";
 "features.ShowArchiveInFolders" = "Show Archive in Folders";
-"features.OpenArchiveOnPull" = "Open Archive on Pull";
 "features.GroupProfileSettings" = "Customize Group Profile Items";
 "features.GroupProfileSettings.Footer" = "Only selected items that are available for the current group and your permissions will be shown.";
 "features.GroupProfileSettings.Item.groupType" = "Group Type";
@@ -1140,7 +1139,6 @@ Matching is case-insensitive.";
 "features.TextStyleMenu.Position" = "Insert Position";
 
 
-"features.BottomUpGlobalSearchResults" = "Global search results from the bottom";
 
 
 "features.VideoPIPSwipeDirection" = "Swipe up for Picture-in-Picture";

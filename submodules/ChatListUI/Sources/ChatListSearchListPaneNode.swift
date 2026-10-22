@@ -43,7 +43,6 @@ import BundleIconComponent
 import AnimatedTextComponent
 import TextFormat
 // MARK: Regram
-import RGFlippedList
 import RGSearchLink
 import RGSimpleSettings
 import RGStrings
@@ -1728,8 +1727,6 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
     private let mediaNode: ChatListSearchMediaNode?
     private var enqueuedRecentTransitions: [(ChatListSearchContainerRecentTransition, Bool)] = []
     private var enqueuedTransitions: [(ChatListSearchContainerTransition, Bool)] = []
-    // MARK: Regram — 底部搜索栏模式下列表上下镜像（RGFlippedListView）：最相关的结果贴近搜索框，往上滑加载更多。
-    private let rgFeatureBottomUp: Bool
     private var rgFeaturePendingAfterInputDismissal: (() -> Void)?
 
     private var presentationDataDisposable: Disposable?
@@ -1821,10 +1818,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
     private var refreshGlobalPostSearchStateDisposable: Disposable?
 
-    init(context: AccountContext, animationCache: AnimationCache, animationRenderer: MultiAnimationRenderer, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)? = nil, interaction: ChatListSearchInteraction, key: ChatListSearchPaneKey, peersFilter: ChatListNodePeersFilter, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, excludedPeerIds: Set<EnginePeer.Id>, location: ChatListControllerLocation, communityId: EnginePeer.Id? = nil, searchQuery: Signal<String?, NoError>, searchOptions: Signal<ChatListSearchOptions?, NoError>, navigationController: NavigationController?, parentController: ViewController?, globalPeerSearchContext: GlobalPeerSearchContext?, rgFeatureBottomUp: Bool = false) { // MARK: Regram
+    init(context: AccountContext, animationCache: AnimationCache, animationRenderer: MultiAnimationRenderer, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)? = nil, interaction: ChatListSearchInteraction, key: ChatListSearchPaneKey, peersFilter: ChatListNodePeersFilter, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, excludedPeerIds: Set<EnginePeer.Id>, location: ChatListControllerLocation, communityId: EnginePeer.Id? = nil, searchQuery: Signal<String?, NoError>, searchOptions: Signal<ChatListSearchOptions?, NoError>, navigationController: NavigationController?, parentController: ViewController?, globalPeerSearchContext: GlobalPeerSearchContext?) { // MARK: Regram — native top-to-bottom result order.
         self.context = context
-        // MARK: Regram — 媒体网格页不是列表，不参与。
-        self.rgFeatureBottomUp = rgFeatureBottomUp && key != .media && RGSimpleSettings.shared.bottomUpGlobalSearchResults
         self.animationCache = animationCache
         self.animationRenderer = animationRenderer
         self.interaction = interaction
@@ -1888,7 +1883,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.selectedMessages = interaction.getSelectedMessageIds()
         self.selectedMessagesPromise.set(.single(self.selectedMessages))
 
-        self.recentListNode = self.rgFeatureBottomUp ? RGFlippedListView() : ListViewImpl() // MARK: Regram
+        self.recentListNode = ListViewImpl() // MARK: Regram — restore native result order.
         self.recentListNode.preloadPages = false
         self.recentListNode.verticalScrollIndicatorColor = self.presentationData.theme.list.scrollIndicatorColor
         self.recentListNode.accessibilityPageScrolledString = { row, count in
@@ -1899,7 +1894,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.shimmerNode.isUserInteractionEnabled = false
         self.shimmerNode.allowsGroupOpacity = true
 
-        self.listNode = self.rgFeatureBottomUp ? RGFlippedListView() : ListViewImpl() // MARK: Regram
+        self.listNode = ListViewImpl() // MARK: Regram — restore native result order.
         self.listNode?.verticalScrollIndicatorColor = self.presentationData.theme.list.scrollIndicatorColor
         self.listNode?.accessibilityPageScrolledString = { row, count in
             return presentationData.strings.VoiceOver_ScrollStatus(row, count).string
@@ -5308,11 +5303,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
         let topInset: CGFloat = topInset + topPanelHeight
         let overflowInset: CGFloat = 0.0
-        var insets = UIEdgeInsets(top: topInset + topPanelHeight, left: sideInset, bottom: bottomInset, right: sideInset)
-        // MARK: Regram — 镜像列表的 top inset 是屏幕底部的留白。
-        if self.rgFeatureBottomUp {
-            insets = UIEdgeInsets(top: insets.bottom, left: insets.left, bottom: insets.top, right: insets.right)
-        }
+        // MARK: Regram — insets follow the unflipped result list.
+        let insets = UIEdgeInsets(top: topInset + topPanelHeight, left: sideInset, bottom: bottomInset, right: sideInset)
 
         self.shimmerNode.frame = CGRect(origin: CGPoint(x: overflowInset, y: topInset), size: CGSize(width: size.width - overflowInset * 2.0, height: size.height))
         self.shimmerNode.update(context: self.context, size: CGSize(width: size.width - overflowInset * 2.0, height: size.height), presentationData: self.presentationData, animationCache: self.animationCache, animationRenderer: self.animationRenderer, key: !(self.searchQueryValue?.isEmpty ?? true) && self.key == .media ? .chats : self.key, hasSelection: self.selectedMessages != nil, transition: transition)

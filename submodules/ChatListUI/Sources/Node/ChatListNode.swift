@@ -3388,10 +3388,9 @@ public final class ChatListNode: ListViewImpl {
         return isHiddenItemVisible
     }
     
-    @discardableResult
-    func revealScrollHiddenItem() -> EngineChatList.Group? {
+    // MARK: Regram — restore reveal-only archive behavior without navigation callbacks.
+    func revealScrollHiddenItem() {
         var isHiddenItemVisible = false
-        var revealedGroupId: EngineChatList.Group?
         self.forEachItemNode({ itemNode in
             if let itemNode = itemNode as? ChatListItemNode, let item = itemNode.item {
                 if case let .peer(peerData) = item.content, let threadInfo = peerData.threadInfo {
@@ -3402,7 +3401,6 @@ public final class ChatListNode: ListViewImpl {
                 if case let .groupReference(groupReference) = item.content {
                     if groupReference.hiddenByDefault {
                         isHiddenItemVisible = true
-                        revealedGroupId = groupReference.groupId
                     }
                 }
             }
@@ -3417,9 +3415,7 @@ public final class ChatListNode: ListViewImpl {
                 state.hiddenItemShouldBeTemporaryRevealed = true
                 return state
             }
-            return revealedGroupId
         }
-        return nil
     }
     
     private func pollFilterUpdates() {

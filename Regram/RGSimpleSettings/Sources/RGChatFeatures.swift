@@ -78,10 +78,6 @@ public extension RGSimpleSettings {
         get { RGFeaturePreferences.bool("features.showArchiveInFolders") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.showArchiveInFolders") }
     }
-    var openArchiveOnPull: Bool {
-        get { RGFeaturePreferences.bool("features.openArchiveOnPull") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.openArchiveOnPull") }
-    }
     var stayAtLatestMessageAfterRefresh: Bool {
         get { RGFeaturePreferences.bool("features.stayAtLatestMessageAfterRefresh") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.stayAtLatestMessageAfterRefresh") }
@@ -105,10 +101,6 @@ public extension RGSimpleSettings {
     var hideTabBarPermissionWarnings: Bool {
         get { RGFeaturePreferences.bool("features.hideTabBarPermissionWarnings") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.hideTabBarPermissionWarnings") }
-    }
-    var bottomUpGlobalSearchResults: Bool {
-        get { RGFeaturePreferences.bool("features.bottomUpGlobalSearchResults") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.bottomUpGlobalSearchResults") }
     }
     var keepNewChatsVisibleAtTop: Bool {
         get { RGFeaturePreferences.bool("features.keepNewChatsVisibleAtTop") }
