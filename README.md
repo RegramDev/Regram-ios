@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前文档按 **13.0 / b34627** 整理；用户已确认测试包验证通过，构建与交付范围见[归档与设置修复记录](docs/navigation-community-badge-fixes.md)，公开发布状态及下载见 [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前版本 **13.0 / b34627** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34627)。用户已确认测试包验证通过，构建与交付范围见[归档与设置修复记录](docs/navigation-community-badge-fixes.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -125,7 +125,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 
 ## 验证范围
 
-b34627 已完成主应用／六扩展的 arm64 Release 构建、签名、资源及 12 份匹配调试符号校验，安装身份与选定权限声明和 b34626 一致。用户于 2026-10-22 确认本地 IPA 测试无问题，并授权将同一份包、源码及文档同步到 GitHub 和 Release；归档原因与修正见[专项排查](docs/community-archive-audit-20261022.md)。代理按此前要求未运行自动回归、应用内更新解析、真实账号、真机和覆盖升级测试；用户未提供逐项场景或量化帧率记录。源码、本地构建例外及最终校验记录见[本轮记录](docs/navigation-community-badge-fixes.md)。
+b34627 已完成主应用／六扩展的 arm64 Release 构建、签名、资源及 12 份匹配调试符号校验，安装身份与选定权限声明和 b34626 一致。用户于 2026-10-22 确认本地 IPA 测试无问题；同一份包已正式发布为 Latest，公开完整下载与 SHA-256 附件核对通过，源码及文档同步到 GitHub。归档原因与修正见[专项排查](docs/community-archive-audit-20261022.md)。代理按此前要求未运行自动回归、应用内更新解析、真实账号、真机和覆盖升级测试；用户未提供逐项场景或量化帧率记录。源码、本地构建例外及最终校验记录见[本轮记录](docs/navigation-community-badge-fixes.md)。
 
 旧版本的发布与验收记录见[更新记录](docs/changelog.md)；各版设备结果仅对应当时的安装包与测试场景。
 

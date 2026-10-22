@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34627**. The user confirmed that the test IPA worked; see the [build and delivery record](docs/navigation-community-badge-fixes.md). See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+**13.0 / b34627** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34627). The user confirmed that the test IPA worked; see the [build and delivery record](docs/navigation-community-badge-fixes.md), the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -125,7 +125,7 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
-The b34627 arm64 Release build completed for the app and six extensions. Package signatures, resources and 12 matching dSYMs passed validation; bundle identities and selected entitlements match b34626. On 2026-10-22, the user confirmed the local IPA worked and authorized publication of the same package, source and documentation to GitHub and Releases. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Agent-run regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s earlier request. The user did not supply individual test cases or frame-rate measurements. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
+The b34627 arm64 Release build completed for the app and six extensions. Package signatures, resources and 12 matching dSYMs passed validation; bundle identities and selected entitlements match b34626. On 2026-10-22, the user confirmed the local IPA worked. The same IPA is now the latest stable Release, with source and documentation synchronized to GitHub. The complete public download and checksum attachment passed SHA-256 verification. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Agent-run regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s earlier request. The user did not supply individual test cases or frame-rate measurements. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
