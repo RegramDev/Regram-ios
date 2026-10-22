@@ -46,7 +46,7 @@ private struct GroupsInCommonListEntry: Comparable, Identifiable {
     func item(context: AccountContext, presentationData: PresentationData, openPeer: @escaping (EnginePeer) -> Void, openPeerContextAction: @escaping (EnginePeer, ASDisplayNode, ContextGesture?) -> Void, retry: @escaping () -> Void) -> ListViewItem {
         // MARK: Regram — failed pagination remains visible and can be retried explicitly.
         guard let peer = self.peer else {
-            return ItemListActionItem(presentationData: ItemListPresentationData(presentationData), title: presentationData.strings.Common_Retry, kind: .generic, alignment: .center, sectionId: 0, style: .plain, action: retry)
+            return ItemListActionItem(presentationData: ItemListPresentationData(presentationData), title: presentationData.strings.ChatImportActivity_Retry, kind: .generic, alignment: .center, sectionId: 0, style: .plain, action: retry)
         }
         return ItemListPeerItem(presentationData: ItemListPresentationData(presentationData), dateTimeFormat: presentationData.dateTimeFormat, nameDisplayOrder: presentationData.nameDisplayOrder, context: context, peer: peer, presence: nil, text: .none, label: .none, editing: ItemListPeerItemEditing(editable: false, editing: false, revealed: false), switchValue: nil, enabled: true, selectable: true, sectionId: 0, action: {
             openPeer(peer)
