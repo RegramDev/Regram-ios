@@ -779,7 +779,7 @@
 "Diagnostics.DC.Failed" = "失敗";
 "Browser.Translation.SystemUnavailable" = "Apple 網頁翻譯需要 iOS 18 或更新版本。請在本機選擇其他翻譯服務。";
 
-"AppBadge.Notice" = "設定截圖上顯示的應用程式標記。";
+"AppBadge.Notice" = "點按樣式即可套用。預覽已放大，截圖中的標記維持正常大小。";
 "AppBadge.Title" = "截圖標記";
 "Common.Cancel" = "取消";
 "Common.KnowWhatYouDo" = "請在了解這些選項的作用後再修改。";
@@ -1207,3 +1207,19 @@
 "Settings.Editor.bottomBarLayout.Description" = "顯示項目、順序、標籤與寬度";
 "Settings.Editor.llmTranslationSettings.Description" = "介面位址、模型、金鑰與提示詞";
 "Settings.Editor.contextMenuOrder.Description" = "顯示項目、拖移排序與分組";
+
+"Settings.Folders.AllChatsTitle.shortText" = "對話";
+"Settings.Folders.AllChatsTitle.longText" = "所有對話";
+
+"AppBadge.Current" = "目前標記";
+"AppBadge.Choose" = "選擇樣式";
+"AppBadge.Name.default" = "預設";
+"AppBadge.Name.regram" = "Regram";
+"AppBadge.Name.zhiqiu" = "知秋";
+"AppBadge.Name.sky" = "晴空";
+"AppBadge.Name.night" = "夜色";
+"AppBadge.Name.titanium" = "鈦色";
+"AppBadge.Name.pro" = "漸彩";
+"AppBadge.Name.day" = "晨光";
+"AppBadge.Name.ducky" = "小黃鴨";
+"AppBadge.Name.sparkling" = "星光";

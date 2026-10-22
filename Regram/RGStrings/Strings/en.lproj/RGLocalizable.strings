@@ -252,7 +252,7 @@ Matching is case-insensitive.";
 "PayWall.ValidationError.Expired" = "Your subscription expired. Subscribe again to regain access to Pro features.";
 
 "AppBadge.Title" = "App Badge";
-"AppBadge.Notice" = "Customize App Badge shown on screenshots";
+"AppBadge.Notice" = "Tap a style to apply it. Previews are enlarged; the badge keeps its normal size in screenshots.";
 
 "Settings.NY.Header" = "HOLIDAY EFFECTS";
 "Settings.NY.Style" = "Style";
@@ -1216,3 +1216,19 @@ Matching is case-insensitive.";
 "Settings.Editor.bottomBarLayout.Description" = "Visible items, order, labels and width";
 "Settings.Editor.llmTranslationSettings.Description" = "API endpoint, model, key and prompt";
 "Settings.Editor.contextMenuOrder.Description" = "Visible actions, drag order and groups";
+
+"Settings.Folders.AllChatsTitle.shortText" = "Chats";
+"Settings.Folders.AllChatsTitle.longText" = "All Chats";
+
+"AppBadge.Current" = "Current badge";
+"AppBadge.Choose" = "Choose a style";
+"AppBadge.Name.default" = "Default";
+"AppBadge.Name.regram" = "Regram";
+"AppBadge.Name.zhiqiu" = "Zhiqiu";
+"AppBadge.Name.sky" = "Sky";
+"AppBadge.Name.night" = "Night";
+"AppBadge.Name.titanium" = "Titanium";
+"AppBadge.Name.pro" = "Gradient";
+"AppBadge.Name.day" = "Daylight";
+"AppBadge.Name.ducky" = "Ducky";
+"AppBadge.Name.sparkling" = "Sparkling";

@@ -1,4 +1,5 @@
 import Foundation
+import RGStrings // MARK: Regram — distinct short/full all-chats labels and settings previews.
 import RGSimpleSettings
 import RGSimpleSettings // MARK: Regram
 import UIKit
@@ -478,7 +479,7 @@ public enum ChatListFilterTabEntry: Equatable {
     func title(strings: PresentationStrings) -> ChatFolderTitle {
         switch self {
         case .all:
-            return ChatFolderTitle(text: strings.ChatList_Tabs_AllChats, entities: [], enableAnimations: true)
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: false, languageCode: strings.rgLanguageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }
@@ -487,7 +488,7 @@ public enum ChatListFilterTabEntry: Equatable {
     func shortTitle(strings: PresentationStrings) -> ChatFolderTitle {
         switch self {
         case .all:
-            return ChatFolderTitle(text: strings.ChatList_Tabs_All, entities: [], enableAnimations: true)
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: true, languageCode: strings.rgLanguageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }

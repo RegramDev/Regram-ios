@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import RGSwiftUI
 import RGStrings
 import RGSimpleSettings
@@ -10,9 +11,14 @@ import AccountContext
 
 
 struct AppBadge: Identifiable, Hashable {
-    let id: UUID = .init()
     let displayName: String
     let assetName: String
+
+    var id: String { self.assetName }
+
+    func title(languageCode: String) -> String {
+        ("AppBadge.Name." + self.displayName.lowercased()).i18n(languageCode)
+    }
 }
 
 func getAvailableAppBadges() -> [AppBadge] {
@@ -81,20 +87,38 @@ struct AppBadgeSettingsView: View {
     
     var body: some View {
         RGSettingsList {
-            RGSettingsSection(footer: Text("AppBadge.Notice".i18n(lang)).foregroundColor(secondaryColor)) {
+            RGSettingsSection(header: Text("AppBadge.Current".i18n(lang))) {
+                VStack(spacing: 12) {
+                    if let image = UIImage(bundleImageName: selectedBadge.assetName) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 240)
+                            .frame(height: 64)
+                            .accessibilityHidden(true)
+                    }
+                    Text(selectedBadge.title(languageCode: lang))
+                        .font(.body.weight(.medium))
+                        .foregroundColor(primaryColor)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
+            RGSettingsSection(header: Text("AppBadge.Choose".i18n(lang)), footer: Text("AppBadge.Notice".i18n(lang)).foregroundColor(secondaryColor)) {
                 ForEach(availableAppBadges) { badge in
                     Button {
                         onSelectBadge(badge)
                     } label: {
                         HStack(spacing: 12) {
-                            Image(badge.assetName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 44, height: 44)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                .accessibilityHidden(true)
+                            if let image = UIImage(bundleImageName: badge.assetName) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 128, height: 40)
+                                    .accessibilityHidden(true)
+                            }
 
-                            Text(badge.displayName)
+                            Text(badge.title(languageCode: lang))
                                 .foregroundColor(primaryColor)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -110,7 +134,7 @@ struct AppBadgeSettingsView: View {
                             }
                         }
                         .contentShape(Rectangle())
-                        .frame(minHeight: 44)
+                        .frame(minHeight: 56)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("regram.appBadge.\(badge.assetName)")

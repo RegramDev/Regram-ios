@@ -456,7 +456,8 @@ func _internal_toggleCommunityCollapsedInDialogs(account: Account, communityId: 
         }
         |> mapToSignal { updates -> Signal<Never, CommunityCollapsedInDialogsError> in
             account.stateManager.addUpdates(updates)
-            return account.postbox.transaction { transaction -> Void in
+            return account.postbox.transaction { transaction -> [Api.InputPeer] in
+                var missingPeers: [Api.InputPeer] = []
                 if var community = transaction.getPeer(communityId) as? TelegramCommunity {
                     community = community.withUpdatedCollapsedInDialogs(collapsed)
                     transaction.updatePeersInternal([community]) { _, peer in
@@ -469,22 +470,25 @@ func _internal_toggleCommunityCollapsedInDialogs(account: Account, communityId: 
                         linkedPeerIds.insert(linkedPeer.peerId)
                     }
                     for peerId in linkedPeerIds {
+                        // MARK: Regram — retain existing archives; recover hidden dialogs from the server.
                         if collapsed {
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
                         } else if isPeerHiddenByCollapsedCommunity(transaction: transaction, peerId: peerId) {
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
-                        } else if let peer = transaction.getPeer(peerId) {
-                            transaction.updatePeerChatListInclusion(peerId, inclusion: .ifHasMessagesOrOneOf(
-                                groupId: .root,
-                                pinningIndex: transaction.getPeerChatListIndex(peerId)?.1.pinningIndex,
-                                minTimestamp: minTimestampForPeerInclusion(peer)
-                            ))
+                        } else if case .notIncluded = transaction.getPeerChatListInclusion(peerId),
+                                  !shouldExcludePeerFromChatList(transaction: transaction, peerId: peerId),
+                                  let peer = transaction.getPeer(peerId), let inputPeer = apiInputPeer(peer) {
+                            missingPeers.append(inputPeer)
                         }
                     }
                 }
+                return missingPeers
             }
             |> castError(CommunityCollapsedInDialogsError.self)
-            |> ignoreValues
+            |> mapToSignal { missingPeers -> Signal<Never, CommunityCollapsedInDialogsError> in
+                return loadAndStorePeerChatInfos(accountPeerId: account.peerId, postbox: account.postbox, network: account.network, peers: missingPeers, onlyRestoreMissing: true)
+                |> castError(CommunityCollapsedInDialogsError.self)
+            }
         }
     }
     |> castError(CommunityCollapsedInDialogsError.self)

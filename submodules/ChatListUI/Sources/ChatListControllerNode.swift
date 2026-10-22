@@ -1,5 +1,6 @@
 import RGSimpleSettings
 import Foundation
+import RGStrings // MARK: Regram — match the all-chats picker and top folder tabs.
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -1655,7 +1656,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         switch entry {
                         case .all:
                             id = Int32.min
-                            title = rgFeatureFolderTabTitle(text: rgUseShortAllChatsTitle(true) ? self.presentationData.strings.ChatList_Tabs_All : self.presentationData.strings.ChatList_Tabs_AllChats, entities: [], enableAnimations: false, icon: rgFeatureFolderTabIcons[entry.id] ?? "💬", displayMode: rgFeatureFolderTabDisplayMode)
+                            title = rgFeatureFolderTabTitle(text: rgAllChatsTitle(shortTitle: self.presentationData.strings.ChatList_Tabs_All, longTitle: self.presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: rgUseShortAllChatsTitle(true), languageCode: self.presentationData.strings.rgLanguageCode), entities: [], enableAnimations: false, icon: rgFeatureFolderTabIcons[entry.id] ?? "💬", displayMode: rgFeatureFolderTabDisplayMode)
                             isMainTab = true
                         case let .filter(idValue, text, unread):
                             id = AnyHashable(idValue)

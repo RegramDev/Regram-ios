@@ -801,7 +801,7 @@
 "Diagnostics.DC.Failed" = "失败";
 "Browser.Translation.SystemUnavailable" = "Apple 网页翻译需要 iOS 18 或更高版本。请在本机选择其他翻译服务。";
 
-"AppBadge.Notice" = "设置截图上显示的应用标记。";
+"AppBadge.Notice" = "点按样式即可应用。预览已放大，截图中的标记保持正常大小。";
 "AppBadge.Title" = "截图标记";
 "Common.KnowWhatYouDo" = "请在了解这些选项的作用后再修改。";
 "LocalPremium.Notice" = "在本机启用会员界面与客户端选项。贴纸、回应等需要 Telegram 服务端验证的权益仍需有效订阅。";
@@ -1209,3 +1209,19 @@
 "Settings.Editor.bottomBarLayout.Description" = "显示项目、顺序、标签与宽度";
 "Settings.Editor.llmTranslationSettings.Description" = "接口地址、模型、密钥与提示词";
 "Settings.Editor.contextMenuOrder.Description" = "显示项目、拖动排序与分组";
+
+"Settings.Folders.AllChatsTitle.shortText" = "对话";
+"Settings.Folders.AllChatsTitle.longText" = "所有对话";
+
+"AppBadge.Current" = "当前标记";
+"AppBadge.Choose" = "选择样式";
+"AppBadge.Name.default" = "默认";
+"AppBadge.Name.regram" = "Regram";
+"AppBadge.Name.zhiqiu" = "知秋";
+"AppBadge.Name.sky" = "晴空";
+"AppBadge.Name.night" = "夜色";
+"AppBadge.Name.titanium" = "钛色";
+"AppBadge.Name.pro" = "渐彩";
+"AppBadge.Name.day" = "晨光";
+"AppBadge.Name.ducky" = "小黄鸭";
+"AppBadge.Name.sparkling" = "星光";

@@ -740,9 +740,11 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
                     let title: String
                     switch (value) {
                         case RGSimpleSettings.AllChatsTitleLengthOverride.short:
-                            title = "\"\(presentationData.strings.ChatList_Tabs_All)\""
+                            let preview = rgAllChatsTitle(shortTitle: presentationData.strings.ChatList_Tabs_All, longTitle: presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: true, languageCode: presentationData.strings.rgLanguageCode)
+                            title = "\("Settings.Folders.AllChatsTitle.short".i18n(presentationData.strings.rgLanguageCode)) · \(preview)"
                         case RGSimpleSettings.AllChatsTitleLengthOverride.long:
-                            title = "\"\(presentationData.strings.ChatList_Tabs_AllChats)\""
+                            let preview = rgAllChatsTitle(shortTitle: presentationData.strings.ChatList_Tabs_All, longTitle: presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: false, languageCode: presentationData.strings.rgLanguageCode)
+                            title = "\("Settings.Folders.AllChatsTitle.long".i18n(presentationData.strings.rgLanguageCode)) · \(preview)"
                         default:
                             title = i18n("Settings.Folders.AllChatsTitle.none", presentationData.strings.rgLanguageCode)
                     }

@@ -962,7 +962,9 @@ private func requestChatListFilters(accountPeerId: PeerId, postbox: Postbox, net
     }
 }
 
-private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer]) -> Signal<Never, NoError> {
+// MARK: Regram — community expansion reuses dialog loading without overwriting concurrent archive changes.
+func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer], onlyRestoreMissing: Bool = false) -> Signal<Never, NoError> {
+    if peers.isEmpty { return .complete() }
     return postbox.transaction { transaction -> [Api.InputDialogPeer] in
         return peers.map { peer -> Api.InputDialogPeer in
             if case let .inputPeerChannel(inputPeerChannelData) = peer {
@@ -1038,9 +1040,10 @@ private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, 
                             }
                         }
                         
-                        if !isExcludedFromChatList {
+                        let currentInclusion = transaction.getPeerChatListInclusion(peerId)
+                        if !isExcludedFromChatList && (!onlyRestoreMissing || currentInclusion == .notIncluded) {
+                            // MARK: Regram — a manual archive/unarchive during the request takes precedence.
                             let groupId = PeerGroupId(rawValue: folderId ?? 0)
-                            let currentInclusion = transaction.getPeerChatListInclusion(peerId)
                             var currentPinningIndex: UInt16?
                             var currentMinTimestamp: Int32?
                             switch currentInclusion {
