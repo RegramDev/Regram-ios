@@ -1,9 +1,11 @@
 // Compiled into SettingsUI to share its native result rows without importing RGProUI.
 import AccountContext
 import RGStrings
+import TelegramPresentationData
 
 func rgSettingsSearchableItems(context: AccountContext) -> [SettingsSearchableItem] {
-    let language = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
+    let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
+    let language = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode)
     let title = "Settings.Pro.Title".i18n(language)
     var items = [SettingsSearchableItem(id: "regram", title: title, alternate: ["Regram Pro"], icon: .appearance, present: { context, _, present in
         present(.push, context.sharedContext.makeRGProController(context: context))

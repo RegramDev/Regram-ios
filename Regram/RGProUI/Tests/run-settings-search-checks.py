@@ -24,7 +24,7 @@ def block(source, marker):
 
 factory = block(pro, 'private func RGProControllerEntries')
 edits = pro[pro.index('    }, searchInput: { value in') + len('    }, searchInput: { value in'):pro.index('    }, settingsPage: "pro."')]
-adapter = (root / 'Regram/RGSettingsSearch/Sources/RGSettingsSearch.swift').read_text().replace('import AccountContext\n', '').replace('import RGStrings\n', '')
+adapter = (root / 'Regram/RGSettingsSearch/Sources/RGSettingsSearch.swift').read_text().replace('import AccountContext\n', '').replace('import RGStrings\n', '').replace('import TelegramPresentationData\n', '')
 reducer = block(search_ui, '.start(next: { [weak self] queryAndFoundItems, presentationData in')
 reducer = reducer[reducer.index(' in\n') + 4:-1]
 fixture = r'''
@@ -35,8 +35,15 @@ SECTIONS
 LINKS
 final class Strings {
     let rgLanguageCode: String
+    struct Component { let languageCode: String }
+    var primaryComponent: Component { Component(languageCode: rgLanguageCode) }
+    let secondaryComponent: Component? = nil
     let Common_Search = "Search", Notifications_Title = "Notifications", Appearance_AppIcon = "App Icon"
     init(rgLanguageCode: String) { self.rgLanguageCode = rgLanguageCode }
+}
+final class RGLocalizationManager {
+    static let shared = RGLocalizationManager()
+    func preferredLocale(primary: String, secondary: String?) -> String { primary }
 }
 struct PresentationData { let strings: Strings; let theme = NSObject() }
 final class RGItemListCounter { var value = -1; var count: Int { value += 1; return value } }
