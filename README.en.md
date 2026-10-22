@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.0 / b34627** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34627). The user confirmed that the test IPA worked; see the [build and delivery record](docs/navigation-community-badge-fixes.md), the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+**13.0 / b34628** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34628). This release addresses common-group pagination, Settings search, drag previews and the screenshot badge. See the [build and verification record](docs/groups-settings-search-drag-fixes.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -121,13 +121,13 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 
 Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
 
-Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
+Within Pro, global settings search is on the home page, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
-The subsequent source fixes connect the outer Settings search to the Pro catalog and address common-group pagination, search state and drag previews. These changes are not yet released; see the [follow-up record](docs/groups-settings-search-drag-fixes.md).
+The outer Settings search and Pro home search share the catalog, aliases and setting destinations. Empty results, clearing and IME composition are handled consistently. See the [follow-up record](docs/groups-settings-search-drag-fixes.md) for search, common-group pagination, drag previews and badge fixes.
 
 ## Verification scope
 
-The b34627 arm64 Release build completed for the app and six extensions. Package signatures, resources and 12 matching dSYMs passed validation; bundle identities and selected entitlements match b34626. On 2026-10-22, the user confirmed the local IPA worked. The same IPA is now the latest stable Release, with source and documentation synchronized to GitHub. The complete public download and checksum attachment passed SHA-256 verification. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Agent-run regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s earlier request. The user did not supply individual test cases or frame-rate measurements. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
+The b34628 local arm64 Release build passed for the app and six extensions, with signatures, resources and 12 matching dSYMs verified. Installation identities and selected entitlements match b34627. All 51 existing regression checks passed; search checks passed again after the adapter correction. Latest, the complete public download, checksum attachment and production update parser passed verification. Independent UIKit checks used an iOS 26.5 simulator. Full-app real-account, iOS 27 device and upgrade tests were not performed. The old code did not reproduce the two screenshot anomalies locally, so device results remain unverified. See the [build record](docs/groups-settings-search-drag-fixes.md).
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
