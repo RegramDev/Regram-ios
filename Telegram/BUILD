@@ -314,88 +314,7 @@ filegroup(
     ], exclude = ["Telegram-iOS/Icons.xcassets/**/.*"]),
 )
 
-filegroup(
-    name = "DefaultAppIcon",
-    srcs = glob([
-        "Telegram-iOS/DefaultAppIcon.xcassets/**/*",
-    ], exclude = ["Telegram-iOS/DefaultAppIcon.xcassets/**/.*"]),
-)
-
-# MARK: Regram alternative icons
-alternate_icon_folders = [
-    "RGDefault",
-    "RGBlack",
-    "RGLegacy",
-    "RGInverted",
-    "RGWhite",
-    "RGNight",
-    "RGSky",
-    "RGTitanium",
-    "RGNeon",
-    "RGNeonBlue",
-    "RGGlass",
-    "RGSparkling",
-    "RGBeta",
-    "RGPro",
-    "RGGold",
-    "RGDucky",
-    "RGDay",
-    # MARK: Regram — custom icons
-    "RGAnime",
-    "RGSilver",
-    "iKun",
-    # Stock Telegram icons, restored from upstream (Regram replaces the list wholesale).
-    "BlueIcon",
-    "BlackIcon",
-    "BlueClassicIcon",
-    "BlackClassicIcon",
-    "BlueFilledIcon",
-    "BlackFilledIcon",
-    "WhiteFilledIcon",
-    "New1",
-    "New2",
-    "Premium",
-    "PremiumTurbo",
-    "PremiumBlack"
-]
-
-# MARK: Regram — iOS persists alternate-icon identifiers. Generate legacy aliases from RG assets
-# so an update keeps the selected icon, while all source files and picker entries use RG names.
-rg_renamed_icon_folders = [name for name in alternate_icon_folders if name.startswith("RG") and name not in ["RGAnime", "RGSilver"]]
-
-[
-    genrule(
-        name = "RGLegacyAppIcon" + name[2:],
-        srcs = glob(["Telegram-iOS/{}.alticon/*.png".format(name)]),
-        # Generated filenames must match the legacy name in CFBundleIconFiles.
-        outs = ["RGAppIconAliases/SG{}.alticon/SG{}@{}x.png".format(name[2:], name[2:], scale) for scale in [2, 3]],
-        cmd = " && ".join([
-            "cp $(location Telegram-iOS/{name}.alticon/{name}@{scale}x.png) $(location RGAppIconAliases/SG{suffix}.alticon/SG{suffix}@{scale}x.png)".format(name = name, suffix = name[2:], scale = scale)
-            for scale in [2, 3]
-        ]),
-    ) for name in rg_renamed_icon_folders
-]
-
-# MARK: Regram — compile the primary icon with Icon Composer; alternate icons use PNG resources.
-composer_icon_folders = ["Regram"]
-
-[
-    filegroup(
-        name = "{}".format(name),
-        srcs = glob([
-            "Telegram-iOS/{}.alticon/*.png".format(name),
-        ]),
-    ) for name in alternate_icon_folders
-]
-
-[
-    filegroup(
-        name = "{}_icon".format(name),
-        srcs = glob([
-            "Telegram-iOS/{}.icon/**/*".format(name),
-        ]),
-    ) for name in composer_icon_folders
-]
+# MARK: Regram — B1/B2 appearance-aware app icons live in //Regram/RGBranding.
 
 filegroup(
     name = "LaunchScreen",
@@ -412,7 +331,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
+RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets", "//Regram/RGBranding:Images"]
 
 swift_library(
     name = "Lib",
@@ -1995,18 +1914,13 @@ ios_application(
         ":RequiredDeviceCapabilitiesPlist",
         ":UrlTypesInfoPlist",
     ],
-    primary_app_icon = "Regram",
-    app_icons = [ ":{}_icon".format(name) for name in composer_icon_folders ],
-    alternate_icons = [
-        ":{}".format(name) for name in alternate_icon_folders
-    ] + [
-        ":RGLegacyAppIcon{}".format(name[2:]) for name in rg_renamed_icon_folders
-    ],
+    # MARK: Regram — actool declares both appiconsets and their native appearance variants.
+    primary_app_icon = "RGConversation",
+    app_icons = ["//Regram/RGBranding:AppIcons"],
     resources = [
         ":LaunchScreen",
         # MARK: Regram — the STT test uses getAppBundle(), which resolves the main app.
         "//Regram/RGTranscription:TestAudio",
-        #":DefaultAppIcon",
     ],
     frameworks = [
         ":MtProtoKitFramework",

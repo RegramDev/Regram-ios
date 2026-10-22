@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "RGConversation-light.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "regram",
+    "version" : 1
+  }
+}

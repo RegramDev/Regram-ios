@@ -4,6 +4,7 @@
 
 ## 功能与使用
 
+- [图标、跨设备备份与标记渲染复查](icon-backup-rendering-audit.md)：取消图标切换失败提醒、统一设置恢复状态、减少重复布局；包含旧系统问题的定位边界，未构建安装包。
 - [共同群组、设置搜索与拖动预览复查](groups-settings-search-drag-fixes.md)：b34628 的分页、搜索状态与入口整合、原生开关拖动预览及顶部标记修正，包含构建、正式发布和验证边界。
 - [归档、手势与设置显示修复](navigation-community-badge-fixes.md)：b34627 的源码修复、编译、包校验及用户测试反馈，包含正式发布和公开下载核验记录。
 - [社群关联会话归档排查](community-archive-audit-20261022.md)：归档后回到主列表的原因，汇总、展开及异步补齐的修正和源码核对范围。
@@ -20,6 +21,7 @@
 
 ## 构建与维护
 
+- [图标与截图标记](../Regram/RGBranding/README.md)：双气泡、汇点每套只提供一张默认 App 图标，由 iOS 补全其他桌面外观；截图标记保留深浅两份，共用一个样式设置。本轮未构建应用或发布。
 - [GitHub Actions](github-actions-build.md)：读取版本、构建一份 IPA、校验报告与确认发布流程。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从构建 IPA 生成可重新签名的 ad-hoc 参考包，并核对结构、权限及调试符号。
 - [UI 测试](ui-testing.md)：测试环境与 XCUITest 使用方式，不能替代真实账号和设备验收。

@@ -629,12 +629,9 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     }, selectAppIcon: { icon in
         // MARK: Regram — local icons need no peer/database lookup; do not stall taps behind it.
         let apply = {
-            context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { success in
+            // MARK: Regram — a rejected request retains the previous icon without an app alert.
+            context.sharedContext.applicationBindings.requestSetAlternateIconName(icon.isDefault ? nil : icon.name, { _ in
                 refreshAppIcon()
-                if !success {
-                    let data = context.sharedContext.currentPresentationData.with { $0 }
-                    presentControllerImpl?(textAlertController(context: context, title: data.strings.Appearance_AppIcon, text: "AppIcon.ChangeFailed".i18n(RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode)), actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), nil)
-                }
             })
         }
         if !icon.isPremium { apply(); return }

@@ -1,0 +1,40 @@
+# 图标、跨设备备份与标记渲染复查
+
+2026-10-22，基于 13.0 / b34628 及当前未发布的图标资源改动。用户反馈：iOS 18.2.1 上所有非默认图标都无法切换，新系统没有该问题；手机导出的设置在 iPad 恢复后界面或功能异常。本轮未构建或发布 Regram 安装包。
+
+## 图标
+
+- 移除外观页自行显示的“无法切换图标，请稍后重试”提醒。失败时刷新为已有选择，不把失败显示成成功，也不增加重试或额外切换调用。
+- 检查了正式 b34628 IPA：iPhone 与 iPad 都声明了备用图标，抽查的 `RGBlack`、`RGLegacy`、`RGGold` 均有 120×120／180×180 PNG。不能据此将设备故障认定为名称或文件缺失。
+- 旧包使用 Icon Composer 主图标及独立 PNG 备用图标。当前图标资源已改为统一的原生 App Icon 资源目录，每套只保留一张米色默认图，由 iOS 处理其他外观。
+- 使用 `actool` 独立编译了当前两套图标资源，最低系统设为 iOS 15，目标包括 iPhone、iPad。生成的两份 `CFBundleIcons` 声明均正确引用主图标 `RGConversation` 和备用图标 `RGGathering`。`Assets.car` 中两套都有 phone／pad 的 `Icon Image` 和 `MultiSized Image` 记录。
+- 原生资源格式消除了混合打包这一兼容性变量，但不能证明 iOS 18.2.1 的实际拒绝原因已经确认。现有日志保留 UIKit 的错误域、错误码及描述；尚无该设备的错误记录，也未执行该系统真机验收。没有使用猜测性重试作为修复。
+- 合并未变化的图标状态通知，避免每次回到前台都重绘相同预览。
+
+## 跨设备设置恢复
+
+- 统一底栏布局、旧版显示／隐藏标志及原生联系人／通话页标志。导出时从当前原生状态补齐布局；导入时以完整布局为准，防止手机文件在 iPad 上得到互相矛盾的导航状态。
+- 旧格式备份仍可应用到当前布局。分类重置使用默认布局，避免保留目标设备原先的隐藏状态。
+- 写入偏好并清理缓存后，等待原生设置事务完成才发布刷新和显示成功提示；确认弹层移除后再开始恢复，避免在弹层退场时重建导航。
+- 文件读取与 JSON 校验移至后台，主线程只接收结果。恢复只刷新有关的字体、底栏、媒体、过滤或网络状态，避免无关重绘和网络重连；补齐媒体加载试验设置恢复后的通知。
+- 使用隔离偏好完成便携布局、矛盾标志、旧格式、分类重置及延迟／定向通知回归。未使用真实账户数据，也没有完成 iPhone 与 iPad 真机互传验收。
+
+## 标记渲染
+
+- 仅在样式名称或 UIKit 外观特征变化时重新解析并赋予标记图片；窗口迁移和深浅色变化仍会刷新。
+- 布局不变时复用遮罩路径，避免重复创建 `CGPath` 及重复设置窗口几何；每次布局只执行一次标记覆盖层更新。
+- 独立 UIKit 夹具在 iOS 26.5 模拟器通过 10 项检查：深浅资源与逻辑尺寸、样式切换、窗口外观继承、位置变化、显示隐藏、回退挂载，以及重复 1000 次布局时图片零次重新赋值和遮罩路径复用。
+- 这验证的是重复处理消除及对应 UI 行为，没有测量完整应用的帧率、功耗或内存峰值。
+
+## 验证
+
+```sh
+python3 build-system/check-regram-branding.py --compiled-icons-plist build-input/icon-backup-performance-20261022/icon-assets.plist
+python3 Regram/RGSimpleSettings/Tests/run-app-icon-checks.py
+python3 Regram/RGAppIconSelection/Tests/run-selection-checks.py
+python3 Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py
+python3 Regram/RGSettingsUI/Tests/run-settings-import-menu-checks.py
+python3 Regram/RGAppBadgeOffset/Tests/run-rendering-checks.py --simulator <SIMULATOR_UDID>
+```
+
+同时核对 Swift 语法、三种语言资源格式和 `git diff --check`。只编译了图标资源、Foundation 回归及独立 UIKit 夹具；完整 Regram UI 模块未构建，iOS 18.2.1、iPad 真机及覆盖升级均未验证。夹具在测试后移除自己的模拟器应用，不触碰 Regram 或实际账户数据。

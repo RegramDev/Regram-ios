@@ -4,6 +4,7 @@ import Foundation
 public final class RGAppIconSwitchCoordinator {
     private struct Request {
         let name: String?
+        let forceApply: Bool
         let completion: (Bool) -> Void
     }
     private struct AcceptedSelection {
@@ -33,10 +34,10 @@ public final class RGAppIconSwitchCoordinator {
         return snapshot
     }
 
-    public func request(_ name: String?, completion: @escaping (Bool) -> Void) {
+    public func request(_ name: String?, forceApply: Bool = false, completion: @escaping (Bool) -> Void) {
         precondition(Thread.isMainThread)
         let previous = queued
-        queued = Request(name: name, completion: completion)
+        queued = Request(name: name, forceApply: forceApply, completion: completion)
         previous?.completion(true)
         drain()
     }
@@ -50,12 +51,15 @@ public final class RGAppIconSwitchCoordinator {
 
     private static func matches(_ actual: String?, _ requested: String?) -> Bool {
         // The primary icon has no identifier; a legacy alternate named Default still needs reset.
-        guard let requested else { return actual == nil }
-        return RGAppIconNames.canonicalName(actual) == RGAppIconNames.canonicalName(requested)
+        actual == requested
     }
 
     private func updateSnapshot(_ name: String?) {
-        snapshotLock.lock(); snapshot = name; snapshotLock.unlock()
+        snapshotLock.lock()
+        let didChange = snapshot != name
+        snapshot = name
+        snapshotLock.unlock()
+        guard didChange else { return }
         changed()
     }
 
@@ -74,7 +78,7 @@ public final class RGAppIconSwitchCoordinator {
         guard active == nil, let request = queued, canApply() else { return }
         refreshFromSystem()
         queued = nil
-        if Self.matches(currentIconName, request.name) {
+        if !request.forceApply && Self.matches(currentIconName, request.name) {
             request.completion(true)
             drain()
             return

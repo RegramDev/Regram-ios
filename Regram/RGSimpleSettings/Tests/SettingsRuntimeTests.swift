@@ -234,10 +234,55 @@ extension UserDefaults {
             if value != nil { protectedSegments.append((protectedResult.string as NSString).substring(with: range)) }
         }
         expect(protectedSegments == ["Telegram"], "Pangu insertion must not alter protected code content or lose its attributes")
-        print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
+        try Self.checkPortableBackups(settings)
+        print("Settings runtime checks passed: storage/backup regressions, portable layout consistency, deferred/targeted refresh, account-scoped real-menu inventory, and reordering with hidden actions")
+    }
+
+    static func checkPortableBackups(_ settings: RGSimpleSettings) throws {
+        let phone = RGBottomBarSettings(automaticWidth: false, bottomItems: [.settings, .chats], hiddenItems: [.contacts, .calls], showLabels: false, buttonWidthFillRatio: 65, searchMode: .button)
+        let source = RGSettingsBackup(values: [
+            "bottomBarLayout": .dictionary(phone.storedValues), "hideTabBar": .bool(true),
+            "showTabNames": .bool(true), "native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)
+        ])
+        let decoded = try RGSettingsBackup.decode(source.encoded())
+        expect(decoded.values["hideTabBar"] == .bool(false) && decoded.values["showTabNames"] == .bool(false), "Portable layout must override contradictory legacy UI flags")
+        expect(decoded.values["native.showContactsTab"] == .bool(false) && decoded.values["native.showCallsTab"] == .bool(false), "Native controllers must match the imported layout")
+        settings.applyPreferences(decoded.values)
+        expect(settings.bottomBarSettings == phone && !settings.hideTabBar && !settings.showTabNames, "Restoring on another device must use one coherent navigation state")
+        expect(RGTabBarLayoutPolicy.width(containerWidth: 1024, itemCount: 2, percent: 65) > RGTabBarLayoutPolicy.width(containerWidth: 390, itemCount: 2, percent: 65), "The restored percentage must adapt to destination geometry")
+
+        final class Counts: @unchecked Sendable { var layout = 0; var fonts = 0; var network = 0; var media = 0 }
+        let counts = Counts(), center = NotificationCenter.default
+        let observers = [
+            center.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: nil) { _ in counts.layout += 1 },
+            center.addObserver(forName: RGFontConfiguration.settingsChanged, object: nil, queue: nil) { _ in counts.fonts += 1 },
+            center.addObserver(forName: RGNetworkPolicy.didChange, object: nil, queue: nil) { _ in counts.network += 1 },
+            center.addObserver(forName: RGMediaLoadingPolicy.settingsChanged, object: nil, queue: nil) { _ in counts.media += 1 }
+        ]
+        defer { observers.forEach(center.removeObserver) }
+        let filterGeneration = settings.contentFilterGeneration
+        let keys = settings.applyPreferences(["bottomBarLayout": .dictionary(phone.storedValues)], publishChanges: false)
+        expect(counts.layout == 0 && counts.fonts == 0 && counts.network == 0, "UI refresh must wait until the native preference transaction completes")
+        settings.publishPreferenceChanges(keys)
+        expect(counts.layout == 1 && counts.fonts == 0 && counts.network == 0, "A layout restore must publish once without rebuilding fonts or reconnecting transport")
+        settings.applyPreferences(["mediaLoadingExperiment": .bool(true)])
+        expect(counts.media == 1 && counts.layout == 1 && counts.fonts == 0, "Media restore must notify active loading without unrelated redraws")
+        expect(settings.contentFilterGeneration == filterGeneration, "Layout and media restores must preserve the history filter cache generation")
+        settings.applyPreferences(["showTabNames": .bool(true), "hideTabBar": .bool(true), "native.showCallsTab": .bool(false)])
+        expect(!settings.bottomBarSettings.isBottomBarVisible && settings.bottomBarSettings.showLabels && !settings.bottomBarSettings.isVisible(.calls), "Legacy-only backups must still update the portable layout")
+        settings.applyPreferences(["native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)], resetCategories: [.appearance])
+        expect(settings.bottomBarSettings == RGBottomBarSettings(), "Reset must not rebuild a hidden phone layout from the destination's previous values")
     }
     static func checkIconSwitching() {
-        expect(RGAppIconNames.canonicalName("SGSilver") == "SGSilver" && RGAppIconNames.canonicalName("SGAnime") == "SGAnime" && RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Only Regram artwork names are normalized")
+        expect(RGAppIconNames.canonicalName("SGSilver") == nil && RGAppIconNames.canonicalName("RGAnime") == nil && RGAppIconNames.canonicalName("RGGathering") == "RGGathering", "Removed artwork falls back to primary while the new alternate survives")
+        let originalBadge = RGSimpleSettings.shared.customAppBadge
+        RGSimpleSettings.shared.customAppBadge = "SkyAppBadge"
+        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.defaultName, "Removed badge selections fall back immediately")
+        RGSimpleSettings.shared.customAppBadge = RGAppBadgeNames.alternateName
+        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.alternateName, "The new alternate badge persists")
+        let oldBadgeBackup = RGSettingsBackup(values: ["customAppBadge": .string("Components/AppBadge")])
+        expect(oldBadgeBackup.values["customAppBadge"] == .string(RGAppBadgeNames.defaultName), "Legacy badge backups normalize to current artwork")
+        RGSimpleSettings.shared.customAppBadge = originalBadge
         var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
         let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })
         coordinator.request("RGBlack") { results.append($0) }

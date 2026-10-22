@@ -35,8 +35,12 @@ final class RGAppIconSelectionStore {
     }
 
     private static func matches(_ actual: String?, _ requested: String?) -> Bool {
-        guard let requested else { return actual == nil }
-        return RGAppIconNames.canonicalName(actual) == RGAppIconNames.canonicalName(requested)
+        actual == requested
+    }
+
+    /// A stale retired getter must never override an acknowledged new icon or an active request.
+    func needsRetiredIconReset(systemName: String?) -> Bool {
+        RGAppIconNames.isRetiredSystemName(systemName) && self.active == nil && self.saved?.name == nil
     }
 
     private func save(_ name: String?, pending: Bool) {

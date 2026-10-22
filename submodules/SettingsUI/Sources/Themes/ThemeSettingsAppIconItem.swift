@@ -8,6 +8,7 @@ import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
 import AppBundle
+import RGStrings // MARK: Regram
 
 private func generateBorderImage(theme: PresentationTheme, bordered: Bool, selected: Bool) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
@@ -348,7 +349,9 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     let spacing: CGFloat = floorToScreenPixels((params.width - sideInset * 2.0 - params.leftInset - params.rightInset - nodeSize.width * 4.0) / 3.0)
                     let verticalSpacing: CGFloat = 0.0
                     
-                    var x: CGFloat = sideInset
+                    // MARK: Regram — center the two local choices in the existing four-column row.
+                    let usedWidth = nodeSize.width * CGFloat(item.icons.count) + spacing * CGFloat(max(0, item.icons.count - 1))
+                    var x: CGFloat = item.icons.count < 4 ? max(sideInset, (layoutSize.width - params.leftInset - params.rightInset - usedWidth) / 2.0) : sideInset
                     var y: CGFloat = 0.0
                     
                     var i = 0
@@ -370,98 +373,21 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                         }
                         imageNode.lockNode.image = strongSelf.lockImage
                         
-                        if let image = UIImage(named: icon.imageName, in: getAppBundle(), compatibleWith: nil) {
+                        if let image = UIImage(named: icon.imageName, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: item.theme.overallDarkAppearance ? .dark : .light)) {
                             let selected = icon.name == item.currentIconName
 
                             var name = "Icon"
                             var bordered = true
-                            // MARK: Regram — product icon identifiers use RG names.
+                            // MARK: Regram — display the two approved identity families.
                             switch icon.name {
-                                case "RGDefault":
-                                    name = item.strings.Appearance_AppIconDefault
-                                    bordered = false
-                                case "RGBlack":
-                                    name = "Black"
-                                    bordered = false
-                                case "RGLegacy":
-                                    name = "Legacy"
-                                    bordered = false
-                                case "RGInverted":
-                                    name = "Inverted"
-                                case "RGWhite":
-                                    name = "White"
-                                case "RGNight":
-                                    name = "Night"
-                                    bordered = false
-                                case "RGSky":
-                                    name = "Sky"
-                                    bordered = false
-                                case "RGTitanium":
-                                    name = "Titanium"
-                                    bordered = false
-                                case "RGNeon":
-                                    name = "Neon"
-                                    bordered = false
-                                case "RGNeonBlue":
-                                    name = "Neon Blue"
-                                    bordered = false
-                                case "RGGlass":
-                                    name = "Glass"
-                                    bordered = false
-                                case "RGSparkling":
-                                    name = "Sparkling"
-                                    bordered = false
-                                case "RGBeta":
-                                    name = "β Beta"
-                                    bordered = false
-                                case "RGPro":
-                                    name = "Pro"
-                                    bordered = false
-                                case "RGGold":
-                                    name = "Gold"
-                                    bordered = false
-                                case "RGDucky":
-                                    name = "Ducky"
-                                    bordered = false
-                                case "RGDay":
-                                    name = "Day"
-                                    bordered = false
-                                case "RGAnime":
-                                    name = "Regram"
-                                    bordered = false
-                                case "RGSilver":
-                                    name = "Silver"
-                                    bordered = false
-                                case "BlueIcon":
-                                    // Not Appearance_AppIconDefault: that string is already used by
-                                    // RGDefault above, and two rows labelled "Default" is unusable.
-                                    name = "Telegram"
-                                case "BlackIcon":
-                                    name = "Telegram X"
-                                case "BlueClassicIcon":
-                                    name = item.strings.Appearance_AppIconClassic
-                                case "BlackClassicIcon":
-                                    name = item.strings.Appearance_AppIconClassicX
-                                case "BlueFilledIcon":
-                                    name = item.strings.Appearance_AppIconFilled
-                                    bordered = false
-                                case "BlackFilledIcon":
-                                    name = item.strings.Appearance_AppIconFilledX
-                                    bordered = false
-                                case "WhiteFilledIcon":
-                                    name = "⍺ White"
-                                case "New1":
-                                    name = item.strings.Appearance_AppIconNew1
-                                case "New2":
-                                    name = item.strings.Appearance_AppIconNew2
-                                case "Premium":
-                                    name = item.strings.Appearance_AppIconPremium
-                                case "PremiumBlack":
-                                    name = item.strings.Appearance_AppIconBlack
-                                case "PremiumTurbo":
-                                    name = item.strings.Appearance_AppIconTurbo
-                                default:
-                                    name = icon.name
+                            case "RGConversation":
+                                name = "AppIcon.Name.conversation".i18n(item.strings.rgLanguageCode)
+                                bordered = false
+                            case "RGGathering":
+                                name = "AppIcon.Name.gathering".i18n(item.strings.rgLanguageCode)
+                                bordered = false
+                            default:
+                                name = icon.name
                             }
                         
                             imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {

@@ -8,6 +8,7 @@ import LegacyUI
 import Display
 import TelegramPresentationData
 import AccountContext
+import AppBundle
 
 
 struct AppBadge: Identifiable, Hashable {
@@ -22,27 +23,10 @@ struct AppBadge: Identifiable, Hashable {
 }
 
 func getAvailableAppBadges() -> [AppBadge] {
-    var appBadges: [AppBadge] = [
-        // `Default` stays first: with nothing stored yet `customAppBadge` is empty and the window
-        // falls back to this asset, so the selector's initial highlight is taken from index 0.
-        .init(displayName: "Default", assetName: "Components/AppBadge"),
-        .init(displayName: "Regram", assetName: "RegramAppBadge"),
-        .init(displayName: "Zhiqiu", assetName: "ZhiqiuAppBadge"),
-        .init(displayName: "Sky", assetName: "SkyAppBadge"),
-        .init(displayName: "Night", assetName: "NightAppBadge"),
-        .init(displayName: "Titanium", assetName: "TitaniumAppBadge"),
-        .init(displayName: "Pro", assetName: "ProAppBadge"),
-        .init(displayName: "Day", assetName: "DayAppBadge"),
+    [
+        .init(displayName: "Conversation", assetName: RGAppBadgeNames.defaultName),
+        .init(displayName: "Gathering", assetName: RGAppBadgeNames.alternateName),
     ]
-
-    if RGSimpleSettings.shared.duckyAppIconAvailable {
-        appBadges.append(.init(displayName: "Ducky", assetName: "DuckyAppBadge"))
-    }
-    appBadges += [
-        .init(displayName: "Sparkling", assetName: "SparklingAppBadge"),
-    ]
-
-    return appBadges
 }
     
 @available(iOS 14.0, *)
@@ -52,6 +36,7 @@ struct AppBadgeSettingsView: View {
     
     @Environment(\.lang) var lang: String
     @Environment(\.rgSettingsColors) private var settingsColors
+    @Environment(\.colorScheme) private var colorScheme
     
     @State var selectedBadge: AppBadge
     let availableAppBadges: [AppBadge] = getAvailableAppBadges()
@@ -73,12 +58,10 @@ struct AppBadgeSettingsView: View {
     private func onSelectBadge(_ badge: AppBadge) {
         let assetName = badge.assetName
         self.selectedBadge = badge
-        let image = UIImage(bundleImageName: assetName) ?? UIImage(bundleImageName: "Components/AppBadge")
         // Regram badges are local assets; selection is always available.
         DispatchQueue.main.async {
             RGSimpleSettings.shared.customAppBadge = assetName
             if let window = self.context.sharedContext.mainWindow {
-                window.badgeView.image = image
                 // The badge can now live outside the main view tree. Relayout its new width.
                 window.updateAppBadgeLayout()
             }
@@ -89,7 +72,7 @@ struct AppBadgeSettingsView: View {
         RGSettingsList {
             RGSettingsSection(header: Text("AppBadge.Current".i18n(lang))) {
                 VStack(spacing: 12) {
-                    if let image = UIImage(bundleImageName: selectedBadge.assetName) {
+                    if let image = self.artwork(selectedBadge.assetName) {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFit()
@@ -110,7 +93,7 @@ struct AppBadgeSettingsView: View {
                         onSelectBadge(badge)
                     } label: {
                         HStack(spacing: 12) {
-                            if let image = UIImage(bundleImageName: badge.assetName) {
+                            if let image = self.artwork(badge.assetName) {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFit()
@@ -146,6 +129,10 @@ struct AppBadgeSettingsView: View {
 
     private var primaryColor: Color {
         settingsColors.primary
+    }
+
+    private func artwork(_ name: String) -> UIImage? {
+        UIImage(named: name, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: self.colorScheme == .dark ? .dark : .light))
     }
 
     private var accentColor: Color {

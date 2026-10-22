@@ -7,10 +7,12 @@ import Foundation
 
     static func main() throws {
         expect(RGAppIconNames.canonicalName(nil) == nil, "The primary icon remains nil")
-        expect(RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Retired RG artwork selects the current default")
+        expect(RGAppIconNames.canonicalName("RGAnime") == nil, "Retired RG artwork selects the current primary")
         for name in ["RGSilver", "BlueIcon", "SGSilver", "SGAnime"] {
-            expect(RGAppIconNames.canonicalName(name) == name, "Swiftgram icon identifiers must not map to RG icons")
+            expect(RGAppIconNames.canonicalName(name) == nil, "Removed artwork must resolve to primary instead of retaining a missing asset")
         }
+
+        expect(RGAppIconNames.canonicalName("RGGathering") == "RGGathering", "The approved alternate must survive normalization")
 
         let decoder = JSONDecoder()
         var web = try JSONSerialization.jsonObject(with: JSONEncoder().encode(RGWebSettings.defaultValue)) as! [String: Any]

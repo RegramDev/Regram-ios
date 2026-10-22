@@ -263,7 +263,6 @@ public class RGSimpleSettings {
         case primaryUserId
 
         case dismissedRGSuggestions
-        case duckyAppIconAvailable
         case transcriptionBackend
         case translationBackend
         case sttBaseURL
@@ -507,7 +506,6 @@ public class RGSimpleSettings {
         Keys.inputToolbar.rawValue: false,
         Keys.primaryUserId.rawValue: "",
         Keys.dismissedRGSuggestions.rawValue: [],
-        Keys.duckyAppIconAvailable.rawValue: true,
         Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
         Keys.sttBaseURL.rawValue: "",
         Keys.sttEndpoint.rawValue: "",
@@ -525,7 +523,7 @@ public class RGSimpleSettings {
         Keys.translationLLMUseContext.rawValue: false,
         Keys.translationLLMTemperatureTenths.rawValue: Int32(2),
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
-        Keys.customAppBadge.rawValue: "",
+        Keys.customAppBadge.rawValue: RGAppBadgeNames.defaultName,
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
         Keys.wideTabBar.rawValue: false,
@@ -803,6 +801,7 @@ public class RGSimpleSettings {
             for key in keys {
                 let storage = self.backupStorage(key: key, wrappers: wrappers)
                 var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
+                if key == RGBottomBarSettings.storageKey { raw = self.bottomBarSettings.storedValues }
                 if key == Keys.chatListLines.rawValue { raw = self.chatListLines } // MARK: Regram
                 if raw == nil && key == "forceBuiltInMic" { raw = false }
                 if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
@@ -811,14 +810,30 @@ public class RGSimpleSettings {
         return RGSettingsBackup(values: values)
     }
 
-    public func applyPreferences(_ values: [String: RGBackupValue], resetCategories: Set<RGBackupCategory> = []) {
+    @discardableResult
+    public func applyPreferences(_ values: [String: RGBackupValue], resetCategories: Set<RGBackupCategory> = [], publishChanges: Bool = true) -> Set<String> {
         // MARK: Regram — old backups carry only the remember-last flag; it must replace a newer mode too.
         var values = values
+        if values[RGBottomBarSettings.storageKey] == nil,
+           ["showTabNames", "hideTabBar", "tabBarWidthPercent", "native.showContactsTab", "native.showCallsTab"].contains(where: { values[$0] != nil }) {
+            var layout = resetCategories.contains(.appearance) ? RGBottomBarSettings() : self.bottomBarSettings
+            if case let .bool(value)? = values["showTabNames"] { layout.showLabels = value }
+            if case let .bool(value)? = values["hideTabBar"] { layout.isBottomBarVisible = !value }
+            if case let .integer(value)? = values["tabBarWidthPercent"], let percent = Int32(exactly: value) {
+                layout.automaticWidth = percent == 0
+                layout.buttonWidthFillRatio = RGTabBarLayoutPolicy.normalizedPercent(percent)
+            }
+            if case let .bool(value)? = values["native.showContactsTab"] { layout.setVisible(.contacts, visible: value) }
+            if case let .bool(value)? = values["native.showCallsTab"] { layout.setVisible(.calls, visible: value) }
+            values[RGBottomBarSettings.storageKey] = .dictionary(layout.storedValues)
+        }
+        values = RGSettingsBackup(values: values).values
         if values["features.chatListStartupFolderMode"] == nil, case let .bool(rememberLast)? = values["rememberLastFolder"] {
             values["features.chatListStartupFolderMode"] = .string(rememberLast ? "last" : "telegram")
         }
         let wrappers = Mirror(reflecting: self).children.compactMap { $0.value as? RGPreferenceCache }
         let resetKeys = Set(resetCategories.flatMap { RGSettingsBackup.categoryKeys[$0] ?? [] })
+        let changedKeys = Set(values.keys).union(resetKeys)
         for key in resetKeys where !key.hasPrefix("native.") {
             let storage = self.backupStorage(key: key, wrappers: wrappers)
             storage.removeObject(forKey: key)
@@ -832,21 +847,41 @@ public class RGSimpleSettings {
             }
             else { storage.set(value.propertyList, forKey: key) }
         }
+        if changedKeys.contains(where: { $0.hasPrefix("font") }) {
+            // Update the stored revision before clearing wrappers, without an early font notification.
+            UserDefaults.standard.set(UserDefaults.standard.integer(forKey: Keys.fontAssetsRevision.rawValue) + 1, forKey: Keys.fontAssetsRevision.rawValue)
+        }
         for wrapper in wrappers { wrapper.invalidatePreferenceCache() }
-        self.notifyContentFiltersChanged()
-        self.antiRevokeCacheLock.lock(); self.cachedAntiRevokePeerIds = nil; self.antiRevokeCacheLock.unlock()
-        self.fontAssetsRevision += 1
-        NotificationCenter.default.post(name: RGFontConfiguration.settingsChanged, object: nil)
-        NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil)
-        NotificationCenter.default.post(name: RGVideoQualityPreference.settingsChanged, object: nil)
-        NotificationCenter.default.post(name: Self.spoilerSettingsDidChange, object: nil)
-        NotificationCenter.default.post(name: Self.revokedMarkerDidChange, object: nil)
-        NotificationCenter.default.post(name: Self.summarySettingsDidChange, object: nil)
+        if !changedKeys.isDisjoint(with: ["messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds"]) {
+            self.notifyContentFiltersChanged(postNotification: false)
+        }
+        if changedKeys.contains("antiRevokePeerIds") {
+            self.antiRevokeCacheLock.lock(); self.cachedAntiRevokePeerIds = nil; self.antiRevokeCacheLock.unlock()
+        }
         self.synchronizeShared()
         // MARK: Regram — restore/reset transport preferences into the extension store as well.
-        if self.networkPolicy.dohEnabled { UserDefaults.standard.set(false, forKey: Keys.localDNSForProxyHost.rawValue) }
-        if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared); shared.set(self.localDNSForProxyHost, forKey: Keys.localDNSForProxyHost.rawValue) }
-        NotificationCenter.default.post(name: RGNetworkPolicy.didChange, object: nil)
+        if !changedKeys.isDisjoint(with: ["customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost"]) {
+            if self.networkPolicy.dohEnabled { UserDefaults.standard.set(false, forKey: Keys.localDNSForProxyHost.rawValue) }
+            if let shared = APP_GROUP_USER_DEFAULTS { self.networkPolicy.save(to: shared); shared.set(self.localDNSForProxyHost, forKey: Keys.localDNSForProxyHost.rawValue) }
+        }
+        if publishChanges { self.publishPreferenceChanges(changedKeys) }
+        return changedKeys
+    }
+
+    /// A restore publishes only after account-manager preferences have also committed.
+    public func publishPreferenceChanges(_ keys: Set<String>) {
+        func touches(_ names: String...) -> Bool { !keys.isDisjoint(with: names) }
+        let center = NotificationCenter.default
+        if keys.contains(where: { $0.hasPrefix("font") }) { center.post(name: RGFontConfiguration.settingsChanged, object: nil) }
+        if touches("bottomBarLayout", "showTabNames", "hideTabBar", "tabBarWidthPercent", "native.showContactsTab", "native.showCallsTab") { center.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
+        if touches("hideChatListSeparators", "compactChatList", "chatListLines") { center.post(name: Self.chatListSeparatorSettingsDidChange, object: nil) }
+        if touches("messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds") { center.post(name: Self.contentFiltersDidChangeNotification, object: nil) }
+        if touches("defaultVideoQuality") { center.post(name: RGVideoQualityPreference.settingsChanged, object: nil) }
+        if touches("mediaLoadingExperiment") { center.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil) }
+        if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
+        if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
+        if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
+        if touches("customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost") { center.post(name: RGNetworkPolicy.didChange, object: nil) }
     }
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
@@ -1202,14 +1237,14 @@ public class RGSimpleSettings {
     /// to arrive.
     public static let contentFiltersDidChangeNotification = Notification.Name("RGSimpleSettings.contentFiltersDidChange")
 
-    private func notifyContentFiltersChanged() {
+    private func notifyContentFiltersChanged(postNotification: Bool = true) {
         self.contentFilterCacheLock.lock()
         self.cachedMessageFilterRules = nil
         self.cachedBlockedPeerIds = nil
         self.cachedMessageFilterDisabledPeerIds = nil
         self.contentFilterGenerationValue += 1
         self.contentFilterCacheLock.unlock()
-        NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil)
+        if postNotification { NotificationCenter.default.post(name: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil) }
     }
 
     private var contentFilterGenerationValue: Int = 0
@@ -1531,8 +1566,6 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.dismissedRGSuggestions.rawValue)
     public var dismissedRGSuggestions: [String]
 
-    @UserDefault(key: Keys.duckyAppIconAvailable.rawValue)
-    public var duckyAppIconAvailable: Bool
 
     @UserDefault(key: Keys.transcriptionBackend.rawValue)
     public var transcriptionBackend: String
@@ -1575,7 +1608,12 @@ public class RGSimpleSettings {
     public var translationBackend: String
 
     @UserDefault(key: Keys.customAppBadge.rawValue)
-    public var customAppBadge: String
+    private var storedCustomAppBadge: String
+
+    public var customAppBadge: String {
+        get { RGAppBadgeNames.canonicalName(self.storedCustomAppBadge) }
+        set { self.storedCustomAppBadge = RGAppBadgeNames.canonicalName(newValue) }
+    }
 
     @UserDefault(key: Keys.canUseNY.rawValue)
     public var canUseNY: Bool

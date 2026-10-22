@@ -42,49 +42,69 @@ private final class Fixture {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("keep", forKey: "unrelated-setting")
-        let existing = Fixture(defaults, system: "RGBlack")
-        precondition(existing.coordinator.currentIconName == "RGBlack")
-        precondition(Fixture(defaults).coordinator.currentIconName == "RGBlack", "An existing installation's observed alternate must be saved without requiring reselection")
+        let existing = Fixture(defaults, system: "RGGathering")
+        precondition(existing.coordinator.currentIconName == "RGGathering")
+        precondition(Fixture(defaults).coordinator.currentIconName == "RGGathering", "A valid observed alternate survives a cold nil getter")
         defaults.removeObject(forKey: RGAppIconSelectionStore.key)
         let first = Fixture(defaults)
-        first.coordinator.request("RGBlack") { precondition($0) }
+        first.coordinator.request("RGGathering") { precondition($0) }
         first.finish(0, true)
         let restarted = Fixture(defaults)
-        precondition(restarted.coordinator.currentIconName == "RGBlack", "A cold nil getter cannot erase the acknowledged selection")
+        precondition(restarted.coordinator.currentIconName == "RGGathering")
         restarted.coordinator.resume(); restarted.clock.advance(2)
-        precondition(restarted.coordinator.currentIconName == "RGBlack")
-        restarted.system = "RGBlack"; restarted.coordinator.resume()
+        precondition(restarted.coordinator.currentIconName == "RGGathering")
+        restarted.system = "RGGathering"; restarted.coordinator.resume()
         let confirmedRestart = Fixture(defaults)
-        precondition(confirmedRestart.coordinator.currentIconName == "RGBlack", "Even a previously confirmed icon must survive a cold nil getter")
+        precondition(confirmedRestart.coordinator.currentIconName == "RGGathering")
         let prior = defaults.dictionary(forKey: RGAppIconSelectionStore.key)! as NSDictionary
-        confirmedRestart.coordinator.request("RGGold") { precondition(!$0) }
+        confirmedRestart.coordinator.request(nil) { precondition(!$0) }
         confirmedRestart.finish(0, false)
-        precondition(prior == defaults.dictionary(forKey: RGAppIconSelectionStore.key)! as NSDictionary, "Failed changes must not replace persistence")
+        precondition(prior == defaults.dictionary(forKey: RGAppIconSelectionStore.key)! as NSDictionary, "A failed reset cannot overwrite persistence")
         confirmedRestart.coordinator.request(nil) { precondition($0) }
         confirmedRestart.finish(1, true)
         precondition(defaults.dictionary(forKey: RGAppIconSelectionStore.key)?["primary"] as? Bool == true)
-        let primaryRestart = Fixture(defaults, system: "RGBlack")
-        precondition(primaryRestart.coordinator.currentIconName == nil, "Persist a primary reset even while UIKit reports the old alternate")
+        let primaryRestart = Fixture(defaults, system: "RGGathering")
+        precondition(primaryRestart.coordinator.currentIconName == nil, "Keep an acknowledged primary while UIKit still reports the old alternate")
         primaryRestart.system = nil; primaryRestart.coordinator.resume()
 
         let missingCallback = Fixture(defaults)
         var result: Bool?
-        missingCallback.coordinator.request("RGGold") { result = $0 }
-        missingCallback.system = "RGGold"; missingCallback.clock.advance(15)
-        precondition(result == true && Fixture(defaults).coordinator.currentIconName == "RGGold", "Observed transitions without callbacks must persist")
-        let resetWithoutCallback = Fixture(defaults, system: "RGGold")
+        missingCallback.coordinator.request("RGGathering") { result = $0 }
+        missingCallback.system = "RGGathering"; missingCallback.clock.advance(15)
+        precondition(result == true && Fixture(defaults).coordinator.currentIconName == "RGGathering")
+        let resetWithoutCallback = Fixture(defaults, system: "RGGathering")
         resetWithoutCallback.coordinator.request(nil) { precondition($0) }
         resetWithoutCallback.system = nil; resetWithoutCallback.clock.advance(15)
-        precondition(Fixture(defaults, system: "RGGold").coordinator.currentIconName == nil)
+        precondition(Fixture(defaults, system: "RGGathering").coordinator.currentIconName == nil)
 
         let timeout = Fixture(defaults)
-        timeout.coordinator.request("RGBlack") { precondition(!$0) }
+        timeout.coordinator.request("RGGathering") { precondition(!$0) }
         timeout.clock.advance(15)
-        timeout.coordinator.request("RGGold") { precondition($0) }
-        timeout.finish(0, true) // An interrupted request's late callback must be ignored.
+        timeout.coordinator.request(nil, forceApply: true) { precondition($0) }
+        timeout.finish(0, true)
         timeout.finish(1, true)
-        precondition(Fixture(defaults).coordinator.currentIconName == "RGGold")
+        precondition(Fixture(defaults).coordinator.currentIconName == nil, "A late completion cannot revive a timed-out selection")
+
+        for name in ["RGAnime", "RGDefault", "SGNight", "BlueIcon", "PremiumTurbo", "removed-future-icon"] {
+            defaults.set(["version": 1, "primary": false, "name": name, "pending": false], forKey: RGAppIconSelectionStore.key)
+            let retired = Fixture(defaults, system: name)
+            precondition(retired.coordinator.currentIconName == nil, "Saved retired icons must resolve to primary")
+            precondition(retired.selection.needsRetiredIconReset(systemName: name))
+            retired.coordinator.request(nil, forceApply: true) { precondition($0) }
+            precondition(retired.requests.count == 1)
+            retired.finish(0, true)
+            precondition(defaults.dictionary(forKey: RGAppIconSelectionStore.key)?["primary"] as? Bool == true)
+            retired.coordinator.request("RGGathering") { precondition($0) }
+            precondition(!retired.selection.needsRetiredIconReset(systemName: name), "A foreground migration cannot interrupt a new request")
+            retired.finish(1, true)
+            precondition(!retired.selection.needsRetiredIconReset(systemName: name), "A stale retired getter cannot undo an acknowledged new icon")
+            precondition(retired.selection.resolvedName(systemName: name) == "RGGathering")
+        }
+        for name in ["", "Components/AppBadge", "SkyAppBadge", "RegramAppBadge", "unknown"] {
+            precondition(RGAppBadgeNames.canonicalName(name) == RGAppBadgeNames.defaultName)
+        }
+        precondition(RGAppBadgeNames.canonicalName(RGAppBadgeNames.alternateName) == RGAppBadgeNames.alternateName)
         precondition(defaults.string(forKey: "unrelated-setting") == "keep")
-        print("Icon persistence passed: cold starts, stale getters, observed transitions, primary reset, real failures, missing/late callbacks and unrelated preferences.")
+        print("Icon persistence passed: cold starts, stale getters, primary reset, failure/timeout/late callbacks, retired icon migration, acknowledged-selection protection and badge fallback.")
     }
 }

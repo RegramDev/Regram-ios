@@ -14,7 +14,6 @@ public func updateRGWebSettingsInteractivelly(context: AccountContext) {
         let _ = getRGSettings(token: token).startStandalone(next: { webSettings in
             RGLogger.shared.log("RGAPI", "New RGWebSettings for id \(context.account.peerId.id._internalGetInt64Value()): \(webSettings) ")
             RGSimpleSettings.shared.canUseStealthMode = webSettings.global.storiesAvailable
-            RGSimpleSettings.shared.duckyAppIconAvailable = webSettings.global.duckyAppIconAvailable
             RGSimpleSettings.shared.canUseNY = webSettings.global.nyAvailable
             let _ = (context.account.postbox.transaction { transaction in
                 updateAppConfiguration(transaction: transaction, { configuration -> AppConfiguration in

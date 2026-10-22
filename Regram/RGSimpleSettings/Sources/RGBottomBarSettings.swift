@@ -288,7 +288,11 @@ public extension RGBottomBarSettings {
                 buttonWidthFillRatio: (defaults.object(forKey: "tabBarWidthPercent") as? NSNumber)?.int32Value ?? 100
             )
         }
-        return RGBottomBarSettings(
+        return RGBottomBarSettings(storedValues: values)
+    }
+
+    init(storedValues values: [String: String]) {
+        self.init(
             automaticWidth: values["automaticWidth"] != "false",
             isBottomBarVisible: values["visible"] != "false",
             bottomItems: (values["items"] ?? "").split(separator: ",").compactMap { RGBottomBarItemId(rawValue: String($0)) },
@@ -304,15 +308,19 @@ public extension RGBottomBarSettings {
         )
     }
 
-    func save(to defaults: UserDefaults = .standard) {
+    var storedValues: [String: String] {
         var value = self
         value.normalize()
-        defaults.set([
+        return [
             "automaticWidth": String(value.automaticWidth), "visible": String(value.isBottomBarVisible), "items": value.bottomItems.map(\.rawValue).joined(separator: ","),
             "external": value.externalItem?.rawValue ?? "", "hidden": RGBottomBarItemId.allCases.filter { value.hiddenItems.contains($0) }.map(\.rawValue).joined(separator: ","),
             "topSearch": String(value.topSearchVisible), "labels": String(value.showLabels),
             "width": value.widthMode.rawValue, "slots": value.slotMode.rawValue, "fill": String(value.buttonWidthFillRatio),
             "alignment": value.alignment.rawValue, "search": value.searchMode.rawValue
-        ], forKey: Self.storageKey)
+        ]
+    }
+
+    func save(to defaults: UserDefaults = .standard) {
+        defaults.set(self.storedValues, forKey: Self.storageKey)
     }
 }

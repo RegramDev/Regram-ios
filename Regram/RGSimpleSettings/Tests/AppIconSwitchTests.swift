@@ -31,6 +31,9 @@ private final class Fixture {
 
 @main enum IconChecks {
     static func main() {
+        let unchanged = Fixture()
+        for _ in 0..<20 { unchanged.coordinator.resume() }
+        precondition(unchanged.requests.isEmpty && unchanged.notifications.isEmpty, "Foreground reconciliation must neither switch an icon nor redraw an unchanged selection")
         let delayed = Fixture(); var results: [Bool] = []
         delayed.request("RGBlack") { results.append($0) }
         delayed.requests[0].1(true)
@@ -91,7 +94,11 @@ private final class Fixture {
         let group = DispatchGroup(); group.enter()
         DispatchQueue.global().async { precondition(delayed.coordinator.currentIconName == "RGGold"); group.leave() }
         precondition(group.wait(timeout: .now() + 2) == .success)
-        precondition(RGAppIconNames.canonicalName("SGAnime") == "SGAnime")
+        precondition(RGAppIconNames.canonicalName("SGAnime") == nil)
+        let forced = Fixture()
+        forced.coordinator.request(nil, forceApply: true) { precondition($0) }
+        precondition(forced.requests.count == 1, "Retired artwork must be reset even when persistence already resolves to primary")
+        forced.requests[0].1(true)
         print("App icons: UIKit acknowledgement with delayed getter, quiet success, foreground gating, ordered requests, primary reset, legacy names, true failure, timeout/late callbacks and background snapshots passed.")
     }
 }

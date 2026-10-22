@@ -452,14 +452,8 @@ public class Window1 {
     
     public init(hostView: WindowHostView, statusBarHost: StatusBarHost?) {
         self.hostView = hostView
-        self.badgeView = UIImageView()
+        self.badgeView = RGAppBadgeImageView() // MARK: Regram — adaptive B1/B2 artwork.
         self.badgeOverlay = RGAppBadgeOverlay(badgeView: self.badgeView)
-        // MARK: Regram — badge appearance follows the saved preference.
-        if let image = UIImage(bundleImageName: RGSimpleSettings.shared.customAppBadge) {
-            self.badgeView.image = image
-        } else {
-        self.badgeView.image = UIImage(bundleImageName: "Components/AppBadge")
-        }
         // MARK: Regram — order the fallback badge above app content; this cannot order system windows.
         self.badgeView.isOpaque = false
         self.badgeView.layer.zPosition = 1000
@@ -935,10 +929,14 @@ public class Window1 {
 
     // MARK: Regram — image changes need layout even when the cached window geometry is unchanged.
     public func updateAppBadgeLayout() {
+        (self.badgeView as? RGAppBadgeImageView)?.reloadArtwork()
         guard let image = self.badgeView.image else { return }
+        // MARK: Regram — the visibility update also lays out the overlay; do it once per pass.
+        if self.badgeView.superview == nil || self.badgeView.superview === self.hostView.containerView {
+            let frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
+            if self.badgeView.frame != frame { self.badgeView.frame = frame }
+        }
         self.updateBadgeVisibility()
-        self.badgeView.frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
-        self.updateBadgePresentation()
         self.hostView.containerView.bringSubviewToFront(self.badgeInsertionAnchor)
         if self.badgeView.superview === self.hostView.containerView {
             self.hostView.containerView.bringSubviewToFront(self.badgeView)

@@ -6,8 +6,9 @@ import AppBundle
 private let gradientImage = UIImage(bundleImageName: "Item List/Icons/Gradient")
 private let backdropImage = UIImage(bundleImageName: "Item List/Icons/Backdrop")
 // MARK: Regram
-private func renderRegramSettingsArtwork(name: String) -> UIImage? {
-    guard let image = UIImage(bundleImageName: name)?.cgImage else { return nil }
+private func renderRegramSettingsArtwork(name: String, dark: Bool? = nil) -> UIImage? {
+    let traits = dark.map { UITraitCollection(userInterfaceStyle: $0 ? .dark : .light) }
+    guard let image = UIImage(named: name, in: getAppBundle(), compatibleWith: traits)?.cgImage else { return nil }
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         let rect = CGRect(origin: .zero, size: size)
         context.clear(rect)
@@ -136,10 +137,11 @@ public struct PresentationResourcesSettings {
     public static let regramAppIconDidChange = Notification.Name("Regram.AppIconDidChange")
     // MARK: Regram — use the same thumbnail as the app icon picker, preserving its colors.
     private static let regramAppIconCache = NSCache<NSString, UIImage>()
-    public static func regramProIcon(imageName: String) -> UIImage? {
-        if let image = regramAppIconCache.object(forKey: imageName as NSString) { return image }
-        guard let image = renderRegramSettingsArtwork(name: imageName) else { return regramPro }
-        regramAppIconCache.setObject(image, forKey: imageName as NSString)
+    public static func regramProIcon(imageName: String, dark: Bool) -> UIImage? {
+        let key = "\(imageName).\(dark ? "dark" : "light")" as NSString
+        if let image = regramAppIconCache.object(forKey: key) { return image }
+        guard let image = renderRegramSettingsArtwork(name: imageName, dark: dark) ?? renderRegramSettingsArtwork(name: "RegramPro", dark: dark) else { return nil }
+        regramAppIconCache.setObject(image, forKey: key)
         return image
     }
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])

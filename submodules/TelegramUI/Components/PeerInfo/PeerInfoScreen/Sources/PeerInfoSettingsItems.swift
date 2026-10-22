@@ -245,7 +245,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
         let appIcons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
         let selectedName = context.sharedContext.applicationBindings.getAlternateIconName()
         let selectedIcon = appIcons.first(where: { selectedName == nil ? $0.isDefault : $0.name == selectedName })
-        let proIcon = PresentationResourcesSettings.regramProIcon(imageName: selectedIcon?.imageName ?? "RGAnime")
+        let proIcon = PresentationResourcesSettings.regramProIcon(imageName: selectedIcon?.imageName ?? "RGConversationPreview", dark: presentationData.theme.overallDarkAppearance)
         items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: proIcon, action: {
             interaction.openSettings(.regramPro)
         }))

@@ -801,7 +801,7 @@
 "Diagnostics.DC.Failed" = "失败";
 "Browser.Translation.SystemUnavailable" = "Apple 网页翻译需要 iOS 18 或更高版本。请在本机选择其他翻译服务。";
 
-"AppBadge.Notice" = "点按样式即可应用。预览已放大，截图中的标记保持正常大小。";
+"AppBadge.Notice" = "点按样式即可应用，标记随界面自动切换深浅色。预览已放大，截图中的标记保持正常大小。";
 "AppBadge.Title" = "截图标记";
 "Common.KnowWhatYouDo" = "请在了解这些选项的作用后再修改。";
 "LocalPremium.Notice" = "在本机启用会员界面与客户端选项。贴纸、回应等需要 Telegram 服务端验证的权益仍需有效订阅。";
@@ -989,7 +989,6 @@
 "DNSDiagnostics.NoPolicyAddresses" = "没有符合当前策略的地址。";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "无法切换图标，请稍后重试。";
 "RevokedMarker.Title" = "已撤回消息标记";
 "RevokedMarker.Style" = "标记样式";
 "RevokedMarker.Style.icon" = "图标";
@@ -1215,13 +1214,9 @@
 
 "AppBadge.Current" = "当前标记";
 "AppBadge.Choose" = "选择样式";
-"AppBadge.Name.default" = "默认";
-"AppBadge.Name.regram" = "Regram";
-"AppBadge.Name.zhiqiu" = "知秋";
-"AppBadge.Name.sky" = "晴空";
-"AppBadge.Name.night" = "夜色";
-"AppBadge.Name.titanium" = "钛色";
-"AppBadge.Name.pro" = "渐彩";
-"AppBadge.Name.day" = "晨光";
-"AppBadge.Name.ducky" = "小黄鸭";
-"AppBadge.Name.sparkling" = "星光";
+
+"AppIcon.Name.conversation" = "双气泡";
+"AppBadge.Name.conversation" = "双气泡";
+
+"AppIcon.Name.gathering" = "汇点";
+"AppBadge.Name.gathering" = "汇点";

@@ -73,7 +73,21 @@ public struct RGSettingsBackup: Codable {
 
     public init(values: [String: RGBackupValue], createdAt: Date = Date()) {
         self.version = 1; self.createdAt = createdAt
-        self.values = values.filter { Self.category(for: $0.key) != nil }
+        var normalizedValues = values.filter { Self.category(for: $0.key) != nil }
+        if case let .string(name)? = normalizedValues["customAppBadge"] {
+            normalizedValues["customAppBadge"] = .string(RGAppBadgeNames.canonicalName(name))
+        }
+        // A portable layout and its legacy/native flags must describe the same navigation state.
+        if case let .dictionary(stored)? = normalizedValues[RGBottomBarSettings.storageKey] {
+            let layout = RGBottomBarSettings(storedValues: stored)
+            normalizedValues[RGBottomBarSettings.storageKey] = .dictionary(layout.storedValues)
+            normalizedValues["hideTabBar"] = .bool(!layout.isBottomBarVisible)
+            normalizedValues["showTabNames"] = .bool(layout.showLabels)
+            normalizedValues["tabBarWidthPercent"] = .integer(Int64(layout.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(layout.buttonWidthFillRatio)))
+            normalizedValues["native.showContactsTab"] = .bool(layout.isVisible(.contacts))
+            normalizedValues["native.showCallsTab"] = .bool(layout.isVisible(.calls))
+        }
+        self.values = normalizedValues
     }
 
     public static let categoryKeys: [RGBackupCategory: [String]] = [
@@ -84,7 +98,10 @@ public struct RGSettingsBackup: Codable {
         .media: ["startTelescopeWithRearCam", "forceBuiltInMic", "uploadSpeedBoost", "downloadSpeedBoost", "mediaLoadingExperiment", "showMediaMetadata", "defaultVideoQuality", "customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost", "sendLargePhotos", "outgoingPhotoQuality", "disableGalleryCamera", "disableGalleryCameraPreview", "forceSystemSharing", "native.enableVoipTcp", "features.videoPIPSwipeDirection"],
         .notifications: ["pinnedMessageNotifications", "mentionsAndRepliesNotifications", "pinnedMessageNotificationsExceptions", "mentionsAndRepliesNotificationsExceptions", "filterNotifications", "features.hideTabBarPermissionWarnings"]
     ]
-    public static func category(for key: String) -> RGBackupCategory? { RGBackupCategory.allCases.first { categoryKeys[$0]?.contains(key) == true } }
+    private static let categoriesByKey = Dictionary(RGBackupCategory.allCases.flatMap { category in
+        (categoryKeys[category] ?? []).map { ($0, category) }
+    }, uniquingKeysWith: { first, _ in first })
+    public static func category(for key: String) -> RGBackupCategory? { categoriesByKey[key] }
 
     public func selectedValues(categories: Set<RGBackupCategory>) -> [String: RGBackupValue] {
         self.values.filter { Self.category(for: $0.key).map(categories.contains) == true }
