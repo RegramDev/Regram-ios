@@ -30,18 +30,19 @@ enum Design: String, CaseIterable {
 enum Appearance: String, CaseIterable {
     case light, dark
     func background(_ design: Design) -> String {
-        self == .light ? "F3EADC" : "E5E5EA"
+        self == .light ? "F3EADC" : "242426"
     }
     func foreground(_ design: Design) -> String {
+        if self == .dark { return "F8F1E5" }
         switch design {
-        case .conversation: return self == .light ? "14243E" : "1C1C1E"
-        case .azure: return self == .light ? "15385B" : "24364D"
-        case .iris: return self == .light ? "38304C" : "242135"
-        case .mint: return self == .light ? "183D36" : "1F3630"
-        case .gathering: return self == .light ? "1B1B19" : "1C1C1E"
-        case .amber: return self == .light ? "A96A24" : "8A561B"
-        case .nebula: return self == .light ? "6A5ACD" : "5E50B8"
-        case .jade: return self == .light ? "1C8874" : "156B5D"
+        case .conversation: return "14243E"
+        case .azure: return "15385B"
+        case .iris: return "38304C"
+        case .mint: return "183D36"
+        case .gathering: return "1B1B19"
+        case .amber: return "A96A24"
+        case .nebula: return "6A5ACD"
+        case .jade: return "1C8874"
         }
     }
     func badge(_ design: Design) -> String { background(design) }
@@ -51,6 +52,9 @@ enum Appearance: String, CaseIterable {
         case .azure: return "268BEB"
         case .iris: return "8D6ADE"
         case .mint: return "29A58A"
+        case .amber: return "A96A24"
+        case .nebula: return "6A5ACD"
+        case .jade: return "1C8874"
         default: return foreground(design)
         }
     }
@@ -83,9 +87,10 @@ struct Layer {
 }
 
 // These are the actual contours of the two approved original designs, not replacement shapes.
-func traced(_ name: String) -> CGPath {
+func traced(_ name: String, contourIndex: Int? = nil) -> CGPath {
     let path = CGMutablePath()
-    for points in geometry[name] as! [[[Double]]] {
+    for (index, points) in (geometry[name] as! [[[Double]]]).enumerated() {
+        if let contourIndex, index != contourIndex { continue }
         guard let first = points.first else { continue }
         path.move(to: CGPoint(x: first[0], y: first[1]))
         if name.contains("wordmark") {
@@ -123,6 +128,12 @@ func layers(_ design: Design, _ appearance: Appearance, background: String) -> [
             Layer(path: traced("conversation-overlap"), fill: appearance.overlap(design))
         ]
     case .gathering, .amber, .nebula, .jade:
+        if appearance == .dark && design != .gathering {
+            // Keep the approved bottom contour as a color accent; the other shapes and lettering stay cream.
+            return (geometry["gathering-mark"] as! [[[Double]]]).indices.map { index in
+                Layer(path: traced("gathering-mark", contourIndex: index), fill: index == 3 ? appearance.accent(design) : appearance.foreground(design))
+            }
+        }
         return [Layer(path: traced("gathering-mark"), fill: appearance.foreground(design))]
     }
 }

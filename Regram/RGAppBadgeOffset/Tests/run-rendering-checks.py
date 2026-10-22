@@ -115,11 +115,11 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         self.checkDark()
     }
     func checkDark() {
-        results["dark_asset_automatically_reloaded"] = background(badge.image, matches: [229, 229, 234])
+        results["dark_asset_automatically_reloaded"] = background(badge.image, matches: [36, 36, 38])
         let before = Probe.assignments
         RGSimpleSettings.shared.customAppBadge = "RGGatheringBadge"
         badge.reloadArtwork()
-        results["one_selection_reloads_once"] = Probe.assignments == before + 1 && background(badge.image, matches: [229, 229, 234])
+        results["one_selection_reloads_once"] = Probe.assignments == before + 1 && background(badge.image, matches: [36, 36, 38])
         let overlay = RGAppBadgeOverlay(badgeView: badge)
         let fallback = window!.rootViewController!.view!
         let frame = CGRect(x: 50, y: 80, width: 112, height: 28)
@@ -132,7 +132,7 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         let moved = frame.offsetBy(dx: 40, dy: 15)
         overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: moved, enabled: true)
         results["changed_geometry_updates_mask"] = mask.path !== original && mask.path?.boundingBoxOfPath == overlayWindow.convert(moved, from: window)
-        results["overlay_inherits_dark_appearance"] = overlayWindow.traitCollection.userInterfaceStyle == .dark && background(badge.image, matches: [229, 229, 234])
+        results["overlay_inherits_dark_appearance"] = overlayWindow.traitCollection.userInterfaceStyle == .dark && background(badge.image, matches: [36, 36, 38])
         badge.isHidden = true; overlay.updateVisibility()
         results["hidden_badge_hides_overlay"] = overlayWindow.isHidden
         badge.isHidden = false; overlay.updateVisibility()
@@ -156,7 +156,7 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         let themedWindow = AppThemeWindow(themedBadge)
         // Saved dark app theme on a light system window: this was missing from the old fixture.
         themedWindow.updateAppBadgeAppearance(isDark: true)
-        results["saved_app_dark_theme_on_light_window"] = window!.traitCollection.userInterfaceStyle == .light && background(themedBadge.image, matches: [229, 229, 234])
+        results["saved_app_dark_theme_on_light_window"] = window!.traitCollection.userInterfaceStyle == .light && background(themedBadge.image, matches: [36, 36, 38])
         Probe.view = themedBadge
         let before = Probe.assignments
         for _ in 0..<1000 { themedWindow.updateAppBadgeAppearance(isDark: true) }
@@ -167,21 +167,21 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         let overlayWindow = window!.windowScene!.windows.first { $0 is RGAppBadgeWindow }!
         let mask = overlayWindow.layer.mask as! CAShapeLayer
         let original = mask.path
-        results["overlay_uses_app_dark_theme_on_light_system"] = overlayWindow.overrideUserInterfaceStyle == .dark && background(themedBadge.image, matches: [229, 229, 234])
+        results["overlay_uses_app_dark_theme_on_light_system"] = overlayWindow.overrideUserInterfaceStyle == .dark && background(themedBadge.image, matches: [36, 36, 38])
         themedWindow.updateAppBadgeAppearance(isDark: false)
         overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: frame, enabled: true, userInterfaceStyle: themedBadge.artworkUserInterfaceStyle)
         results["app_theme_change_without_geometry_change"] = overlayWindow.overrideUserInterfaceStyle == .light && background(themedBadge.image, matches: [243, 234, 220]) && mask.path === original
         for name in ["RGConversationBadge", "RGAzureBadge", "RGIrisBadge", "RGMintBadge", "RGGatheringBadge", "RGAmberBadge", "RGNebulaBadge", "RGJadeBadge"] {
             RGSimpleSettings.shared.customAppBadge = name
             themedWindow.updateAppBadgeAppearance(isDark: true)
-            let dark = background(themedBadge.image, matches: [229, 229, 234])
+            let dark = background(themedBadge.image, matches: [36, 36, 38])
             themedWindow.updateAppBadgeAppearance(isDark: false)
             results[name + "_both_app_theme_appearances"] = dark && background(themedBadge.image, matches: [243, 234, 220])
         }
         for name in ["RGConversationPreview", "RGAzurePreview", "RGIrisPreview", "RGMintPreview", "RGGatheringPreview", "RGAmberPreview", "RGNebulaPreview", "RGJadePreview", "RegramPro", "RegramSettings"] {
             let light = UIImage(named: name, in: Bundle.main, compatibleWith: UITraitCollection(userInterfaceStyle: .light))
             let dark = UIImage(named: name, in: Bundle.main, compatibleWith: UITraitCollection(userInterfaceStyle: .dark))
-            results[name + "_explicit_light_dark_images"] = background(light, matches: [243, 234, 220]) && background(dark, matches: [229, 229, 234])
+            results[name + "_explicit_light_dark_images"] = background(light, matches: [243, 234, 220]) && background(dark, matches: [36, 36, 38])
         }
         for name in ["RegramAppBadge", "ZhiqiuAppBadge"] {
             RGSimpleSettings.shared.customAppBadge = name

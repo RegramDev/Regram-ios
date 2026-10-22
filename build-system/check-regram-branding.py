@@ -73,7 +73,7 @@ for name in NAMES:
         width, height, depth, kind = png(badge / image['filename'])
         assert (width, height, depth, kind) == (112 * scale, 28 * scale, 8, 6), image
 
-    for mode, expected in [('light', '#F3EADC'), ('dark', '#E5E5EA')]:
+    for mode, expected in [('light', '#F3EADC'), ('dark', '#242426')]:
         vector = ET.parse(BRAND / f'Artwork/{name}-{mode}.svg').getroot()
         background = next(element.attrib['fill'] for element in vector if element.tag.endswith('rect'))
         assert background == expected, (name, mode, 'background must use the requested palette')
