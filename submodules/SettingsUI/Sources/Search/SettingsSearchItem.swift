@@ -301,6 +301,9 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
         self.edgeEffectView = EdgeEffectView()
         
         super.init()
+
+        // MARK: Regram — idle and local search must not wait for an FAQ network response.
+        self.searchQuery.set(.single(nil))
         
         self.backgroundColor = self.presentationData.theme.chatList.backgroundColor
         
@@ -334,11 +337,13 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
         ))
         
         let faqItems = Promise<[SettingsSearchableItem]>()
-        faqItems.set(faqSearchableItems(context: context, resolvedUrl: resolvedFaqUrl, suggestAccountDeletion: false))
+        faqItems.set(.single([]) |> then(faqSearchableItems(context: context, resolvedUrl: resolvedFaqUrl, suggestAccountDeletion: false)))
         
-        let queryAndFoundItems = combineLatest(searchableItems.get(), faqSearchableItems(context: context, resolvedUrl: resolvedFaqUrl, suggestAccountDeletion: true))
+        // MARK: Regram — do not retain the search node through its own signal/disposable.
+        let searchQueries = self.searchQuery.get()
+        let queryAndFoundItems = combineLatest(searchableItems.get(), .single([]) |> then(faqSearchableItems(context: context, resolvedUrl: resolvedFaqUrl, suggestAccountDeletion: true)))
         |> mapToSignal { searchableItems, faqSearchableItems -> Signal<(String, [SettingsSearchableItem])?, NoError> in
-            return self.searchQuery.get()
+            return searchQueries
             |> mapToSignal { query -> Signal<(String, [SettingsSearchableItem])?, NoError> in
                 if let query = query, !query.isEmpty {
                     let results = searchSettingsItems(items: searchableItems, query: query)
@@ -432,10 +437,8 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
             guard let strongSelf = self else {
                 return
             }
-            var currentQuery: String?
             var entries: [SettingsSearchEntry] = []
-            if let (query, items) = queryAndFoundItems {
-                currentQuery = query
+            if let (_, items) = queryAndFoundItems {
                 var previousIcon: SettingsSearchableItemIcon?
                 for item in items {
                     var image: UIImage?
@@ -447,11 +450,10 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
                 }
             }
             
-            if !entries.isEmpty || currentQuery == nil {
-                let previousEntriesAndPresentationData = previousEntriesHolder.swap((entries, presentationData.theme, presentationData.strings))
-                let transition = preparedSettingsSearchContainerTransition(theme: presentationData.theme, strings: presentationData.strings, from: previousEntriesAndPresentationData?.0 ?? [], to: entries, interaction: interaction, isSearching: queryAndFoundItems != nil, forceUpdate: previousEntriesAndPresentationData?.1 !== presentationData.theme || previousEntriesAndPresentationData?.2 !== presentationData.strings)
-                strongSelf.enqueueTransition(transition)
-            }
+            // MARK: Regram — empty results must remove the preceding query's rows as well.
+            let previousEntriesAndPresentationData = previousEntriesHolder.swap((entries, presentationData.theme, presentationData.strings))
+            let transition = preparedSettingsSearchContainerTransition(theme: presentationData.theme, strings: presentationData.strings, from: previousEntriesAndPresentationData?.0 ?? [], to: entries, interaction: interaction, isSearching: queryAndFoundItems != nil, forceUpdate: previousEntriesAndPresentationData?.1 !== presentationData.theme || previousEntriesAndPresentationData?.2 !== presentationData.strings)
+            strongSelf.enqueueTransition(transition)
         }))
         
         self.presentationDataDisposable = (context.sharedContext.presentationData
@@ -491,6 +493,8 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
     }
     
     public override func searchTextUpdated(text: String) {
+        // MARK: Regram — whitespace-only input restores the idle search state.
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty {
             self.searchQuery.set(.single(nil))
         } else {
@@ -518,6 +522,8 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
             let isSearching = transition.isSearching
             self.listNode.transaction(deleteIndices: transition.deletions, insertIndicesAndItems: transition.insertions, updateIndicesAndItems: transition.updates, options: options, updateSizeAndInsets: nil, updateOpaqueState: nil, completion: { [weak self] _ in
                 self?.listNode.isHidden = !isSearching
+                // MARK: Regram — recent rows must not show through an empty result list.
+                self?.recentListNode.isHidden = isSearching
             })
         }
     }
@@ -569,6 +575,10 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
             self.hasValidLayout = true
             while !self.enqueuedTransitions.isEmpty {
                 self.dequeueTransition()
+            }
+            // MARK: Regram — recent results can arrive before the first layout too.
+            while !self.enqueuedRecentTransitions.isEmpty {
+                self.dequeueRecentTransition()
             }
         }
         

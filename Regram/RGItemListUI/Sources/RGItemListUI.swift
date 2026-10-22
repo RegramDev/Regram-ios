@@ -268,7 +268,7 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
             let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: entry.titleKey.i18n(language).replacingOccurrences(of: "%@", with: ""), label: entry.pageTitleKey.i18n(language), labelStyle: .detailText, sectionId: self.section, style: .blocks, action: { arguments.openSettingsResult(entry.destination) })
         case let .searchInput(_, _, title, text, placeholder):
-            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: title, text: text, placeholder: placeholder, returnKeyType: .done, spacing: 3.0, clearType: .always, selectAllOnFocus: true, secondaryStyle: true, sectionId: self.section, textUpdated: { input in arguments.searchInput(input) }, action: {}, dismissKeyboardOnEnter: true)
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: title, text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .done, spacing: 3.0, clearType: .always, secondaryStyle: true, sectionId: self.section, textUpdated: { input in arguments.searchInput(input) }, action: {}, dismissKeyboardOnEnter: true, updatesTextWhileEditing: false)
         }
     }
 }

@@ -60,6 +60,8 @@ def main():
         if run(name+'-compile', ['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + flags + sources + ['-o', str(binary)]):
             run(name, [str(binary)] + arguments)
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
+    run('settings-search-transitions', ['python3', 'Regram/RGProUI/Tests/run-settings-search-checks.py'])
+    run('common-group-pagination', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-search-failure-checks.py'])
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('common-group-table-navigation', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-table-navigation-checks.py'])
     run('settings-focus', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-focus-checks.py'])

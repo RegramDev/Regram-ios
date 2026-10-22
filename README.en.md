@@ -123,6 +123,8 @@ Basic controls appear within their category. Chats and media use the native chat
 
 Only the Pro home page has global settings search, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
+The subsequent source fixes connect the outer Settings search to the Pro catalog and address common-group pagination, search state and drag previews. These changes are not yet released; see the [follow-up record](docs/groups-settings-search-drag-fixes.md).
+
 ## Verification scope
 
 The b34627 arm64 Release build completed for the app and six extensions. Package signatures, resources and 12 matching dSYMs passed validation; bundle identities and selected entitlements match b34626. On 2026-10-22, the user confirmed the local IPA worked. The same IPA is now the latest stable Release, with source and documentation synchronized to GitHub. The complete public download and checksum attachment passed SHA-256 verification. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Agent-run regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s earlier request. The user did not supply individual test cases or frame-rate measurements. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.

@@ -1,4 +1,5 @@
 import UIKit
+import QuartzCore
 
 // A decorative window, excluded from app presentation and keyboard window discovery.
 final class RGAppBadgeWindow: UIWindow {
@@ -40,9 +41,7 @@ private final class RGAppBadgeRootController: UIViewController {
         self.hostWindow?.rootViewController?.supportedInterfaceOrientations ?? .allButUpsideDown
     }
     override var prefersHomeIndicatorAutoHidden: Bool {
-        // This window only contains the badge. Mirroring the host draws another home
-        // indicator at the bottom of this small window, directly beneath the image.
-        true
+        self.hostWindow?.rootViewController?.prefersHomeIndicatorAutoHidden ?? false
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -57,6 +56,7 @@ final class RGAppBadgeOverlay {
     private let badgeView: UIImageView
     private weak var hostWindow: UIWindow?
     private var window: RGAppBadgeWindow?
+    private let badgeMask = CAShapeLayer()
     private var observers: [NSObjectProtocol] = []
     private var sceneIsDeactivating = false
 
@@ -98,6 +98,7 @@ final class RGAppBadgeOverlay {
             window.isOpaque = false
             window.clipsToBounds = true
             window.accessibilityElementsHidden = true
+            window.layer.mask = self.badgeMask
             window.rootViewController = RGAppBadgeRootController(hostWindow: hostWindow)
             self.window = window
         }
@@ -105,15 +106,22 @@ final class RGAppBadgeOverlay {
         // zPosition only orders layers inside one window; a separate window establishes the
         // rendering boundary without changing the navigation bar's blur or the main window's level.
         window.windowLevel = UIWindow.Level(rawValue: max(UIWindow.Level.statusBar.rawValue, hostWindow.windowLevel.rawValue) + 1.0)
-        // Keep this render surface confined to the badge. A full-screen transparent window can
-        // participate in system/glass compositing far beyond the image it is meant to display.
+        // A badge-sized window relocates the system home indicator beneath the image;
+        // auto-hiding only removes it after a delay. Keep system geometry aligned with the host,
+        // and mask the render surface to the badge so it does not affect glass elsewhere.
         window.overrideUserInterfaceStyle = hostWindow.traitCollection.userInterfaceStyle
-        window.frame = hostWindow.convert(badgeFrame, to: nil)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        window.frame = hostWindow.convert(hostWindow.bounds, to: nil)
         container.frame = window.bounds
+        let windowBadgeFrame = window.convert(badgeFrame, from: hostWindow)
+        self.badgeMask.frame = window.bounds
+        self.badgeMask.path = CGPath(rect: windowBadgeFrame, transform: nil)
         if self.badgeView.superview !== container {
             container.addSubview(self.badgeView)
         }
-        self.badgeView.frame = CGRect(origin: .zero, size: badgeFrame.size)
+        self.badgeView.frame = container.convert(badgeFrame, from: hostWindow)
+        CATransaction.commit()
         self.updateVisibility()
     }
 

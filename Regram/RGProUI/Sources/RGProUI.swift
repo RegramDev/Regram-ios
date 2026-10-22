@@ -138,7 +138,9 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
             for (index, entry) in RGSettingsCatalog.entries.enumerated() where matches.contains(entry.id) {
                 entries.append(.settingsResult(id: 10_000 + index, section: .base, entry: entry))
             }
-            if entries.count == 1 { entries.append(.notice(id: id.count, section: .base, text: "Settings.Search.NoResults".i18n(lang))) }
+            // This row must never reuse a category's identity: native text/disclosure nodes
+            // have different update contracts and cannot replace each other in place.
+            if entries.count == 1 { entries.append(.notice(id: 9_999, section: .base, text: "Settings.Search.NoResults".i18n(lang))) }
         }
         return entries
     }
@@ -227,7 +229,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     case .tools: section = .footer
     }
     if page == .input {
-        return [.header(id: 0, section: .input, text: "Settings.Section.Composer".i18n(lang), badge: nil)] + entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
+        return [.header(id: -1, section: .input, text: "Settings.Section.Composer".i18n(lang), badge: nil)] + entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
     }
     let headerKey: String?
     switch page {
@@ -238,7 +240,8 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     case .tools: headerKey = "Settings.ProCategory.tools"
     default: headerKey = nil
     }
-    let header: [RGProControllerEntry] = headerKey.map { [.header(id: 0, section: section, text: $0.i18n(lang), badge: nil)] } ?? []
+    // Header identity must also stay distinct from the first privacy control (id 0).
+    let header: [RGProControllerEntry] = headerKey.map { [.header(id: -1, section: section, text: $0.i18n(lang), badge: nil)] } ?? []
     return header + entries.filter { $0.section == section.rawValue }
 
 }
@@ -255,6 +258,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     var cancelSearchSelection: (() -> Void)?
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
     let searchPromise = ValuePromise(initialSearchQuery ?? "", ignoreRepeated: true)
+    var searchGeneration = 0
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -419,8 +423,13 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
     }, searchInput: { value in
         cancelSearchSelection?()
-        // Defer list replacement until UIKit finishes dispatching the text-input event.
-        Queue.mainQueue().async { searchPromise.set(value) }
+        // Finish UIKit's input event, then publish only the newest edit (including clearing).
+        searchGeneration += 1
+        let generation = searchGeneration
+        Queue.mainQueue().async {
+            guard generation == searchGeneration else { return }
+            searchPromise.set(value)
+        }
     }, settingsPage: "pro." + page.rawValue, openSettingsResult: { destination in
         if let controller = rgControllerForSettingsLink(context: context, destination: destination) { pushControllerImpl?(controller) }
     }, disclosureIcon: { link in

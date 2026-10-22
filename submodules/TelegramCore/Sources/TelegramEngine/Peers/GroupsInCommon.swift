@@ -28,6 +28,9 @@ private final class GroupsInCommonContextImpl {
     private var count: Int?
     private var dataState: GroupsInCommonDataState = .ready(canLoadMore: true)
     private var loadFailed = false // MARK: Regram
+    // MARK: Regram — cached/hinted rows are presentation data, never a pagination cursor.
+    private var nextMaxId: Int64?
+    private var hasLoadedFirstPage = false
     
     private let stateValue = Promise<GroupsInCommonState>()
     var state: Signal<GroupsInCommonState, NoError> {
@@ -44,8 +47,11 @@ private final class GroupsInCommonContextImpl {
             let _ = (self.account.postbox.loadedPeerWithId(hintGroupInCommon)
             |> deliverOn(self.queue)).start(next: { [weak self] peer in
                 if let strongSelf = self {
-                    strongSelf.peers.append(RenderedPeer(peer: peer))
-                    strongSelf.pushState()
+                    // MARK: Regram — a late hint cannot duplicate or modify a network page.
+                    if !strongSelf.hasLoadedFirstPage, !strongSelf.peers.contains(where: { $0.peerId == peer.id }) {
+                        strongSelf.peers.append(RenderedPeer(peer: peer))
+                        strongSelf.pushState()
+                    }
                 }
             })
         }
@@ -80,9 +86,10 @@ private final class GroupsInCommonContextImpl {
                     guard let self else {
                         return
                     }
-                    if case .loading = self.dataState, let (peers, count) = peersAndCount {
+                    // MARK: Regram — do not overwrite fresh pages with a late cache read.
+                    if !self.hasLoadedFirstPage, case .loading = self.dataState, let (peers, count) = peersAndCount {
                         self.peers = peers
-                        self.count = Int(count)
+                        self.count = max(peers.count, Int(count)) // MARK: Regram — old unsliced caches stored zero.
                         self.pushState()
                     }
                 }))
@@ -91,25 +98,25 @@ private final class GroupsInCommonContextImpl {
             self.dataState = .loading
             self.pushState()
             
-            let maxId = self.peers.last?.peerId.id
+            let maxId = self.nextMaxId // MARK: Regram
             let accountPeerId = self.account.peerId
             let network = self.account.network
             let postbox = self.account.postbox
-            let signal: Signal<([Peer], Int, Bool), NoError> = self.account.postbox.transaction { transaction -> Api.InputUser? in
+            let signal: Signal<([Peer], Int, Int64?, Bool), NoError> = self.account.postbox.transaction { transaction -> Api.InputUser? in
                 return transaction.getPeer(peerId).flatMap(apiInputUser)
             }
-            |> mapToSignal { inputUser -> Signal<([Peer], Int, Bool), NoError> in
+            |> mapToSignal { inputUser -> Signal<([Peer], Int, Int64?, Bool), NoError> in
                 guard let inputUser = inputUser else {
-                    return .single(([], 0, true))
+                    return .single(([], 0, nil, true))
                 }
-                return network.request(Api.functions.messages.getCommonChats(userId: inputUser, maxId: maxId?._internalGetInt64Value() ?? 0, limit: limit))
+                return network.request(Api.functions.messages.getCommonChats(userId: inputUser, maxId: maxId ?? 0, limit: limit))
                 |> map(Optional.init)
                 |> `catch` { _ -> Signal<Api.messages.Chats?, NoError> in
                     return .single(nil)
                 }
-                |> mapToSignal { result -> Signal<([Peer], Int, Bool), NoError> in
+                |> mapToSignal { result -> Signal<([Peer], Int, Int64?, Bool), NoError> in
                     // MARK: Regram — do not overwrite the cache with an empty network failure.
-                    guard result != nil else { return .single(([], 0, true)) }
+                    guard result != nil else { return .single(([], 0, nil, true)) }
                     let chats: [Api.Chat]
                     let count: Int?
                     if let result = result {
@@ -128,7 +135,9 @@ private final class GroupsInCommonContextImpl {
                         count = nil
                     }
                     
-                    return postbox.transaction { transaction -> ([Peer], Int, Bool) in
+                    // MARK: Regram — advance by the last raw API chat even if it cannot be rendered.
+                    let nextMaxId = chats.last?.peerId.id._internalGetInt64Value()
+                    return postbox.transaction { transaction -> ([Peer], Int, Int64?, Bool) in
                         let parsedPeers = AccumulatedPeers(transaction: transaction, chats: chats, users: [])
                         updatePeers(transaction: transaction, accountPeerId: accountPeerId, peers: parsedPeers)
                         
@@ -138,13 +147,13 @@ private final class GroupsInCommonContextImpl {
                                 peers.append(peer)
                             }
                         }
-                        return (peers, count ?? 0, false)
+                        return (peers, count ?? 0, nextMaxId, false)
                     }
                 }
             }
             
             self.disposable.set((signal
-            |> deliverOn(self.queue)).start(next: { [weak self] (peers, count, failed) in
+            |> deliverOn(self.queue)).start(next: { [weak self] (peers, count, nextMaxId, failed) in
                 guard let strongSelf = self else {
                     return
                 }
@@ -155,6 +164,11 @@ private final class GroupsInCommonContextImpl {
                     strongSelf.pushState()
                     return
                 }
+                // MARK: Regram — replace the cached preview on the first successful page.
+                if maxId == nil {
+                    strongSelf.peers.removeAll()
+                    strongSelf.hasLoadedFirstPage = true
+                }
                 var existingPeers = Set(strongSelf.peers.map { $0.peerId })
                 for peer in peers {
                     if !existingPeers.contains(peer.id) {
@@ -163,17 +177,20 @@ private final class GroupsInCommonContextImpl {
                     }
                 }
                 
+                // MARK: Regram — an empty/repeated page is exhausted even if a total is stale.
+                let canLoadMore = count > strongSelf.peers.count && nextMaxId != nil && nextMaxId != maxId
+                strongSelf.nextMaxId = nextMaxId
+                let updatedCount = canLoadMore ? max(strongSelf.peers.count, count) : strongSelf.peers.count
+                strongSelf.count = updatedCount
+                strongSelf.dataState = .ready(canLoadMore: canLoadMore)
                 if maxId == nil {
                     strongSelf.cacheDisposable.set(postbox.transaction { transaction in
-                        if let entry = CodableEntry(CachedGroupsInCommon(peerIds: peers.map { $0.id }, count: Int32(count))) {
+                        if let entry = CodableEntry(CachedGroupsInCommon(peerIds: peers.map { $0.id }, count: Int32(updatedCount))) {
                             transaction.putItemCacheEntry(id: entryId(peerId: peerId), entry: entry)
                         }
                     }.start())
                 }
                 
-                let updatedCount = max(strongSelf.peers.count, count)
-                strongSelf.count = updatedCount
-                strongSelf.dataState = .ready(canLoadMore: count != 0 && updatedCount > strongSelf.peers.count)
                 strongSelf.pushState()
             }))
         }

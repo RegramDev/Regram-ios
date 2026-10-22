@@ -2,6 +2,7 @@ import RGAppGroupIdentifier // MARK: Regram
 // MARK: Regram
 import RGProUI
 import RGSimpleSettings
+import RGStrings // MARK: Regram — shared settings destination resolver.
 //
 import Foundation
 import UIKit
@@ -4913,6 +4914,12 @@ extension SharedAccountContextImpl {
     // MARK: Regram — cross-page settings search.
     public func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController {
         return rgProController(context: context, initialSearchQuery: searchQuery)
+    }
+
+    // MARK: Regram — native settings search uses the same resolver as Pro search and copied links.
+    public func makeRGSettingsController(context: AccountContext, page: String, item: String?) -> ViewController? {
+        guard let destination = RGSettingsDestination(page: page, item: item) else { return nil }
+        return rgControllerForSettingsLink(context: context, destination: destination)
     }
 
 

@@ -74,6 +74,8 @@ public struct SettingsSearchableItem {
     let icon: SettingsSearchableItemIcon
     let breadcrumbs: [String]
     let isVisible: Bool
+    // MARK: Regram — use the same catalog matcher in native settings and Pro search.
+    let matchesQuery: ((String) -> Bool)?
     public let present: (AccountContext, NavigationController?, @escaping (SettingsSearchableItemPresentation, ViewController?) -> Void) -> Void
     
     init(
@@ -83,6 +85,7 @@ public struct SettingsSearchableItem {
         icon: SettingsSearchableItemIcon = .privacy,
         breadcrumbs: [String] = [],
         isVisible: Bool = true,
+        matchesQuery: ((String) -> Bool)? = nil,
         present: @escaping (AccountContext, NavigationController?, @escaping (SettingsSearchableItemPresentation, ViewController?) -> Void) -> Void
     ) {
         self.id = id
@@ -91,11 +94,12 @@ public struct SettingsSearchableItem {
         self.icon = icon
         self.breadcrumbs = breadcrumbs
         self.isVisible = isVisible
+        self.matchesQuery = matchesQuery
         self.present = present
     }
     
     func withUpdatedTitle(_ title: String) -> SettingsSearchableItem {
-        return SettingsSearchableItem(id: self.id, title: title, alternate: self.alternate, icon: self.icon, breadcrumbs: self.breadcrumbs, isVisible: self.isVisible,  present: self.present)
+        return SettingsSearchableItem(id: self.id, title: title, alternate: self.alternate, icon: self.icon, breadcrumbs: self.breadcrumbs, isVisible: self.isVisible, matchesQuery: self.matchesQuery, present: self.present)
     }
 }
 
@@ -4376,6 +4380,8 @@ func settingsSearchableItems(
         let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
         
         var allItems: [SettingsSearchableItem] = []
+        // MARK: Regram — results open the actual setting through the shared resolver.
+        allItems.append(contentsOf: rgSettingsSearchableItems(context: context))
         
         let profileItems = profileSearchableItems(context: context, canAddAccount: canAddAccount)
         allItems.append(contentsOf: profileItems)
@@ -4529,6 +4535,11 @@ func searchSettingsItems(items: [SettingsSearchableItem], query: String) -> [Set
     var result: [SettingsSearchableItem] = []
     for item in items {
         guard item.isVisible || showAll else {
+            continue
+        }
+        // MARK: Regram — retain identical aliases and Unicode matching across both searches.
+        if let matches = item.matchesQuery {
+            if showAll || matches(query) { result.append(item) }
             continue
         }
         var string = item.title

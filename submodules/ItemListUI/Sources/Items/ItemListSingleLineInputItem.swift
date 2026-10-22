@@ -60,6 +60,8 @@ public class ItemListSingleLineInputItem: ListViewItem, ItemListItem {
     let maxLength: Int
     let enabled: Bool
     let selectAllOnFocus: Bool
+    // MARK: Regram — live search owns its field text while editing, including IME composition.
+    let updatesTextWhileEditing: Bool
     let secondaryStyle: Bool
     public let sectionId: ItemListSectionId
     let action: () -> Void
@@ -71,7 +73,7 @@ public class ItemListSingleLineInputItem: ListViewItem, ItemListItem {
     let dismissKeyboardOnEnter: Bool // MARK: Regram
     public let tag: ItemListItemTag?
     
-    public init(context: AccountContext? = nil, presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, title: NSAttributedString, text: String, placeholder: String, label: String? = nil, type: ItemListSingleLineInputItemType = .regular(capitalization: true, autocorrection: true), returnKeyType: UIReturnKeyType = .`default`, alignment: ItemListSingleLineInputAlignment = .default, spacing: CGFloat = 0.0, clearType: ItemListSingleLineInputClearType = .none, maxLength: Int = 0, enabled: Bool = true, selectAllOnFocus: Bool = false, secondaryStyle: Bool = false, tag: ItemListItemTag? = nil, sectionId: ItemListSectionId, textUpdated: @escaping (String) -> Void, shouldUpdateText: @escaping (String) -> Bool = { _ in return true }, processPaste: ((String) -> String)? = nil, updatedFocus: ((Bool) -> Void)? = nil, action: @escaping () -> Void, cleared: (() -> Void)? = nil, dismissKeyboardOnEnter: Bool = false) {
+    public init(context: AccountContext? = nil, presentationData: ItemListPresentationData, systemStyle: ItemListSystemStyle = .legacy, title: NSAttributedString, text: String, placeholder: String, label: String? = nil, type: ItemListSingleLineInputItemType = .regular(capitalization: true, autocorrection: true), returnKeyType: UIReturnKeyType = .`default`, alignment: ItemListSingleLineInputAlignment = .default, spacing: CGFloat = 0.0, clearType: ItemListSingleLineInputClearType = .none, maxLength: Int = 0, enabled: Bool = true, selectAllOnFocus: Bool = false, secondaryStyle: Bool = false, tag: ItemListItemTag? = nil, sectionId: ItemListSectionId, textUpdated: @escaping (String) -> Void, shouldUpdateText: @escaping (String) -> Bool = { _ in return true }, processPaste: ((String) -> String)? = nil, updatedFocus: ((Bool) -> Void)? = nil, action: @escaping () -> Void, cleared: (() -> Void)? = nil, dismissKeyboardOnEnter: Bool = false, updatesTextWhileEditing: Bool = true) {
         self.context = context
         self.presentationData = presentationData
         self.systemStyle = systemStyle
@@ -87,6 +89,7 @@ public class ItemListSingleLineInputItem: ListViewItem, ItemListItem {
         self.maxLength = maxLength
         self.enabled = enabled
         self.selectAllOnFocus = selectAllOnFocus
+        self.updatesTextWhileEditing = updatesTextWhileEditing
         self.secondaryStyle = secondaryStyle
         self.tag = tag
         self.sectionId = sectionId
@@ -392,12 +395,12 @@ public class ItemListSingleLineInputItemNode: ListViewItemNode, UITextFieldDeleg
                         strongSelf.textNode.textField.returnKeyType = item.returnKeyType
                     }
                     
-                    if let currentText = strongSelf.textNode.textField.text {
-                        if currentText != item.text {
+                    // MARK: Regram — an older list transaction must not replace a newer edit
+                    // or discard marked text in a live search field.
+                    if item.updatesTextWhileEditing || !strongSelf.textNode.textField.isFirstResponder {
+                        if strongSelf.textNode.textField.text != item.text {
                             strongSelf.textNode.textField.text = item.text
                         }
-                    } else {
-                        strongSelf.textNode.textField.text = item.text
                     }
                     
                     strongSelf.textNode.frame = CGRect(origin: CGPoint(x: leftInset + titleLayout.size.width + item.spacing, y: 0.0), size: CGSize(width: max(1.0, params.width - (leftInset + rightInset + titleLayout.size.width + item.spacing)), height: layout.contentSize.height - 2.0))

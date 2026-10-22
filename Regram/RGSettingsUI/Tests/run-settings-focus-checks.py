@@ -6,8 +6,12 @@ import tempfile
 root = Path(__file__).resolve().parents[3]
 source = (root / 'Regram/RGItemListUI/Sources/RGSettingsLinkItem.swift').read_text()
 start = source.index('public final class RGSettingsListController:')
-end = source.index('    override public func loadDisplayNode()', start)
-focus = source[start:end] + '}\n'
+fields_end = source.index('    private let categoryTabsDisposable', start)
+methods_start = source.index('    override public func viewDidAppear', fields_end)
+end = source.index('    override public func loadDisplayNode()', methods_start)
+# Exercise the actual focus fields and lifecycle, without pulling unrelated category-tab binding
+# and its UI/signal dependencies into this Foundation boundary fixture.
+focus = source[start:fields_end] + source[methods_start:end] + '}\n'
 fixture = r'''
 import Foundation
 import CoreGraphics

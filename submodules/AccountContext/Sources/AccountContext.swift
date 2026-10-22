@@ -1427,6 +1427,8 @@ public protocol SharedAccountContext: AnyObject {
     func makeRGProController(context: AccountContext) -> ViewController
     // MARK: Regram — preserve the query when jumping from the shared settings search.
     func makeRGProController(context: AccountContext, searchQuery: String?) -> ViewController
+    // MARK: Regram — resolve shared search results without a SettingsUI/RGProUI dependency cycle.
+    func makeRGSettingsController(context: AccountContext, page: String, item: String?) -> ViewController?
     func makeRGUpdateIOSController() -> ViewController
     // MARK: Regram — recently opened chats (RGProUI's rgRecentChatsController).
     func makeRGRecentChatsController(context: AccountContext) -> ViewController

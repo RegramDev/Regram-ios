@@ -23,11 +23,16 @@ private struct GroupsInCommonListTransaction {
 }
 
 private struct GroupsInCommonListEntry: Comparable, Identifiable {
+    // MARK: Regram — retry is a separate row, never a peer with a fabricated identifier.
+    enum Id: Hashable {
+        case peer(EnginePeer.Id)
+        case retry
+    }
     var index: Int
-    var peer: EnginePeer
+    var peer: EnginePeer?
 
-    var stableId: EnginePeer.Id {
-        return self.peer.id
+    var stableId: Id {
+        return self.peer.map { .peer($0.id) } ?? .retry
     }
 
     static func ==(lhs: GroupsInCommonListEntry, rhs: GroupsInCommonListEntry) -> Bool {
@@ -38,9 +43,12 @@ private struct GroupsInCommonListEntry: Comparable, Identifiable {
         return lhs.index < rhs.index
     }
     
-    func item(context: AccountContext, presentationData: PresentationData, openPeer: @escaping (EnginePeer) -> Void, openPeerContextAction: @escaping (EnginePeer, ASDisplayNode, ContextGesture?) -> Void) -> ListViewItem {
-        let peer = self.peer
-        return ItemListPeerItem(presentationData: ItemListPresentationData(presentationData), dateTimeFormat: presentationData.dateTimeFormat, nameDisplayOrder: presentationData.nameDisplayOrder, context: context, peer: self.peer, presence: nil, text: .none, label: .none, editing: ItemListPeerItemEditing(editable: false, editing: false, revealed: false), switchValue: nil, enabled: true, selectable: true, sectionId: 0, action: {
+    func item(context: AccountContext, presentationData: PresentationData, openPeer: @escaping (EnginePeer) -> Void, openPeerContextAction: @escaping (EnginePeer, ASDisplayNode, ContextGesture?) -> Void, retry: @escaping () -> Void) -> ListViewItem {
+        // MARK: Regram — failed pagination remains visible and can be retried explicitly.
+        guard let peer = self.peer else {
+            return ItemListActionItem(presentationData: ItemListPresentationData(presentationData), title: presentationData.strings.Common_Retry, kind: .generic, alignment: .center, sectionId: 0, style: .plain, action: retry)
+        }
+        return ItemListPeerItem(presentationData: ItemListPresentationData(presentationData), dateTimeFormat: presentationData.dateTimeFormat, nameDisplayOrder: presentationData.nameDisplayOrder, context: context, peer: peer, presence: nil, text: .none, label: .none, editing: ItemListPeerItemEditing(editable: false, editing: false, revealed: false), switchValue: nil, enabled: true, selectable: true, sectionId: 0, action: {
             openPeer(peer)
         }, setPeerIdWithRevealedOptions: { _, _ in
         }, removePeer: { _ in
@@ -50,12 +58,12 @@ private struct GroupsInCommonListEntry: Comparable, Identifiable {
     }
 }
 
-private func preparedTransition(from fromEntries: [GroupsInCommonListEntry], to toEntries: [GroupsInCommonListEntry], context: AccountContext, presentationData: PresentationData, openPeer: @escaping (EnginePeer) -> Void, openPeerContextAction: @escaping (EnginePeer, ASDisplayNode, ContextGesture?) -> Void) -> GroupsInCommonListTransaction {
+private func preparedTransition(from fromEntries: [GroupsInCommonListEntry], to toEntries: [GroupsInCommonListEntry], context: AccountContext, presentationData: PresentationData, openPeer: @escaping (EnginePeer) -> Void, openPeerContextAction: @escaping (EnginePeer, ASDisplayNode, ContextGesture?) -> Void, retry: @escaping () -> Void) -> GroupsInCommonListTransaction {
     let (deleteIndices, indicesAndItems, updateIndices) = mergeListsStableWithUpdates(leftList: fromEntries, rightList: toEntries)
     
     let deletions = deleteIndices.map { ListViewDeleteItem(index: $0, directionHint: nil) }
-    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, openPeer: openPeer, openPeerContextAction: openPeerContextAction), directionHint: nil) }
-    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, openPeer: openPeer, openPeerContextAction: openPeerContextAction), directionHint: nil) }
+    let insertions = indicesAndItems.map { ListViewInsertItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, openPeer: openPeer, openPeerContextAction: openPeerContextAction, retry: retry), directionHint: nil) }
+    let updates = updateIndices.map { ListViewUpdateItem(index: $0.0, previousIndex: $0.2, item: $0.1.item(context: context, presentationData: presentationData, openPeer: openPeer, openPeerContextAction: openPeerContextAction, retry: retry), directionHint: nil) }
     
     return GroupsInCommonListTransaction(deletions: deletions, insertions: insertions, updates: updates)
 }
@@ -148,13 +156,8 @@ final class PeerInfoGroupsInCommonPaneNode: ASDisplayNode, PeerInfoPaneNode {
             }
         })
         
-        self.listNode.visibleBottomContentOffsetChanged = { [weak self] offset in
-            guard let strongSelf = self, let state = strongSelf.state, case .ready(true) = state.dataState else {
-                return
-            }
-            if case let .known(value) = offset, value < 100.0, case .ready(true) = state.dataState {
-                strongSelf.groupsInCommonContext.loadMore()
-            }
+        self.listNode.visibleBottomContentOffsetChanged = { [weak self] _ in
+            self?.loadMoreIfNeeded() // MARK: Regram
         }
 
         self.listNode.visibleContentOffsetChanged = { [weak self] _, transition in
@@ -209,7 +212,9 @@ final class PeerInfoGroupsInCommonPaneNode: ASDisplayNode, PeerInfoPaneNode {
             }
         }
 
-        self.listNode.transaction(deleteIndices: [], insertIndicesAndItems: [], updateIndicesAndItems: [], options: [.Synchronous, .LowLatency], scrollToItem: scrollToItem, updateSizeAndInsets: ListViewUpdateSizeAndInsets(size: size, insets: UIEdgeInsets(top: topInset, left: sideInset + 16.0, bottom: bottomInset, right: sideInset + 16.0), duration: duration, curve: curve), stationaryItemRange: nil, updateOpaqueState: nil, completion: { _ in })
+        self.listNode.transaction(deleteIndices: [], insertIndicesAndItems: [], updateIndicesAndItems: [], options: [.Synchronous, .LowLatency], scrollToItem: scrollToItem, updateSizeAndInsets: ListViewUpdateSizeAndInsets(size: size, insets: UIEdgeInsets(top: topInset, left: sideInset + 16.0, bottom: bottomInset, right: sideInset + 16.0), duration: duration, curve: curve), stationaryItemRange: nil, updateOpaqueState: nil, completion: { [weak self] _ in
+            self?.loadMoreIfNeeded() // MARK: Regram
+        })
 
         self.listNode.scrollEnabled = !isScrollingLockedAtTop
 
@@ -231,10 +236,14 @@ final class PeerInfoGroupsInCommonPaneNode: ASDisplayNode, PeerInfoPaneNode {
                 entries.append(GroupsInCommonListEntry(index: entries.count, peer: EnginePeer(peer)))
             }
         }
+        // MARK: Regram — partial results must not silently become an unscrollable failed page.
+        if state.loadFailed { entries.append(GroupsInCommonListEntry(index: entries.count, peer: nil)) }
         let transaction = preparedTransition(from: self.currentEntries, to: entries, context: self.context, presentationData: presentationData, openPeer: { [weak self] peer in
             self?.chatControllerInteraction.openPeer(peer, .default, nil, .default)
         }, openPeerContextAction: { [weak self] peer, node, gesture in
             self?.openPeerContextAction(false, peer, node, gesture)
+        }, retry: { [weak self] in
+            self?.groupsInCommonContext.loadMore()
         })
         self.currentEntries = entries
         self.enqueuedTransactions.append(transaction)
@@ -259,7 +268,23 @@ final class PeerInfoGroupsInCommonPaneNode: ASDisplayNode, PeerInfoPaneNode {
                 strongSelf.didSetReady = true
                 strongSelf.ready.set(.single(true))
             }
+            strongSelf.loadMoreIfNeeded() // MARK: Regram
         })
+    }
+
+    // MARK: Regram — a page can finish without changing rows or the last reported offset.
+    // Check after layout/transactions as well as scrolling; recheck state on the main queue.
+    private func loadMoreIfNeeded() {
+        Queue.mainQueue().async { [weak self] in
+            guard let self, let state = self.state, !state.loadFailed, case .ready(true) = state.dataState else { return }
+            if self.currentEntries.isEmpty {
+                self.groupsInCommonContext.loadMore()
+                return
+            }
+            if case let .known(value) = self.listNode.visibleBottomContentOffset(), value < 100.0 {
+                self.groupsInCommonContext.loadMore()
+            }
+        }
     }
     
     private func updateListBackground(transition: ContainedViewLayoutTransition) {

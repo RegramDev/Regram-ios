@@ -22,6 +22,21 @@ public struct RGSettingsCatalogEntry: Hashable {
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
 
+public struct RGSettingsSearchQuery {
+    private let tokens: [String]
+    private let locale: Locale
+    public init(_ query: String, language: String) {
+        self.locale = Locale(identifier: language)
+        self.tokens = query.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: self.locale).split(whereSeparator: { $0.isWhitespace }).map(String.init)
+    }
+    public var isEmpty: Bool { self.tokens.isEmpty }
+    public func matches(_ text: String) -> Bool {
+        guard !self.isEmpty else { return false }
+        let text = text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: self.locale)
+        return self.tokens.allSatisfy { text.contains($0) }
+    }
+}
+
 public enum RGSettingsCatalog {
     public static let entries: [RGSettingsCatalogEntry] = [
         .init("inlineBots", "enabled", "features.AutoInlineBot.Enabled", keywords: "inline bot 自动查询 机器人"),
@@ -271,15 +286,15 @@ public enum RGSettingsCatalog {
         .init("chatPreferences", "panguSpacing", "Pangu.Title"),
         .init("chatPreferences", "reset", "ChatPreferences.Reset"),
     ]
+    public static func searchableText(for entry: RGSettingsCatalogEntry, language: String) -> String {
+        let pageContext = ["summary": "LLM OpenAI Anthropic AI summary summarize 大模型 总结 摘要 總結", "llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
+        let aliases = (entry.destination.item.flatMap { RGProSearchIndex.keys[$0] } ?? []) + [pageContext[entry.destination.page] ?? ""]
+        let values = ["Regram Pro", entry.titleKey.i18n(language), entry.titleKey.i18n("en"), entry.pageTitleKey.i18n(language), entry.pageTitleKey.i18n("en"), entry.keywords, entry.destination.item ?? ""] + aliases.map { $0.contains(".") ? $0.i18n(language) : $0 }
+        return values.joined(separator: " ")
+    }
     public static func results(query: String, language: String) -> [RGSettingsCatalogEntry] {
-        let tokens = query.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language)).split(whereSeparator: { $0.isWhitespace })
-        guard !tokens.isEmpty else { return [] }
-        return entries.filter { entry in
-            let pageContext = ["summary": "LLM OpenAI Anthropic AI summary summarize 大模型 总结 摘要 總結", "llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
-            let aliases = (entry.destination.item.flatMap { RGProSearchIndex.keys[$0] } ?? []) + [pageContext[entry.destination.page] ?? ""]
-            let values = [entry.titleKey.i18n(language), entry.titleKey.i18n("en"), entry.pageTitleKey.i18n(language), entry.pageTitleKey.i18n("en"), entry.keywords, entry.destination.item ?? ""] + aliases.map { $0.contains(".") ? $0.i18n(language) : $0 }
-            let text = values.joined(separator: " ").folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language))
-            return tokens.allSatisfy { text.contains($0) }
-        }
+        let query = RGSettingsSearchQuery(query, language: language)
+        guard !query.isEmpty else { return [] }
+        return entries.filter { query.matches(searchableText(for: $0, language: language)) }
     }
 }

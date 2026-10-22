@@ -11,6 +11,7 @@ rgdeps = [
 
 rgsrc = [
     "//Regram/RGRecentSessionApiId:RGRecentSessionApiId",
+    "//Regram/RGSettingsSearch:RGSettingsSearch",
 ]
 
 swift_library(
