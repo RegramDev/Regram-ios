@@ -283,7 +283,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
         interaction.openSettings(.savedMessages)
     }))
     // MARK: Regram — keep the local message index next to Saved Messages.
-    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 100, text: "Bookmarks.Title".i18n(presentationData.strings.rgLanguageCode), icon: PresentationResourcesSettings.savedMessages, action: {
+    items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 100, text: "Bookmarks.Title".i18n(presentationData.strings.rgLanguageCode), icon: PresentationResourcesSettings.messageBookmarks, action: { // MARK: Regram
         interaction.openSettings(.messageBookmarks)
     }))
     // MARK: Regram — 联系人 / 通话记录入口只在对应 tab 不在底栏时显示

@@ -25,7 +25,15 @@ struct AppBadge: Identifiable, Hashable {
 func getAvailableAppBadges() -> [AppBadge] {
     [
         .init(displayName: "Conversation", assetName: RGAppBadgeNames.defaultName),
+        .init(displayName: "Azure", assetName: "RGAzureBadge"),
+        .init(displayName: "Iris", assetName: "RGIrisBadge"),
+        .init(displayName: "Mint", assetName: "RGMintBadge"),
         .init(displayName: "Gathering", assetName: RGAppBadgeNames.alternateName),
+        .init(displayName: "Amber", assetName: "RGAmberBadge"),
+        .init(displayName: "Nebula", assetName: "RGNebulaBadge"),
+        .init(displayName: "Jade", assetName: "RGJadeBadge"),
+        .init(displayName: "Regram", assetName: "RegramAppBadge"),
+        .init(displayName: "Zhiqiu", assetName: "ZhiqiuAppBadge"),
     ]
 }
     

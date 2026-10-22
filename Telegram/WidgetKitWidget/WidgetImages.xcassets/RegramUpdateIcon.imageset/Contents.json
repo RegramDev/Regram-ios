@@ -3,6 +3,16 @@
     {
       "filename" : "Regram-light.png",
       "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "Regram-dark.png",
+      "idiom" : "universal"
     }
   ],
   "info" : {

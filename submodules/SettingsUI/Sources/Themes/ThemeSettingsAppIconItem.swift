@@ -9,6 +9,7 @@ import ItemListUI
 import PresentationDataUtils
 import AppBundle
 import RGStrings // MARK: Regram
+import RGSimpleSettings // MARK: Regram
 
 private func generateBorderImage(theme: PresentationTheme, bordered: Bool, selected: Bool) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
@@ -351,15 +352,19 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     let spacing: CGFloat = floorToScreenPixels((params.width - sideInset * 2.0 - params.leftInset - params.rightInset - nodeSize.width * 4.0) / 3.0)
                     let verticalSpacing: CGFloat = 0.0
                     
-                    // MARK: Regram — center the two local choices in the existing four-column row.
-                    let usedWidth = nodeSize.width * CGFloat(item.icons.count) + spacing * CGFloat(max(0, item.icons.count - 1))
-                    var x: CGFloat = item.icons.count < 4 ? max(sideInset, (layoutSize.width - params.leftInset - params.rightInset - usedWidth) / 2.0) : sideInset
+                    // MARK: Regram — center each row, including a partially filled last row.
+                    func rowInset(_ start: Int) -> CGFloat {
+                        let count = min(4, item.icons.count - start)
+                        let usedWidth = nodeSize.width * CGFloat(count) + spacing * CGFloat(max(0, count - 1))
+                        return max(sideInset, (layoutSize.width - params.leftInset - params.rightInset - usedWidth) / 2.0)
+                    }
+                    var x: CGFloat = rowInset(0)
                     var y: CGFloat = 0.0
                     
                     var i = 0
                     for icon in item.icons {
                         if i > 0 && i % 4 == 0 {
-                            x = sideInset
+                            x = rowInset(i)
                             y += nodeSize.height + verticalSpacing
                         }
                         let nodeFrame = CGRect(x: x, y: y, width: nodeSize.width, height: nodeSize.height)
@@ -378,19 +383,9 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                         if let image = UIImage(named: icon.imageName, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: item.theme.overallDarkAppearance ? .dark : .light)) {
                             let selected = icon.name == item.currentIconName
 
-                            var name = "Icon"
-                            var bordered = true
-                            // MARK: Regram — display the two approved identity families.
-                            switch icon.name {
-                            case "RGConversation":
-                                name = "AppIcon.Name.conversation".i18n(iconLanguage)
-                                bordered = false
-                            case "RGGathering":
-                                name = "AppIcon.Name.gathering".i18n(iconLanguage)
-                                bordered = false
-                            default:
-                                name = icon.name
-                            }
+                            // MARK: Regram — share stable palette names across the picker and badge list.
+                            let name = RGAppIconNames.titleKey(icon.name).i18n(iconLanguage)
+                            let bordered = false
                         
                             imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
                                 item.updated(icon)

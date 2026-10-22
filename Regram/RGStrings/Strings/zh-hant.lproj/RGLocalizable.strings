@@ -1092,7 +1092,7 @@
 "features.GroupProfileSettings.Item.community" = "社群";
 "features.GroupProfileSettings.Item.deleteGroup" = "刪除群組";
 "features.GroupProfileSettings.Item.other" = "其他設定";
-"features.HideTabBarPermissionWarnings" = "隱藏標籤列權限警告";
+"features.HideTabBarPermissionWarnings" = "隱藏權限提醒角標";
 "features.HideTopStories" = "隱藏頂部動態區域";
 "features.DisableChatAvatarStories" = "關閉聊天頭像動態";
 "features.ChatListStartupFolder" = "啟動時打開分組";
@@ -1213,8 +1213,40 @@
 "AppBadge.Current" = "目前標記";
 "AppBadge.Choose" = "選擇樣式";
 
-"AppIcon.Name.conversation" = "雙氣泡";
-"AppBadge.Name.conversation" = "雙氣泡";
+"AppIcon.Name.conversation" = "絮語";
+"AppBadge.Name.conversation" = "絮語";
 
-"AppIcon.Name.gathering" = "匯點";
-"AppBadge.Name.gathering" = "匯點";
+"AppIcon.Name.gathering" = "合流";
+"AppBadge.Name.gathering" = "合流";
+
+"AppIcon.Name.azure" = "晴空";
+
+"AppBadge.Name.azure" = "晴空";
+
+"AppIcon.Name.iris" = "鳶尾";
+
+"AppBadge.Name.iris" = "鳶尾";
+
+"AppIcon.Name.mint" = "薄荷";
+
+"AppBadge.Name.mint" = "薄荷";
+
+"AppIcon.Name.amber" = "琥珀";
+
+"AppBadge.Name.amber" = "琥珀";
+
+"AppIcon.Name.nebula" = "星河";
+
+"AppBadge.Name.nebula" = "星河";
+
+"AppIcon.Name.jade" = "青嵐";
+
+"AppBadge.Name.jade" = "青嵐";
+
+"AppIcon.Name.classic" = "Regram 經典";
+
+"AppBadge.Name.regram" = "Regram";
+
+"AppBadge.Name.zhiqiu" = "知秋";
+
+"features.HideTabBarPermissionWarnings.Notice" = "隱藏因系統通知或通訊錄權限關閉而顯示的驚嘆號。未讀數量及其他帳號提醒保留。";

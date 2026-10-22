@@ -5,6 +5,19 @@ import AppBundle
 
 private let gradientImage = UIImage(bundleImageName: "Item List/Icons/Gradient")
 private let backdropImage = UIImage(bundleImageName: "Item List/Icons/Backdrop")
+
+// MARK: Regram — a book of message bookmarks is distinct from Saved Messages' ribbon.
+private func renderMessageBookmarksArtwork() -> UIImage? {
+    guard let symbol = UIImage(systemName: "text.book.closed.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18.0, weight: .medium)) else { return nil }
+    let format = UIGraphicsImageRendererFormat()
+    format.opaque = false
+    return UIGraphicsImageRenderer(size: CGSize(width: 30.0, height: 30.0), format: format).image { _ in
+        UIColor(red: 0.35, green: 0.34, blue: 0.84, alpha: 1.0).setFill()
+        UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: 30, height: 30), cornerRadius: 7).fill()
+        let size = symbol.size
+        symbol.withTintColor(.white, renderingMode: .alwaysOriginal).draw(at: CGPoint(x: (30.0 - size.width) / 2.0, y: (30.0 - size.height) / 2.0))
+    }.withRenderingMode(.alwaysOriginal)
+}
 // MARK: Regram
 private func renderRegramSettingsArtwork(name: String, dark: Bool? = nil) -> UIImage? {
     let traits = dark.map { UITraitCollection(userInterfaceStyle: $0 ? .dark : .light) }
@@ -146,6 +159,7 @@ public struct PresentationResourcesSettings {
     }
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
+    public static let messageBookmarks = renderMessageBookmarksArtwork() // MARK: Regram
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])
     public static let devices = renderSettingsIcon(name: "Item List/Icons/Devices", backgroundColors: [colorOrange])
     public static let chatFolders = renderSettingsIcon(name: "Item List/Icons/Folder", backgroundColors: [colorLightBlue])

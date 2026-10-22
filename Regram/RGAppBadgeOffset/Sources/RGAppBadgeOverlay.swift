@@ -83,7 +83,7 @@ final class RGAppBadgeOverlay {
         self.window?.rootViewController = nil
     }
 
-    func update(hostWindow: UIWindow?, fallbackView: UIView, badgeFrame: CGRect, enabled: Bool) {
+    func update(hostWindow: UIWindow?, fallbackView: UIView, badgeFrame: CGRect, enabled: Bool, userInterfaceStyle: UIUserInterfaceStyle? = nil) {
         guard enabled, !badgeFrame.isEmpty, let hostWindow, let scene = hostWindow.windowScene else {
             self.restore(to: fallbackView, badgeFrame: badgeFrame)
             return
@@ -110,7 +110,7 @@ final class RGAppBadgeOverlay {
         // A badge-sized window relocates the system home indicator beneath the image;
         // auto-hiding only removes it after a delay. Keep system geometry aligned with the host,
         // and mask the render surface to the badge so it does not affect glass elsewhere.
-        let style = hostWindow.traitCollection.userInterfaceStyle
+        let style = userInterfaceStyle ?? hostWindow.traitCollection.userInterfaceStyle
         if window.overrideUserInterfaceStyle != style { window.overrideUserInterfaceStyle = style }
         CATransaction.begin()
         CATransaction.setDisableActions(true)

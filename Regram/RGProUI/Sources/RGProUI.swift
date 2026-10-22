@@ -98,6 +98,7 @@ private enum RGProToggles: String {
     case enablePanguOnReceiving
     case enablePanguOnEditing
     case filterNotifications
+    case hideTabBarPermissionWarnings
 }
 
 private enum RGProOneFromManySetting: String {
@@ -170,6 +171,8 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
 
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .notifications, text: "features.HideTabBarPermissionWarnings.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .mentionsAndRepliesNotifications, text: "Notifications.MentionsAndReplies.Title".i18n(lang), value: "Notifications.MentionsAndReplies.value.\(RGSimpleSettings.shared.mentionsAndRepliesNotifications)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .filterNotifications, value: RGSimpleSettings.shared.filterNotifications, text: "Notifications.ContentFilter".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
@@ -284,6 +287,8 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .filterNotifications:
                 RGSimpleSettings.shared.filterNotifications = value
                 RGSimpleSettings.shared.synchronizeShared()
+            case .hideTabBarPermissionWarnings:
+                RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
         }
     }, setOneFromManyValue: { setting in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }

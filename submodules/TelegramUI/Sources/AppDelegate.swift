@@ -1086,11 +1086,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, dismissNativeController: {
             self.window?.rootViewController?.dismiss(animated: true, completion: nil)
         }, getAvailableAlternateIcons: {
-            // MARK: Regram — only the approved B1/B2 families, each with native light/dark artwork.
-            return [
-                PresentationAppIcon(name: RGAppIconNames.primaryName, imageName: RGAppIconNames.previewName(nil), isDefault: true),
-                PresentationAppIcon(name: RGAppIconNames.alternateName, imageName: RGAppIconNames.previewName(RGAppIconNames.alternateName)),
-            ]
+            // MARK: Regram — the bubble identity is primary; the former primary is an alternate.
+            return RGAppIconNames.allNames.map { name in
+                PresentationAppIcon(name: name, imageName: RGAppIconNames.previewName(name == RGAppIconNames.primaryName ? nil : name), isDefault: name == RGAppIconNames.primaryName)
+            }
         }, getAlternateIconName: {
             if #available(iOS 10.3, *) {
                 // MARK: Regram — match an icon retained by iOS to its renamed picker entry.

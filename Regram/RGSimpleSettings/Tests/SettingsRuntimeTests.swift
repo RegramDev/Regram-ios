@@ -282,6 +282,12 @@ extension UserDefaults {
         expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.alternateName, "The new alternate badge persists")
         let oldBadgeBackup = RGSettingsBackup(values: ["customAppBadge": .string("Components/AppBadge")])
         expect(oldBadgeBackup.values["customAppBadge"] == .string(RGAppBadgeNames.defaultName), "Legacy badge backups normalize to current artwork")
+        for name in ["RegramAppBadge", "ZhiqiuAppBadge", "RGAzureBadge", "RGJadeBadge"] {
+            RGSimpleSettings.shared.customAppBadge = name
+            expect(RGSimpleSettings.shared.customAppBadge == name, "Retained and recolored badges persist")
+            let backup = RGSettingsBackup(values: ["customAppBadge": .string(name)])
+            expect(backup.values["customAppBadge"] == .string(name), "Backups retain available badge styles")
+        }
         RGSimpleSettings.shared.customAppBadge = originalBadge
         var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
         let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })

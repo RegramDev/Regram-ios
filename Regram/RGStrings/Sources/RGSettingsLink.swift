@@ -26,6 +26,7 @@ public struct RGSettingsDestination: Hashable {
         if page == "diagnostics", item == "datacenters" { self.page = "datacenters"; self.item = "start"; return }
         if page == "bottomBar", item == "bottomSearch" || item == "searchMode" { self.page = page; self.item = "visibility"; return }
         let moves: [String: String] = [
+            "settings.privacy:hideTabBarPermissionWarnings": "pro.notifications", "settings.app:hideTabBarPermissionWarnings": "pro.notifications",
             "pro.messages:inputToolbar": "pro.input", "pro.messages:mentionAsUserIdLink": "pro.input", "pro.messages:panguSpacing": "pro.input", "pro.messages:defaultOutgoingFormatting": "pro.input", "pro.messages:chatPreferences": "pro.input",
             "antiFeatures:revokedMarker": "revokedMarker",
             "pro.privacy:localPremium": "pro.tools", "pro.tools:diagnostics": "pro.network",

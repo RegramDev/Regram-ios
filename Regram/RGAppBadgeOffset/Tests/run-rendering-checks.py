@@ -24,6 +24,20 @@ bundle_id = 'test.regram.badgerendering'
 production = '\n'.join((ROOT / f'Regram/RGAppBadgeOffset/Sources/{name}.swift').read_text()
                        .replace('import AppBundle', '').replace('import RGSimpleSettings', '')
                        for name in ('RGAppBadgeImageView', 'RGAppBadgeOverlay'))
+# Exercise the actual Window1 entry point used by SharedAccountContext for app theme changes.
+window_source = (ROOT / 'submodules/Display/Source/WindowContent.swift').read_text()
+start = window_source.index('    public func updateAppBadgeAppearance(isDark: Bool)')
+end = window_source.index('\n    }', start) + len('\n    }')
+production += '''
+final class AppThemeWindow {
+    let badgeView: UIImageView
+    init(_ badgeView: UIImageView) { self.badgeView = badgeView }
+    func updateAppBadgeLayout() { (self.badgeView as? RGAppBadgeImageView)?.reloadArtwork() }
+''' + window_source[start:end] + '\n}\n'
+settings_source = (ROOT / 'submodules/TelegramPresentationData/Sources/Resources/PresentationResourcesSettings.swift').read_text()
+start = settings_source.index('private func renderMessageBookmarksArtwork()')
+end = settings_source.index('\n}', start) + len('\n}')
+production += '\n' + settings_source[start:end] + '\nfunc bookmarksArtworkProbe() -> UIImage? { renderMessageBookmarksArtwork() }\n'
 (work / 'Production.swift').write_text(production)
 (work / 'App.swift').write_text(r'''
 import UIKit
@@ -125,6 +139,57 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         results["visible_badge_restores_overlay"] = !overlayWindow.isHidden
         overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: moved, enabled: false)
         results["fallback_reattaches_without_window"] = badge.superview === fallback && overlayWindow.isHidden && overlayWindow.rootViewController == nil
+        window!.overrideUserInterfaceStyle = .light
+        self.awaitLightWindow()
+    }
+    func awaitLightWindow(_ attempt: Int = 0) {
+        if window!.rootViewController!.view.traitCollection.userInterfaceStyle != .light && attempt < 60 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { self.awaitLightWindow(attempt + 1) }
+            return
+        }
+        self.checkAppTheme()
+    }
+    func checkAppTheme() {
+        let themedBadge = RGAppBadgeImageView(frame: CGRect(x: 50, y: 80, width: 112, height: 28))
+        let fallback = window!.rootViewController!.view!
+        fallback.addSubview(themedBadge)
+        let themedWindow = AppThemeWindow(themedBadge)
+        // Saved dark app theme on a light system window: this was missing from the old fixture.
+        themedWindow.updateAppBadgeAppearance(isDark: true)
+        results["saved_app_dark_theme_on_light_window"] = window!.traitCollection.userInterfaceStyle == .light && background(themedBadge.image, matches: [229, 229, 234])
+        Probe.view = themedBadge
+        let before = Probe.assignments
+        for _ in 0..<1000 { themedWindow.updateAppBadgeAppearance(isDark: true) }
+        results["same_app_theme_zero_image_assignments"] = Probe.assignments == before
+        let overlay = RGAppBadgeOverlay(badgeView: themedBadge)
+        let frame = themedBadge.frame
+        overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: frame, enabled: true, userInterfaceStyle: themedBadge.artworkUserInterfaceStyle)
+        let overlayWindow = window!.windowScene!.windows.first { $0 is RGAppBadgeWindow }!
+        let mask = overlayWindow.layer.mask as! CAShapeLayer
+        let original = mask.path
+        results["overlay_uses_app_dark_theme_on_light_system"] = overlayWindow.overrideUserInterfaceStyle == .dark && background(themedBadge.image, matches: [229, 229, 234])
+        themedWindow.updateAppBadgeAppearance(isDark: false)
+        overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: frame, enabled: true, userInterfaceStyle: themedBadge.artworkUserInterfaceStyle)
+        results["app_theme_change_without_geometry_change"] = overlayWindow.overrideUserInterfaceStyle == .light && background(themedBadge.image, matches: [243, 234, 220]) && mask.path === original
+        for name in ["RGConversationBadge", "RGAzureBadge", "RGIrisBadge", "RGMintBadge", "RGGatheringBadge", "RGAmberBadge", "RGNebulaBadge", "RGJadeBadge"] {
+            RGSimpleSettings.shared.customAppBadge = name
+            themedWindow.updateAppBadgeAppearance(isDark: true)
+            let dark = background(themedBadge.image, matches: [229, 229, 234])
+            themedWindow.updateAppBadgeAppearance(isDark: false)
+            results[name + "_both_app_theme_appearances"] = dark && background(themedBadge.image, matches: [243, 234, 220])
+        }
+        for name in ["RGConversationPreview", "RGAzurePreview", "RGIrisPreview", "RGMintPreview", "RGGatheringPreview", "RGAmberPreview", "RGNebulaPreview", "RGJadePreview", "RegramPro", "RegramSettings"] {
+            let light = UIImage(named: name, in: Bundle.main, compatibleWith: UITraitCollection(userInterfaceStyle: .light))
+            let dark = UIImage(named: name, in: Bundle.main, compatibleWith: UITraitCollection(userInterfaceStyle: .dark))
+            results[name + "_explicit_light_dark_images"] = background(light, matches: [243, 234, 220]) && background(dark, matches: [229, 229, 234])
+        }
+        for name in ["RegramAppBadge", "ZhiqiuAppBadge"] {
+            RGSimpleSettings.shared.customAppBadge = name
+            themedBadge.reloadArtwork()
+            results[name + "_retained_original_asset"] = themedBadge.image != nil && themedBadge.image?.size.height == 22
+        }
+        results["message_bookmarks_distinct_book_glyph"] = bookmarksArtworkProbe()?.size == CGSize(width: 30, height: 30)
+        overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: frame, enabled: false)
         let output = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("results.json")
         try! JSONSerialization.data(withJSONObject: results, options: [.prettyPrinted, .sortedKeys]).write(to: output)
     }
@@ -139,7 +204,8 @@ info = {'CFBundleExecutable': 'BadgeChecks', 'CFBundleIdentifier': bundle_id, 'C
 (app / 'Info.plist').write_bytes(plistlib.dumps(info))
 sdk = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path'], env=env, text=True).strip()
 env['SDKROOT'] = sdk
-subprocess.run(['xcrun', 'actool', str(ROOT / 'Regram/RGAppBadgeAssets/Images.xcassets'), '--compile', str(app),
+subprocess.run(['xcrun', 'actool', str(ROOT / 'Regram/RGAppBadgeAssets/Images.xcassets'),
+                str(ROOT / 'Regram/RGBranding/Images.xcassets'), str(ROOT / 'Regram/RGSettingsUI/Images.xcassets'), '--compile', str(app),
                 '--platform', 'iphonesimulator', '--minimum-deployment-target', '15.0', '--target-device', 'iphone',
                 '--target-device', 'ipad'], env=env, check=True, capture_output=True, timeout=90)
 subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-target', 'arm64-apple-ios15.0-simulator', '-sdk', sdk,

@@ -100,10 +100,16 @@ private final class Fixture {
             precondition(!retired.selection.needsRetiredIconReset(systemName: name), "A stale retired getter cannot undo an acknowledged new icon")
             precondition(retired.selection.resolvedName(systemName: name) == "RGGathering")
         }
-        for name in ["", "Components/AppBadge", "SkyAppBadge", "RegramAppBadge", "unknown"] {
+        for name in ["", "Components/AppBadge", "SkyAppBadge", "unknown"] {
             precondition(RGAppBadgeNames.canonicalName(name) == RGAppBadgeNames.defaultName)
         }
         precondition(RGAppBadgeNames.canonicalName(RGAppBadgeNames.alternateName) == RGAppBadgeNames.alternateName)
+        for name in RGAppBadgeNames.allNames { precondition(RGAppBadgeNames.canonicalName(name) == name) }
+        for name in RGAppIconNames.alternateNames {
+            precondition(RGAppIconNames.canonicalName(name) == name && !RGAppIconNames.isRetiredSystemName(name))
+            precondition(RGAppIconNames.previewName(name) == name + "Preview")
+        }
+        precondition(RGAppIconNames.canonicalName("RGClassic") != nil, "The former primary must be an alternate now")
         precondition(defaults.string(forKey: "unrelated-setting") == "keep")
         print("Icon persistence passed: cold starts, stale getters, primary reset, failure/timeout/late callbacks, retired icon migration, acknowledged-selection protection and badge fallback.")
     }

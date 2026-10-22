@@ -923,8 +923,14 @@ public class Window1 {
         if #available(iOS 27.0, *) {
             let imageSize = self.badgeView.image?.size ?? .zero
             let badgeFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - imageSize.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: imageSize)
-            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, badgeFrame: badgeFrame, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden)
+            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, badgeFrame: badgeFrame, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden, userInterfaceStyle: (self.badgeView as? RGAppBadgeImageView)?.artworkUserInterfaceStyle)
         }
+    }
+
+    // MARK: Regram — a manually selected Telegram theme need not change the system window traits.
+    public func updateAppBadgeAppearance(isDark: Bool) {
+        (self.badgeView as? RGAppBadgeImageView)?.updateAppearance(isDark: isDark)
+        self.updateAppBadgeLayout()
     }
 
     // MARK: Regram — image changes need layout even when the cached window geometry is unchanged.

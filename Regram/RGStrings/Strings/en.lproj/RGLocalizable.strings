@@ -1101,7 +1101,7 @@ Matching is case-insensitive.";
 "features.GroupProfileSettings.Item.community" = "Community";
 "features.GroupProfileSettings.Item.deleteGroup" = "Delete Group";
 "features.GroupProfileSettings.Item.other" = "Other Settings";
-"features.HideTabBarPermissionWarnings" = "Hide Tab Bar Permission Warnings";
+"features.HideTabBarPermissionWarnings" = "Hide Permission Warning Badges";
 "features.HideTopStories" = "Hide Top Stories Area";
 "features.DisableChatAvatarStories" = "Disable Chat Avatar Stories";
 "features.ChatListStartupFolder" = "Open Folder on Startup";
@@ -1222,8 +1222,40 @@ Matching is case-insensitive.";
 "AppBadge.Current" = "Current badge";
 "AppBadge.Choose" = "Choose a style";
 
-"AppIcon.Name.conversation" = "Bubbles";
-"AppBadge.Name.conversation" = "Bubbles";
+"AppIcon.Name.conversation" = "Whisper";
+"AppBadge.Name.conversation" = "Whisper";
 
-"AppIcon.Name.gathering" = "Convergence";
-"AppBadge.Name.gathering" = "Convergence";
+"AppIcon.Name.gathering" = "Confluence";
+"AppBadge.Name.gathering" = "Confluence";
+
+"AppIcon.Name.azure" = "Azure";
+
+"AppBadge.Name.azure" = "Azure";
+
+"AppIcon.Name.iris" = "Iris";
+
+"AppBadge.Name.iris" = "Iris";
+
+"AppIcon.Name.mint" = "Mint";
+
+"AppBadge.Name.mint" = "Mint";
+
+"AppIcon.Name.amber" = "Amber";
+
+"AppBadge.Name.amber" = "Amber";
+
+"AppIcon.Name.nebula" = "Nebula";
+
+"AppBadge.Name.nebula" = "Nebula";
+
+"AppIcon.Name.jade" = "Jade";
+
+"AppBadge.Name.jade" = "Jade";
+
+"AppIcon.Name.classic" = "Regram Classic";
+
+"AppBadge.Name.regram" = "Regram";
+
+"AppBadge.Name.zhiqiu" = "Zhiqiu";
+
+"features.HideTabBarPermissionWarnings.Notice" = "Hide exclamation badges caused by disabled notification or contacts access. Unread counts and other account reminders remain visible.";

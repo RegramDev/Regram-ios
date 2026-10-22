@@ -3,6 +3,16 @@
     {
       "filename" : "RGConversation-light.png",
       "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "RGConversation-dark.png",
+      "idiom" : "universal"
     }
   ],
   "info" : {

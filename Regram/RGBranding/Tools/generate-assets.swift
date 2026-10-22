@@ -11,7 +11,20 @@ let geometry = try JSONSerialization.jsonObject(with: Data(contentsOf: branding.
 
 enum Design: String, CaseIterable {
     case conversation = "RGConversation"
+    case azure = "RGAzure"
+    case iris = "RGIris"
+    case mint = "RGMint"
     case gathering = "RGGathering"
+    case amber = "RGAmber"
+    case nebula = "RGNebula"
+    case jade = "RGJade"
+
+    var isGathering: Bool {
+        switch self {
+        case .gathering, .amber, .nebula, .jade: return true
+        default: return false
+        }
+    }
 }
 
 enum Appearance: String, CaseIterable {
@@ -20,11 +33,34 @@ enum Appearance: String, CaseIterable {
         self == .light ? "F3EADC" : "E5E5EA"
     }
     func foreground(_ design: Design) -> String {
-        self == .light ? (design == .conversation ? "14243E" : "1B1B19") : "1C1C1E"
+        switch design {
+        case .conversation: return self == .light ? "14243E" : "1C1C1E"
+        case .azure: return self == .light ? "15385B" : "24364D"
+        case .iris: return self == .light ? "38304C" : "242135"
+        case .mint: return self == .light ? "183D36" : "1F3630"
+        case .gathering: return self == .light ? "1B1B19" : "1C1C1E"
+        case .amber: return self == .light ? "A96A24" : "8A561B"
+        case .nebula: return self == .light ? "6A5ACD" : "5E50B8"
+        case .jade: return self == .light ? "1C8874" : "156B5D"
+        }
     }
     func badge(_ design: Design) -> String { background(design) }
     func accent(_ design: Design) -> String {
-        design == .conversation ? "FE683B" : foreground(design)
+        switch design {
+        case .conversation: return "FE683B"
+        case .azure: return "268BEB"
+        case .iris: return "8D6ADE"
+        case .mint: return "29A58A"
+        default: return foreground(design)
+        }
+    }
+    func overlap(_ design: Design) -> String {
+        switch design {
+        case .azure: return "BBDCFB"
+        case .iris: return "D9CBF8"
+        case .mint: return "C4EADF"
+        default: return "FEC5A7"
+        }
     }
     var catalogAppearances: [[String: String]] {
         self == .light ? [] : [["appearance": "luminosity", "value": self.rawValue]]
@@ -80,13 +116,13 @@ func traced(_ name: String) -> CGPath {
 
 func layers(_ design: Design, _ appearance: Appearance, background: String) -> [Layer] {
     switch design {
-    case .conversation:
+    case .conversation, .azure, .iris, .mint:
         return [
             Layer(path: traced("conversation-rear"), fill: appearance.foreground(design)),
             Layer(path: traced("conversation-front"), fill: appearance.accent(design)),
-            Layer(path: traced("conversation-overlap"), fill: "FEC5A7")
+            Layer(path: traced("conversation-overlap"), fill: appearance.overlap(design))
         ]
-    case .gathering:
+    case .gathering, .amber, .nebula, .jade:
         return [Layer(path: traced("gathering-mark"), fill: appearance.foreground(design))]
     }
 }
@@ -128,9 +164,8 @@ func raster(to path: URL, size: CGSize, scale: Int = 1, opaque: Bool = true, dra
     precondition(CGImageDestinationFinalize(destination))
 }
 
-// Supply only the default app icon. iOS generates the missing Home Screen appearances.
-func icon(_ design: Design, path: URL, size: Int = 1024) throws {
-    let appearance = Appearance.light
+// Maintain one geometry and derive both explicit appearances; do not rely on OS recoloring.
+func icon(_ design: Design, _ appearance: Appearance = .light, path: URL, size: Int = 1024) throws {
     try raster(to: path, size: CGSize(width: size, height: size)) { context in
         context.scaleBy(x: CGFloat(size) / 1024, y: CGFloat(size) / 1024)
         context.setFillColor(color(appearance.background(design)))
@@ -150,7 +185,7 @@ func badge(_ design: Design, _ appearance: Appearance, path: URL, scale: Int) th
         drawMark(design, appearance, background: appearance.badge(design), context: context)
         context.restoreGState()
         // Preserve the approved original lettering too; no substituted font or casing.
-        let wordmark = traced(design == .conversation ? "conversation-wordmark" : "gathering-wordmark")
+        let wordmark = traced(design.isGathering ? "gathering-wordmark" : "conversation-wordmark")
         let bounds = wordmark.boundingBoxOfPath
         let ratio = 68 / bounds.width
         context.translateBy(x: 35, y: (28 - bounds.height * ratio) / 2)
@@ -187,12 +222,16 @@ for design in Design.allCases {
     var appImages: [[String: Any]] = [], previews: [[String: Any]] = [], badges: [[String: Any]] = []
     for appearance in Appearance.allCases {
         let name = design.rawValue + "-" + appearance.rawValue + ".png"
-        if appearance == .light {
-            appImages.append(["filename": name, "idiom": "universal", "platform": "ios", "size": "1024x1024"])
-            try icon(design, path: branding.appendingPathComponent("AppIcons.xcassets/\(design.rawValue).appiconset/\(name)"))
-            previews.append(["filename": name, "idiom": "universal"])
-            try icon(design, path: branding.appendingPathComponent("Images.xcassets/\(design.rawValue)Preview.imageset/\(name)"), size: 256)
+        var appImage: [String: Any] = ["filename": name, "idiom": "universal", "platform": "ios", "size": "1024x1024"]
+        var preview: [String: Any] = ["filename": name, "idiom": "universal"]
+        if appearance == .dark {
+            appImage["appearances"] = appearance.catalogAppearances
+            preview["appearances"] = appearance.catalogAppearances
         }
+        appImages.append(appImage)
+        previews.append(preview)
+        try icon(design, appearance, path: branding.appendingPathComponent("AppIcons.xcassets/\(design.rawValue).appiconset/\(name)"))
+        try icon(design, appearance, path: branding.appendingPathComponent("Images.xcassets/\(design.rawValue)Preview.imageset/\(name)"), size: 256)
         // Both badge appearances share one asset name and one saved style selection.
         for scale in 1...3 {
             let filename = "\(design.rawValue)Badge-\(appearance.rawValue)@\(scale)x.png"
@@ -201,7 +240,6 @@ for design in Design.allCases {
             badges.append(item)
             try badge(design, appearance, path: root.appendingPathComponent("Regram/RGAppBadgeAssets/Images.xcassets/\(design.rawValue)Badge.imageset/\(filename)"), scale: scale)
         }
-        guard appearance == .light else { continue }
         let paths = layers(design, appearance, background: appearance.background(design)).map { layer -> String in
             let stroke = layer.stroke.map { " stroke=\"#\($0)\" stroke-width=\"\(layer.width)\" stroke-linejoin=\"round\" paint-order=\"stroke fill\"" } ?? ""
             return "<path fill=\"#\(layer.fill)\"\(stroke) d=\"\(svgPath(layer.path))\"/>"
@@ -214,8 +252,8 @@ for design in Design.allCases {
     try writeJSON(["images": appImages, "info": info], to: branding.appendingPathComponent("AppIcons.xcassets/\(design.rawValue).appiconset/Contents.json"))
     try writeJSON(["images": previews, "info": info], to: branding.appendingPathComponent("Images.xcassets/\(design.rawValue)Preview.imageset/Contents.json"))
     try writeJSON(["images": badges, "info": info], to: root.appendingPathComponent("Regram/RGAppBadgeAssets/Images.xcassets/\(design.rawValue)Badge.imageset/Contents.json"))
-    // Remove only the previously exported custom app-icon appearances.
-    for retired in ["dark", "tinted"] {
+    // Remove only the previously exported custom tinted appearance.
+    for retired in ["tinted"] {
         for relativePath in ["AppIcons.xcassets/\(design.rawValue).appiconset/\(design.rawValue)-\(retired).png",
                              "Images.xcassets/\(design.rawValue)Preview.imageset/\(design.rawValue)-\(retired).png",
                              "Artwork/\(design.rawValue)-\(retired).svg"] {
@@ -225,16 +263,44 @@ for design in Design.allCases {
     }
 }
 
+// Preserve the old Regram primary as an optional icon, with a derived gray-paper dark rendition.
+let classicSource = branding.appendingPathComponent("Artwork/RGClassic-original.png")
+let classicImage = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithURL(classicSource as CFURL, nil)!, 0, nil)!
+for (catalog, size) in [("AppIcons.xcassets/RGClassic.appiconset", 1024), ("Images.xcassets/RGClassicPreview.imageset", 256)] {
+    var images: [[String: Any]] = []
+    for appearance in Appearance.allCases {
+        let name = "RGClassic-\(appearance.rawValue).png"
+        var entry: [String: Any] = ["filename": name, "idiom": "universal"]
+        if size == 1024 { entry["platform"] = "ios"; entry["size"] = "1024x1024" }
+        if appearance == .dark { entry["appearances"] = appearance.catalogAppearances }
+        images.append(entry)
+        try raster(to: branding.appendingPathComponent(catalog + "/" + name), size: CGSize(width: size, height: size)) { context in
+            context.translateBy(x: 0, y: CGFloat(size)); context.scaleBy(x: 1, y: -1)
+            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            context.setFillColor(color("FFFFFF")); context.fill(rect)
+            context.draw(classicImage, in: rect)
+            if appearance == .dark {
+                context.setBlendMode(.multiply)
+                context.setFillColor(color("E5E5EA")); context.fill(rect)
+            }
+        }
+    }
+    try writeJSON(["images": images, "info": info], to: branding.appendingPathComponent(catalog + "/Contents.json"))
+}
+
 // Shared product surfaces use the primary B1 identity too.
 for folder in ["Regram/RGSettingsUI/Images.xcassets/RegramSettings.imageset", "Regram/RGSettingsUI/Images.xcassets/RegramPro.imageset", "Telegram/WidgetKitWidget/WidgetImages.xcassets/RegramUpdateIcon.imageset"] {
-    let name = "Regram-light.png"
-    let images: [[String: Any]] = [["filename": name, "idiom": "universal"]]
-    try icon(.conversation, path: root.appendingPathComponent(folder + "/" + name))
+    var images: [[String: Any]] = []
+    for appearance in Appearance.allCases {
+        let name = "Regram-\(appearance.rawValue).png"
+        var image: [String: Any] = ["filename": name, "idiom": "universal"]
+        if appearance == .dark { image["appearances"] = appearance.catalogAppearances }
+        images.append(image)
+        try icon(.conversation, appearance, path: root.appendingPathComponent(folder + "/" + name))
+    }
     try writeJSON(["images": images, "info": info], to: root.appendingPathComponent(folder + "/Contents.json"))
-    let retired = root.appendingPathComponent(folder + "/Regram-dark.png")
-    if manager.fileExists(atPath: retired.path) { try manager.removeItem(at: retired) }
 }
 for folder in ["Telegram/Watch/App/Assets.xcassets/AppIcon.appiconset", "Telegram/WatchApp/tgwatch Watch App/Assets.xcassets/AppIcon.appiconset"] {
     try icon(.conversation, path: root.appendingPathComponent(folder + "/Regram.png"))
 }
-print("Exported one default app icon per family, matching previews and 112×28pt light/dark badges.")
+print("Exported explicit light/dark app icons, matching previews and 112×28pt badges from the shared geometry.")

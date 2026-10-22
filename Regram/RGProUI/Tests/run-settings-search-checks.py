@@ -45,7 +45,8 @@ final class RGLocalizationManager {
     static let shared = RGLocalizationManager()
     func preferredLocale(primary: String, secondary: String?) -> String { primary }
 }
-struct PresentationData { let strings: Strings; let theme = NSObject() }
+final class Theme: NSObject { let overallDarkAppearance: Bool; init(_ dark: Bool) { overallDarkAppearance = dark } }
+struct PresentationData { let strings: Strings; let theme: Theme; init(strings: Strings, dark: Bool = false) { self.strings = strings; self.theme = Theme(dark) } }
 final class RGItemListCounter { var value = -1; var count: Int { value += 1; return value } }
 private enum RGProControllerEntry: Comparable, Identifiable {
     case header(id: Int, section: RGProControllerSection, text: String, badge: String?)
@@ -79,7 +80,7 @@ enum ItemListActionKind { case destructive }
 final class RGSimpleSettings {
     static let shared = RGSimpleSettings()
     let inputToolbar = false, mentionAsUserIdLink = false, localPremium = false, disableLinkPreview = false
-    let filterNotifications = false, canSharePreferencesWithExtensions = true
+    let filterNotifications = false, canSharePreferencesWithExtensions = true, hideTabBarPermissionWarnings = false
     let enablePanguOnReceiving = false, enablePanguOnSending = false, enablePanguOnEditing = false
     enum Format: String { case plain }
     let defaultOutgoingFormat = Format.plain
@@ -90,6 +91,7 @@ public class ViewController {}
 public class NavigationController {}
 struct Held<T> { let value: T; func with<R>(_ f: (T) -> R) -> R { f(value) } }
 final class Shared {
+    let applicationBindings = ApplicationBindings()
     let currentPresentationData: Held<PresentationData>
     var opened: [RGSettingsDestination] = []
     init(_ language: String) { currentPresentationData = Held(value: PresentationData(strings: Strings(rgLanguageCode: language))) }
@@ -99,6 +101,12 @@ final class Shared {
         opened.append(value); return ViewController()
     }
 }
+final class ApplicationBindings {
+    struct Icon { let name: String; let imageName: String; let isDefault: Bool }
+    var name: String?
+    func getAlternateIconName() -> String? { name }
+    func getAvailableAlternateIcons() -> [Icon] { [Icon(name: "RGConversation", imageName: "RGConversationPreview", isDefault: true), Icon(name: "RGAzure", imageName: "RGAzurePreview", isDefault: false), Icon(name: "RGGathering", imageName: "RGGatheringPreview", isDefault: false)] }
+}
 public final class AccountContext { let sharedContext: Shared; init(_ language: String) { sharedContext = Shared(language) } }
 ICONS
 PRESENTATION
@@ -107,9 +115,20 @@ ADAPTER
 func stringTokens(_ text: String) -> [String] { text.lowercased().split(whereSeparator: { $0.isWhitespace }).map(String.init) }
 func matchStringTokens(_ tokens: [String], with other: [String]) -> Bool { !other.isEmpty && other.allSatisfy { query in tokens.contains { $0.hasPrefix(query) } } }
 NATIVE_SEARCH
-final class UIImage {}
-extension SettingsSearchableItemIcon { func image() -> UIImage? { UIImage() } }
-enum SettingsSearchEntry { case result(index: Int, item: SettingsSearchableItem, icon: UIImage?) }
+final class UIImage { let name: String; let dark: Bool; init(_ name: String = "native", _ dark: Bool = false) { self.name = name; self.dark = dark } }
+enum PresentationResourcesSettings {
+    static var cache: [String: UIImage] = [:]
+    static func regramProIcon(imageName: String, dark: Bool) -> UIImage? {
+        let key = imageName + String(dark)
+        if let value = cache[key] { return value }
+        let value = UIImage(imageName, dark); cache[key] = value; return value
+    }
+}
+extension SettingsSearchableItemIcon { func image(regramImage: UIImage? = nil) -> UIImage? { self == .regram ? regramImage : UIImage() } }
+enum SettingsSearchEntry: Equatable {
+    case result(index: Int, item: SettingsSearchableItem, icon: UIImage?)
+    ENTRY_EQUALITY
+}
 struct SearchTransition { let entries: [SettingsSearchEntry]; let isSearching: Bool }
 func preparedSettingsSearchContainerTransition(theme: NSObject, strings: Strings, from: [SettingsSearchEntry], to: [SettingsSearchEntry], interaction: Int, isSearching: Bool, forceUpdate: Bool) -> SearchTransition {
     SearchTransition(entries: to, isSearching: isSearching)
@@ -120,10 +139,12 @@ final class Atomic<T> {
     func swap(_ next: T) -> T { let previous = value; value = next; return previous }
 }
 final class ReducerHost {
+    let context = AccountContext("en")
     let previousEntriesHolder = Atomic<([SettingsSearchEntry], NSObject, Strings)?>(value: nil)
     var transitions: [SearchTransition] = []
     func enqueueTransition(_ value: SearchTransition) { transitions.append(value) }
     func receive(_ value: (String, [SettingsSearchableItem])?, data: PresentationData) {
+        let context = self.context
         let previousEntriesHolder = self.previousEntriesHolder
         let interaction = 0
         let callback: ((String, [SettingsSearchableItem])?, PresentationData) -> Void = { [weak self] queryAndFoundItems, presentationData in
@@ -198,6 +219,17 @@ final class Promise { var values: [String] = []; func set(_ value: String) { val
             node.receive(("no result", []), data: data)
             node.receive(nil, data: data)
             precondition(node.transitions.count == 3 && node.transitions[1].entries.isEmpty && node.transitions[1].isSearching && !node.transitions[2].isSearching, "Native empty search removes old results, then clearing restores idle state")
+            node.receive(("regram", [items[0]]), data: data)
+            let initial = node.transitions.last!.entries[0]
+            node.context.sharedContext.applicationBindings.name = "RGAzure"
+            node.receive(("regram", [items[0]]), data: data)
+            let changed = node.transitions.last!.entries[0]
+            precondition(initial != changed, "The same result ID must update when its selected icon changes")
+            if case let .result(_, _, image) = changed { precondition(image?.name == "RGAzurePreview" && image?.dark == false) }
+            node.receive(("regram", [items[0]]), data: PresentationData(strings: data.strings, dark: true))
+            let dark = node.transitions.last!.entries[0]
+            precondition(changed != dark, "Theme changes must replace the result thumbnail")
+            if case let .result(_, _, image) = dark { precondition(image?.name == "RGAzurePreview" && image?.dark == true) }
         }
         let searchPromise = Promise()
         var searchGeneration = 0
@@ -214,6 +246,7 @@ final class Promise { var values: [String] = []; func set(_ value: String) { val
 }
 '''
 replacements = {
+    'ENTRY_EQUALITY': block(search_ui, '    static func == (lhs: SettingsSearchEntry'),
     'PAGES': block(pro, 'public enum RGProSettingsPage:'),
     'SECTIONS': block(pro, 'private enum RGProControllerSection:'),
     'LINKS': block(pro, 'private enum RGProDisclosureLink:'),

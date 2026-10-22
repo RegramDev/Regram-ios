@@ -490,6 +490,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                 }
                 if themeUpdated {
                     updateLegacyTheme()
+                    // MARK: Regram — resolve the badge from the app theme, including its own overlay.
+                    strongSelf.mainWindow?.updateAppBadgeAppearance(isDark: next.theme.overallDarkAppearance)
                     
                     /*if #available(iOS 13.0, *) {
                         let userInterfaceStyle: UIUserInterfaceStyle
@@ -1146,6 +1148,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
                 eventView.overrideUserInterfaceStyle = userInterfaceStyle
             }
         }*/
+        // MARK: Regram — apply a saved dark theme before any presentation-data change occurs.
+        self.mainWindow?.updateAppBadgeAppearance(isDark: self.currentPresentationData.with { $0 }.theme.overallDarkAppearance)
     }
     
     deinit {
