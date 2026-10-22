@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前文档按 **13.0 / b34626** 整理；本轮按用户要求跳过测试，构建与交付范围见[设置横栏与控件记录](docs/settings-controls-34626.md)，公开发布状态及下载见 [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前文档按 **13.0 / b34627** 整理；本轮按用户要求跳过测试，构建与交付范围见[归档与设置修复记录](docs/navigation-community-badge-fixes.md)，公开发布状态及下载见 [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -125,7 +125,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 
 ## 验证范围
 
-b34626 已完成 Xcode 27 arm64 Release 构建，主应用与六个扩展、12 份匹配调试符号、包结构、签名和资源校验通过，安装身份及选定权限声明与 b34625 一致。按用户要求跳过本轮自动回归、应用内更新解析、真实账号、真机和覆盖升级测试；未执行项目不记为通过。源码、本地构建例外及校验值见[本轮记录](docs/settings-controls-34626.md)。
+b34627 的 arm64 Release 构建和包检查进行中；归档原因与修正见[专项排查](docs/community-archive-audit-20261022.md)。按用户要求跳过本轮自动回归、应用内更新解析、真实账号、真机和覆盖升级测试；未执行项目不记为通过。源码、本地构建例外及最终校验记录见[本轮记录](docs/navigation-community-badge-fixes.md)。
 
 旧版本的发布与验收记录见[更新记录](docs/changelog.md)；各版设备结果仅对应当时的安装包与测试场景。
 

@@ -1,6 +1,6 @@
 # Regram 功能清单
 
-本文按 **13.0 / b34626** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。功能已接入不等于所有设备和网络环境均已验证，验证范围见文末。
+本文按 **13.0 / b34627** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。功能已接入不等于所有设备和网络环境均已验证，验证范围见文末。
 
 ## 设置与导航
 

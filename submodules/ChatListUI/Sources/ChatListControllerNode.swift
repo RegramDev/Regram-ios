@@ -1656,7 +1656,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         switch entry {
                         case .all:
                             id = Int32.min
-                            title = rgFeatureFolderTabTitle(text: rgAllChatsTitle(shortTitle: self.presentationData.strings.ChatList_Tabs_All, longTitle: self.presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: rgUseShortAllChatsTitle(true), languageCode: self.presentationData.strings.rgLanguageCode), entities: [], enableAnimations: false, icon: rgFeatureFolderTabIcons[entry.id] ?? "💬", displayMode: rgFeatureFolderTabDisplayMode)
+                            title = rgFeatureFolderTabTitle(text: rgAllChatsTitle(shortTitle: self.presentationData.strings.ChatList_Tabs_All, longTitle: self.presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: rgUseShortAllChatsTitle(true), languageCode: RGLocalizationManager.shared.preferredLocale(primary: self.presentationData.strings.primaryComponent.languageCode, secondary: self.presentationData.strings.secondaryComponent?.languageCode)), entities: [], enableAnimations: false, icon: rgFeatureFolderTabIcons[entry.id] ?? "💬", displayMode: rgFeatureFolderTabDisplayMode)
                             isMainTab = true
                         case let .filter(idValue, text, unread):
                             id = AnyHashable(idValue)

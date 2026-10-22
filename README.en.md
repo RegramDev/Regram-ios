@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-This documentation describes **13.0 / b34626**. Tests were skipped at the user’s request; see the [build and delivery record](docs/settings-controls-34626.md). See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
+This documentation describes **13.0 / b34627**. Tests were skipped at the user’s request; see the [build and delivery record](docs/navigation-community-badge-fixes.md). See [GitHub Releases](https://github.com/RegramDev/Regram-ios/releases) for downloads, the [feature catalog](docs/features.md) for entry points and limits, and the [changelog](docs/changelog.md) for recent fixes.
 
 ## Features
 
@@ -125,7 +125,7 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
-b34626 passed the Xcode 27 arm64 Release build and package checks for the main app, six extensions, 12 matching debug symbols, signatures and resources. Installation identities and selected entitlements match b34625. Regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s request. The [current build record](docs/settings-controls-34626.md) lists the source revision, preserved local build exceptions and artifact checksum.
+The b34627 arm64 Release build and package checks are in progress. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Regression tests, in-app update parser verification, real-account, device and upgrade tests remain skipped at the user’s request. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 

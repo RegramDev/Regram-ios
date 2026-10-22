@@ -477,18 +477,20 @@ public enum ChatListFilterTabEntry: Equatable {
     }
     
     func title(strings: PresentationStrings) -> ChatFolderTitle {
+        let languageCode = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode) // MARK: Regram
         switch self {
         case .all:
-            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: false, languageCode: strings.rgLanguageCode), entities: [], enableAnimations: true) // MARK: Regram
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: false, languageCode: languageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }
     }
     
     func shortTitle(strings: PresentationStrings) -> ChatFolderTitle {
+        let languageCode = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode) // MARK: Regram
         switch self {
         case .all:
-            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: true, languageCode: strings.rgLanguageCode), entities: [], enableAnimations: true) // MARK: Regram
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: true, languageCode: languageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }
