@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.0 / b34628** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34628)。本版包含共同群组分页、设置搜索、拖动预览和顶部标记修正，构建与验证范围见[本轮记录](docs/groups-settings-search-drag-fixes.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前版本 **13.0 / b34629** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34629)。本版更新图标与截图标记的深浅色配色，修正跨设备配置恢复及搜索入口图标，增加权限提醒角标开关并区分消息书签图标。构建与交付范围见[本轮记录](docs/icon-backup-rendering-audit.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -127,7 +127,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 验证范围
 
-b34628 已完成主应用／六扩展的本地 arm64 Release 构建、签名、资源及 12 份匹配调试符号校验，安装身份和选定权限声明与 b34627 一致。51 项现有回归检查通过，设置搜索修正后专项检查再次通过；Latest、公开完整下载、SHA-256 附件和生产更新解析核对通过。独立 UIKit 检查使用 iOS 26.5 模拟器；没有执行完整应用的真实账号、iOS 27 真机或覆盖升级验收。本机旧代码未复现截图中的横条和开关方块，设备效果仍需复测。源码和交付记录见[本轮记录](docs/groups-settings-search-drag-fixes.md)。
+b34629 已完成主应用／六扩展的本地 arm64 Release 构建、签名、资源及 12 份匹配调试符号校验，安装身份和选定权限声明与 b34628 一致。最终包的 36 个 App Icon rendition 和 35 个深色图片 rendition 与独立资源编译结果一致；浅色及原画源文件保持不变。Latest、公开完整下载、SHA-256 附件和生产更新解析核对通过。独立 UIKit 资源夹具通过 35 项模拟器检查；未在真机或真实账号运行完整应用，也未执行覆盖升级验收。源码、交付记录和完整验证边界见[本轮记录](docs/icon-backup-rendering-audit.md)。
 
 旧版本的发布与验收记录见[更新记录](docs/changelog.md)；各版设备结果仅对应当时的安装包与测试场景。
 

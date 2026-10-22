@@ -1,17 +1,17 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.0 / b34628** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.0 / b34629** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
-- [图标、跨设备备份与标记渲染复查](icon-backup-rendering-audit.md)：取消图标切换失败提醒、统一设置恢复状态、减少重复布局及修正外观同步；包含深灰配色 b34629 本地测试包及历史测试包、包校验与缓存保留记录；未发布 Release。
+- [图标、跨设备备份与标记渲染复查](icon-backup-rendering-audit.md)：取消图标切换失败提醒、统一设置恢复状态、减少重复布局及修正外观同步；包含深灰配色 b34629 正式发布、历史本地测试包、包校验与缓存保留记录。
 - [共同群组、设置搜索与拖动预览复查](groups-settings-search-drag-fixes.md)：b34628 的分页、搜索状态与入口整合、原生开关拖动预览及顶部标记修正，包含构建、正式发布和验证边界。
 - [归档、手势与设置显示修复](navigation-community-badge-fixes.md)：b34627 的源码修复、编译、包校验及用户测试反馈，包含正式发布和公开下载核验记录。
 - [社群关联会话归档排查](community-archive-audit-20261022.md)：归档后回到主列表的原因，汇总、展开及异步补齐的修正和源码核对范围。
 - [设置横栏、图标与控件](settings-controls-34626.md)：b34626 的原生文件夹横栏、图标取舍和居中、深色开关与操作按钮颜色，包含构建与交付记录。
 - [过滤提及与设置层级](settings-navigation-34625.md)：b34625 的逐条隐藏提及处理、分类内设置与页内标签，包含构建及跳过测试的记录。
 - [完整功能清单](features.md)：九类设置、入口、默认行为、本机存储、容量和权限边界。
-- [近期更新记录](changelog.md)：b34628、b34627 及旧版本记录。
+- [近期更新记录](changelog.md)：b34629、b34628 及旧版本记录。
 - [b34624 界面与构建验证](settings-appearance.md)：设置与新增功能页样式、原生底栏搜索、构建来源、校验值及设备验收边界。
 - [翻译、语音、链接与设置](speech-links-settings.md)：独立总结接口、语音／圆视频识别、网页翻译、预览规则及设置导航。
 - [自动更新与安装](app-updates.md)：GitHub 来源、系统网络范围、后台下载、证书／TrollStore、灵动岛及安装后清理。
