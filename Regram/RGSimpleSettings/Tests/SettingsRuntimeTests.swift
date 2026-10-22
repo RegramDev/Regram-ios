@@ -170,8 +170,6 @@ extension UserDefaults {
         settings.hidePrivateChatActivities = false
         expect(settings.ghostDontSendTyping && !settings.hidePrivateChatActivities, "Ghost Mode must remain independent of local activity presentation")
         settings.hideSavedAndArchivedMessagesInList = true
-        settings.disableCommunityChatGrouping = true
-        expect(RGFeaturePreferences.storage(for: "features.disableCommunityChatGrouping").bool(forKey: "features.disableCommunityChatGrouping"), "Grouping policy must be readable from the shared store used by extensions")
         settings.enablePanguOnReceiving = true
         settings.setGroupProfileSettingItemVisible(.permissions, visible: true)
         settings.setTextStyleMenuItemEnabled(.bold, enabled: true)

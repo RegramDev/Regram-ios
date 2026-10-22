@@ -40,7 +40,14 @@ private final class RGAppBadgeRootController: UIViewController {
         self.hostWindow?.rootViewController?.supportedInterfaceOrientations ?? .allButUpsideDown
     }
     override var prefersHomeIndicatorAutoHidden: Bool {
-        self.hostWindow?.rootViewController?.prefersHomeIndicatorAutoHidden ?? false
+        // This window only contains the badge. Mirroring the host draws another home
+        // indicator at the bottom of this small window, directly beneath the image.
+        true
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        self.setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
 }
 

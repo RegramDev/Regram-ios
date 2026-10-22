@@ -1048,7 +1048,6 @@
 "features.HidePrivateChatActivities" = "隱藏對方輸入與錄音提示";
 "features.HideSavedAndArchivedMessagesInList" = "在列表中隱藏收藏夾和歸檔會話資訊";
 "features.KeepNewChatsVisibleAtTop" = "列表頂部保持顯示新訊息對話";
-"features.DisableCommunityChatGrouping" = "停用社群聊天合併顯示";
 "features.CommunityAvatarTapAction" = "點擊社群頭像行為";
 "features.CommunityAvatarTapAction.chat" = "一律進入聊天";
 "features.CommunityAvatarTapAction.community" = "一律開啟社群";

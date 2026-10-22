@@ -1057,7 +1057,6 @@ Matching is case-insensitive.";
 "features.HidePrivateChatActivities" = "Hide Others’ Typing and Recording";
 "features.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
 "features.KeepNewChatsVisibleAtTop" = "Keep New Chats Visible at Top";
-"features.DisableCommunityChatGrouping" = "Disable Community Chat Grouping";
 "features.CommunityAvatarTapAction" = "Community Avatar Tap Action";
 "features.CommunityAvatarTapAction.chat" = "Always Open Chat";
 "features.CommunityAvatarTapAction.community" = "Always Open Community";

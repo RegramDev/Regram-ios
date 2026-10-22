@@ -9,7 +9,8 @@ import tempfile
 
 root = Path(__file__).resolve().parents[3]
 controller = (root / 'submodules/TabBarUI/Sources/TabBarController.swift').read_text()
-transition = (root / 'submodules/TabBarUI/Sources/RGRootTabBackTransition.swift').read_text().replace('import UIKit', 'import Foundation\nimport CoreGraphics')
+transition_source = (root / 'submodules/TabBarUI/Sources/RGRootTabBackTransition.swift').read_text().replace('import Display\n', '')
+transition = transition_source.replace('import UIKit', 'import Foundation\nimport CoreGraphics')
 
 def block(source, marker):
     start = source.index(marker)
@@ -33,6 +34,12 @@ selection = block(controller, '    public var selectedIndex: Int')
 fixture = r'''
 import Foundation
 import CoreGraphics
+final class SharedDisplayLinkDriver {
+    enum FramesPerSecond { case max }
+    final class Link { func invalidate() {} }
+    static let shared = SharedDisplayLinkDriver()
+    func add(framesPerSecond: FramesPerSecond, _ update: @escaping (CGFloat) -> Void) -> Link { Link() }
+}
 final class Layer {
     var shadowColor: Int?; var shadowOpacity: Float = 0; var shadowRadius: CGFloat = 0; var shadowOffset = CGSize.zero
     var shadowPathWrites = 0
@@ -155,7 +162,9 @@ with tempfile.TemporaryDirectory(prefix='regram-root-tab-transition-') as direct
     subprocess.run([str(folder / 'tests')], check=True)
 
     sdk = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--show-sdk-path'], text=True).strip()
+    (folder / 'Transition.swift').write_text(transition_source)
     subprocess.run(['xcrun', 'swiftc', '-typecheck', '-parse-as-library', '-swift-version', '5',
                     '-warnings-as-errors', '-target', 'arm64-apple-ios15.0-simulator', '-sdk', sdk,
-                    str(root / 'submodules/TabBarUI/Sources/RGRootTabBackTransition.swift')], check=True)
+                    str(root / 'submodules/Display/Source/DisplayLinkAnimator.swift'),
+                    str(folder / 'Transition.swift')], check=True)
     print('Production root-tab transition passed real UIKit SDK typechecking (iOS 15 target).')

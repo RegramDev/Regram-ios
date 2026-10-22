@@ -1,12 +1,9 @@
 import Foundation
-import RGSimpleSettings // MARK: Regram — 可在本机禁用 Community 会话聚合
 import Postbox
 import TelegramApi
 
 func isPeerHiddenByCollapsedCommunity(transaction: Transaction, peerId: PeerId, peer: Peer? = nil) -> Bool {
-    if RGSimpleSettings.shared.disableCommunityChatGrouping { // MARK: Regram
-        return false
-    }
+    // MARK: Regram — community inclusion follows the server policy again.
     if let channel = (peer ?? transaction.getPeer(peerId)) as? TelegramChannel, let linkedCommunityId = channel.linkedCommunityId {
         if let community = transaction.getPeer(linkedCommunityId) as? TelegramCommunity, community.collapsedInDialogs == true {
             return true
@@ -39,7 +36,7 @@ func shouldExcludePeerFromChatList(transaction: Transaction, peerId: PeerId, pee
             return true
         }
     } else if let community = peer as? TelegramCommunity {
-        return community.participationStatus != .member || community.collapsedInDialogs != true || RGSimpleSettings.shared.disableCommunityChatGrouping // MARK: Regram
+        return community.participationStatus != .member || community.collapsedInDialogs != true // MARK: Regram — restore server-controlled grouping.
     } else {
         return false
     }

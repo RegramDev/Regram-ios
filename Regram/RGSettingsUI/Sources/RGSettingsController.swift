@@ -78,7 +78,6 @@ private enum RGBoolSetting: String {
     case hideTopStories
     case disableChatAvatarStories
     case hideTabBarPermissionWarnings
-    case disableCommunityChatGrouping
     case bottomUpGlobalSearchResults
     case keepNewChatsVisibleAtTop
 
@@ -398,7 +397,6 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .stories, settingName: .hideTopStories, value: RGSimpleSettings.shared.hideTopStories, text: "features.HideTopStories".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .stories, settingName: .disableChatAvatarStories, value: RGSimpleSettings.shared.disableChatAvatarStories, text: "features.DisableChatAvatarStories".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .content, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
-    entries.append(.toggle(id: id.count, section: .chatList, settingName: .disableCommunityChatGrouping, value: RGSimpleSettings.shared.disableCommunityChatGrouping, text: "features.DisableCommunityChatGrouping".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .bottomUpGlobalSearchResults, value: RGSimpleSettings.shared.bottomUpGlobalSearchResults, text: "features.BottomUpGlobalSearchResults".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .chatList, settingName: .keepNewChatsVisibleAtTop, value: RGSimpleSettings.shared.keepNewChatsVisibleAtTop, text: "features.KeepNewChatsVisibleAtTop".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .chatList, settingName: .chatListSwipeAction, text: "features.ChatListSwipeAction".i18n(lang), value: ("features.ChatListSwipeAction." + RGSimpleSettings.shared.chatListSwipeAction).i18n(lang), enabled: true))
@@ -487,7 +485,6 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
         case .hideTopStories: RGSimpleSettings.shared.hideTopStories = value
         case .disableChatAvatarStories: RGSimpleSettings.shared.disableChatAvatarStories = value
         case .hideTabBarPermissionWarnings: RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
-        case .disableCommunityChatGrouping: RGSimpleSettings.shared.disableCommunityChatGrouping = value
         case .bottomUpGlobalSearchResults: RGSimpleSettings.shared.bottomUpGlobalSearchResults = value
         case .keepNewChatsVisibleAtTop: RGSimpleSettings.shared.keepNewChatsVisibleAtTop = value
 

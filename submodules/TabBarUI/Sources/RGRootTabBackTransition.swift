@@ -1,5 +1,6 @@
 // MARK: Regram — interactive root-tab return without the normal tab-selection scale animation.
 import UIKit
+import Display
 
 final class RGRootTabBackTransition {
     private weak var host: UIView?
@@ -8,6 +9,7 @@ final class RGRootTabBackTransition {
     private let snapshot: UIView
     private let dimView = UIView()
     private let width: CGFloat
+    private var frameRateLink: SharedDisplayLinkDriver.Link?
     private(set) var progress: CGFloat = 0
 
     init(host: UIView, destination: UIView, snapshot: UIView, frame: CGRect) {
@@ -31,6 +33,12 @@ final class RGRootTabBackTransition {
         host.addSubview(self.dimView)
         host.addSubview(self.snapshot)
         update(progress: 0)
+        // MARK: Regram — match navigation transitions throughout dragging and settling.
+        self.frameRateLink = SharedDisplayLinkDriver.shared.add(framesPerSecond: .max, { _ in })
+    }
+
+    deinit {
+        self.frameRateLink?.invalidate()
     }
 
     func update(progress: CGFloat) {
@@ -49,6 +57,8 @@ final class RGRootTabBackTransition {
     }
 
     func remove() {
+        self.frameRateLink?.invalidate()
+        self.frameRateLink = nil
         snapshot.layer.removeAllAnimations()
         destination?.layer.removeAllAnimations()
         dimView.layer.removeAllAnimations()

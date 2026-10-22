@@ -1,5 +1,4 @@
 import Foundation
-import RGSimpleSettings // MARK: Regram — 可在本机禁用 Community 会话聚合
 import Postbox
 import SwiftSignalKit
 
@@ -196,24 +195,7 @@ private func refreshCommunityCachedData(accountPeerId: PeerId, postbox: Postbox,
     |> ignoreValues
 }
 
-// MARK: Regram — 设置变化时即时重建 Community 容器及成员聊天的列表归属。
-private func rgFeatureDisableCommunityChatGroupingSignal() -> Signal<Bool, NoError> {
-    let initial = Signal<Bool, NoError>.single(RGSimpleSettings.shared.disableCommunityChatGrouping)
-    let changes = Signal<Bool, NoError> { subscriber in
-        let observer = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: UserDefaults.standard,
-            queue: nil
-        ) { _ in
-            subscriber.putNext(RGSimpleSettings.shared.disableCommunityChatGrouping)
-        }
-        return ActionDisposable {
-            NotificationCenter.default.removeObserver(observer)
-        }
-    }
-    return (initial |> then(changes)) |> distinctUntilChanged
-}
-
+// MARK: Regram — reconcile previously ungrouped chats with the server community state.
 func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, accountPeerId: PeerId) -> Signal<Never, NoError> {
     struct CommunitySummaryState: Equatable {
         let collapsedInDialogs: Bool
@@ -237,10 +219,10 @@ func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, a
             return disposable
         }
     }
-    return combineLatest(summaries, rgFeatureDisableCommunityChatGroupingSignal())
-    |> map { summaries, disableCommunityChatGrouping -> [PeerId: CommunitySummaryState] in
+    return summaries
+    |> map { summaries -> [PeerId: CommunitySummaryState] in
         return summaries.mapValues { summary in
-            return CommunitySummaryState(collapsedInDialogs: summary.collapsedInDialogs && !disableCommunityChatGrouping, timestamp: summary.topTimestamp)
+            return CommunitySummaryState(collapsedInDialogs: summary.collapsedInDialogs, timestamp: summary.topTimestamp)
         }
     }
     |> distinctUntilChanged

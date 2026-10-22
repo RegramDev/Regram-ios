@@ -52,7 +52,6 @@ public enum RGSettingsCatalog {
         .init("settings.stories", "hideTopStories", "features.HideTopStories"),
         .init("settings.stories", "disableChatAvatarStories", "features.DisableChatAvatarStories"),
         .init("settings.privacy", "hideTabBarPermissionWarnings", "features.HideTabBarPermissionWarnings"),
-        .init("settings.chatList", "disableCommunityChatGrouping", "features.DisableCommunityChatGrouping"),
         .init("settings.chatList", "bottomUpGlobalSearchResults", "features.BottomUpGlobalSearchResults"),
         .init("settings.chatList", "keepNewChatsVisibleAtTop", "features.KeepNewChatsVisibleAtTop"),
         .init("settings.chatList", "chatListSwipeAction", "features.ChatListSwipeAction"),

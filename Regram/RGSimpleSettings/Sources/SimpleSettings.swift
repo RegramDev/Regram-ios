@@ -850,7 +850,6 @@ public class RGSimpleSettings {
     }
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
-        if key == "features.disableCommunityChatGrouping" { return RGFeaturePreferences.storage(for: key) }
         if let storage = wrappers.first(where: { $0.preferenceKey == key })?.preferenceStorage { return storage }
         if key == "pinnedMessageNotificationsExceptions" || key == "mentionsAndRepliesNotificationsExceptions" { return APP_GROUP_USER_DEFAULTS ?? .standard }
         return .standard

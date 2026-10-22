@@ -8,13 +8,9 @@ public final class RGFeaturePreferences {
         if RGSimpleSettings.Keys.allCases.contains(where: { $0.rawValue == suffix }) { return suffix }
         return value.hasPrefix("features.") ? value : "features." + value
     }
-    public static func storage(for key: String) -> UserDefaults {
-        // Account updates also run in extensions; grouping policy must agree before writing peer state.
-        return Self.key(key) == "features.disableCommunityChatGrouping" ? (APP_GROUP_USER_DEFAULTS ?? UserDefaults.standard) : UserDefaults.standard
-    }
     public func set(_ value: Any, forKey key: String) {
         let resolvedKey = Self.key(key)
-        let storage = Self.storage(for: resolvedKey)
+        let storage = UserDefaults.standard
         let oldValue = storage.object(forKey: resolvedKey) as? Bool
         storage.set(value, forKey: resolvedKey)
         if resolvedKey == "features.enablePanguOnReceiving", oldValue != value as? Bool {
@@ -23,14 +19,14 @@ public final class RGFeaturePreferences {
         NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: UserDefaults.standard)
     }
     public func removeObject(forKey key: String) {
-        Self.storage(for: key).removeObject(forKey: Self.key(key))
+        UserDefaults.standard.removeObject(forKey: Self.key(key))
         NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: UserDefaults.standard)
     }
     public static func bool(_ key: String, default defaultValue: Bool = false) -> Bool {
-        return Self.storage(for: key).object(forKey: Self.key(key)) as? Bool ?? defaultValue
+        return UserDefaults.standard.object(forKey: Self.key(key)) as? Bool ?? defaultValue
     }
     public static func string(_ key: String, default defaultValue: String) -> String {
-        return Self.storage(for: key).string(forKey: Self.key(key)) ?? defaultValue
+        return UserDefaults.standard.string(forKey: Self.key(key)) ?? defaultValue
     }
 }
 
@@ -109,10 +105,6 @@ public extension RGSimpleSettings {
     var hideTabBarPermissionWarnings: Bool {
         get { RGFeaturePreferences.bool("features.hideTabBarPermissionWarnings") }
         set { RGFeaturePreferences.shared.set(newValue, forKey: "features.hideTabBarPermissionWarnings") }
-    }
-    var disableCommunityChatGrouping: Bool {
-        get { RGFeaturePreferences.bool("features.disableCommunityChatGrouping") }
-        set { RGFeaturePreferences.shared.set(newValue, forKey: "features.disableCommunityChatGrouping") }
     }
     var bottomUpGlobalSearchResults: Bool {
         get { RGFeaturePreferences.bool("features.bottomUpGlobalSearchResults") }
