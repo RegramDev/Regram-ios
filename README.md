@@ -125,7 +125,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 
 ## 验证范围
 
-b34627 的 arm64 Release 构建和包检查进行中；归档原因与修正见[专项排查](docs/community-archive-audit-20261022.md)。按用户要求跳过本轮自动回归、应用内更新解析、真实账号、真机和覆盖升级测试；未执行项目不记为通过。源码、本地构建例外及最终校验记录见[本轮记录](docs/navigation-community-badge-fixes.md)。
+b34627 已完成主应用／六扩展的 arm64 Release 构建、签名、资源及 12 份匹配调试符号校验，安装身份与选定权限声明和 b34626 一致。按用户要求先交付本地 IPA 测试，暂不上传 GitHub 或 Release；归档原因与修正见[专项排查](docs/community-archive-audit-20261022.md)。本轮自动回归、应用内更新解析、真实账号、真机和覆盖升级测试按要求跳过，未执行项目不记为通过。源码、本地构建例外及最终校验记录见[本轮记录](docs/navigation-community-badge-fixes.md)。
 
 旧版本的发布与验收记录见[更新记录](docs/changelog.md)；各版设备结果仅对应当时的安装包与测试场景。
 

@@ -125,7 +125,7 @@ Only the Pro home page has global settings search, covering categories and advan
 
 ## Verification scope
 
-The b34627 arm64 Release build and package checks are in progress. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Regression tests, in-app update parser verification, real-account, device and upgrade tests remain skipped at the user’s request. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
+The b34627 arm64 Release build completed for the app and six extensions. Package signatures, resources and 12 matching dSYMs passed validation; bundle identities and selected entitlements match b34626. The IPA is available locally for user testing, with GitHub uploads and Release publication on hold at the user’s request. The [archive audit](docs/community-archive-audit-20261022.md) records the cause and fixes. Regression tests, in-app update parser verification, real-account, device and upgrade tests were skipped at the user’s request. The [current build record](docs/navigation-community-badge-fixes.md) tracks compilation and delivery.
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
