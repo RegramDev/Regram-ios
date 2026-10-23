@@ -67,6 +67,12 @@ extension RichTextEngineEditorView {
     /// Reload the engine's input views (after changing `customInputView`).
     public func reloadComposerInputViews() { engine.reloadInputViews() }
 
+    // MARK: Regram — forward the shared composer trait to the real text-input client.
+    public var composerReturnKeyType: UIReturnKeyType {
+        get { engine.returnKeyType }
+        set { engine.returnKeyType = newValue }
+    }
+
     /// The engine's `inputView` is `UIResponder`'s plain `readonly` property — `IDBlockTextView`
     /// (upstream) never overrides it, so nothing backs a direct `engine.inputView = …` assignment
     /// (it does not even compile: "'inputView' is a get-only property"). `TGIDObservingBlockTextView`

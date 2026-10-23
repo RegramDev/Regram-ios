@@ -142,6 +142,8 @@ public protocol RichTextEditor: UIView {
     func composerFirstSelectionRect(forFlatRange range: NSRange) -> CGRect?
     var composerSelectionBoundingRect: CGRect { get }
     var customInputView: UIView? { get set }
+    // MARK: Regram — the composer sets the keyboard's Send/Return key through either backend.
+    var composerReturnKeyType: UIReturnKeyType { get set }
     func deleteBackward()
     func finalizeComposerMarkedText()
     var inputPrimaryLanguage: String? { get }
