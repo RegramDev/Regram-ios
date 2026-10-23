@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34630** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630). This release integrates Telegram iOS 13.1.1 while preserving the current Regram UI. It fixes permission-warning badge hiding, delayed refresh of the in-chat mention button, LLM endpoint URL construction and Apple transcription routing, and restores the Share extension's complete entitlement declarations. See the [integration and delivery record](docs/upstream-sync-20261023.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34631** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34631). This release preserves the current Regram UI and adds the Show Off section for local Premium display, Stars/TON gift simulation and phone display. Local gifts use Telegram's native purchase, detail and profile surfaces. It also fixes +888 phone grouping and routes link forwarding through the new share screen. See the [local customization and validation record](docs/local-gifts-and-link-sharing.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
