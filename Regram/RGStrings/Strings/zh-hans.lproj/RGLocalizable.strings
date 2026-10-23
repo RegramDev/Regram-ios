@@ -1266,7 +1266,7 @@
 "LocalGifts.Owned" = "我的本地礼物";
 "LocalGifts.OwnedHint" = "本地购买不会发送付款或赠送请求，无法在 Telegram 转赠、出售、升级或兑换。";
 "LocalGifts.Empty" = "还没有本地礼物";
-"LocalGifts.Gift" = "礼物盒";
+"LocalGifts.Gift" = "礼物";
 "LocalGifts.Buy" = "本地购买";
 "LocalGifts.Success" = "购买成功";
 "LocalGifts.SuccessHint" = "扣除本地星币，并将礼物加入本机自己的个人资料页。";

@@ -558,8 +558,8 @@ final class GiftsListView: UIView {
                                     return
                                 }
                                 // MARK: Regram — a local gift never enters the server-backed gift viewer.
-                                if self.peerId == self.context.account.peerId, let purchase = rgLocalPurchase(context: self.context, gift: product) {
-                                    self.parentController?.push(rgLocalGiftsController(context: self.context, purchaseId: purchase.id))
+                                if self.peerId == self.context.account.peerId, let purchaseId = rgLocalGiftPurchaseId(gift: product) {
+                                    self.parentController?.push(rgLocalGiftsController(context: self.context, purchaseId: purchaseId))
                                     return
                                 }
                                 if self.canSelect {
@@ -604,7 +604,7 @@ final class GiftsListView: UIView {
                                     }
                                 } else {
                                     // MARK: Regram — swiping between real gifts also excludes local purchases.
-                                    let serverProducts = (self.starsProducts ?? []).filter { rgLocalPurchase(context: self.context, gift: $0) == nil }
+                                    let serverProducts = (self.starsProducts ?? []).filter { rgLocalGiftPurchaseId(gift: $0) == nil }
                                     let allSubjects: [GiftViewScreen.Subject] = serverProducts.map { .profileGift(self.peerId, $0) }
                                     let index = serverProducts.firstIndex(where: { $0 == product }) ?? 0
                                     

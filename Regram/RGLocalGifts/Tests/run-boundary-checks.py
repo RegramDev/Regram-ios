@@ -20,11 +20,11 @@ assert 'guard !self.inProgress, let controller = self.environment?.controller() 
 assert 'rgPresentLocalGiftPurchase' in method and 'return' in method.split('rgPresentLocalGiftPurchase', 1)[1]
 list_view = (root / 'submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift').read_text()
 assert 'rgLocalGiftProfileState' in list_view
-assert list_view.index('let purchase = rgLocalPurchase') < list_view.index('let controller = GiftViewScreen')
+assert list_view.index('let purchaseId = rgLocalGiftPurchaseId') < list_view.index('let controller = GiftViewScreen')
 assert 'serverProducts.map' in list_view
 pane = (root / 'submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/PeerInfoGiftsPaneNode.swift').read_text()
 context_action = pane.split('private func contextAction(gift:', 1)[1]
-assert context_action.index('rgLocalPurchase') < context_action.index('var items: [ContextMenuItem]')
+assert context_action.index('rgLocalGiftPurchaseId') < context_action.index('var items: [ContextMenuItem]')
 links = (root / 'submodules/TelegramUI/Sources/Chat/ChatControllerOpenLinkContextMenu.swift').read_text()
 assert links.count('makeShareScreen(context: self.context, params: ShareControllerParams(subject: .url(url), externalShare: true, immediateExternalShare: false))') == 2
 assert links.count('immediateExternalShareOverridingRGBehaviour: true') == 2

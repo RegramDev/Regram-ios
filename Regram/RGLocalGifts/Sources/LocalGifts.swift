@@ -93,32 +93,47 @@ public func rgBuyLocalGift(context: AccountContext, gift: StarGift.Gift) -> Resu
         guard let size = attributes[.size] as? NSNumber, size.int64Value > 0, size.int64Value <= 8 * 1024 * 1024 else { return .failure(.storage) }
         let artwork = try Data(contentsOf: URL(fileURLWithPath: resource.localFilePath))
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let destination = directory.appendingPathComponent(String(gift.id) + ".asset")
+        let destination = directory.appendingPathComponent(UUID().uuidString + ".asset")
         try artwork.write(to: destination, options: .atomic)
-        let file = localArtwork(source, path: destination.path, id: gift.id)
+        let file = localArtwork(source, path: destination.path, id: Int64.random(in: Int64.min...Int64.max))
         let data = try JSONEncoder().encode(StarGift.generic(localCopy(gift, file: file)))
         let language = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
-        return RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: rgLocalGiftTitle(gift, language: language), price: gift.price, gift: data)
+        let result = RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: rgLocalGiftTitle(gift, language: language), price: gift.price, gift: data)
+        if case .failure = result { try? FileManager.default.removeItem(at: destination) }
+        return result
     } catch { return .failure(.storage) }
 }
 
 public func rgLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> StarGift.Gift? {
     guard let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), case let .generic(generic) = gift else { return nil }
     // An iOS data container/bundle path can change on upgrade; rebind to the current container.
-    if let directory = localAssets(context: context) {
-        let path = directory.appendingPathComponent(String(generic.id) + ".asset").path
+    if let directory = localAssets(context: context), let resource = generic.file.resource as? LocalFileReferenceMediaResource {
+        let path = directory.appendingPathComponent(URL(fileURLWithPath: resource.localFilePath).lastPathComponent).path
         if FileManager.default.fileExists(atPath: path) {
-            return localCopy(generic, file: localArtwork(generic.file, path: path, id: generic.id))
+            return localCopy(generic, file: localArtwork(generic.file, path: path, id: resource.randomId))
         }
     }
     if let fallback = rgLocalFallbackGift() { return localCopy(generic, file: fallback.file) }
     return nil
 }
 
-public func rgLocalPurchase(context: AccountContext, gift: ProfileGiftsContext.State.StarGift) -> RGLocalGiftPurchase? {
-    guard gift.reference == nil, let text = gift.text, text.hasPrefix("Regram.LocalGift:"),
-          let id = UUID(uuidString: String(text.dropFirst("Regram.LocalGift:".count))) else { return nil }
-    return RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context)).purchases.first { $0.id == id }
+public func rgRemoveLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    let result = RGLocalGiftsStore.shared.remove(account: rgLocalGiftsAccount(context), id: purchase.id)
+    if case .success = result,
+       let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), case let .generic(generic) = gift,
+       let resource = generic.file.resource as? LocalFileReferenceMediaResource,
+       let directory = localAssets(context: context) {
+        // Every purchase owns a unique snapshot. Only remove a file inside this account's asset directory.
+        let file = directory.appendingPathComponent(URL(fileURLWithPath: resource.localFilePath).lastPathComponent)
+        try? FileManager.default.removeItem(at: file)
+    }
+    return result
+}
+
+public func rgLocalGiftPurchaseId(gift: ProfileGiftsContext.State.StarGift) -> UUID? {
+    // Identity survives deletion/disable notifications, so a stale tile still cannot open server actions.
+    guard gift.reference == nil, let text = gift.text, text.hasPrefix("Regram.LocalGift:") else { return nil }
+    return UUID(uuidString: String(text.dropFirst("Regram.LocalGift:".count)))
 }
 
 /// Merge for display in the owner's uncollected profile pane only. Server contexts stay intact.

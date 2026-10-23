@@ -1273,7 +1273,7 @@ Matching is case-insensitive.";
 "LocalGifts.Owned" = "My local gifts";
 "LocalGifts.OwnedHint" = "Local purchases never send a payment or gift request. They cannot be transferred, sold, upgraded or exchanged with Telegram.";
 "LocalGifts.Empty" = "No local gifts yet";
-"LocalGifts.Gift" = "Gift Box";
+"LocalGifts.Gift" = "Gift";
 "LocalGifts.Buy" = "Buy locally";
 "LocalGifts.Success" = "Purchase successful";
 "LocalGifts.SuccessHint" = "Local Stars are deducted and this gift is added to your own profile on this device.";

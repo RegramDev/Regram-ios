@@ -1264,7 +1264,7 @@
 "LocalGifts.Owned" = "我的本機禮物";
 "LocalGifts.OwnedHint" = "本機購買不會傳送付款或贈送請求，無法在 Telegram 轉贈、出售、升級或兌換。";
 "LocalGifts.Empty" = "還沒有本機禮物";
-"LocalGifts.Gift" = "禮物盒";
+"LocalGifts.Gift" = "禮物";
 "LocalGifts.Buy" = "本機購買";
 "LocalGifts.Success" = "購買成功";
 "LocalGifts.SuccessHint" = "扣除本機星幣，並將禮物加入本機自己的個人資料頁。";

@@ -200,12 +200,14 @@ public func rgPresentLocalGiftPurchase(context: AccountContext, gift: StarGift.G
 public func rgLocalGiftsController(context: AccountContext, focusSetting: String? = nil, purchaseId: UUID? = nil) -> ViewController {
     // All Telegram navigation entry points call this synchronous factory on the main queue.
     return MainActor.assumeIsolated {
+        let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
+        let selectedPurchase = purchaseId.flatMap { id in state.purchases.contains(where: { $0.id == id }) ? id : nil }
         let data = context.sharedContext.currentPresentationData.with { $0 }
         let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
         controller.bindAppearance(context.sharedContext.presentationData)
         controller.title = "LocalGifts.Title".i18n(data.strings.rgLanguageCode)
         let content = RGSwiftUIView(legacyController: controller, manageSafeArea: true, content: {
-            LocalGiftsView(context: context, selectedPurchase: purchaseId, showMessage: { [weak controller] text in
+            LocalGiftsView(context: context, selectedPurchase: selectedPurchase, showMessage: { [weak controller] text in
                 guard let controller else { return }
                 let data = context.sharedContext.currentPresentationData.with { $0 }
                 controller.present(textAlertController(context: context, title: "LocalGifts.Title".i18n(data.strings.rgLanguageCode), text: text,
@@ -230,7 +232,7 @@ public func rgLocalGiftsController(context: AccountContext, focusSetting: String
                 controller.present(textAlertController(context: context, title: "LocalGifts.Remove".i18n(language), text: "LocalGifts.RemoveHint".i18n(language),
                     actions: [TextAlertAction(type: .genericAction, title: data.strings.Common_Cancel, action: {}),
                         TextAlertAction(type: .destructiveAction, title: "LocalGifts.Remove".i18n(language), action: { [weak controller] in
-                            let result = RGLocalGiftsStore.shared.remove(account: rgLocalGiftsAccount(context), id: purchase.id)
+                            let result = rgRemoveLocalGift(context: context, purchase: purchase)
                             if case .success = result, purchaseId != nil { controller?.navigationController?.popViewController(animated: true) }
                         })]), in: .window(.root))
             })
