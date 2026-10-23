@@ -1029,9 +1029,10 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         starsState,
         tonState,
         businessConnectedBot,
-        walletBalance
+        combineLatest(walletBalance, rgLocalAppearanceState(context: context)) // MARK: Regram
     )
-    |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalance -> PeerInfoScreenData in
+    |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalanceAndLocal -> PeerInfoScreenData in
+        let (walletBalance, _) = walletBalanceAndLocal // MARK: Regram
         let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings) = notifications // MARK: Regram
         let (featuredStickerPacks, archivedStickerPacks) = stickerPacks
         
@@ -1085,7 +1086,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         )
         
         return PeerInfoScreenData(
-            peer: peer.flatMap(EnginePeer.init),
+            peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0) },
             chatPeer: peer.flatMap(EnginePeer.init),
             savedMessagesPeer: nil,
             cachedData: peerView.cachedData,
@@ -1609,7 +1610,7 @@ func peerInfoScreenData(
                 premiumGiftOptions,
                 webAppPermissions,
                 savedMusicContext.state,
-                combineLatest(businessConnectedBot, walletBalance, rgLocalGiftsState(context: context))
+                combineLatest(businessConnectedBot, walletBalance, rgLocalAppearanceState(context: context))
             )
             |> mapToSignal { regDate, peerView, availablePanes, globalNotificationSettings, encryptionKeyFingerprint, status, hasStories, hasStoryArchive, recommendedBots, accountIsPremium, savedMessagesPeer, hasSavedMessagesChats, hasSavedMessages, hasSavedMessageTags, hasBotPreviewItems, personalChannel, privacySettings, starsRevenueContextAndState, revenueContextAndState, premiumGiftOptions, webAppPermissions, savedMusicState, businessConnectedBotAndWalletBalance -> Signal<PeerInfoScreenData, NoError> in
                 let (businessConnectedBot, walletBalance, localGifts) = businessConnectedBotAndWalletBalance
@@ -1767,7 +1768,7 @@ func peerInfoScreenData(
                     
                     return PeerInfoScreenData(
                         regDate: regDate,
-                        peer: peer.flatMap(EnginePeer.init),
+                        peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0) },
                         chatPeer: peerView.peers[peerId].flatMap(EnginePeer.init),
                         savedMessagesPeer: savedMessagesPeer,
                         cachedData: peerView.cachedData,

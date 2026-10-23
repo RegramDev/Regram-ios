@@ -195,7 +195,7 @@ final class Promise { var values: [String] = []; func set(_ value: String) { val
                 transitionCount += 1
             } }
             for index in [0, 2, 6, 12] {
-                precondition(states[index].filter { $0.kind == 1 }.count == 9, "Clearing and whitespace restore all nine categories")
+                precondition(states[index].filter { $0.kind == 1 }.count == 10, "Clearing and whitespace restore nine categories and the local customization section")
             }
             let context = AccountContext(language)
             let items = rgSettingsSearchableItems(context: context)

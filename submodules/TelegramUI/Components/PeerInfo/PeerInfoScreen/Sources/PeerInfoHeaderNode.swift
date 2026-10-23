@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram
 // MARK: Regram
 import RGProfileBadge
 import LocalizedPeerData
@@ -1307,7 +1308,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             
             if self.isSettings, case let .user(user) = peer {
                 // MARK: Regram
-                var formattedPhone = formatPhoneNumber(context: self.context, number: user.phone ?? "")
+                var formattedPhone = formatPhoneNumber(context: self.context, number: rgLocalDisplayedPhone(context: self.context, peerId: user.id, phone: user.phone) ?? "")
                 if !formattedPhone.isEmpty && self.hidePhoneInSettings {
                     formattedPhone = ""
                 }

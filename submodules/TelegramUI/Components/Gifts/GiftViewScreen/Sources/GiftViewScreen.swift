@@ -692,7 +692,8 @@ private final class GiftViewSheetContent: CombinedComponent {
                 })
             }
 
-            if case let .unique(gift) = subject.arguments?.gift, gift.resellForTonOnly {
+            if subject.localPurchaseId != nil || rgLocalGiftsEnabled(context: context) { // MARK: Regram — no local checkout top-up prefetch.
+            } else if case let .unique(gift) = subject.arguments?.gift, gift.resellForTonOnly {
                 
             } else {
                 self.starsTopUpOptionsDisposable = (context.engine.payments.starsTopUpOptions()
@@ -996,6 +997,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
 
         var canDeleteGift: Bool {
+            if self.subject.localPurchaseId != nil { return true } // MARK: Regram
             guard let arguments = self.subject.arguments, arguments.reference != nil, case let .generic(gift) = arguments.gift, gift.availability == nil else {
                 return false
             }
@@ -1015,6 +1017,19 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
 
         func deleteGift() {
+            // MARK: Regram — native confirmation, deletion touches only the local ledger/artwork.
+            if let id = self.subject.localPurchaseId, let controller = self.getController() as? GiftViewScreen {
+                let data = self.context.sharedContext.currentPresentationData.with { $0 }
+                controller.present(textAlertController(context: self.context, title: data.strings.Gift_Delete_Title,
+                    text: data.strings.Gift_Delete_Text, actions: [
+                        TextAlertAction(type: .genericAction, title: data.strings.Common_Cancel, action: {}),
+                        TextAlertAction(type: .destructiveAction, title: data.strings.Common_Delete, action: { [weak self, weak controller] in
+                            guard let self else { return }
+                            rgDeleteLocalGift(context: self.context, id: id)
+                            controller?.dismissAnimated()
+                        })]), in: .window(.root))
+                return
+            }
             guard let controller = self.getController() as? GiftViewScreen, let arguments = self.subject.arguments, let reference = arguments.reference else {
                 return
             }
@@ -1066,6 +1081,12 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
 
         func updateSavedToProfile(_ added: Bool) {
+            // MARK: Regram — local visibility never invokes the server profile mutation.
+            if let id = self.subject.localPurchaseId {
+                rgSetLocalGiftVisibility(context: self.context, id: id, saved: added)
+                (self.getController() as? GiftViewScreen)?.dismissAnimated()
+                return
+            }
             guard let controller = self.getController() as? GiftViewScreen, let arguments = self.subject.arguments else {
                 return
             }
@@ -1161,6 +1182,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func convertToStars() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let controller = self.getController() as? GiftViewScreen, let starsContext = context.starsContext, let arguments = self.subject.arguments, let reference = arguments.reference, let fromPeerName = arguments.fromPeerCompactName, let convertStars = arguments.convertStars, let navigationController = controller.navigationController as? NavigationController else {
                 return
             }
@@ -1298,6 +1320,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitDropOriginalDetails() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, let controller = self.getController() as? GiftViewScreen, let gift = self.subject.arguments?.gift, case let .unique(uniqueGift) = gift, let starsContext = self.context.starsContext, let starsState = starsContext.currentState, let reference = arguments.reference, let price = self.subject.arguments?.dropOriginalDetailsStars else {
                 return
             }
@@ -1505,6 +1528,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func shareGift() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, case let .unique(gift) = arguments.gift, let controller = self.getController() as? GiftViewScreen else {
                 return
             }
@@ -1517,6 +1541,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                     shareStory(gift)
                 }
             }
+            guard case let .unique(gift) = arguments.gift else { return }
             let link = "https://t.me/nft/\(gift.slug)"
             let shareController = self.context.sharedContext.makeShareScreen(
                 context: self.context,
@@ -1590,6 +1615,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
 
         func setAsGiftTheme() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, let controller = self.getController() as? GiftViewScreen, let navigationController = controller.navigationController as? NavigationController, case let .unique(gift) = arguments.gift else {
                 return
             }
@@ -1710,6 +1736,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func craftGift() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, let controller = self.getController() as? GiftViewScreen, case let .unique(gift) = arguments.gift else {
                 return
             }
@@ -1757,6 +1784,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func depositGift(_ gift: StarGift.UniqueGift) {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let controller = self.getController() as? GiftViewScreen else {
                 return
             }
@@ -1781,6 +1809,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func transferGift() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             if let arguments = self.subject.arguments, case let .unique(gift) = arguments.gift, self.isMyWalletGift(gift) {
                 self.depositGift(gift)
                 return
@@ -1855,6 +1884,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func resellGift(update: Bool = false) {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, case let .unique(gift) = arguments.gift, let controller = self.getController() as? GiftViewScreen else {
                 return
             }
@@ -2148,7 +2178,7 @@ private final class GiftViewSheetContent: CombinedComponent {
             
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             
-            guard case let .unique(gift) = arguments.gift else {
+            if self.subject.localPurchaseId != nil || { if case .generic = arguments.gift { return true }; return false }() { // MARK: Regram
                 if self.canDeleteGift {
                     let items: [ContextMenuItem] = [
                         .action(ContextMenuActionItem(text: presentationData.strings.Gift_View_Context_Delete, textColor: .destructive, icon: { theme in
@@ -2333,6 +2363,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitWear(_ uniqueGift: StarGift.UniqueGift) {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             self.pendingWear = true
             self.pendingTakeOff = false
             self.inWearPreview = false
@@ -2348,6 +2379,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitTakeOff() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             self.pendingTakeOff = true
             self.pendingWear = false
             self.updated(transition: .spring(duration: 0.4))
@@ -2597,6 +2629,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitUpgrade() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             let duration = Double.random(in: 0.85 ..< 2.25)
             let firstFraction = Double.random(in: 0.2 ..< 0.4)
             let secondFraction = Double.random(in: 0.2 ..< 0.4)
@@ -2858,6 +2891,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
                 
         func commitPrepaidUpgrade() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let arguments = self.subject.arguments, let controller = self.getController() as? GiftViewScreen, let peerId = arguments.peerId, let prepaidUpgradeHash = arguments.prepaidUpgradeHash, let starsContext = self.context.starsContext, let starsState = starsContext.currentState else {
                 return
             }
@@ -3044,6 +3078,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitGiftBuyOffer(peer: EnginePeer, price: CurrencyAmount, duration: Int32, allowPaidStars: Int64?) {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let gift = self.subject.arguments?.gift, case let .unique(uniqueGift) = gift, let starsContext = self.context.starsContext, let starsState = starsContext.currentState else {
                 return
             }
@@ -3450,12 +3485,12 @@ private final class GiftViewSheetContent: CombinedComponent {
                 giftMessageHeaderHeight = 258.0 + bubbleHeight
             }
             
-            if !canUpgrade, let gift = state.starGiftsMap[giftId], let _ = gift.upgradeStars {
+            if subject.localPurchaseId == nil, !canUpgrade, let gift = state.starGiftsMap[giftId], let _ = gift.upgradeStars {
                 canUpgrade = true
             }
                                     
             var originY: CGFloat = 0.0
-            let displaysHeaderButtons = isMyOwnedUniqueGift || isMyHostedUniqueGift || isMyWalletGift || isChannelGift
+            let displaysHeaderButtons = subject.localPurchaseId == nil && (isMyOwnedUniqueGift || isMyHostedUniqueGift || isMyWalletGift || isChannelGift) // MARK: Regram
             let headerButtonHeight: CGFloat = 58.0
             let headerButtonsBottomInset: CGFloat = 16.0
                         
@@ -5303,6 +5338,17 @@ private final class GiftViewSheetContent: CombinedComponent {
                         }
                     }
                     
+                    // MARK: Regram — local acquisition metadata uses the native attribute table.
+                    if let id = subject.localPurchaseId, let purchase = rgLocalGiftPurchase(context: component.context, id: id) {
+                        tableItems.append(.init(id: "localDate", title: strings.Gift_View_Date,
+                            component: AnyComponent(MultilineTextComponent(text: .plain(NSAttributedString(
+                                string: stringForMediumDate(timestamp: purchase.date, strings: strings, dateTimeFormat: dateTimeFormat), font: tableFont, textColor: tableTextColor))))))
+                        let value = purchase.currency == .ton
+                            ? formatTonAmountText(purchase.price, dateTimeFormat: dateTimeFormat, maxDecimalPositions: nil, formatString: strings.Currency_Grams)
+                            : "\(purchase.price) ⭐️"
+                        tableItems.append(.init(id: "localValue", title: strings.Gift_View_Value,
+                            component: AnyComponent(MultilineTextComponent(text: .plain(NSAttributedString(string: value, font: tableFont, textColor: tableTextColor))))))
+                    }
                     let issuedString = presentationStringsFormattedNumber(uniqueGift.availability.issued, environment.dateTimeFormat.groupingSeparator)
                     let totalString = presentationStringsFormattedNumber(uniqueGift.availability.total, environment.dateTimeFormat.groupingSeparator)
                     tableItems.insert(.init(
@@ -6816,6 +6862,12 @@ public class GiftViewScreen: ViewControllerComponentContainer {
         case upgradePreview(StarGift.Gift, [StarGift.UniqueGift.Attribute], String)
         case wearPreview(StarGift, [StarGift.UniqueGift.Attribute]?)
 
+        // MARK: Regram — immutable local identity blocks server actions even for a stale sheet.
+        var localPurchaseId: UUID? {
+            if case let .profileGift(_, gift) = self { return rgLocalGiftPurchaseId(gift: gift) }
+            return nil
+        }
+
         var messageGiftSenderPeerId: EnginePeer.Id? {
             guard case let .message(message) = self else {
                 return nil
@@ -6938,7 +6990,7 @@ public class GiftViewScreen: ViewControllerComponentContainer {
                 let fromPeerId = gift.nameHidden ? nil : gift.fromPeer?.id
                 let fromPeerName = gift.nameHidden ? nil : gift.fromPeer?.debugDisplayTitle
                 let fromPeerCompactName = gift.nameHidden ? nil : gift.fromPeer?.compactDisplayTitle
-                return (peerId, fromPeerId, fromPeerName, fromPeerCompactName, messageId, gift.reference, false, gift.gift, gift.date, gift.convertStars, gift.text, gift.entities, gift.nameHidden, gift.savedToProfile, gift.pinnedToTop, false, false, false, gift.canUpgrade, gift.upgradeStars, gift.transferStars, resellAmounts, gift.canExportDate, nil, gift.canTransferDate, gift.canResaleDate, gift.prepaidUpgradeHash, gift.upgradeSeparate, gift.dropOriginalDetailsStars, nil, number, gift.canCraftAt)
+                return (peerId, fromPeerId, fromPeerName, fromPeerCompactName, messageId, gift.reference, false, gift.gift, gift.date, gift.convertStars, rgLocalGiftPurchaseId(gift: gift) == nil ? gift.text : nil, rgLocalGiftPurchaseId(gift: gift) == nil ? gift.entities : nil, gift.nameHidden, gift.savedToProfile, gift.pinnedToTop, false, false, false, gift.canUpgrade, gift.upgradeStars, gift.transferStars, resellAmounts, gift.canExportDate, nil, gift.canTransferDate, gift.canResaleDate, gift.prepaidUpgradeHash, gift.upgradeSeparate, gift.dropOriginalDetailsStars, nil, number, gift.canCraftAt)
             case .soldOutGift:
                 return nil
             case .upgradePreview:

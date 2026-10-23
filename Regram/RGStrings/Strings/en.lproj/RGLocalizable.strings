@@ -1263,7 +1263,7 @@ Matching is case-insensitive.";
 // MARK: Regram — local Stars and gift simulation.
 "LocalGifts.Title" = "Local Stars & Gifts";
 "LocalGifts.Enabled" = "Enable local gift purchases";
-"LocalGifts.Notice" = "Purchases use a separate local Stars balance. Gifts appear only on your own device and account profile. Turning this off hides local gifts and keeps your records.";
+"LocalGifts.Notice" = "Purchases use separate local Stars and TON balances. Gifts and styles appear only on your own profile on this device. Turning this off hides them and keeps your records.";
 "LocalGifts.Balance" = "Local Stars balance";
 "LocalGifts.BalanceHint" = "Enter a whole number from 0 to 9000000000000000, then save.";
 "LocalGifts.SaveBalance" = "Save balance";
@@ -1274,13 +1274,36 @@ Matching is case-insensitive.";
 "LocalGifts.Gift" = "Gift";
 "LocalGifts.Buy" = "Buy locally";
 "LocalGifts.Success" = "Purchase successful";
-"LocalGifts.SuccessHint" = "Local Stars are deducted and this gift is added to your own profile on this device.";
+"LocalGifts.SuccessHint" = "The local balance was charged and the gift was added to your profile on this device.";
 "LocalGifts.Remove" = "Remove local gift";
 "LocalGifts.RemoveHint" = "Remove this local gift? Local Stars will not be refunded.";
 "LocalGifts.Disabled" = "Enable local gift purchases in Regram settings first.";
-"LocalGifts.InvalidAmount" = "Enter a valid nonnegative whole number within the allowed range.";
-"LocalGifts.Insufficient" = "Not enough local Stars. Edit your local balance in Regram → Management & Tools → Local Stars & Gifts.";
+"LocalGifts.InvalidAmount" = "Enter a valid non-negative amount within the allowed range.";
+"LocalGifts.Insufficient" = "Not enough local Stars. Edit the balance in the local customization section.";
 "LocalGifts.Limit" = "Local gifts have reached the storage limit (up to 500 gifts). Remove some gifts and try again.";
 "LocalGifts.StorageError" = "The local record could not be saved, or the gift preview has not finished loading. No purchase was completed.";
-"LocalGifts.NativeHint" = "After saving, buy ordinary or collectible gifts from Telegram’s existing gift screens. Catalogs and previews load normally; purchases and Stars deductions are simulated on this device.";
-"LocalGifts.StarsOnly" = "Local purchases use Stars only. Choose a collectible with a Stars price; TON payments are not simulated.";
+"LocalGifts.NativeHint" = "Save the balance, then buy ordinary or collectible gifts in Telegram’s existing gift screens. The catalog and previews load online; purchases and balance deductions are simulated locally.";
+
+"Showroom.Title" = "装逼怎么了 装逼犯法吗";
+
+"Showroom.PremiumRefresh" = "Reopen the app to refresh screens that are already open.";
+
+"LocalPhone.Title" = "Local phone display";
+
+"LocalPhone.Number" = "Phone number with country code";
+
+"LocalPhone.Enabled" = "Use local phone display";
+
+"LocalPhone.Save" = "Save and enable";
+
+"LocalPhone.Hint" = "Changes the number shown on your own profile and Settings on this device. Your login number and Telegram account stay unchanged. Each account has its own setting.";
+
+"LocalPhone.Invalid" = "Enter 5–20 digits including the country code.";
+
+"LocalGifts.TonBalance" = "Local TON balance";
+
+"LocalGifts.SaveTonBalance" = "Save TON balance";
+
+"LocalGifts.TonHint" = "For local collectible purchases only. Up to 9 decimal places, maximum 9000000 TON. No wallet or payment transfer is made.";
+
+"LocalGifts.InsufficientTon" = "Not enough local TON. Edit the balance in the local customization section.";

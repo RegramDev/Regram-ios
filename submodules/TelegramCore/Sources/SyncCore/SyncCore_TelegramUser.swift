@@ -175,6 +175,10 @@ public final class TelegramUser: Peer, Equatable {
     // account that is not really Premium. See `rgLocalPremiumEmojiStatus` in RGLocalPremium.swift;
     // with the switch off this is just `emojiStatusValue`.
     public var emojiStatus: PeerEmojiStatus? {
+        // MARK: Regram — a view-only local gift overlay takes precedence over the Premium emoji.
+        if let status = self.emojiStatusValue, case let .starGift(id, _, _, _, _, _, _, _, _) = status.content, id < 0 {
+            return status
+        }
         if let localStatus = rgLocalPremiumEmojiStatus(peerId: self.id) {
             return localStatus
         }

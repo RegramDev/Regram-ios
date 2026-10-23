@@ -12,6 +12,8 @@ public struct RGSettingsDestination: Hashable {
     ]
     public init?(page: String, item: String? = nil) {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }
+        if ["pro.privacy", "pro.tools"].contains(page), item == "localPremium" { self.page = "localGifts"; self.item = item; return }
+        if ["pro.home", "pro.tools"].contains(page), item == "localGifts" { self.page = "localGifts"; self.item = nil; return }
         if page == "localGifts", item == "catalog" || item == "owned" { self.page = page; self.item = "balance"; return }
         if (page == "settings.appearance" && item == "liquidGlassTintPercent") || (page == "bottomBar" && item == "tint") { self.page = "bottomBar"; self.item = nil; return }
         if page == "settings.chatList", item == "disableChatSwipeOptions" { self.page = page; self.item = "chatListSwipeAction"; return }
@@ -30,7 +32,7 @@ public struct RGSettingsDestination: Hashable {
             "settings.privacy:hideTabBarPermissionWarnings": "pro.notifications", "settings.app:hideTabBarPermissionWarnings": "pro.notifications",
             "pro.messages:inputToolbar": "pro.input", "pro.messages:mentionAsUserIdLink": "pro.input", "pro.messages:panguSpacing": "pro.input", "pro.messages:defaultOutgoingFormatting": "pro.input", "pro.messages:chatPreferences": "pro.input",
             "antiFeatures:revokedMarker": "revokedMarker",
-            "pro.privacy:localPremium": "pro.tools", "pro.tools:diagnostics": "pro.network",
+            "pro.tools:diagnostics": "pro.network",
             "settings.messageActions:hideRecordingButton": "settings.input", "settings.messageActions:disableSendAsButton": "settings.input", "settings.messageActions:sendWithReturnKey": "settings.input",
             "settings.media:uploadSpeedBoost": "settings.transfer", "settings.media:downloadSpeedBoost": "settings.transfer", "settings.app:enableVoipTcp": "settings.transfer",
             "settings.media:disableGalleryCamera": "settings.recording", "settings.media:disableGalleryCameraPreview": "settings.recording",

@@ -557,9 +557,9 @@ final class GiftsListView: UIView {
                                 guard let self, !isAdded, let presentationData = self.currentParams?.presentationData else {
                                     return
                                 }
-                                // MARK: Regram — a local gift never enters the server-backed gift viewer.
-                                if self.peerId == self.context.account.peerId, let purchaseId = rgLocalGiftPurchaseId(gift: product) {
-                                    self.parentController?.push(rgLocalGiftsController(context: self.context, purchaseId: purchaseId))
+                                // MARK: Regram — local gifts use the native viewer with local-only actions.
+                                if self.peerId == self.context.account.peerId, rgLocalGiftPurchaseId(gift: product) != nil {
+                                    self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, product)), in: .window(.root))
                                     return
                                 }
                                 if self.canSelect {

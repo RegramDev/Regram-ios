@@ -1354,8 +1354,8 @@ final class GiftStoreScreenComponent: Component {
             self.state = state
             
             if self.component == nil, let tonContext = component.context.tonContext {
-                self.starsStateDisposable = (tonContext.state
-                |> deliverOnMainQueue).start(next: { [weak self] state in
+                self.starsStateDisposable = (combineLatest(tonContext.state, rgLocalGiftsState(context: component.context)) // MARK: Regram
+                |> deliverOnMainQueue).start(next: { [weak self] state, _ in
                     guard let self else {
                         return
                     }
@@ -1513,7 +1513,7 @@ final class GiftStoreScreenComponent: Component {
                 transition.setFrame(view: subtitleView, frame: subtitleFrame)
             }
             
-            if let tonState = self.starsState, tonState.balance.value == 0 {
+            if (rgLocalGiftBalance(context: component.context, ton: true) ?? self.starsState?.balance.value ?? 0) == 0 { // MARK: Regram
                 let starsFilterSize = self.starsFilter.update(
                     transition: transition,
                     component: AnyComponent(

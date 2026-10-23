@@ -36,6 +36,7 @@ import TextFormat
 import TelegramStringFormatting
 import GiftViewScreen
 import BalanceNeededScreen
+import RGLocalGifts // MARK: Regram
 
 private let giftListTag = GenericComponentViewTag()
 private let addIconsTag = GenericComponentViewTag()
@@ -96,10 +97,11 @@ final class UserAppearanceScreenComponent: Component {
                     TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)
                 ),
                 context.account.postbox.itemCollectionsView(orderedItemListCollectionIds: [Namespaces.OrderedItemList.CloudUniqueStarGifts], namespaces: [Namespaces.ItemCollection.CloudDice], aroundIndex: nil, count: 10000000),
-                context.engine.payments.cachedStarGifts()
+                context.engine.payments.cachedStarGifts(),
+                rgLocalAppearanceState(context: context) // MARK: Regram
             )
-            |> map { peer, view, starGifts -> ContentsData in
-                var gifts: [StarGift.UniqueGift] = []
+            |> map { peer, view, starGifts, _ -> ContentsData in
+                var gifts: [StarGift.UniqueGift] = rgLocalUniqueGifts(context: context) // MARK: Regram
                 for orderedView in view.orderedItemListsViews {
                     if orderedView.collectionId == Namespaces.OrderedItemList.CloudUniqueStarGifts {
                         for item in orderedView.items {
@@ -111,7 +113,7 @@ final class UserAppearanceScreenComponent: Component {
                     }
                 }
                 return ContentsData(
-                    peer: peer,
+                    peer: peer.map { rgLocalAppearancePeer(context: context, peer: $0) },
                     gifts: gifts,
                     starGifts: starGifts ?? []
                 )
@@ -507,6 +509,29 @@ final class UserAppearanceScreenComponent: Component {
                 return
             }
             
+            // MARK: Regram — this screen has its own purchase path; keep it local as well.
+            if rgLocalGiftsEnabled(context: component.context) {
+                let isProfileGift = self.selectedProfileGift != nil
+                buyStarGiftImpl(context: component.context, recipientPeerId: component.context.account.peerId,
+                    uniqueGift: uniqueGift, showAttributes: true, acceptedPrice: acceptedPrice,
+                    skipConfirmation: skipConfirmation, starsTopUpOptions: .single([]), buyGift: nil,
+                    getController: { [weak controller] in controller }, updateProgress: { [weak self] value in
+                        self?.isApplyingSettings = value; self?.state?.updated()
+                    }, updateIsBalanceVisible: { _ in }, localCompletion: { [weak self] gift in
+                        guard let self else { return }
+                        self.selectedNameGift = nil; self.selectedProfileGift = nil
+                        if isProfileGift {
+                            self.updatedPeerStatus = .some(rgLocalGiftEmojiStatus(gift))
+                            self.updatedPeerProfileColor = .some(nil); self.updatedPeerProfileEmoji = .some(nil)
+                        } else if let color = gift.peerColor {
+                            self.updatedPeerNameColor = .collectible(color)
+                            self.updatedPeerNameEmoji = color.backgroundEmojiId
+                        }
+                        self.applySettings()
+                    }, completion: {})
+                return
+            }
+
             if self.starsTopUpOptionsDisposable == nil {
                 self.starsTopUpOptionsDisposable = (component.context.engine.payments.starsTopUpOptions()
                 |> deliverOnMainQueue).start(next: { [weak self] options in
@@ -720,6 +745,21 @@ final class UserAppearanceScreenComponent: Component {
                 return
             }
             if self.isApplyingSettings {
+                return
+            }
+            // MARK: Regram — locally selected styles never update Telegram account data.
+            if rgLocalGiftsEnabled(context: component.context) {
+                if self.selectedProfileGift != nil || self.selectedNameGift != nil { self.commitBuy(); return }
+                if rgSaveLocalGiftAppearance(context: component.context, nameColor: resolvedState.nameColor,
+                    profileColor: resolvedState.profileColor, replyFileId: resolvedState.replyFileId,
+                    backgroundFileId: resolvedState.backgroundFileId, emojiStatus: resolvedState.emojiStatus) {
+                    self.environment?.controller()?.dismiss()
+                }
+                return
+            }
+            // MARK: Regram — disabling/deleting a local gift cannot send its synthetic ID to Telegram.
+            if rgIsLocalGiftAppearance(nameColor: resolvedState.nameColor, emojiStatus: resolvedState.emojiStatus) {
+                self.environment?.controller()?.dismiss()
                 return
             }
             if resolvedState.changes.isEmpty {
@@ -1089,6 +1129,15 @@ final class UserAppearanceScreenComponent: Component {
                     guard let self else {
                         return
                     }
+                    // MARK: Regram — deleted/disabled local gifts also leave an open appearance preview.
+                    let localIds = Set(contentsData.gifts.filter { $0.id < 0 }.map(\.id))
+                    if case let .some(.some(status)) = self.updatedPeerStatus,
+                       case let .starGift(id, _, _, _, _, _, _, _, _) = status.content, id < 0, !localIds.contains(id) {
+                        self.updatedPeerStatus = nil
+                    }
+                    if case let .some(.collectible(color)) = self.updatedPeerNameColor, color.collectibleId < 0, !localIds.contains(color.collectibleId) {
+                        self.updatedPeerNameColor = nil; self.updatedPeerNameEmoji = nil
+                    }
                     self.contentsData = contentsData
                     
                     if !self.isUpdating {
@@ -1099,7 +1148,7 @@ final class UserAppearanceScreenComponent: Component {
                 
                 let starGiftsContext = ProfileGiftsContext(account: component.context.account, peerId: component.context.account.peerId, collectionId: nil, filter: .peerColor, limit: 30)
                 self.starGiftsContext = starGiftsContext
-                self.starGiftsDisposable = (starGiftsContext.state
+                self.starGiftsDisposable = (rgLocalGiftProfileState(context: component.context, peerId: component.context.account.peerId, profileGifts: starGiftsContext, canSelect: false) // MARK: Regram
                 |> deliverOnMainQueue).start(next: { [weak self] state in
                     guard let self else {
                         return

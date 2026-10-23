@@ -10,6 +10,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGLocalGifts", # MARK: Regram
         "//submodules/ContextUI",
         "//submodules/AsyncDisplayKit",
         "//submodules/LottieSettings:LottieSettings",

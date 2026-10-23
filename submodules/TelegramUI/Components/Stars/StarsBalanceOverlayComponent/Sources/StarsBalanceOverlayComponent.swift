@@ -114,13 +114,13 @@ public final class StarsBalanceOverlayComponent: Component {
                             : (starsContext.state |> map { $0?.balance ?? .zero })
                         self.balanceDisposable = combineLatest(queue: Queue.mainQueue(),
                             starsBalance,
-                            tonContext.state
+                            component.useLocalGiftBalance ? rgGiftTonBalance(context: component.context, source: tonContext.state) : (tonContext.state |> map { $0?.balance ?? .zero })
                         ).start(next: { [weak self] starsState, tonState in
                             guard let self else {
                                 return
                             }
                             self.starsBalance = starsState.value // MARK: Regram
-                            self.tonBalance = tonState?.balance.value ?? 0
+                            self.tonBalance = tonState.value // MARK: Regram
                             if !self.isUpdating {
                                 self.state?.updated()
                             }

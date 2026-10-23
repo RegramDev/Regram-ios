@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -140,6 +141,7 @@ final class StarsTransactionsScreenComponent: Component {
         
         private var stateDisposable: Disposable?
         private var starsState: StarsContext.State?
+        private var displayedBalance: StarsAmount? // MARK: Regram — display only, never used to authorize a payment.
         
         private var revenueStateDisposable: Disposable?
         private var revenueState: StarsRevenueStats?
@@ -354,23 +356,28 @@ final class StarsTransactionsScreenComponent: Component {
             self.state = state
             
             var balanceUpdated = false
-            if let starsState = self.starsState {
-                if let previousBalance = self.previousBalance, starsState.balance != previousBalance {
+            if let displayedBalance = self.displayedBalance { // MARK: Regram
+                if let previousBalance = self.previousBalance, displayedBalance != previousBalance {
                     balanceUpdated = true
                 }
-                self.previousBalance = starsState.balance
+                self.previousBalance = displayedBalance // MARK: Regram
             }
             
             let environment = environment[ViewControllerComponentContainer.Environment.self].value
             let presentationData = component.context.sharedContext.currentPresentationData.with { $0 }
             
             if self.stateDisposable == nil {
-                self.stateDisposable = (component.starsContext.state
-                |> deliverOnMainQueue).start(next: { [weak self] state in
+                // MARK: Regram — observe local gift wallet edits; retain real transaction history.
+                let balance: Signal<StarsAmount, NoError> = component.starsContext.ton
+                    ? rgGiftTonBalance(context: component.context, source: component.starsContext.state)
+                    : rgGiftStarsBalance(context: component.context, source: component.starsContext.state)
+                self.stateDisposable = (combineLatest(component.starsContext.state, balance)
+                |> deliverOnMainQueue).start(next: { [weak self] state, displayedBalance in
                     guard let self else {
                         return
                     }
                     self.starsState = state
+                    self.displayedBalance = displayedBalance // MARK: Regram — the real transaction state remains intact.
                     
                     if !self.isUpdating {
                         self.state?.updated()
@@ -578,9 +585,9 @@ final class StarsTransactionsScreenComponent: Component {
             
             let formattedBalance: String
             if component.starsContext.ton {
-                formattedBalance = formatTonAmountText(self.starsState?.balance.value ?? 0, dateTimeFormat: environment.dateTimeFormat)
+                formattedBalance = formatTonAmountText(self.displayedBalance?.value ?? 0, dateTimeFormat: environment.dateTimeFormat) // MARK: Regram
             } else {
-                formattedBalance = formatStarsAmountText(self.starsState?.balance ?? StarsAmount.zero, dateTimeFormat: environment.dateTimeFormat)
+                formattedBalance = formatStarsAmountText(self.displayedBalance ?? StarsAmount.zero, dateTimeFormat: environment.dateTimeFormat) // MARK: Regram
             }
             let smallLabelFont = Font.regular(11.0)
             let labelFont = Font.semibold(14.0)
@@ -779,7 +786,7 @@ final class StarsTransactionsScreenComponent: Component {
                             theme: environment.theme,
                             strings: environment.strings,
                             dateTimeFormat: environment.dateTimeFormat,
-                            count: self.starsState?.balance ?? StarsAmount.zero,
+                            count: self.displayedBalance ?? StarsAmount.zero, // MARK: Regram
                             currency: component.starsContext.ton ? .ton : .stars,
                             rate: nil,
                             actionTitle: component.starsContext.ton ? environment.strings.Ton_WithdrawViaFragment : (withdrawAvailable ? environment.strings.Stars_Intro_BuyShort : environment.strings.Stars_Intro_Buy),

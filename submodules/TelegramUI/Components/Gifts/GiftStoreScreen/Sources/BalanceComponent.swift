@@ -79,13 +79,13 @@ final class BalanceComponent: Component {
                 if let starsContext = component.context.starsContext, let tonContext = component.context.tonContext {
                     self.balanceDisposable = combineLatest(queue: Queue.mainQueue(),
                         rgGiftStarsBalance(context: component.context, source: starsContext.state), // MARK: Regram
-                        tonContext.state
+                        rgGiftTonBalance(context: component.context, source: tonContext.state) // MARK: Regram
                     ).start(next: { [weak self] starsState, tonState in
                         guard let self else {
                             return
                         }
                         self.starsBalance = starsState.value // MARK: Regram
-                        self.tonBalance = tonState?.balance.value ?? 0
+                        self.tonBalance = tonState.value // MARK: Regram
                         if !self.isUpdating {
                             self.componentState?.updated()
                         }

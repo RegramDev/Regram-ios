@@ -20,14 +20,19 @@ extension String {
         func contains(_ query: String, _ page: String, _ item: String) -> Bool {
             RGSettingsCatalog.results(query: query, language: "zh-hans").contains { $0.destination.page == page && $0.destination.item == item }
         }
-        assert(contains("本地星币", "pro.tools", "localGifts"))
+        assert(contains("本地星币", "localGifts", "balance"))
         assert(contains("本地礼物", "localGifts", "enabled"))
         for retired in ["catalog", "owned"] {
             assert(RGSettingsDestination(page: "localGifts", item: retired) == RGSettingsDestination(page: "localGifts", item: "balance"))
             assert(!RGSettingsCatalog.entries.contains { $0.destination.page == "localGifts" && $0.destination.item == retired })
         }
         assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=localGifts&item=enabled")!, appSpecificScheme: "fixture-app") == RGSettingsDestination(page: "localGifts", item: "enabled"))
-        assert(contains("本地会员", "pro.tools", "localPremium"))
+        assert(contains("本地会员", "localGifts", "localPremium"))
+        assert(contains("修改手机号", "localGifts", "phone"))
+        assert(contains("TON", "localGifts", "tonBalance"))
+        assert(RGSettingsDestination(page: "pro.tools", item: "localPremium") == RGSettingsDestination(page: "localGifts", item: "localPremium"))
+        assert(RGSettingsDestination(page: "pro.privacy", item: "localPremium") == RGSettingsDestination(page: "localGifts", item: "localPremium"))
+        assert(RGSettingsDestination(page: "pro.tools", item: "localGifts") == RGSettingsDestination(page: "localGifts"))
         assert(contains("温度", "llm", "temperature"))
         assert(contains("OpenAI 模型", "llm", "model"))
         assert(RGSettingsCatalog.results(query: "温度", language: "zh-hans").allSatisfy { $0.destination.item == "temperature" })

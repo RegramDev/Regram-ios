@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram
 import Foundation
 import UIKit
 import Display
@@ -354,11 +355,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
             interaction.openSettings(.premium)
         }))
     }
-    if let starsState = data.starsState {
-        if !isPremiumDisabled || abs(starsState.balance.value) > 0 {
+    if let balance = rgLocalGiftBalance(context: context).map({ StarsAmount(value: $0, nanos: 0) }) ?? data.starsState?.balance { // MARK: Regram
+        if !isPremiumDisabled || abs(balance.value) > 0 {
             let balanceText: NSAttributedString
-            if abs(starsState.balance.value) > 0 {
-                let formattedLabel = formatStarsAmountText(starsState.balance, dateTimeFormat: presentationData.dateTimeFormat)
+            if abs(balance.value) > 0 {
+                let formattedLabel = formatStarsAmountText(balance, dateTimeFormat: presentationData.dateTimeFormat)
                 let smallLabelFont = Font.regular(floor(presentationData.listsFontSize.itemListBaseFontSize / 17.0 * 13.0))
                 let labelFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
                 let labelColor = presentationData.theme.list.itemSecondaryTextColor
@@ -371,11 +372,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
             }))
         }
     }
-    if let tonState = data.tonState {
-        if abs(tonState.balance.value) > 0 {
+    if let balance = rgLocalGiftBalance(context: context, ton: true) ?? data.tonState?.balance.value { // MARK: Regram
+        if abs(balance) > 0 {
             let balanceText: NSAttributedString
-            if abs(tonState.balance.value) > 0 {
-                let formattedLabel = formatTonAmountText(tonState.balance.value, dateTimeFormat: presentationData.dateTimeFormat)
+            if abs(balance) > 0 {
+                let formattedLabel = formatTonAmountText(balance, dateTimeFormat: presentationData.dateTimeFormat)
                 let smallLabelFont = Font.regular(floor(presentationData.listsFontSize.itemListBaseFontSize / 17.0 * 13.0))
                 let labelFont = Font.regular(presentationData.listsFontSize.itemListBaseFontSize)
                 let labelColor = presentationData.theme.list.itemSecondaryTextColor
@@ -542,7 +543,7 @@ func settingsEditingItems(data: PeerInfoScreenData?, state: PeerInfoState, conte
     }
     
     if case let .user(user) = data.peer {
-        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(user.phone.flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? ""), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
+        items[.info]!.append(PeerInfoScreenDisclosureItem(id: ItemPhoneNumber, label: .text(rgLocalDisplayedPhone(context: context, peerId: user.id, phone: user.phone).flatMap({ formatPhoneNumber(context: context, number: $0) }) ?? ""), text: presentationData.strings.Settings_PhoneNumber, icon: PresentationResourcesSettings.recentCalls, action: {
             interaction.openSettings(.phoneNumber)
         }))
     }

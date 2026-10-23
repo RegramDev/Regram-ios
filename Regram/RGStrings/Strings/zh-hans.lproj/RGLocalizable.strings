@@ -1256,7 +1256,7 @@
 // MARK: Regram — local Stars and gift simulation.
 "LocalGifts.Title" = "本地星币与礼物";
 "LocalGifts.Enabled" = "启用本地礼物购买";
-"LocalGifts.Notice" = "购买使用独立的本地星币余额，礼物仅在本机自己的个人资料页展示。关闭后隐藏本地礼物，保留记录。";
+"LocalGifts.Notice" = "购买使用独立的本地星币和 TON 余额。礼物及装扮仅在本机自己的个人资料页展示。关闭后隐藏本地礼物和装扮，保留记录。";
 "LocalGifts.Balance" = "本地星币数量";
 "LocalGifts.BalanceHint" = "输入 0 至 9000000000000000 的整数后保存。";
 "LocalGifts.SaveBalance" = "保存数量";
@@ -1267,13 +1267,36 @@
 "LocalGifts.Gift" = "礼物";
 "LocalGifts.Buy" = "本地购买";
 "LocalGifts.Success" = "购买成功";
-"LocalGifts.SuccessHint" = "扣除本地星币，并将礼物加入本机自己的个人资料页。";
+"LocalGifts.SuccessHint" = "已扣除对应的本地余额，并将礼物加入本机自己的个人资料页。";
 "LocalGifts.Remove" = "移除本地礼物";
 "LocalGifts.RemoveHint" = "移除这份本地礼物？本地星币不会退回。";
 "LocalGifts.Disabled" = "请先在 Regram 设置中启用本地礼物购买。";
-"LocalGifts.InvalidAmount" = "请输入范围内有效的非负整数。";
-"LocalGifts.Insufficient" = "本地星币不足。请前往 Regram Pro → 管理与工具 → 本地星币与礼物修改数量。";
+"LocalGifts.InvalidAmount" = "请输入范围内有效的非负金额。";
+"LocalGifts.Insufficient" = "本地星币不足，请在装逼怎么了 装逼犯法吗专区修改数量。";
 "LocalGifts.Limit" = "本地礼物已达到存储上限（最多 500 份），请移除部分礼物后再试。";
 "LocalGifts.StorageError" = "本地记录无法保存，或礼物预览尚未加载完成。本次购买未完成。";
-"LocalGifts.NativeHint" = "保存后，到 Telegram 原有礼物页面购买普通或收藏礼物。目录和预览正常联网加载；购买和星币扣除仅在本机模拟。";
-"LocalGifts.StarsOnly" = "本地购买仅使用星币，请选择有星币报价的收藏礼物。暂不模拟 TON 付款。";
+"LocalGifts.NativeHint" = "保存后，到 Telegram 原有礼物页面购买普通或收藏礼物。目录和预览正常联网加载，购买和余额扣除仅在本机模拟。";
+
+"Showroom.Title" = "装逼怎么了 装逼犯法吗";
+
+"Showroom.PremiumRefresh" = "已打开的会员界面可在重新打开 App 后刷新。";
+
+"LocalPhone.Title" = "修改手机号显示";
+
+"LocalPhone.Number" = "含国家区号的手机号";
+
+"LocalPhone.Enabled" = "启用本地手机号显示";
+
+"LocalPhone.Save" = "保存并启用";
+
+"LocalPhone.Hint" = "仅修改本机自己个人资料页和设置中的号码显示，不改变登录手机号和 Telegram 账号。各账号独立保存。";
+
+"LocalPhone.Invalid" = "请输入含国家区号的 5 至 20 位数字。";
+
+"LocalGifts.TonBalance" = "本地 TON 数量";
+
+"LocalGifts.SaveTonBalance" = "保存 TON 数量";
+
+"LocalGifts.TonHint" = "仅用于本地收藏礼物购买。最多 9 位小数，上限 9000000 TON，不会进行钱包转账或付款。";
+
+"LocalGifts.InsufficientTon" = "本地 TON 不足，请在装逼怎么了 装逼犯法吗专区修改数量。";

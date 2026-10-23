@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram
 // MARK: Regram
 import RGSimpleSettings
 import RGSettingsUI
@@ -193,7 +194,7 @@ func infoItems(
         }
         
         if let phone = user.phone, !(RGSimpleSettings.shared.hidePhoneInSettings && isMyProfile) {
-            let formattedPhone = formatPhoneNumber(context: context, number: phone)
+            let formattedPhone = formatPhoneNumber(context: context, number: rgLocalDisplayedPhone(context: context, peerId: user.id, phone: phone) ?? phone) // MARK: Regram
             let label: String
             if formattedPhone.hasPrefix("+888 ") {
                 label = presentationData.strings.UserInfo_AnonymousNumberLabel

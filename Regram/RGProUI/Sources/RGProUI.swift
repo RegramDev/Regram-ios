@@ -131,6 +131,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
                 (.appearance, [(.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications)]),
                 (.network, [(.networkPage, .network), (.toolsPage, .tools)])
             ]
+            entries.append(.disclosure(id: id.count, section: .footer, link: .localGifts, text: "Showroom.Title".i18n(lang)))
             for (section, destinations) in groups {
                 for (link, destination) in destinations {
                     entries.append(.disclosure(id: id.count, section: section, link: link, text: destination.titleKey.i18n(lang)))
@@ -154,9 +155,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     // MARK: Regram
     entries.append(.toggle(id: id.count, section: .input, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .input, text: "Mention.UserIdLink.Notice".i18n(lang)))
-    // MARK: Regram — local Premium switch.
-    entries.append(.toggle(id: id.count, section: .footer, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .footer, text: "LocalPremium.Notice".i18n(lang)))
     // MARK: Regram — link previews off.
     entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
@@ -208,7 +206,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .appearance, link: .profileSettings, text: RGSettingsPage.profiles.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .storiesSettings, text: RGSettingsPage.stories.titleKey.i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .privacySettings, text: RGSettingsPage.privacy.titleKey.i18n(lang)))
-    entries.append(.disclosure(id: id.count, section: .footer, link: .localGifts, text: "LocalGifts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .appUpdate, text: "AppUpdate.Title".i18n(lang)))
 
     entries.append(.disclosure(id: id.count, section: .input, link: .inputSettings, text: RGSettingsPage.input.titleKey.i18n(lang)))

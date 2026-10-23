@@ -36,6 +36,50 @@ import Foundation
         _ = try reopened.setEnabled(account: account, enabled: true).get()
         _ = try reopened.remove(account: account, id: purchased.purchases[0].id).get()
         assert(reopened.state(account: account).purchases.isEmpty && reopened.state(account: account).balance == 150)
+        // Existing b34631 ledgers gain independent TON, visibility, appearance and phone defaults.
+        var old = try JSONSerialization.jsonObject(with: JSONEncoder().encode(purchased)) as! [String: Any]
+        for key in ["tonBalance", "appearance", "profileGiftId", "nameGiftId", "phoneEnabled", "phoneNumber"] { old.removeValue(forKey: key) }
+        var oldPurchases = old["purchases"] as! [[String: Any]]
+        oldPurchases[0].removeValue(forKey: "currency"); oldPurchases[0].removeValue(forKey: "savedToProfile")
+        old["purchases"] = oldPurchases
+        defaults.set(try JSONSerialization.data(withJSONObject: old), forKey: "regram.localGifts.v1.legacy")
+        let legacy = store.state(account: "legacy")
+        assert(legacy.balance == 150 && legacy.tonBalance == 1_000_000_000_000)
+        assert(legacy.purchases[0].currency == .stars && legacy.purchases[0].savedToProfile)
+        assert(!legacy.phoneEnabled && legacy.appearance == nil)
+        for (text, expected) in [("0", Int64(0)), ("1.000000001", 1_000_000_001), ("0,5", 500_000_000), ("9000000", RGLocalGiftsStore.maximumBalance)] {
+            assert(RGLocalGiftCurrency.ton.amount(from: text) == expected)
+            assert(RGLocalGiftCurrency.ton.amount(from: RGLocalGiftCurrency.ton.text(for: expected)) == expected)
+        }
+        for text in ["-1", "1.0000000001", "9000000.000000001", "1e6", "1.2.3", ".2", "NaN", "١٢", "999999999999999999999999999999"] {
+            assert(RGLocalGiftCurrency.ton.amount(from: text) == nil, text)
+        }
+        assert(RGLocalGiftCurrency.stars.amount(from: "1.5") == nil)
+        _ = try store.setBalance(account: account, balance: 1_000_000_001, currency: .ton).get()
+        let tonPurchase = try store.purchase(account: account, title: "TON collectible", price: 1_000_000_000, gift: payload, currency: .ton).get()
+        let tonId = tonPurchase.purchases[0].id
+        assert(tonPurchase.balance == 150 && tonPurchase.tonBalance == 1 && tonPurchase.purchases[0].currency == .ton)
+        failure(store.purchase(account: account, title: "TON collectible", price: 2, gift: payload, currency: .ton), .insufficientTon)
+        assert(store.state(account: account) == tonPurchase)
+        let hidden = try store.setVisibility(account: account, id: tonId, saved: false).get()
+        assert(!hidden.purchases[0].savedToProfile && hidden.tonBalance == 1)
+        _ = try store.setAppearance(account: account, profileGiftId: tonId, nameGiftId: tonId, appearance: payload).get()
+        assert(RGLocalGiftsStore(defaults: defaults).state(account: account).appearance == payload)
+        failure(store.setAppearance(account: account, profileGiftId: UUID(), nameGiftId: nil, appearance: payload), .storage)
+        let deleted = try store.remove(account: account, id: tonId).get()
+        assert(deleted.appearance == nil && deleted.profileGiftId == nil && deleted.nameGiftId == nil && deleted.tonBalance == 1)
+        assert(RGLocalGiftsStore.normalizedPhone(" +1 (234) 567-8900 ") == "12345678900")
+        let phoneState = try store.setPhone(account: account, enabled: true, number: "+888 1234 5678").get()
+        assert(phoneState.phoneNumber == "88812345678" && phoneState.phoneEnabled)
+        assert(!store.state(account: "live:456").phoneEnabled)
+        assert(RGLocalGiftsStore(defaults: defaults).state(account: account).phoneNumber == "88812345678")
+        failure(store.setPhone(account: account, enabled: true, number: "tel:12345"), .invalidAmount)
+        failure(store.setPhone(account: account, enabled: true, number: "+1234"), .invalidAmount)
+        assert(store.state(account: account) == phoneState)
+        _ = try store.setEnabled(account: account, enabled: false).get()
+        assert(store.state(account: account).phoneEnabled, "Phone display has an independent switch")
+        _ = try store.setPhone(account: account, enabled: false, number: phoneState.phoneNumber).get()
+        _ = try store.setEnabled(account: account, enabled: true).get()
         // Racing purchases cannot overdraw the ledger or lose records.
         _ = try store.setBalance(account: account, balance: 25).get()
         DispatchQueue.concurrentPerform(iterations: 100) { _ in
@@ -58,6 +102,6 @@ import Foundation
         failure(store.setEnabled(account: "corrupt", enabled: true), .storage)
         assert(defaults.data(forKey: "regram.localGifts.v1.corrupt") == corrupt)
         assert(!store.state(account: "corrupt").enabled)
-        print("Local gift ledger: purchase, insufficient balance, validation, persistence, account isolation, disable/restore, removal, concurrent charging and corruption checks passed")
+        print("Local currency, phone, appearance migration/lifecycle and gift ledger: purchase, insufficient balance, validation, persistence, account isolation, disable/restore, removal, concurrent charging and corruption checks passed")
     }
 }
