@@ -11,6 +11,8 @@ public final class RGSettingsLeadingButtonsNode: HighlightableButtonNode {
 
     public override init(pointerStyle: PointerStyle? = nil) {
         super.init(pointerStyle: pointerStyle)
+        // ASControlNode starts noninteractive without its own targets; this container's targets are on its children.
+        self.isUserInteractionEnabled = true
         self.isAccessibilityElement = false
         self.addSubnode(self.backButton)
         self.addSubnode(self.qrButton)

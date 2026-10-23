@@ -1,4 +1,6 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
+load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
+load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 filegroup(
     name = "RGUIAssets",
@@ -53,4 +55,32 @@ swift_library(
     visibility = [
         "//visibility:public",
     ],
+)
+
+swift_library(
+    name = "RGSettingsLeadingButtonsTestsLib",
+    testonly = True,
+    srcs = [
+        "Sources/RGSettingsLeadingButtonsNode.swift",
+        "Tests/RGSettingsLeadingButtonsTests.swift",
+    ],
+    deps = [
+        "//submodules/AsyncDisplayKit",
+        "//submodules/Display",
+        "//submodules/ComponentFlow",
+        "//submodules/TelegramUI/Components/NavigationBarComponent",
+    ],
+)
+
+ios_test_runner(
+    name = "RGSettingsLeadingButtonsTestRunner",
+    device_type = "iPhone 17",
+    os_version = "26.5",
+)
+
+ios_unit_test(
+    name = "RGSettingsLeadingButtonsTests",
+    minimum_os_version = "15.0",
+    runner = ":RGSettingsLeadingButtonsTestRunner",
+    deps = [":RGSettingsLeadingButtonsTestsLib"],
 )
