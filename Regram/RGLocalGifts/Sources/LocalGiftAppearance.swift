@@ -59,9 +59,9 @@ public func rgLocalAppearanceState(context: AccountContext) -> Signal<RGLocalGif
     } |> deliverOnMainQueue
 }
 
-public func rgLocalAppearancePeer(context: AccountContext, peer: EnginePeer) -> EnginePeer {
+public func rgLocalAppearancePeer(context: AccountContext, peer: EnginePeer, localState: RGLocalGiftsState) -> EnginePeer {
     guard peer.id == context.account.peerId, case let .user(user) = peer else { return peer }
-    let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
+    let state = localState
     guard state.enabled, let data = state.appearance, let appearance = try? JSONDecoder().decode(LocalAppearance.self, from: data) else { return peer }
     // Rebind negative model/pattern IDs when reading purchases made by older app builds.
     var emojiStatus = appearance.emojiStatus
@@ -95,8 +95,8 @@ public func rgLocalGiftEmojiStatus(_ gift: StarGift.UniqueGift) -> PeerEmojiStat
     return nil
 }
 
-public func rgLocalUniqueGifts(context: AccountContext) -> [StarGift.UniqueGift] {
-    let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
+public func rgLocalUniqueGifts(context: AccountContext, localState: RGLocalGiftsState? = nil) -> [StarGift.UniqueGift] {
+    let state = localState ?? RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
     guard state.enabled else { return [] }
     return state.purchases.compactMap { purchase in
         if case let .unique(gift) = rgLocalGift(context: context, purchase: purchase) { return gift }

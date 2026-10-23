@@ -1032,7 +1032,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         combineLatest(walletBalance, rgLocalAppearanceState(context: context)) // MARK: Regram
     )
     |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalanceAndLocal -> PeerInfoScreenData in
-        let (walletBalance, _) = walletBalanceAndLocal // MARK: Regram
+        let (walletBalance, localGifts) = walletBalanceAndLocal // MARK: Regram
         let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings) = notifications // MARK: Regram
         let (featuredStickerPacks, archivedStickerPacks) = stickerPacks
         
@@ -1086,7 +1086,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         )
         
         return PeerInfoScreenData(
-            peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0) },
+            peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
             chatPeer: peer.flatMap(EnginePeer.init),
             savedMessagesPeer: nil,
             cachedData: peerView.cachedData,
@@ -1768,7 +1768,7 @@ func peerInfoScreenData(
                     
                     return PeerInfoScreenData(
                         regDate: regDate,
-                        peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0) },
+                        peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
                         chatPeer: peerView.peers[peerId].flatMap(EnginePeer.init),
                         savedMessagesPeer: savedMessagesPeer,
                         cachedData: peerView.cachedData,

@@ -100,8 +100,8 @@ final class UserAppearanceScreenComponent: Component {
                 context.engine.payments.cachedStarGifts(),
                 rgLocalAppearanceState(context: context) // MARK: Regram
             )
-            |> map { peer, view, starGifts, _ -> ContentsData in
-                var gifts: [StarGift.UniqueGift] = rgLocalUniqueGifts(context: context) // MARK: Regram
+            |> map { peer, view, starGifts, localState -> ContentsData in
+                var gifts: [StarGift.UniqueGift] = rgLocalUniqueGifts(context: context, localState: localState) // MARK: Regram
                 for orderedView in view.orderedItemListsViews {
                     if orderedView.collectionId == Namespaces.OrderedItemList.CloudUniqueStarGifts {
                         for item in orderedView.items {
@@ -113,7 +113,7 @@ final class UserAppearanceScreenComponent: Component {
                     }
                 }
                 return ContentsData(
-                    peer: peer.map { rgLocalAppearancePeer(context: context, peer: $0) },
+                    peer: peer.map { rgLocalAppearancePeer(context: context, peer: $0, localState: localState) },
                     gifts: gifts,
                     starGifts: starGifts ?? []
                 )
