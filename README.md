@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.1.1 / b34631** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34631)。本版保留现有 Regram UI，新增「显摆一下」本地定制专区，将本地会员、星币／TON 礼物模拟与手机号显示整合到一起；接入 Telegram 原生礼物购买、详情及资料展示，修复 +888 号码分组，并让长按链接转发使用新版分享界面。范围与验证记录见[本地定制说明](docs/local-gifts-and-link-sharing.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前版本 **13.1.1 / b34632** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34632)。本版保留现有 Regram UI，在「显摆一下」中补充本地收藏礼物置顶与头像装饰、正负评级、TON 资料卡和手机号双输入框，修复键盘遮挡以及隐藏底栏时返回／二维码在白底上的颜色。范围与构建记录见[本地个人资料扩展](docs/local-profile-customization-34632.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 

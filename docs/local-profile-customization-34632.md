@@ -1,6 +1,6 @@
 # 本地个人资料扩展
 
-本轮以已发布的 13.1.1 / b34631 为基线，生成 b34632 本地安装包。界面优先沿用 Telegram 对应组件，设置仍位于 Regram Pro → 显摆一下。
+本轮以 13.1.1 / b34631 为基线，已正式发布 [13.1.1 / b34632](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34632)。界面优先沿用 Telegram 对应组件，设置仍位于 Regram Pro → 显摆一下。
 
 ## 功能
 
@@ -16,3 +16,11 @@
 ## 构建记录
 
 完整目标为 `//Telegram:Regram`，Xcode 27.1，arm64 Release，保留全部扩展、匹配调试符号与复用缓存。具体构建源码、包摘要、回归和安装身份结果随本轮安装包保存在忽略的构建记录中。
+
+## 发布记录
+
+- Release：[v13.1.1-b34632](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34632)，发布源码与构建源码均为 `adc394c97d3eb1ce2ccc161c7e0cb8a406968b3d`。
+- 文件：`Regram-13.1.1-b34632.ipa`，77,913,638 字节。
+- SHA-256：`9ac3dfb5921ea6e9b6577d519eb0eca084ec3bda2cb5b387d82c38e22ed1225e`。
+- 使用返回／二维码图标修正后的原交付包；主程序和六扩展的安装身份与 b34631 一致，保留 12 份匹配调试符号。
+- 构建后仅更新发布文档，应用源码和安装包保持一致；可复用缓存保留，空闲 Bazel 服务已关闭。

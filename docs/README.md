@@ -1,10 +1,10 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34631** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34632** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
-- [b34632 本地个人资料扩展](local-profile-customization-34632.md)：礼物置顶与头像装饰、正负评级、TON 资料卡、手机号双输入框及键盘避让。
+- [b34632 本地个人资料扩展](local-profile-customization-34632.md)：礼物置顶与头像装饰、正负评级、TON 资料卡、手机号双输入框、键盘避让及隐藏底栏时的导航图标颜色，包含正式发布记录。
 - [本地定制、礼物与链接分享](local-gifts-and-link-sharing.md)：“显摆一下”专区、手机号显示、原生礼物购买与详情、余额及资料装扮联动，包含 b34631 正式发布、历史测试包与验证边界。
 
 - [图标、跨设备备份与标记渲染复查](icon-backup-rendering-audit.md)：取消图标切换失败提醒、统一设置恢复状态、减少重复布局及修正外观同步；包含深灰配色 b34629 正式发布、历史本地测试包、包校验与缓存保留记录。

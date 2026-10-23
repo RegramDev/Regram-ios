@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34631** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34631). This release preserves the current Regram UI and adds the Show Off section for local Premium display, Stars/TON gift simulation and phone display. Local gifts use Telegram's native purchase, detail and profile surfaces. It also fixes +888 phone grouping and routes link forwarding through the new share screen. See the [local customization and validation record](docs/local-gifts-and-link-sharing.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34632** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34632). This release preserves the current Regram UI and extends Show Off with local collectible gift pinning and avatar decorations, positive and negative ratings, a TON profile card and separate country-code and phone-number fields. It also fixes keyboard obstruction and the Back/QR icon colors on a white background when the tab bar is hidden. See the [local profile customization record](docs/local-profile-customization-34632.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
