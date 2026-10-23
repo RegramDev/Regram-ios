@@ -5,9 +5,23 @@ import AppBundle
 
 private let gradientImage = UIImage(bundleImageName: "Item List/Icons/Gradient")
 private let backdropImage = UIImage(bundleImageName: "Item List/Icons/Backdrop")
+
+// MARK: Regram — a book of message bookmarks is distinct from Saved Messages' ribbon.
+private func renderMessageBookmarksArtwork() -> UIImage? {
+    guard let symbol = UIImage(systemName: "text.book.closed.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18.0, weight: .medium)) else { return nil }
+    let format = UIGraphicsImageRendererFormat()
+    format.opaque = false
+    return UIGraphicsImageRenderer(size: CGSize(width: 30.0, height: 30.0), format: format).image { _ in
+        UIColor(red: 0.35, green: 0.34, blue: 0.84, alpha: 1.0).setFill()
+        UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: 30, height: 30), cornerRadius: 7).fill()
+        let size = symbol.size
+        symbol.withTintColor(.white, renderingMode: .alwaysOriginal).draw(at: CGPoint(x: (30.0 - size.width) / 2.0, y: (30.0 - size.height) / 2.0))
+    }.withRenderingMode(.alwaysOriginal)
+}
 // MARK: Regram
-private func renderRegramSettingsArtwork(name: String) -> UIImage? {
-    guard let image = UIImage(bundleImageName: name)?.cgImage else { return nil }
+private func renderRegramSettingsArtwork(name: String, dark: Bool? = nil) -> UIImage? {
+    let traits = dark.map { UITraitCollection(userInterfaceStyle: $0 ? .dark : .light) }
+    guard let image = UIImage(named: name, in: getAppBundle(), compatibleWith: traits)?.cgImage else { return nil }
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
         let rect = CGRect(origin: .zero, size: size)
         context.clear(rect)
@@ -121,7 +135,7 @@ public func renderAttachAppIcon(iconImage: UIImage?) -> UIImage? {
 
 let colorRed = UIColor(rgb: 0xFF453A)
 let colorGreen = UIColor(rgb: 0x34C759)
-let colorBlue = UIColor(rgb: 0x0079ff)
+let colorBlue = UIColor(rgb: 0x0a84ff)
 let colorLightBlue = UIColor(rgb: 0x32ADE6)
 let colorTeal = UIColor(rgb: 0x00c7be)
 let colorOrange = UIColor(rgb: 0xFF9F0A)
@@ -136,14 +150,16 @@ public struct PresentationResourcesSettings {
     public static let regramAppIconDidChange = Notification.Name("Regram.AppIconDidChange")
     // MARK: Regram — use the same thumbnail as the app icon picker, preserving its colors.
     private static let regramAppIconCache = NSCache<NSString, UIImage>()
-    public static func regramProIcon(imageName: String) -> UIImage? {
-        if let image = regramAppIconCache.object(forKey: imageName as NSString) { return image }
-        guard let image = renderRegramSettingsArtwork(name: imageName) else { return regramPro }
-        regramAppIconCache.setObject(image, forKey: imageName as NSString)
+    public static func regramProIcon(imageName: String, dark: Bool) -> UIImage? {
+        let key = "\(imageName).\(dark ? "dark" : "light")" as NSString
+        if let image = regramAppIconCache.object(forKey: key) { return image }
+        guard let image = renderRegramSettingsArtwork(name: imageName, dark: dark) ?? renderRegramSettingsArtwork(name: "RegramPro", dark: dark) else { return nil }
+        regramAppIconCache.setObject(image, forKey: key)
         return image
     }
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
+    public static let messageBookmarks = renderMessageBookmarksArtwork() // MARK: Regram
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])
     public static let devices = renderSettingsIcon(name: "Item List/Icons/Devices", backgroundColors: [colorOrange])
     public static let chatFolders = renderSettingsIcon(name: "Item List/Icons/Folder", backgroundColors: [colorLightBlue])

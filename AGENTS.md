@@ -6,3 +6,4 @@
 - Run checks relevant to the edit. For UI or behavior changes, explain what was compiled, what was exercised on a device, and what remains unverified.
 - The rules_apple checkout may show local changes after applying the tracked compatibility patch. See [build-system/patches/README.md](build-system/patches/README.md) before touching that submodule.
 - Use [docs/lcsign-reference-packaging.md](docs/lcsign-reference-packaging.md) for ad-hoc reference IPA packaging. It describes a reusable process; it does not contain personal signing credentials or a current release artifact.
+- Keep reusable project build caches between versions. After a build, shut down its idle Bazel server; do not run `clean --expunge` or delete output or disk caches unless the user explicitly requests it.

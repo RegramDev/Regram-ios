@@ -42,6 +42,23 @@ import ButtonComponent
 import BundleIconComponent
 import AnimatedTextComponent
 import TextFormat
+// MARK: Regram
+import RGSearchLink
+import RGSimpleSettings
+import RGStrings
+
+// MARK: Regram
+private func rgFeatureContainsFirstResponder(_ view: UIView) -> Bool {
+    if view.isFirstResponder {
+        return true
+    }
+    for subview in view.subviews {
+        if rgFeatureContainsFirstResponder(subview) {
+            return true
+        }
+    }
+    return false
+}
 
 private func isIncludedCommunityContainer(_ peer: EnginePeer?, filter: ChatListNodePeersFilter) -> Bool {
     if filter.contains(.includeCommunities), case .community = peer {
@@ -407,6 +424,7 @@ public enum ChatListSearchEntryStableId: Hashable {
     case messagePlaceholder(Int32)
     case emptyMessagesFooter
     case addContact
+    case rgFeatureSearchLink // MARK: Regram
 }
 
 public enum ChatListSearchSectionExpandType {
@@ -471,9 +489,13 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
     case messagePlaceholder(Int32, ChatListPresentationData, TelegramSearchPeersScope)
     case emptyMessagesFooter(ChatListPresentationData, TelegramSearchPeersScope, String?)
     case addContact(String, PresentationTheme, PresentationStrings)
+    // MARK: Regram — 搜索词是 Telegram 链接时置顶的「打开链接」入口。
+    case rgFeatureSearchLink(RGSearchLink, PresentationTheme, PresentationStrings)
 
     public var stableId: ChatListSearchEntryStableId {
         switch self {
+        case .rgFeatureSearchLink:
+            return .rgFeatureSearchLink
         case let .topic(_, threadInfo, _, _, _, _):
             return .threadId(threadInfo.id)
         case let .recentlySearchedPeer(peer, _, _, _, _, _, _, _, _, _):
@@ -497,6 +519,12 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
 
     public static func ==(lhs: ChatListSearchEntry, rhs: ChatListSearchEntry) -> Bool {
         switch lhs {
+        case let .rgFeatureSearchLink(lhsLink, lhsTheme, lhsStrings):
+            if case let .rgFeatureSearchLink(rhsLink, rhsTheme, rhsStrings) = rhs, lhsLink == rhsLink, lhsTheme === rhsTheme, lhsStrings === rhsStrings {
+                return true
+            } else {
+                return false
+            }
         case let .topic(lhsPeer, lhsThreadInfo, lhsIndex, lhsTheme, lhsStrings, lhsExpandType):
             if case let .topic(rhsPeer, rhsThreadInfo, rhsIndex, rhsTheme, rhsStrings, rhsExpandType) = rhs, lhsPeer == rhsPeer, lhsThreadInfo == rhsThreadInfo, lhsIndex == rhsIndex, lhsTheme === rhsTheme, lhsStrings === rhsStrings, lhsExpandType == rhsExpandType {
                 return true
@@ -633,7 +661,13 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
     }
 
     public static func <(lhs: ChatListSearchEntry, rhs: ChatListSearchEntry) -> Bool {
+        // MARK: Regram — 链接入口排在所有结果之前。
+        if case .rgFeatureSearchLink = rhs {
+            return false
+        }
         switch lhs {
+        case .rgFeatureSearchLink:
+            return true
         case let .topic(_, _, lhsIndex, _, _, _):
             if case let .topic(_, _, rhsIndex, _, _, _) = rhs {
                 return lhsIndex <= rhsIndex
@@ -650,7 +684,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
             }
         case let .localPeer(_, _, _, lhsIndex, _, _, _, _, _, _, _, _):
             switch rhs {
-            case .topic, .recentlySearchedPeer:
+            case .rgFeatureSearchLink, .topic, .recentlySearchedPeer:
                 return false
             case let .localPeer(_, _, _, rhsIndex, _, _, _, _, _, _, _, _):
                 return lhsIndex <= rhsIndex
@@ -659,7 +693,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
             }
         case let .adPeer(_, lhsIndex, _, _, _, _, _, _):
             switch rhs {
-            case .topic, .recentlySearchedPeer, .localPeer:
+            case .rgFeatureSearchLink, .topic, .recentlySearchedPeer, .localPeer:
                 return false
             case let .adPeer(_, rhsIndex, _, _, _, _, _, _):
                 return lhsIndex <= rhsIndex
@@ -668,7 +702,7 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
             }
         case let .globalPeer(_, _, lhsIndex, _, _, _, _, _, _, _, _):
             switch rhs {
-            case .topic, .recentlySearchedPeer, .localPeer, .adPeer:
+            case .rgFeatureSearchLink, .topic, .recentlySearchedPeer, .localPeer, .adPeer:
                 return false
             case let .globalPeer(_, _, rhsIndex, _, _, _, _, _, _, _, _):
                 return lhsIndex <= rhsIndex
@@ -735,6 +769,22 @@ public enum ChatListSearchEntry: Comparable, Identifiable {
         switchMessagesFilter: @escaping (TelegramSearchPeersScope) -> Void
     ) -> ListViewItem {
         switch self {
+            // MARK: Regram
+            case let .rgFeatureSearchLink(link, theme, strings):
+                let languageCode = strings.baseLanguageCode
+                let titleKey: String
+                switch link.kind {
+                case .message:
+                    titleKey = "features.SearchLink.OpenMessage"
+                case .invite:
+                    titleKey = "features.SearchLink.OpenInvite"
+                case .generic:
+                    titleKey = "features.SearchLink.Open"
+                }
+                let header = ChatListSearchItemHeader(type: .text(rgFeatureI18n("features.SearchLink.Header", languageCode), AnyHashable("rgFeatureSearchLink")), theme: theme, strings: strings, actionTitle: nil, action: nil)
+                return RGSearchLinkItem(theme: theme, title: rgFeatureI18n(titleKey, languageCode), subtitle: link.displayUrl, header: header, action: {
+                    interaction.openUrl(link.url)
+                })
             case let .topic(peer, threadInfo, _, theme, strings, expandType):
                 let actionTitle: String?
                 switch expandType {
@@ -1677,6 +1727,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
     private let mediaNode: ChatListSearchMediaNode?
     private var enqueuedRecentTransitions: [(ChatListSearchContainerRecentTransition, Bool)] = []
     private var enqueuedTransitions: [(ChatListSearchContainerTransition, Bool)] = []
+    private var rgFeaturePendingAfterInputDismissal: (() -> Void)?
 
     private var presentationDataDisposable: Disposable?
     private let updatedRecentPeersDisposable = MetaDisposable()
@@ -1738,7 +1789,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
     private var emptyRecentAnimationNode: AnimatedStickerNode?
     private var emptyRecentAnimationSize = CGSize()
 
-    private var currentParams: (size: CGSize, sideInset: CGFloat, topInset: CGFloat, bottomInset: CGFloat, visibleHeight: CGFloat, presentationData: PresentationData)?
+    private var currentParams: (size: CGSize, sideInsets: UIEdgeInsets, topInset: CGFloat, bottomInset: CGFloat, visibleHeight: CGFloat, presentationData: PresentationData)?
 
     private let ready = Promise<Bool>()
     private var didSetReady: Bool = false
@@ -1767,7 +1818,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
     private var refreshGlobalPostSearchStateDisposable: Disposable?
 
-    init(context: AccountContext, animationCache: AnimationCache, animationRenderer: MultiAnimationRenderer, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)? = nil, interaction: ChatListSearchInteraction, key: ChatListSearchPaneKey, peersFilter: ChatListNodePeersFilter, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, excludedPeerIds: Set<EnginePeer.Id>, location: ChatListControllerLocation, communityId: EnginePeer.Id? = nil, searchQuery: Signal<String?, NoError>, searchOptions: Signal<ChatListSearchOptions?, NoError>, navigationController: NavigationController?, parentController: ViewController?, globalPeerSearchContext: GlobalPeerSearchContext?) {
+    init(context: AccountContext, animationCache: AnimationCache, animationRenderer: MultiAnimationRenderer, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)? = nil, interaction: ChatListSearchInteraction, key: ChatListSearchPaneKey, peersFilter: ChatListNodePeersFilter, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, excludedPeerIds: Set<EnginePeer.Id>, location: ChatListControllerLocation, communityId: EnginePeer.Id? = nil, searchQuery: Signal<String?, NoError>, searchOptions: Signal<ChatListSearchOptions?, NoError>, navigationController: NavigationController?, parentController: ViewController?, globalPeerSearchContext: GlobalPeerSearchContext?) { // MARK: Regram — native top-to-bottom result order.
         self.context = context
         self.animationCache = animationCache
         self.animationRenderer = animationRenderer
@@ -1832,7 +1883,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.selectedMessages = interaction.getSelectedMessageIds()
         self.selectedMessagesPromise.set(.single(self.selectedMessages))
 
-        self.recentListNode = ListViewImpl()
+        self.recentListNode = ListViewImpl() // MARK: Regram — restore native result order.
         self.recentListNode.preloadPages = false
         self.recentListNode.verticalScrollIndicatorColor = self.presentationData.theme.list.scrollIndicatorColor
         self.recentListNode.accessibilityPageScrolledString = { row, count in
@@ -1843,7 +1894,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.shimmerNode.isUserInteractionEnabled = false
         self.shimmerNode.allowsGroupOpacity = true
 
-        self.listNode = ListViewImpl()
+        self.listNode = ListViewImpl() // MARK: Regram — restore native result order.
         self.listNode?.verticalScrollIndicatorColor = self.presentationData.theme.list.scrollIndicatorColor
         self.listNode?.accessibilityPageScrolledString = { row, count in
             return presentationData.strings.VoiceOver_ScrollStatus(row, count).string
@@ -2940,12 +2991,19 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 )
             }
 
+            // MARK: Regram — 只在主聊天列表的搜索里提供链接入口；选人器、话题和收藏消息里的搜索不出现。
+            var rgFeatureSearchLinkValue: RGSearchLink?
+            if key == .chats, case .chatList = location, peersFilter.isEmpty, requestPeerType == nil {
+                rgFeatureSearchLinkValue = rgFeatureSearchLink(query: finalQuery, appSpecificScheme: context.sharedContext.applicationBindings.appSpecificScheme)
+            }
+
             let resolvedMessage: Signal<EngineMessage?, NoError>
             if case .savedMessagesChats = location {
                 resolvedMessage = .single(nil)
             } else {
                 resolvedMessage = .single(nil)
-                |> then(context.sharedContext.resolveUrl(context: context, peerId: nil, url: finalQuery, skipUrlAuth: true)
+                // MARK: Regram — 不带域名的消息链接补上 t.me 后再解析，才能预览出消息。
+                |> then(context.sharedContext.resolveUrl(context: context, peerId: nil, url: rgFeatureSearchLinkValue?.resolvableUrl ?? finalQuery, skipUrlAuth: true)
                 |> mapToSignal { resolvedUrl -> Signal<EngineMessage?, NoError> in
                     if case let .channelMessage(_, messageId, _) = resolvedUrl {
                         return context.engine.messages.downloadMessage(messageId: messageId)
@@ -3014,6 +3072,11 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                 let isSearching = foundRemotePeers.3 || foundRemoteMessages.1 || foundPublicMessages.1
                 var entries: [ChatListSearchEntry] = []
                 var index = 0
+
+                // MARK: Regram — 链接入口与普通搜索结果同时展示。
+                if let rgFeatureSearchLinkValue {
+                    entries.append(.rgFeatureSearchLink(rgFeatureSearchLinkValue, presentationData.theme, presentationData.strings))
+                }
 
                 for thread in allAndFoundThreads {
                     if let peer = thread.renderedPeer.peer, let threadData = thread.threadData, case let .forum(_, _, id, _, _) = thread.index {
@@ -3678,7 +3741,11 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         }, openAdInfo: { node, adPeer in
             interaction.openAdInfo(node, adPeer)
         }, openAccountFreezeInfo: {
-        }, openUrl: { _ in
+        }, openUrl: { [weak self] url in
+            // MARK: Regram — 搜索链接入口的点击。
+            interaction.dismissInput()
+            interaction.openUrl(url)
+            self?.listNode?.clearHighlightAnimated(true)
         })
         chatListInteraction.isSearchMode = true
 
@@ -3762,7 +3829,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             interaction.openUrl(url)
         }, openInstantPage: { [weak self] message, data in
             if let self, let navigationController = self.navigationController {
-                if let controller = self.context.sharedContext.makeInstantPageController(context: self.context, message: message, sourcePeerType: .channel) {
+                if let controller = self.context.sharedContext.makeInstantPageController(context: self.context, message: EngineMessage(message), sourcePeerType: .channel) {
                     navigationController.pushViewController(controller)
                 }
             }
@@ -4828,8 +4895,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         self.playlistStateAndType = nil
                     }
 
-                    if let (size, sideInset, topInset, bottomInset, visibleHeight, presentationData) = self.currentParams {
-                        self.update(size: size, sideInset: sideInset, topInset: topInset, bottomInset: bottomInset, visibleHeight: visibleHeight, presentationData: presentationData, synchronous: true, transition: .animated(duration: 0.4, curve: .spring))
+                    if let (size, sideInsets, topInset, bottomInset, visibleHeight, presentationData) = self.currentParams {
+                        self.update(size: size, sideInsets: sideInsets, topInset: topInset, bottomInset: bottomInset, visibleHeight: visibleHeight, presentationData: presentationData, synchronous: true, transition: .animated(duration: 0.4, curve: .spring))
                     }
                 }
                 self.playlistLocation = playlistStateAndType?.1.playlistLocation
@@ -4946,10 +5013,21 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         }
     }
 
-    func update(size: CGSize, sideInset: CGFloat, topInset: CGFloat, bottomInset: CGFloat, visibleHeight: CGFloat, presentationData: PresentationData, synchronous: Bool, transition: ContainedViewLayoutTransition) {
+    func update(size: CGSize, sideInsets: UIEdgeInsets, topInset: CGFloat, bottomInset: CGFloat, visibleHeight: CGFloat, presentationData: PresentationData, synchronous: Bool, transition: ContainedViewLayoutTransition) {
         let hadValidLayout = self.currentParams != nil
-        let layoutChanged = self.currentParams?.size != size || self.currentParams?.sideInset != sideInset ||  self.currentParams?.topInset != topInset || self.currentParams?.bottomInset != bottomInset || self.currentParams?.visibleHeight != visibleHeight
-        self.currentParams = (size, sideInset, topInset, bottomInset, visibleHeight, presentationData)
+        let layoutChanged = self.currentParams?.size != size || self.currentParams?.sideInsets != sideInsets ||  self.currentParams?.topInset != topInset || self.currentParams?.bottomInset != bottomInset || self.currentParams?.visibleHeight != visibleHeight
+        self.currentParams = (size, sideInsets, topInset, bottomInset, visibleHeight, presentationData)
+
+        // MARK: Regram — 键盘收起带来的这次布局完成后，再执行等待中的操作（见 openMessagesFilter）。
+        if layoutChanged, self.rgFeaturePendingAfterInputDismissal != nil {
+            var delay: Double = 0.0
+            if case let .animated(duration, _) = transition {
+                delay = duration
+            }
+            Queue.mainQueue().after(delay, { [weak self] in
+                self?.rgFeatureFlushPendingAfterInputDismissal()
+            })
+        }
 
         var topPanelHeight: CGFloat = 0.0
         if let (item, previousItem, nextItem, order, type, _) = self.playlistStateAndType {
@@ -4958,7 +5036,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             let panelFrame = CGRect(origin: CGPoint(x: 0.0, y: topPanelHeight - panelHeight), size: CGSize(width: size.width, height: panelHeight))
             if let (mediaAccessoryPanel, mediaType) = self.mediaAccessoryPanel, mediaType == type {
                 transition.updateFrame(layer: mediaAccessoryPanel.layer, frame: panelFrame)
-                mediaAccessoryPanel.updateLayout(size: panelFrame.size, leftInset: sideInset, rightInset: sideInset, isHidden: false, transition: transition)
+                mediaAccessoryPanel.updateLayout(size: panelFrame.size, leftInset: sideInsets.left, rightInset: sideInsets.right, isHidden: false, transition: transition)
                 switch order {
                 case .regular:
                     mediaAccessoryPanel.containerNode.headerNode.playbackItems = (item, previousItem, nextItem)
@@ -5191,7 +5269,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     self.mediaAccessoryPanelContainer.addSubnode(mediaAccessoryPanel)
                 }
                 self.mediaAccessoryPanel = (mediaAccessoryPanel, type)
-                mediaAccessoryPanel.updateLayout(size: panelFrame.size, leftInset: sideInset, rightInset: sideInset, isHidden: false, transition: .immediate)
+                mediaAccessoryPanel.updateLayout(size: panelFrame.size, leftInset: sideInsets.left, rightInset: sideInsets.right, isHidden: false, transition: .immediate)
                 switch order {
                     case .regular:
                         mediaAccessoryPanel.containerNode.headerNode.playbackItems = (item, previousItem, nextItem)
@@ -5225,7 +5303,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
         let topInset: CGFloat = topInset + topPanelHeight
         let overflowInset: CGFloat = 0.0
-        let insets = UIEdgeInsets(top: topInset + topPanelHeight, left: sideInset, bottom: bottomInset, right: sideInset)
+        let insets = UIEdgeInsets(top: topInset + topPanelHeight, left: sideInsets.left, bottom: bottomInset, right: sideInsets.right)
 
         self.shimmerNode.frame = CGRect(origin: CGPoint(x: overflowInset, y: topInset), size: CGSize(width: size.width - overflowInset * 2.0, height: size.height))
         self.shimmerNode.update(context: self.context, size: CGSize(width: size.width - overflowInset * 2.0, height: size.height), presentationData: self.presentationData, animationCache: self.animationCache, animationRenderer: self.animationRenderer, key: !(self.searchQueryValue?.isEmpty ?? true) && self.key == .media ? .chats : self.key, hasSelection: self.selectedMessages != nil, transition: transition)
@@ -5236,8 +5314,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
 
         if let emptyRecentTitleNode = self.emptyRecentTitleNode, let emptyRecentTextNode = self.emptyRecentTextNode, let emptyRecentAnimationNode = self.emptyRecentAnimationNode {
             let padding: CGFloat = 16.0
-            let emptyTitleSize = emptyRecentTitleNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
-            let emptyTextSize = emptyRecentTextNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
+            let emptyTitleSize = emptyRecentTitleNode.updateLayout(CGSize(width: size.width - sideInsets.left - sideInsets.right - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
+            let emptyTextSize = emptyRecentTextNode.updateLayout(CGSize(width: size.width - sideInsets.left - sideInsets.right - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
 
             let emptyAnimationHeight = emptyRecentAnimationSize.height
             let emptyAnimationSpacing: CGFloat = 8.0
@@ -5246,9 +5324,9 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             let emptyAnimationY = topInset + floorToScreenPixels((visibleHeight - topInset - bottomInset - emptyTotalHeight) / 2.0)
 
             let textTransition = ContainedViewLayoutTransition.immediate
-            textTransition.updateFrame(node: emptyRecentAnimationNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - emptyRecentAnimationSize.width) / 2.0, y: emptyAnimationY), size: emptyRecentAnimationSize))
-            textTransition.updateFrame(node: emptyRecentTitleNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - emptyTitleSize.width) / 2.0, y: emptyAnimationY + emptyAnimationHeight + emptyAnimationSpacing), size: emptyTitleSize))
-            textTransition.updateFrame(node: emptyRecentTextNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - emptyTextSize.width) / 2.0, y: emptyAnimationY + emptyAnimationHeight + emptyAnimationSpacing + emptyTitleSize.height + emptyTextSpacing), size: emptyTextSize))
+            textTransition.updateFrame(node: emptyRecentAnimationNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - emptyRecentAnimationSize.width) / 2.0, y: emptyAnimationY), size: emptyRecentAnimationSize))
+            textTransition.updateFrame(node: emptyRecentTitleNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - emptyTitleSize.width) / 2.0, y: emptyAnimationY + emptyAnimationHeight + emptyAnimationSpacing), size: emptyTitleSize))
+            textTransition.updateFrame(node: emptyRecentTextNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - emptyTextSize.width) / 2.0, y: emptyAnimationY + emptyAnimationHeight + emptyAnimationSpacing + emptyTitleSize.height + emptyTextSpacing), size: emptyTextSize))
             emptyRecentAnimationNode.updateLayout(size: emptyRecentAnimationSize)
         }
 
@@ -5256,12 +5334,12 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
         self.listNode?.transaction(deleteIndices: [], insertIndicesAndItems: [], updateIndicesAndItems: [], options: [.Synchronous], scrollToItem: nil, updateSizeAndInsets: ListViewUpdateSizeAndInsets(size: size, insets: insets, duration: duration, curve: curve), stationaryItemRange: nil, updateOpaqueState: nil, completion: { _ in })
 
         self.mediaNode?.frame = CGRect(origin: CGPoint(x: 0.0, y: topInset), size: CGSize(width: size.width, height: size.height))
-        self.mediaNode?.update(size: size, sideInset: sideInset, bottomInset: bottomInset, visibleHeight: visibleHeight, isScrollingLockedAtTop: false, expandProgress: 1.0, presentationData: self.presentationData, synchronous: true, transition: transition)
+        self.mediaNode?.update(size: size, sideInsets: sideInsets, bottomInset: bottomInset, visibleHeight: visibleHeight, isScrollingLockedAtTop: false, expandProgress: 1.0, presentationData: self.presentationData, synchronous: true, transition: transition)
 
         do {
             let padding: CGFloat = 16.0
-            let emptyTitleSize = self.emptyResultsTitleNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
-            let emptyTextSize = self.emptyResultsTextNode.updateLayout(CGSize(width: size.width - sideInset * 2.0 - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
+            let emptyTitleSize = self.emptyResultsTitleNode.updateLayout(CGSize(width: size.width - sideInsets.left - sideInsets.right - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
+            let emptyTextSize = self.emptyResultsTextNode.updateLayout(CGSize(width: size.width - sideInsets.left - sideInsets.right - padding * 2.0, height: CGFloat.greatestFiniteMagnitude))
 
             let emptyAnimationHeight = self.emptyResultsAnimationSize.height
             let emptyAnimationSpacing: CGFloat = 8.0
@@ -5341,7 +5419,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         }
                     )),
                     environment: {},
-                    containerSize: CGSize(width: min(282.0, size.width - sideInset - 24.0 * 2.0), height: 50.0)
+                    containerSize: CGSize(width: min(282.0, size.width - max(sideInsets.left, sideInsets.right) - 24.0 * 2.0), height: 50.0)
                 )
                 emptyButtonSize = emptyResultsButtonSizeValue
             } else {
@@ -5371,7 +5449,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         horizontalAlignment: .center
                     )),
                     environment: {},
-                    containerSize: CGSize(width: size.width - sideInset - 24.0 * 2.0, height: 100.0)
+                    containerSize: CGSize(width: size.width - max(sideInsets.left, sideInsets.right) - 24.0 * 2.0, height: 100.0)
                 )
                 emptyButtonSubtitleSize = emptyResultsButtonSubtitleSizeValue
             } else {
@@ -5401,9 +5479,9 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             }
 
             let textTransition: ContainedViewLayoutTransition = layoutChanged ? transition : .immediate
-            textTransition.updateFrame(node: self.emptyResultsAnimationNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - self.emptyResultsAnimationSize.width) / 2.0, y: emptyAnimationY), size: self.emptyResultsAnimationSize))
-            textTransition.updateFrame(node: self.emptyResultsTitleNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - emptyTitleSize.width) / 2.0, y: emptyTitleY), size: emptyTitleSize))
-            textTransition.updateFrame(node: self.emptyResultsTextNode, frame: CGRect(origin: CGPoint(x: sideInset + padding + (size.width - sideInset * 2.0 - padding * 2.0 - emptyTextSize.width) / 2.0, y: emptyTitleY + emptyTitleSize.height + emptyTextSpacing), size: emptyTextSize))
+            textTransition.updateFrame(node: self.emptyResultsAnimationNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - self.emptyResultsAnimationSize.width) / 2.0, y: emptyAnimationY), size: self.emptyResultsAnimationSize))
+            textTransition.updateFrame(node: self.emptyResultsTitleNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - emptyTitleSize.width) / 2.0, y: emptyTitleY), size: emptyTitleSize))
+            textTransition.updateFrame(node: self.emptyResultsTextNode, frame: CGRect(origin: CGPoint(x: sideInsets.left + padding + (size.width - sideInsets.left - sideInsets.right - padding * 2.0 - emptyTextSize.width) / 2.0, y: emptyTitleY + emptyTitleSize.height + emptyTextSpacing), size: emptyTextSize))
             self.emptyResultsAnimationNode.updateLayout(size: self.emptyResultsAnimationSize)
 
             var nextY: CGFloat = emptyTitleY + emptyTitleSize.height + emptyTextSpacing + emptyTextSize.height
@@ -5415,7 +5493,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     emptyButtonTransition = .immediate
                     self.view.insertSubview(emptyButtonView, aboveSubview: self.emptyResultsTextNode.view)
                 }
-                emptyButtonTransition.updateFrame(view: emptyButtonView, frame: CGRect(origin: CGPoint(x: floor((size.width - emptyButtonSize.width) * 0.5), y: nextY), size: emptyButtonSize))
+                emptyButtonTransition.updateFrame(view: emptyButtonView, frame: CGRect(origin: CGPoint(x: sideInsets.left + floor((size.width - sideInsets.left - sideInsets.right - emptyButtonSize.width) * 0.5), y: nextY), size: emptyButtonSize))
 
                 nextY += emptyButtonSize.height
             }
@@ -5427,7 +5505,7 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                     emptyButtonSubtitleTransition = .immediate
                     self.view.insertSubview(emptyButtonSubtitleView, aboveSubview: self.emptyResultsTextNode.view)
                 }
-                emptyButtonSubtitleTransition.updateFrame(view: emptyButtonSubtitleView, frame: CGRect(origin: CGPoint(x: floor((size.width - emptyButtonSubtitleSize.width) * 0.5), y: nextY), size: emptyButtonSubtitleSize))
+                emptyButtonSubtitleTransition.updateFrame(view: emptyButtonSubtitleView, frame: CGRect(origin: CGPoint(x: sideInsets.left + floor((size.width - sideInsets.left - sideInsets.right - emptyButtonSubtitleSize.width) * 0.5), y: nextY), size: emptyButtonSubtitleSize))
 
                 nextY += emptyButtonSubtitleSize.height
             }
@@ -5668,8 +5746,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
                         strongSelf.emptyResultsButtonSubtitleText = nil
                     }
 
-                    if let (size, sideInset, topInset, bottomInset, visibleHeight, presentationData) = strongSelf.currentParams {
-                        strongSelf.update(size: size, sideInset: sideInset, topInset: topInset, bottomInset: bottomInset, visibleHeight: visibleHeight, presentationData: presentationData, synchronous: true, transition: .animated(duration: 0.4, curve: .spring))
+                    if let (size, sideInsets, topInset, bottomInset, visibleHeight, presentationData) = strongSelf.currentParams {
+                        strongSelf.update(size: size, sideInsets: sideInsets, topInset: topInset, bottomInset: bottomInset, visibleHeight: visibleHeight, presentationData: presentationData, synchronous: true, transition: .animated(duration: 0.4, curve: .spring))
                     }
 
                     if strongSelf.key == .downloads {
@@ -5767,7 +5845,34 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
     }
 
     func openMessagesFilter(sourceNode: ASDisplayNode) {
+        // MARK: Regram — 菜单弹出时就固定在按钮当下的位置（keepInPlace），而收起键盘会让列表重新布局、
+        // 按钮跟着移动（从下往上显示时列表贴底，必然移动）。键盘开着时先收起，等布局完成再弹出。
+        var isInputActive = false
+        if let window = self.view.window {
+            isInputActive = rgFeatureContainsFirstResponder(window)
+        }
         self.interaction.dismissInput()
+        if isInputActive {
+            self.rgFeaturePendingAfterInputDismissal = { [weak self] in
+                self?.presentMessagesFilter(sourceNode: sourceNode)
+            }
+            // 键盘已在收起途中、不再引起布局变化时，也不能让菜单丢失。
+            Queue.mainQueue().after(0.6, { [weak self] in
+                self?.rgFeatureFlushPendingAfterInputDismissal()
+            })
+        } else {
+            self.presentMessagesFilter(sourceNode: sourceNode)
+        }
+    }
+
+    private func rgFeatureFlushPendingAfterInputDismissal() {
+        if let pending = self.rgFeaturePendingAfterInputDismissal {
+            self.rgFeaturePendingAfterInputDismissal = nil
+            pending()
+        }
+    }
+
+    private func presentMessagesFilter(sourceNode: ASDisplayNode) {
         let _ = (self.searchScopePromise.get()
         |> take(1)).start(next: { [weak self] scope in
             guard let self else {
@@ -6331,7 +6436,7 @@ private final class ChatListSearchReferenceContentSource: ContextReferenceConten
     }
 
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(referenceView: self.sourceNode.view, contentAreaInScreenSpace: UIScreen.main.bounds, actionsPosition: .bottom)
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceNode.view, contentAreaInScreenSpace: mainWindowScreenBounds, actionsPosition: .bottom)
     }
 }
 

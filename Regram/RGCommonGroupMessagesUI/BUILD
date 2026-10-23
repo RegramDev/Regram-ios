@@ -10,6 +10,7 @@ swift_library(
         "//Regram/RGStrings:RGStrings",
         "//submodules/AccountContext",
         "//submodules/AsyncDisplayKit",
+        "//submodules/AvatarNode",
         "//submodules/Display",
         "//submodules/LocalizedPeerData",
         "//submodules/Postbox",

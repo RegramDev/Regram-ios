@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import RGSwiftUI
 import RGStrings
 import RGSimpleSettings
@@ -7,36 +8,33 @@ import LegacyUI
 import Display
 import TelegramPresentationData
 import AccountContext
+import AppBundle
 
 
 struct AppBadge: Identifiable, Hashable {
-    let id: UUID = .init()
     let displayName: String
     let assetName: String
+
+    var id: String { self.assetName }
+
+    func title(languageCode: String) -> String {
+        ("AppBadge.Name." + self.displayName.lowercased()).i18n(languageCode)
+    }
 }
 
 func getAvailableAppBadges() -> [AppBadge] {
-    var appBadges: [AppBadge] = [
-        // `Default` stays first: with nothing stored yet `customAppBadge` is empty and the window
-        // falls back to this asset, so the selector's initial highlight is taken from index 0.
-        .init(displayName: "Default", assetName: "Components/AppBadge"),
+    [
+        .init(displayName: "Conversation", assetName: RGAppBadgeNames.defaultName),
+        .init(displayName: "Azure", assetName: "RGAzureBadge"),
+        .init(displayName: "Iris", assetName: "RGIrisBadge"),
+        .init(displayName: "Mint", assetName: "RGMintBadge"),
+        .init(displayName: "Gathering", assetName: RGAppBadgeNames.alternateName),
+        .init(displayName: "Amber", assetName: "RGAmberBadge"),
+        .init(displayName: "Nebula", assetName: "RGNebulaBadge"),
+        .init(displayName: "Jade", assetName: "RGJadeBadge"),
         .init(displayName: "Regram", assetName: "RegramAppBadge"),
         .init(displayName: "Zhiqiu", assetName: "ZhiqiuAppBadge"),
-        .init(displayName: "Sky", assetName: "SkyAppBadge"),
-        .init(displayName: "Night", assetName: "NightAppBadge"),
-        .init(displayName: "Titanium", assetName: "TitaniumAppBadge"),
-        .init(displayName: "Pro", assetName: "ProAppBadge"),
-        .init(displayName: "Day", assetName: "DayAppBadge"),
     ]
-
-    if RGSimpleSettings.shared.duckyAppIconAvailable {
-        appBadges.append(.init(displayName: "Ducky", assetName: "DuckyAppBadge"))
-    }
-    appBadges += [
-        .init(displayName: "Sparkling", assetName: "SparklingAppBadge"),
-    ]
-
-    return appBadges
 }
     
 @available(iOS 14.0, *)
@@ -44,23 +42,13 @@ struct AppBadgeSettingsView: View {
     weak var wrapperController: LegacyController?
     let context: AccountContext
     
-    @Environment(\.colorScheme) var colorScheme
     @Environment(\.lang) var lang: String
+    @Environment(\.rgSettingsColors) private var settingsColors
+    @Environment(\.colorScheme) private var colorScheme
     
     @State var selectedBadge: AppBadge
     let availableAppBadges: [AppBadge] = getAvailableAppBadges()
 
-    private enum Layout {
-        static let cardCorner: CGFloat = 12
-        static let imageHeight: CGFloat = 56
-        static let columnSpacing: CGFloat = 16
-        static let horizontalPadding: CGFloat = 20
-    }
-
-    private var columns: [SwiftUI.GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: Layout.columnSpacing), count: 2)
-    }
-    
     init(wrapperController: LegacyController?, context: AccountContext) {
         self.wrapperController = wrapperController
         self.context = context
@@ -76,55 +64,91 @@ struct AppBadgeSettingsView: View {
     }
     
     private func onSelectBadge(_ badge: AppBadge) {
+        let assetName = badge.assetName
         self.selectedBadge = badge
-        let image = UIImage(bundleImageName: selectedBadge.assetName) ?? UIImage(bundleImageName: "Components/AppBadge")
         // Regram badges are local assets; selection is always available.
-        do {
-            DispatchQueue.main.async {
-                RGSimpleSettings.shared.customAppBadge = selectedBadge.assetName
-                if let window = self.context.sharedContext.mainWindow {
-                    window.badgeView.image = image
-                    // The badge can now live outside the main view tree. Relayout its new width.
-                    window.updateAppBadgeLayout()
-                }
+        DispatchQueue.main.async {
+            RGSimpleSettings.shared.customAppBadge = assetName
+            if let window = self.context.sharedContext.mainWindow {
+                // The badge can now live outside the main view tree. Relayout its new width.
+                window.updateAppBadgeLayout()
             }
         }
     }
     
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, alignment: .center, spacing: Layout.columnSpacing) {
+        RGSettingsList {
+            RGSettingsSection(header: Text("AppBadge.Current".i18n(lang))) {
+                VStack(spacing: 12) {
+                    if let image = self.artwork(selectedBadge.assetName) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 240)
+                            .frame(height: 64)
+                            .accessibilityHidden(true)
+                    }
+                    Text(selectedBadge.title(languageCode: lang))
+                        .font(.body.weight(.medium))
+                        .foregroundColor(primaryColor)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            }
+            RGSettingsSection(header: Text("AppBadge.Choose".i18n(lang)), footer: Text("AppBadge.Notice".i18n(lang)).foregroundColor(secondaryColor)) {
                 ForEach(availableAppBadges) { badge in
                     Button {
                         onSelectBadge(badge)
                     } label: {
-                        VStack(spacing: 8) {
-                            Image(badge.assetName)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: Layout.imageHeight)
-                                .accessibilityHidden(true)
+                        HStack(spacing: 12) {
+                            if let image = self.artwork(badge.assetName) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 128, height: 40)
+                                    .accessibilityHidden(true)
+                            }
 
-                            Text(badge.displayName)
-                                .font(.footnote)
+                            Text(badge.title(languageCode: lang))
+                                .foregroundColor(primaryColor)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            if selectedBadge.assetName == badge.assetName {
+                                Image(systemName: "checkmark")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundColor(accentColor)
+                                    .frame(width: 24, height: 24)
+                                    .accessibilityHidden(true)
+                            } else {
+                                Color.clear.frame(width: 24, height: 24)
+                                    .accessibilityHidden(true)
+                            }
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color(colorScheme == .dark ? .secondarySystemBackground : .systemBackground))
-                        .cornerRadius(Layout.cardCorner)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Layout.cardCorner)
-                                .stroke(selectedBadge == badge ? Color.accentColor : Color.clear, lineWidth: 2)
-                        )
+                        .contentShape(Rectangle())
+                        .frame(minHeight: 56)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("regram.appBadge.\(badge.assetName)")
+                    .accessibilityAddTraits(selectedBadge.assetName == badge.assetName ? .isSelected : [])
                 }
             }
-            .padding(.horizontal, Layout.horizontalPadding)
-            .padding(.vertical, 24)
-
         }
-        .background(Color(colorScheme == .light ? .secondarySystemBackground : .systemBackground).ignoresSafeArea())
+    }
+
+    private var primaryColor: Color {
+        settingsColors.primary
+    }
+
+    private func artwork(_ name: String) -> UIImage? {
+        UIImage(named: name, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: self.colorScheme == .dark ? .dark : .light))
+    }
+
+    private var accentColor: Color {
+        settingsColors.accent
+    }
+
+    private var secondaryColor: Color {
+        settingsColors.secondary
     }
     
 }

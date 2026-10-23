@@ -24,9 +24,9 @@ import Foundation
         defaults.set(true, forKey: "sg_full_wipe")
         expect(RGLaunchResetCoordinator(defaults: defaults).request == nil, "A saved false value must override a legacy true value")
         defaults.removeObject(forKey: "rg_full_wipe")
-        expect(RGLaunchResetCoordinator(defaults: defaults).request == .fullWipe, "Old installations must retain their pending wipe")
+        expect(RGLaunchResetCoordinator(defaults: defaults).request == nil, "Swiftgram reset keys must not arm a Regram wipe")
         RGLaunchResetCoordinator.resolve(.fullWipe, defaults: defaults)
-        expect(defaults.object(forKey: "sg_full_wipe") == nil, "A resolved legacy flag must not re-arm the next launch")
+        expect(defaults.bool(forKey: "sg_full_wipe") && RGLaunchResetCoordinator(defaults: defaults).request == nil, "Swiftgram state must remain ignored")
         print("Startup reset checks passed; only an isolated preference suite was used, no data was erased.")
     }
 }

@@ -500,7 +500,8 @@ public class ItemListDisclosureItemNode: ListViewItemNode, ItemListItemNode {
             if case .multilineDetailText = item.labelStyle {
                 labelMaximumNumberOfLines = 0
             } else {
-                labelMaximumNumberOfLines = max(1, item.rgLabelMaximumNumberOfLines)
+                // MARK: Regram — zero means unlimited detail text without top-aligning the icon.
+                labelMaximumNumberOfLines = max(0, item.rgLabelMaximumNumberOfLines)
             }
             //
             let (labelLayout, labelApply) = makeLabelLayout(TextNodeLayoutArguments(attributedString: item.attributedLabel ?? NSAttributedString(string: item.label, font: labelFont, textColor: labelBadgeColor), backgroundColor: nil, maximumNumberOfLines: labelMaximumNumberOfLines, truncationType: .end, constrainedSize: CGSize(width: labelConstrain, height: CGFloat.greatestFiniteMagnitude), alignment: .natural, cutout: nil, insets: UIEdgeInsets()))
@@ -726,7 +727,7 @@ public class ItemListDisclosureItemNode: ListViewItemNode, ItemListItemNode {
                         
                         strongSelf.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
                         strongSelf.highlightNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
-                        strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
+                        strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.inset(by: UIEdgeInsets(top: 0.0, left: params.leftInset, bottom: 0.0, right: params.rightInset))
                         strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: separatorHeight))
                         strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height - separatorHeight), size: CGSize(width: params.width - params.rightInset - bottomStripeInset - separatorRightInset, height: separatorHeight))
                     }

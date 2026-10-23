@@ -1,4 +1,5 @@
 import UIKit
+import QuartzCore
 
 // A decorative window, excluded from app presentation and keyboard window discovery.
 final class RGAppBadgeWindow: UIWindow {
@@ -42,6 +43,11 @@ private final class RGAppBadgeRootController: UIViewController {
     override var prefersHomeIndicatorAutoHidden: Bool {
         self.hostWindow?.rootViewController?.prefersHomeIndicatorAutoHidden ?? false
     }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        self.setNeedsUpdateOfHomeIndicatorAutoHidden()
+    }
 }
 
 /// iOS 27 compatibility path for badges drawn in the Dynamic Island screenshot area. Moving the
@@ -50,6 +56,7 @@ final class RGAppBadgeOverlay {
     private let badgeView: UIImageView
     private weak var hostWindow: UIWindow?
     private var window: RGAppBadgeWindow?
+    private let badgeMask = CAShapeLayer()
     private var observers: [NSObjectProtocol] = []
     private var sceneIsDeactivating = false
 
@@ -76,7 +83,7 @@ final class RGAppBadgeOverlay {
         self.window?.rootViewController = nil
     }
 
-    func update(hostWindow: UIWindow?, fallbackView: UIView, badgeFrame: CGRect, enabled: Bool) {
+    func update(hostWindow: UIWindow?, fallbackView: UIView, badgeFrame: CGRect, enabled: Bool, userInterfaceStyle: UIUserInterfaceStyle? = nil) {
         guard enabled, !badgeFrame.isEmpty, let hostWindow, let scene = hostWindow.windowScene else {
             self.restore(to: fallbackView, badgeFrame: badgeFrame)
             return
@@ -91,22 +98,36 @@ final class RGAppBadgeOverlay {
             window.isOpaque = false
             window.clipsToBounds = true
             window.accessibilityElementsHidden = true
+            window.layer.mask = self.badgeMask
             window.rootViewController = RGAppBadgeRootController(hostWindow: hostWindow)
             self.window = window
         }
         guard let window = self.window, let container = window.rootViewController?.view else { return }
         // zPosition only orders layers inside one window; a separate window establishes the
         // rendering boundary without changing the navigation bar's blur or the main window's level.
-        window.windowLevel = UIWindow.Level(rawValue: max(UIWindow.Level.statusBar.rawValue, hostWindow.windowLevel.rawValue) + 1.0)
-        // Keep this render surface confined to the badge. A full-screen transparent window can
-        // participate in system/glass compositing far beyond the image it is meant to display.
-        window.overrideUserInterfaceStyle = hostWindow.traitCollection.userInterfaceStyle
-        window.frame = hostWindow.convert(badgeFrame, to: nil)
-        container.frame = window.bounds
+        let level = UIWindow.Level(rawValue: max(UIWindow.Level.statusBar.rawValue, hostWindow.windowLevel.rawValue) + 1.0)
+        if window.windowLevel != level { window.windowLevel = level }
+        // A badge-sized window relocates the system home indicator beneath the image;
+        // auto-hiding only removes it after a delay. Keep system geometry aligned with the host,
+        // and mask the render surface to the badge so it does not affect glass elsewhere.
+        let style = userInterfaceStyle ?? hostWindow.traitCollection.userInterfaceStyle
+        if window.overrideUserInterfaceStyle != style { window.overrideUserInterfaceStyle = style }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let frame = hostWindow.convert(hostWindow.bounds, to: nil)
+        if window.frame != frame { window.frame = frame }
+        if container.frame != window.bounds { container.frame = window.bounds }
+        let windowBadgeFrame = window.convert(badgeFrame, from: hostWindow)
+        if self.badgeMask.frame != window.bounds { self.badgeMask.frame = window.bounds }
+        if self.badgeMask.path?.boundingBoxOfPath != windowBadgeFrame {
+            self.badgeMask.path = CGPath(rect: windowBadgeFrame, transform: nil)
+        }
         if self.badgeView.superview !== container {
             container.addSubview(self.badgeView)
         }
-        self.badgeView.frame = CGRect(origin: .zero, size: badgeFrame.size)
+        let imageFrame = container.convert(badgeFrame, from: hostWindow)
+        if self.badgeView.frame != imageFrame { self.badgeView.frame = imageFrame }
+        CATransaction.commit()
         self.updateVisibility()
     }
 
@@ -115,7 +136,7 @@ final class RGAppBadgeOverlay {
         if self.badgeView.superview !== fallbackView {
             fallbackView.addSubview(self.badgeView)
         }
-        self.badgeView.frame = badgeFrame
+        if self.badgeView.frame != badgeFrame { self.badgeView.frame = badgeFrame }
         self.window?.rootViewController = nil
         self.window = nil
         self.hostWindow = nil
@@ -123,10 +144,11 @@ final class RGAppBadgeOverlay {
 
     func updateVisibility() {
         guard let window = self.window else { return }
-        window.isHidden = window.windowScene?.activationState != .foregroundActive
+        let hidden = window.windowScene?.activationState != .foregroundActive
             || self.sceneIsDeactivating
             || self.hostWindow?.isHidden != false
             || self.badgeView.isHidden
             || self.badgeView.image == nil
+        if window.isHidden != hidden { window.isHidden = hidden }
     }
 }

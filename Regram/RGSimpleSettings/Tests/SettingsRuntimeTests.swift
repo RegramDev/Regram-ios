@@ -128,10 +128,167 @@ extension UserDefaults {
         settings.reorderVisibleContextMenuItems([.reply, .copy])
         expect(Array(settings.contextMenuOrder.prefix(3)) == [.reply, .viewStats, .copy], "Reordering visible items must preserve the position of hidden actions")
         settings.contextMenuOrder = originalMenuOrder
-        print("Settings runtime checks passed: storage/backup regressions, account-scoped real-menu inventory, and reordering with hidden actions")
+        expect(!settings.autoInlineBotEnabled, "Automatic external queries must be opt-in")
+        for key in ["features.chatToolsEnabled", "features.chatSearchFieldAtBottom", "features.bottomUpChatSearchResults"] {
+            expect(RGSettingsBackup(values: [key: .bool(true)]).values[key] == nil, "Retired chat tools and search modes must not return through backups")
+        }
+        let originalPangu = settings.panguSpacing
+        settings.enablePanguOnSending = true
+        expect(settings.panguSpacing, "The grouped sending toggle must use the existing stored preference")
+        settings.enablePanguOnEditing = true
+        settings.enablePanguOnReceiving = false
+        let panguBackup = settings.exportPreferences(categories: [.messages])
+        expect(panguBackup.values["panguSpacing"] == .bool(true) && panguBackup.values["features.enablePanguOnEditing"] == .bool(true) && panguBackup.values["features.enablePanguOnReceiving"] == .bool(false), "Three grouped controls remain independently backed up")
+        settings.applyPreferences(["panguSpacing": .bool(false), "features.enablePanguOnEditing": .bool(false), "features.enablePanguOnReceiving": .bool(true)])
+        expect(!settings.enablePanguOnSending && !settings.enablePanguOnEditing && settings.enablePanguOnReceiving, "Restoring grouped Pangu settings must retain independent values")
+        settings.panguSpacing = originalPangu
+        settings.rememberLastFolder = true
+        expect(settings.chatListStartupFolderModeValue == .last, "Existing remember-last choice remains effective before selecting a startup mode")
+        settings.rememberLastFolder = false
+        settings.chatListSwipeAction = "switch"
+        expect(settings.chatListSwipeActionMode.allowsFolderSwitch && !settings.chatListSwipeActionMode.allowsQuickActions && !settings.disableChatSwipeOptions, "Folder-only gestures preserve the legacy master state")
+        settings.chatListSwipeAction = "none"
+        expect(!settings.chatListSwipeActionMode.allowsFolderSwitch && !settings.chatListSwipeActionMode.allowsQuickActions && settings.disableChatSwipeOptions, "Disabled gestures must agree across old/new paths")
+        settings.chatListSwipeAction = "both"
+        settings.setChatListStartupSpecificFolderId(27, accountPeerId: 111)
+        settings.setChatListStartupSpecificFolderId(35, accountPeerId: 222)
+        expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27 && settings.chatListStartupSpecificFolderId(accountPeerId: 222) == 35, "Fixed startup folders are isolated by account")
+        settings.chatListStartupFolderMode = "specific"
+        expect(!settings.rememberLastFolder && settings.chatListStartupFolderModeValue == .specific, "An explicit startup mode must update the legacy fallback")
+        settings.chatListStartupFolderMode = "invalid"
+        expect(settings.chatListStartupFolderModeValue == .specific, "Invalid startup modes must not overwrite the saved selection")
+        settings.chatListFolderTabDisplayMode = "both"
+        settings.communityAvatarTapAction = "arrow"
+        settings.videoPIPSwipeDirection = "none"
+        settings.textStyleMenuPosition = .last
+        settings.textStyleMenuItemOrder = [.bold, .link]
+        settings.ghostDontSendTyping = false
+        settings.ghostDontSendOnline = false
+        settings.hidePrivateChatActivities = true
+        expect(!settings.ghostDontSendTyping && !settings.ghostDontSendOnline, "Hiding incoming activity must not enable outgoing Ghost Mode")
+        settings.ghostDontSendTyping = true
+        settings.hidePrivateChatActivities = false
+        expect(settings.ghostDontSendTyping && !settings.hidePrivateChatActivities, "Ghost Mode must remain independent of local activity presentation")
+        settings.hideSavedAndArchivedMessagesInList = true
+        settings.enablePanguOnReceiving = true
+        settings.setGroupProfileSettingItemVisible(.permissions, visible: true)
+        settings.setTextStyleMenuItemEnabled(.bold, enabled: true)
+        let featuresBackup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
+        expect(featuresBackup.values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && featuresBackup.values["features.textStyleMenu.enabled"] == .string("bold"), "New privacy and composer choices participate in normal backups")
+        expect(settings.exportPreferences(categories: [.privacy]).values["features.hideSavedAndArchivedMessagesInList"] == .bool(true) && settings.exportPreferences(categories: [.appearance]).values["features.hideSavedAndArchivedMessagesInList"] == nil, "Privacy enhancements must stay in the selected backup category")
+        expect(featuresBackup.values["features.startupFolders"] == .dictionary(["111": "27", "222": "35"]), "Fixed-folder account mapping must survive settings backup")
+        for name in ["regram-settings.json", "Regram-Settings 2.JSON", "regram-settings (3).json"] {
+            expect(RGSettingsBackup.isExportFileName(name), "Recognize settings export copies by filename")
+        }
+        for name in ["settings.json", "data.json", "regram-message-filter.json", "regram-settings.json.exe", "regram-settings.txt"] {
+            expect(!RGSettingsBackup.isExportFileName(name), "Unrelated attachments must not expose the settings-import action")
+        }
+        let importDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: importDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: importDirectory) }
+        let importFile = importDirectory.appendingPathComponent(RGSettingsBackup.filename)
+        try featuresBackup.encoded().write(to: importFile)
+        let fileBackup = try RGSettingsBackup.read(from: importFile)
+        expect(fileBackup.values == featuresBackup.values, "Chat attachments and document picker use the same validated import reader")
+        try Data(repeating: 0, count: RGSettingsBackup.maximumBytes + 1).write(to: importFile)
+        do { _ = try RGSettingsBackup.read(from: importFile); fatalError("Oversized attachment must be rejected before reading JSON") } catch {}
+        try Data("{}".utf8).write(to: importFile)
+        do { _ = try RGSettingsBackup.read(from: importFile); fatalError("Malformed settings must not reach restore") } catch {}
+        let restoredFeatures = try RGSettingsBackup.decode(featuresBackup.encoded())
+        expect(restoredFeatures.values == featuresBackup.values, "Configured feature values must survive the actual JSON decoder used by import")
+        expect(featuresBackup.values.keys.allSatisfy { !$0.lowercased().contains("icloud") && !$0.lowercased().contains("sessionbackup") }, "Excluded cloud/session features must not enter export")
+        expect(featuresBackup.values["features.chatListStartupFolderMode"] == .string("specific"), "Backup must include startup mode as well as the account mapping")
+        settings.chatListStartupFolderMode = "last"
+        expect(settings.rememberLastFolder, "Selecting last-folder mode keeps the fallback in sync")
+        settings.applyPreferences(restoredFeatures.values, resetCategories: [.appearance])
+        expect(settings.chatListStartupFolderModeValue == .specific, "Actual JSON import restores the fixed-folder startup mode")
+        expect(settings.hideSavedAndArchivedMessagesInList && settings.isGroupProfileSettingItemVisible(.permissions) && settings.isTextStyleMenuItemEnabled(.bold), "Import and reset retain new feature choices")
+        expect(settings.chatListStartupSpecificFolderId(accountPeerId: 111) == 27, "Import restores the per-account startup folder")
+        for (key, value) in [
+            "features.startupFolders": RGBackupValue.dictionary(["111": "-2"]),
+            "features.chatListStartupFolderMode": .string("invalid"),
+            "features.chatListSwipeAction": .string("invalid"),
+            "features.chatListFolderTabDisplayMode": .bool(true),
+            "features.groupProfileSettingItems": .string("permissions,invalid"),
+            "features.textStyleMenu.enabled": .string("bold,invalid")
+        ] {
+            do { _ = try RGSettingsBackup.decode(RGSettingsBackup(values: [key: value]).encoded()); fatalError("Invalid feature backup must be rejected: \(key)") } catch {}
+        }
+        let oldFolders = RGSettingsBackup(values: ["rememberLastFolder": .bool(true), "features.startupFolders": .dictionary(["111": "-1"])])
+        settings.applyPreferences(try RGSettingsBackup.decode(oldFolders.encoded()).values)
+        expect(settings.chatListStartupFolderModeValue == .last && settings.chatListStartupSpecificFolderId(accountPeerId: 111) == -1, "Old backups retain remember-last mode and All Chats selection")
+        settings.applyPreferences(["rememberLastFolder": .bool(false)])
+        expect(settings.chatListStartupFolderModeValue == .telegramDefault, "Importing an old disabled flag must replace a newer explicit mode")
+        let panguOriginal = "😀中文Telegram世界"
+        let pangu = RGFeaturePangu.transform(panguOriginal)
+        let originalRange = (panguOriginal as NSString).range(of: "Telegram")
+        let mapped = RGFeaturePangu.transformRange(originalRange.location ..< (originalRange.location + originalRange.length), insertedUtf16Offsets: pangu.insertedUtf16Offsets)
+        expect((pangu.text as NSString).substring(with: NSRange(location: mapped.lowerBound, length: mapped.count)) == "Telegram", "Received display spacing must preserve emoji-aware UTF-16 entity ranges")
+        let restored = RGFeaturePangu.reverseTransformRange(mapped, insertedUtf16Offsets: pangu.insertedUtf16Offsets, originalLength: (panguOriginal as NSString).length)
+        expect(restored == originalRange.location ..< (originalRange.location + originalRange.length), "Copying a displayed entity must recover its original range")
+        let protectedText = NSMutableAttributedString(string: "中文Telegram世界")
+        protectedText.addAttribute(NSAttributedString.Key("Attribute__Monospace"), value: true, range: NSRange(location: 2, length: 8))
+        let protectedResult = RGFeaturePangu.transform(protectedText)
+        var protectedSegments: [String] = []
+        protectedResult.enumerateAttribute(NSAttributedString.Key("Attribute__Monospace"), in: NSRange(location: 0, length: protectedResult.length)) { value, range, _ in
+            if value != nil { protectedSegments.append((protectedResult.string as NSString).substring(with: range)) }
+        }
+        expect(protectedSegments == ["Telegram"], "Pangu insertion must not alter protected code content or lose its attributes")
+        try Self.checkPortableBackups(settings)
+        print("Settings runtime checks passed: storage/backup regressions, portable layout consistency, deferred/targeted refresh, account-scoped real-menu inventory, and reordering with hidden actions")
+    }
+
+    static func checkPortableBackups(_ settings: RGSimpleSettings) throws {
+        let phone = RGBottomBarSettings(automaticWidth: false, bottomItems: [.settings, .chats], hiddenItems: [.contacts, .calls], showLabels: false, buttonWidthFillRatio: 65, searchMode: .button)
+        let source = RGSettingsBackup(values: [
+            "bottomBarLayout": .dictionary(phone.storedValues), "hideTabBar": .bool(true),
+            "showTabNames": .bool(true), "native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)
+        ])
+        let decoded = try RGSettingsBackup.decode(source.encoded())
+        expect(decoded.values["hideTabBar"] == .bool(false) && decoded.values["showTabNames"] == .bool(false), "Portable layout must override contradictory legacy UI flags")
+        expect(decoded.values["native.showContactsTab"] == .bool(false) && decoded.values["native.showCallsTab"] == .bool(false), "Native controllers must match the imported layout")
+        settings.applyPreferences(decoded.values)
+        expect(settings.bottomBarSettings == phone && !settings.hideTabBar && !settings.showTabNames, "Restoring on another device must use one coherent navigation state")
+        expect(RGTabBarLayoutPolicy.width(containerWidth: 1024, itemCount: 2, percent: 65) > RGTabBarLayoutPolicy.width(containerWidth: 390, itemCount: 2, percent: 65), "The restored percentage must adapt to destination geometry")
+
+        final class Counts: @unchecked Sendable { var layout = 0; var fonts = 0; var network = 0; var media = 0 }
+        let counts = Counts(), center = NotificationCenter.default
+        let observers = [
+            center.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: nil) { _ in counts.layout += 1 },
+            center.addObserver(forName: RGFontConfiguration.settingsChanged, object: nil, queue: nil) { _ in counts.fonts += 1 },
+            center.addObserver(forName: RGNetworkPolicy.didChange, object: nil, queue: nil) { _ in counts.network += 1 },
+            center.addObserver(forName: RGMediaLoadingPolicy.settingsChanged, object: nil, queue: nil) { _ in counts.media += 1 }
+        ]
+        defer { observers.forEach(center.removeObserver) }
+        let filterGeneration = settings.contentFilterGeneration
+        let keys = settings.applyPreferences(["bottomBarLayout": .dictionary(phone.storedValues)], publishChanges: false)
+        expect(counts.layout == 0 && counts.fonts == 0 && counts.network == 0, "UI refresh must wait until the native preference transaction completes")
+        settings.publishPreferenceChanges(keys)
+        expect(counts.layout == 1 && counts.fonts == 0 && counts.network == 0, "A layout restore must publish once without rebuilding fonts or reconnecting transport")
+        settings.applyPreferences(["mediaLoadingExperiment": .bool(true)])
+        expect(counts.media == 1 && counts.layout == 1 && counts.fonts == 0, "Media restore must notify active loading without unrelated redraws")
+        expect(settings.contentFilterGeneration == filterGeneration, "Layout and media restores must preserve the history filter cache generation")
+        settings.applyPreferences(["showTabNames": .bool(true), "hideTabBar": .bool(true), "native.showCallsTab": .bool(false)])
+        expect(!settings.bottomBarSettings.isBottomBarVisible && settings.bottomBarSettings.showLabels && !settings.bottomBarSettings.isVisible(.calls), "Legacy-only backups must still update the portable layout")
+        settings.applyPreferences(["native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)], resetCategories: [.appearance])
+        expect(settings.bottomBarSettings == RGBottomBarSettings(), "Reset must not rebuild a hidden phone layout from the destination's previous values")
     }
     static func checkIconSwitching() {
-        expect(RGAppIconNames.canonicalName("SGSilver") == "RGSilver" && RGAppIconNames.canonicalName("SGAnime") == "RGDefault" && RGAppIconNames.canonicalName("RGAnime") == "RGDefault", "Legacy artwork names must select the correct picker item")
+        expect(RGAppIconNames.canonicalName("SGSilver") == nil && RGAppIconNames.canonicalName("RGAnime") == nil && RGAppIconNames.canonicalName("RGGathering") == "RGGathering", "Removed artwork falls back to primary while the new alternate survives")
+        let originalBadge = RGSimpleSettings.shared.customAppBadge
+        RGSimpleSettings.shared.customAppBadge = "SkyAppBadge"
+        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.defaultName, "Removed badge selections fall back immediately")
+        RGSimpleSettings.shared.customAppBadge = RGAppBadgeNames.alternateName
+        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.alternateName, "The new alternate badge persists")
+        let oldBadgeBackup = RGSettingsBackup(values: ["customAppBadge": .string("Components/AppBadge")])
+        expect(oldBadgeBackup.values["customAppBadge"] == .string(RGAppBadgeNames.defaultName), "Legacy badge backups normalize to current artwork")
+        for name in ["RegramAppBadge", "ZhiqiuAppBadge", "RGAzureBadge", "RGJadeBadge"] {
+            RGSimpleSettings.shared.customAppBadge = name
+            expect(RGSimpleSettings.shared.customAppBadge == name, "Retained and recolored badges persist")
+            let backup = RGSettingsBackup(values: ["customAppBadge": .string(name)])
+            expect(backup.values["customAppBadge"] == .string(name), "Backups retain available badge styles")
+        }
+        RGSimpleSettings.shared.customAppBadge = originalBadge
         var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
         let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })
         coordinator.request("RGBlack") { results.append($0) }
@@ -151,7 +308,7 @@ extension UserDefaults {
         let count = results.count; applies[3].1(false)
         expect(results.count == count, "Late callbacks must not complete a newer request")
         actual = nil; applies[4].1(true); coordinator.resume()
-        actual = "SGDefault"
+        actual = "RGDefault"
         coordinator.request(nil) { results.append($0) }
         expect(applies.count == 6 && applies[5].0 == nil, "Restoring primary must replace an old alternate named Default")
         actual = nil; applies[5].1(true)

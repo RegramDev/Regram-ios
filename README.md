@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别和界面定制。
 
-当前分支为 **regram-beta / 13.0 / b34620**。Beta 安装包见 [Actions 构建](https://github.com/RegramDev/Regram-ios/actions/workflows/build.yml?query=branch%3Aregram-beta)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前分支为 **regram-beta / 13.1.1 / b34630**。Beta 安装包见 [Actions 构建](https://github.com/RegramDev/Regram-ios/actions/workflows/build.yml?query=branch%3Aregram-beta)。本版同步 Telegram iOS 13.1.1，保留现有 Regram UI，修复权限提醒角标隐藏、右下角 @ 按钮延迟刷新、LLM URL 构造和 Apple 转写路由，并恢复分享扩展的完整权限声明。构建与交付范围见[同步记录](docs/upstream-sync-20261023.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -21,6 +21,8 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 - 编辑历史：保存本机观察到的文本、说明、实体变化及图片替换前的版本，支持图片预览、放大和已保存图片的持久存储。
 - 自动显示剧透文字、图片和视频，默认关闭；显示群组／频道消息 ID、时间秒数及转发消息原始时间。
 - 加入群组／频道后选择分组，记住上次分组，调整分组位置、标签及聊天列表显示。
+
+本轮聊天、分组、搜索与界面增强的入口及逐项状态见[实现清单](docs/chat-and-interface-tools.md)。新增分享文件夹、群资料管理项、批量撤销邀请、搜索链接与独立隐私选项。格式工具栏保留原样。
 
 ### 过滤与隐私
 
@@ -64,13 +66,14 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 ### 外观与输入
 
+- 设置及 Regram 新增功能页统一使用 Telegram 主题、分组列表与玻璃导航，保留原有返回手势；旧系统沿用上游回退样式。
 - 应用图标、截图 App Badge；Regram Pro 入口跟随当前 App 图标，登录欢迎页使用 Regram 图片。
 - 图标切换成功后同步并保存选中项，冷启动恢复 Pro 入口与外观页图标，延后校对系统读值；切换失败及过期回调不覆盖已有选择。
 - 底栏沿用上游 Telegram 的组件、动画与手势，支持实时预览、拖动排序、标签显隐、独立按钮及自动／手动宽度。
-- 聊天与设置必须保留，底栏整体居中；自动宽度兼顾标签可读性、选中效果和点击间距。隐藏后仍可进入设置，从内容区域右滑返回聊天，过渡跟随手指并支持取消回弹；取消隐藏即时恢复。
+- 聊天与设置必须保留，底栏整体居中，自动宽度随导航项数量收紧。搜索开关位于「显示项目」，默认关闭；使用 Swiftgram 原生右侧按钮与展开输入框，搜索当前页，通话页打开新通话选择器。隐藏后仍可进入设置，从内容区域右滑返回聊天，过渡跟随手指并支持取消回弹；取消隐藏即时恢复。
 - 聊天列表分隔线开关、紧凑显示、一／二行正文预览及配色选项；旧三行配置与备份自动归为两行。
 - 拉丁与中日韩字体分别选择，支持下载、导入 TTF／OTF／TTC、预览、管理及缺字回退。
-- 输入工具栏、默认文字格式、盘古空格、回车发送及会话独立输入设置。
+- 输入工具栏、默认文字格式、盘古空格、回车发送及会话独立输入设置；盘古之白集中为接收、发送、编辑三个独立开关。
 - 富文本编辑与渲染：标题、引用、代码、列表、表格、链接、媒体和草稿；部分入口受上游配置控制。
 - 用户资料角色徽章：开发者、核心测试及赞助者。
 
@@ -109,15 +112,19 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 | 网络与传输 | DNS／IP、传输参数、通话连接、性能及 DC 测试 |
 | 管理与工具 | 本地 Premium、备份、数据清理 |
 
-仅 Pro 首页提供全局设置搜索，覆盖分类与高级页面，点击结果打开并定位对应项；分类页不重复放置搜索或常用区。长按设置项可复制设置深链，链接只包含页面和控件标识，不包含保存值。书签管理入口独立放在设置首页「我的收藏」下方。
+分类内直接展示基础设置，聊天与消息、媒体与链接通过文件夹式原生横栏切换相关选项；底栏路径为「Regram Pro → 外观与界面 → 底栏布局」。复杂编辑器保留独立页面。
+
+Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击结果打开并定位对应项；分类页不重复放置搜索或常用区。长按设置项可复制设置深链，链接只包含页面和控件标识，不包含保存值。书签管理入口独立放在设置首页「我的收藏」下方。
+
+设置页右下角原生搜索与 Pro 首页共用设置目录、别名和页面定位；支持无结果、清空恢复及输入法组合文字。共同群组分页、拖动预览与顶部标记修正见[本轮记录](docs/groups-settings-search-drag-fixes.md)。
 
 ## 验证范围
 
-本分支已同步主线 b34620 的视频播放、通知恢复、图标、网络策略、共同群组消息和界面修正。主线的构建、包校验及 b34616 真机验收记录不等同于 Beta 包的验收；本次合并通过 36 项基础检查、15 项专项回归，以及通知恢复／读取／布局、版本号和通知权限检查。冲突文件通过 Swift 语法检查，手势通过 UIKit SDK 局部检查；完整 arm64 Release 交由本次推送的 CI 验证，尚未进行 Beta 真机验收。
+本分支同步主线 **13.1.1 / b34630** 的适用功能，保留 `com.regram.app`／`group.com.regram.app` 和无应用内更新的分支约定。57 项本地回归、分支身份及更新功能排除检查通过，12 个分支差异 Swift 文件通过语法解析；主线的整包构建、发布和设备记录不代表 Beta 包验收。本轮未在本地构建 Beta 整包或进行真机验收，CI 结果需单独确认，详见 [Beta 同步记录](docs/beta-sync-20261023.md)。机器人聊天列表未读残留尚未确认修复。
 
 ## 构建
 
-需要 macOS、完整 Xcode 27、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。
+需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。13.1.1 上游同步及兼容检查范围见[同步记录](docs/upstream-sync-20261023.md)。
 
 ```sh
 git clone --branch regram-beta --recursive https://github.com/RegramDev/Regram-ios.git
@@ -132,7 +139,7 @@ git -C build-system/bazel-rules/rules_apple apply --check ../../patches/rules_ap
 git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-local.patch
 ```
 
-复制模板到被 Git 忽略的 `build-input/`，填写自己的 Bundle ID、Telegram API 凭据和 Team ID。Telegram API 凭据可从 [my.telegram.org](https://my.telegram.org/apps) 申请。
+复制模板到被 Git 忽略的 `build-input/`，保留本分支的 Bundle ID `com.regram.app`，填写自己的 Telegram API 凭据和 Team ID。Telegram API 凭据可从 [my.telegram.org](https://my.telegram.org/apps) 申请。
 
 ```sh
 mkdir -p build-input
@@ -178,4 +185,4 @@ Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及
 
 本分支使用 `com.regram.app` 和 `group.com.regram.app`，主应用与六个扩展共享声明的 App Group，不包含应用更新下载、证书导入和 IPA 安装功能。
 
-源码基线采用 [Telegram 官方主线 master](https://github.com/TelegramMessenger/Telegram-iOS/tree/master) 的 `f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838`（13.0），在此基础上维护 Regram 功能；本仓库的 `regram-beta` 是独立产品分支名称。
+源码基线采用 [Telegram 官方主线 master](https://github.com/TelegramMessenger/Telegram-iOS/tree/master) 的 `fb0e62ba8a147f0821da6aa63c09da7d79a10111`（13.1.1），在此基础上维护 Regram 功能；本仓库的 `regram-beta` 是独立产品分支名称。

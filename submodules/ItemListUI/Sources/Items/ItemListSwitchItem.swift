@@ -255,6 +255,23 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
         }
         return !self.switchGestureNode.frame.contains(point)
     }
+
+    // MARK: Regram — cloning the layer tree loses UISwitch's shape masks and draws a square
+    // thumb in the lifted row. UIKit snapshots preserve the native control's rendered appearance.
+    override public func snapshotForReordering() -> UIView? {
+        guard self.item?.isReorderable == true, let snapshot = self.view.snapshotView(afterScreenUpdates: false) else {
+            return super.snapshotForReordering()
+        }
+        // ListView restores the source bounds origin on its preview. Preserve that coordinate
+        // space around UIKit's snapshot, which itself starts at zero (grouped rows can have insets).
+        let bounds = self.view.bounds
+        let container = UIView(frame: CGRect(origin: .zero, size: bounds.size))
+        container.bounds = bounds
+        container.isUserInteractionEnabled = false
+        snapshot.frame = bounds
+        container.addSubview(snapshot)
+        return container
+    }
     
     public func displayHighlight() {
         if self.backgroundNode.supernode != nil {
@@ -518,7 +535,9 @@ public class ItemListSwitchItemNode: ListViewItemNode, ItemListItemNode {
                             
                             transition.updateFrame(node: strongSelf.backgroundNode, frame: CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight))))
                             transition.updateFrame(node: strongSelf.highlightNode, frame: CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight))))
-                            transition.updateFrame(node: strongSelf.maskNode, frame: strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0))
+                            // Per side: the margins differ beside iPhone Duo's strip; equal margins give the symmetric frame.
+                            let backgroundFrame = strongSelf.backgroundNode.frame
+                            transition.updateFrame(node: strongSelf.maskNode, frame: CGRect(x: backgroundFrame.minX + params.leftInset, y: backgroundFrame.minY, width: backgroundFrame.width - params.leftInset - params.rightInset, height: backgroundFrame.height))
                             transition.updateFrame(node: strongSelf.topStripeNode, frame: CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight)))
                             transition.updateFrame(node: strongSelf.bottomStripeNode, frame: CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height - separatorHeight), size: CGSize(width: layoutSize.width - params.rightInset - bottomStripeInset - separatorRightInset, height: separatorHeight)))
                     }

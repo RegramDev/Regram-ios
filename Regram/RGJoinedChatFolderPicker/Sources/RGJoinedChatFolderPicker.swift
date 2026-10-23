@@ -19,6 +19,10 @@ public func rgPresentFolderPickerAfterJoining(context: AccountContext, peerId: E
     guard RGSimpleSettings.shared.chooseFolderAfterJoining else {
         return
     }
+    rgPresentChatFolderPicker(context: context, peerId: peerId, hideWhenEmpty: true, present: present)
+}
+
+public func rgPresentChatFolderPicker(context: AccountContext, peerId: EnginePeer.Id, hideWhenEmpty: Bool = false, present: @escaping (ViewController) -> Void) {
     // A folder matches a secret chat by its associated user, never by its own id.
     if peerId.namespace == Namespaces.Peer.SecretChat {
         return
@@ -61,6 +65,9 @@ public func rgPresentFolderPickerAfterJoining(context: AccountContext, peerId: E
             candidates.append((id, title))
         }
         if candidates.isEmpty {
+            if !hideWhenEmpty {
+                rgPresentEmptyFolderPicker(presentationData: context.sharedContext.currentPresentationData.with { $0 }, present: present)
+            }
             return
         }
 
@@ -191,4 +198,16 @@ private func rgFolderAlreadyShows(data: ChatListFilterData, peer: EnginePeer, is
     case .user, .secretChat:
         return false
     }
+}
+
+// MARK: Regram — keep the manual empty state outside the typed engine-data closure.
+private func rgPresentEmptyFolderPicker(presentationData: PresentationData, present: @escaping (ViewController) -> Void) {
+    let controller = ActionSheetController(presentationData: presentationData)
+    let title = "features.ChatFolderNoneAvailable".i18n(presentationData.strings.baseLanguageCode)
+    let items: [ActionSheetItem] = [
+        ActionSheetTextItem(title: title),
+        ActionSheetButtonItem(title: presentationData.strings.Common_OK, color: .accent, action: { [weak controller] in controller?.dismissAnimated() })
+    ]
+    controller.setItemGroups([ActionSheetItemGroup(items: items)])
+    present(controller)
 }

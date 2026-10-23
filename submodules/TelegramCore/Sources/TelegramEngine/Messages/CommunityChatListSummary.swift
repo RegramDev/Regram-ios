@@ -1,5 +1,6 @@
 import Foundation
 import Postbox
+internal import TelegramApi // MARK: Regram — restore missing community dialogs from server folder metadata.
 import SwiftSignalKit
 
 public struct CommunityChatListItemSummary: Equatable {
@@ -195,13 +196,14 @@ private func refreshCommunityCachedData(accountPeerId: PeerId, postbox: Postbox,
     |> ignoreValues
 }
 
+// MARK: Regram — reconcile previously ungrouped chats with the server community state.
 func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, accountPeerId: PeerId) -> Signal<Never, NoError> {
     struct CommunitySummaryState: Equatable {
         let collapsedInDialogs: Bool
         let timestamp: Int32?
     }
     
-    return _internal_updatedCommunitiesState(postbox: postbox)
+    let summaries = _internal_updatedCommunitiesState(postbox: postbox)
     |> map { state -> [PeerId] in
         return state.communityIds ?? []
     }
@@ -218,6 +220,7 @@ func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, a
             return disposable
         }
     }
+    return summaries
     |> map { summaries -> [PeerId: CommunitySummaryState] in
         return summaries.mapValues { summary in
             return CommunitySummaryState(collapsedInDialogs: summary.collapsedInDialogs, timestamp: summary.topTimestamp)
@@ -228,11 +231,30 @@ func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, a
         if states.isEmpty {
             return .complete()
         }
-        return postbox.transaction { transaction -> Void in
+        return postbox.transaction { transaction -> [Api.InputPeer] in
+            var missingPeers: [PeerId: Api.InputPeer] = [:]
             for (peerId, state) in states {
                 updateCommunityChatListInclusion(transaction: transaction, communityId: peerId, collapsedInDialogs: state.collapsedInDialogs, minTimestamp: state.timestamp)
+                if let cachedData = transaction.getPeerCachedData(peerId: peerId) as? CachedCommunityData {
+                    for linkedPeer in cachedData.linkedPeers {
+                        // MARK: Regram — never replace an existing archive, pin or timestamp from a summary.
+                        if state.collapsedInDialogs {
+                            transaction.updatePeerChatListInclusion(linkedPeer.peerId, inclusion: .notIncluded)
+                        } else if isPeerHiddenByCollapsedCommunity(transaction: transaction, peerId: linkedPeer.peerId) {
+                            transaction.updatePeerChatListInclusion(linkedPeer.peerId, inclusion: .notIncluded)
+                        } else if case .notIncluded = transaction.getPeerChatListInclusion(linkedPeer.peerId),
+                                  !shouldExcludePeerFromChatList(transaction: transaction, peerId: linkedPeer.peerId),
+                                  let peer = transaction.getPeer(linkedPeer.peerId), let inputPeer = apiInputPeer(peer) {
+                            missingPeers[linkedPeer.peerId] = inputPeer
+                        }
+                    }
+                }
             }
+            return Array(missingPeers.values)
         }
-        |> ignoreValues
+        |> mapToSignal { missingPeers -> Signal<Never, NoError> in
+            // MARK: Regram — restore a hidden dialog from its server folder, never an assumed root folder.
+            return loadAndStorePeerChatInfos(accountPeerId: accountPeerId, postbox: postbox, network: network, peers: missingPeers, onlyRestoreMissing: true)
+        }
     }
 }

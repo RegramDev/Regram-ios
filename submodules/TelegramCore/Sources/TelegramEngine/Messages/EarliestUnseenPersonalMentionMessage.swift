@@ -9,14 +9,15 @@ public enum EarliestUnseenPersonalMentionMessageResult: Equatable {
     case result(MessageId?)
 }
 
-func _internal_earliestUnseenPersonalMentionMessage(account: Account, peerId: PeerId, threadId: Int64?) -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> {
-    return account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: threadId), index: .lowerBound, anchorIndex: .lowerBound, count: 4, fixedCombinedReadStates: nil, tag: .tag(.unseenPersonalMessage), additionalData: [.peerChatState(peerId)])
+// MARK: Regram — allow navigation to advance past filtered mentions awaiting acknowledgement.
+func _internal_earliestUnseenPersonalMentionMessage(account: Account, peerId: PeerId, threadId: Int64?, ignoreMessageIds: Set<MessageId> = []) -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> {
+    return account.viewTracker.aroundMessageHistoryViewForLocation(.peer(peerId: peerId, threadId: threadId), ignoreMessageIds: ignoreMessageIds, index: .lowerBound, anchorIndex: .lowerBound, count: 4, fixedCombinedReadStates: nil, tag: .tag(.unseenPersonalMessage), additionalData: [.peerChatState(peerId)])
     |> mapToSignal { view -> Signal<EarliestUnseenPersonalMentionMessageResult, NoError> in
         if view.0.isLoading {
             return .single(.loading)
         }
         if case .FillHole = view.1 {
-            return _internal_earliestUnseenPersonalMentionMessage(account: account, peerId: peerId, threadId: threadId)
+            return _internal_earliestUnseenPersonalMentionMessage(account: account, peerId: peerId, threadId: threadId, ignoreMessageIds: ignoreMessageIds)
         }
         if let message = view.0.entries.first?.message {
             if peerId.namespace == Namespaces.Peer.CloudChannel {
@@ -51,6 +52,11 @@ func _internal_earliestUnseenPersonalMentionMessage(account: Account, peerId: Pe
                 return .single(.result(message.id))
             }
         } else {
+            // MARK: Regram — an exhausted filtered lookup is not a request to clear the chat.
+            // The excluded messages retain their individual synchronization actions.
+            if !ignoreMessageIds.isEmpty {
+                return .single(.result(nil))
+            }
             return account.postbox.transaction { transaction -> EarliestUnseenPersonalMentionMessageResult in
                 if let topId = transaction.getTopPeerMessageId(peerId: peerId, namespace: Namespaces.Message.Cloud) {
                     transaction.replaceMessageTagSummary(peerId: peerId, threadId: threadId, tagMask: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud, customTag: nil, count: 0, maxId: topId.id)

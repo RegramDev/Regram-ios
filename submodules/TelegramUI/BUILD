@@ -6,6 +6,7 @@ load(
 )
 
 rgdeps = [
+    "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
     "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGLinkMetadata:RGLinkMetadata",
@@ -13,7 +14,7 @@ rgdeps = [
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
     "//Regram/RGSimpleSettings:RGSimpleSettings",
-        "//Regram/RGTranscription:RGTranscription",
+    "//Regram/RGTranscription:RGTranscription",
     "//Regram/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
     "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
     "//Regram/RGLogging:RGLogging",
@@ -36,7 +37,6 @@ rgsrcs = [
     "//Regram/RGDBReset:RGDBReset",
     "//Regram/RGShowMessageJson:RGShowMessageJson",
     "//Regram/ChatControllerImplExtension:ChatControllerImplExtension",
-    "//Regram/RGSharedAccountContextMigration:RGSharedAccountContextMigration",
     "//Regram/RGOutgoingTranslationLanguageSelection:RGOutgoingTranslationLanguageSelection",
     "//Regram/RGSafariControllerUrlOpening:RGSafariControllerUrlOpening"
 ]
@@ -99,6 +99,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = rgdeps + [
+        "//submodules/CrashReporting:CrashReporting",
         "//third-party/recaptcha:RecaptchaEnterprise",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/SSignalKit/SSignalKit:SSignalKit",
@@ -172,6 +173,7 @@ swift_library(
         "//submodules/DirectionalPanGesture:DirectionalPanGesture",
         "//submodules/UndoUI:UndoUI",
         "//submodules/PhotoResources:PhotoResources",
+        "//submodules/PassRenderer:PassRenderer",
         "//submodules/TinyThumbnail:TinyThumbnail",
         "//submodules/ImageTransparency:ImageTransparency",
         "//submodules/TelegramNotices:TelegramNotices",
@@ -363,6 +365,9 @@ swift_library(
         "//submodules/TelegramUI/Components/ChatFolderLinkPreviewScreen",
         "//submodules/TelegramUI/Components/SliderContextItem:SliderContextItem",
         "//submodules/TelegramUI/Components/CoreList:CoreList",
+        "//submodules/TelegramUI/Components/CoreListComponentHost",
+        "//submodules/TelegramUI/Components/News/NewsScreen",
+        "//submodules/TelegramUI/Components/News/NewsFeedSupport",
         "//submodules/TelegramUI/Components/Stories/StoryContainerScreen",
         "//submodules/TelegramUI/Components/CameraScreen",
         "//submodules/TelegramUI/Components/MediaEditorScreen",
@@ -462,6 +467,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatRecentActionsController",
         "//submodules/TelegramUI/Components/Chat/ChatNavigationButton",
         "//submodules/TelegramUI/Components/Chat/ChatLoadingNode",
+        "//submodules/TelegramUI/Components/DebugCompanionScreen",
         "//submodules/TelegramUI/Components/Settings/PeerNameColorScreen",
         "//submodules/TelegramUI/Components/ContextMenuScreen",
         "//submodules/TelegramUI/Components/PeerAllowedReactionsScreen",
@@ -470,6 +476,7 @@ swift_library(
         "//submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen",
         "//submodules/TelegramUI/Components/Chat/ChatMessageSelectionInputPanelNode",
         "//submodules/TelegramUI/Components/Chat/ChatQrCodeScreen",
+        "//submodules/TelegramUI/Components/QrStudioScreen",
         "//submodules/UIKitRuntimeUtils",
         "//submodules/TelegramUI/Components/SavedMessages/SavedMessagesScreen",
         "//submodules/TelegramUI/Components/Settings/WallpaperGalleryScreen",
@@ -518,6 +525,7 @@ swift_library(
         "//submodules/TelegramUI/Components/MiniAppListScreen",
         "//submodules/TelegramUI/Components/Stars/StarsIntroScreen",
         "//submodules/TelegramUI/Components/Wallet/WalletScreen",
+        "//submodules/TelegramUI/Components/Wallet/WalletPeerSelectionScreen",
         "//submodules/TelegramUI/Components/Wallet/WalletReceiveScreen",
         "//submodules/TelegramUI/Components/Wallet/WalletImportScreen",
         "//submodules/TelegramUI/Components/Wallet/WalletSettingsScreen",
@@ -538,6 +546,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Settings/AccountFreezeInfoScreen",
         "//submodules/TelegramUI/Components/JoinSubjectScreen",
         "//submodules/TelegramUI/Components/Chat/QuickShareScreen",
+        "//submodules/TelegramUI/Components/ShareScreen",
         "//submodules/TelegramUI/Components/ButtonComponent",
         "//submodules/Components/BlurredBackgroundComponent",
         "//submodules/TelegramUI/Components/CheckComponent",
@@ -572,7 +581,11 @@ swift_library(
         "//submodules/TelegramUI/Components/AttachmentFileController",
         "//submodules/TelegramUI/Components/Contacts/NewContactScreen",
         "//submodules/TelegramUI/Components/Chat/ChatSendAsContextMenu",
-        "//submodules/TelegramUI/Components/NavigationBarImpl",
+        "//submodules/TelegramUI/Components/NavigationBarNode",
+        "//submodules/TelegramUI/Components/NavigationExpansionTransition",
+        "//submodules/TelegramUI/Components/NavigationBarComponent",
+        "//submodules/TelegramUI/Components/GlassBarButtonComponent",
+        "//submodules/TelegramUI/Components/SideColumnLayout",
         "//submodules/TelegramUI/Components/GlobalControlPanelsContext",
         "//submodules/TelegramUI/Components/MediaPlaybackHeaderPanelComponent",
         "//submodules/TelegramUI/Components/LiveLocationHeaderPanelComponent",
@@ -586,6 +599,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Gifts/GiftDemoScreen",
         "//submodules/TelegramUI/Components/EmojiGameStakeScreen",
         "//submodules/TelegramUI/Components/AlertComponent",
+        "//submodules/TelegramUI/Components/AlertComponent/AlertHeaderComponent",
         "//submodules/TelegramUI/Components/Chat/ChatAgeRestrictionAlertController",
         "//submodules/TelegramUI/Components/CocoonInfoScreen",
         "//submodules/TelegramUI/Components/ProxyServerPreviewScreen",

@@ -5,6 +5,7 @@ import Foundation
 import ItemListUI
 import RGStrings
 import SwiftSignalKit
+import TelegramPresentationData
 import UIKit
 
 public final class RGSettingsItemTag: ItemListItemTag {
@@ -65,8 +66,60 @@ public func rgSettingsScrollTarget<T: ItemListNodeEntry>(_ entries: [T], item: S
 
 // Short settings lists use the main queue so text-driven row updates cannot race touch timers.
 public final class RGSettingsListController: ItemListController {
+    public var focusSetting: String?
+    private var focusGeneration = 0
+    private var didHighlightFocus = false
+    private let categoryTabsDisposable = MetaDisposable()
+    private var categoryTabsNode: RGSettingsCategoryTabsNode?
+
+    deinit {
+        self.categoryTabsDisposable.dispose()
+    }
+
+    public func bindCategoryTabs(state: Signal<(PresentationTheme, [String], Int), NoError>, selected: @escaping (Int) -> Void) {
+        self.categoryTabsDisposable.set((state |> deliverOnMainQueue).start(next: { [weak self] theme, titles, index in
+            guard let self else { return }
+            if let node = self.categoryTabsNode {
+                node.update(theme: theme, titles: titles, selectedIndex: index, selected: selected)
+            } else {
+                let node = RGSettingsCategoryTabsNode(theme: theme, titles: titles, selectedIndex: index, selected: selected)
+                self.categoryTabsNode = node
+                self.navigationBar?.setContentNode(node, animated: false)
+                self.requestLayout(transition: .immediate)
+            }
+        }))
+    }
+
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard let focusSetting, !self.didHighlightFocus else { return }
+        self.focusGeneration += 1
+        let generation = self.focusGeneration
+        // Transactions and navigation can finish in either order; wait for the actual tagged node.
+        for delay in [0.1, 0.4, 0.8, 1.4] {
+            Queue.mainQueue().after(delay, { [weak self] in
+                guard let self, self.focusGeneration == generation, !self.didHighlightFocus,
+                      self.view.window != nil,
+                      let node = self.itemNode(forTag: RGSettingsItemTag(focusSetting)), !node.isLayerBacked,
+                      let itemNode = node as? ItemListItemNode, node.bounds.height > 0 else { return }
+                self.didHighlightFocus = true
+                // Native focus highlighting uses content geometry, behind controls and rounded masks.
+                itemNode.displayHighlight()
+            })
+        }
+    }
+
+    override public func viewWillDisappear(_ animated: Bool) {
+        self.focusGeneration += 1
+        super.viewWillDisappear(animated)
+    }
+
     override public func loadDisplayNode() {
         super.loadDisplayNode()
         (self.displayNode as? ItemListControllerNode)?.listNode.useMainQueueTransactions = true
+        if let node = self.categoryTabsNode, self.navigationBar?.contentNode !== node {
+            self.navigationBar?.setContentNode(node, animated: false)
+            self.requestLayout(transition: .immediate)
+        }
     }
 }

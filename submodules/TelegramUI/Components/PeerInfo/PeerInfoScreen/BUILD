@@ -1,11 +1,13 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
+        "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+        "//Regram/RGJoinedChatFolderPicker", # MARK: Regram
+        "//submodules/ContactListUI", # MARK: Regram
     "//Regram/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
     "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram
-    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",
 
     "//Regram/RGRegDate:RGRegDate",
@@ -26,6 +28,9 @@ swift_library(
     deps = rgdeps + [
         "//submodules/LocalizedPeerData", # MARK: Regram
         "//submodules/UrlWhitelist",
+        "//submodules/TelegramUI/Components/NavigationBarNode",
+        "//submodules/TelegramUI/Components/NavigationBarComponent",
+        "//submodules/TelegramUI/Components/NavigationExpansionTransition",
         "//submodules/AccountContext",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AccountUtils",
@@ -104,7 +109,6 @@ swift_library(
         "//submodules/TelegramUI/Components/PeerReportScreen",
         "//submodules/PhoneNumberFormat",
         "//submodules/PhotoResources",
-        "//submodules/Postbox",
         "//submodules/PremiumUI",
         "//submodules/PresentationDataUtils",
         "//submodules/QrCode",
@@ -143,6 +147,8 @@ swift_library(
         "//submodules/WebUI",
         "//submodules/WalletContext",
         "//submodules/TelegramUI/Components/Wallet/WalletSendScreen",
+        "//submodules/TelegramUI/Components/Wallet/PeerWalletScreen",
+        "//submodules/TelegramUI/Components/Wallet/WalletGiftStickerMediaComponent",
         "//submodules/TelegramUI/Components/MultiScaleTextNode",
         "//submodules/GridMessageSelectionNode",
         "//submodules/ChatMessageInteractiveMediaBadge",
@@ -191,6 +197,7 @@ swift_library(
         "//submodules/TelegramUI/Components/TextFieldComponent",
         "//submodules/TelegramUI/Components/EdgeEffect",
         "//submodules/TelegramUI/Components/GlassBackgroundComponent",
+        "//submodules/TelegramUI/Components/SideColumnLayout",
         "//submodules/TelegramUI/Components/AlertComponent",
         "//submodules/TelegramUI/Components/AvatarComponent",
         "//submodules/TelegramUI/Components/AlertComponent/AlertTransferHeaderComponent",

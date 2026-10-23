@@ -80,7 +80,7 @@ public struct RGBottomBarSettings: Equatable {
         slotMode: RGBottomBarSlotMode = .visibleOnly,
         buttonWidthFillRatio: Int32 = 100,
         alignment: RGBottomBarAlignment = .center,
-        searchMode: RGBottomBarSearchMode = .button
+        searchMode: RGBottomBarSearchMode = .hidden
     ) {
         self.automaticWidth = automaticWidth
         self.isBottomBarVisible = isBottomBarVisible
@@ -113,15 +113,8 @@ public struct RGBottomBarSettings: Equatable {
         return result
     }
 
-    /// The bar is reduced to the standalone search button: no bottom items and no search bar.
-    public var showsOnlySearchButton: Bool {
-        return self.isBottomBarVisible && self.activeBottomItems.isEmpty && self.externalItem == .search && self.searchMode == .button
-    }
-
     public func isVisible(_ item: RGBottomBarItemId) -> Bool {
-        if item == .search {
-            return self.searchMode != .hidden && !self.hiddenItems.contains(.search)
-        }
+        if item == .search { return self.searchMode != .hidden && !self.hiddenItems.contains(.search) }
         if self.hiddenItems.contains(item) {
             return false
         }
@@ -141,22 +134,7 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public mutating func toggleHidden(_ item: RGBottomBarItemId) {
-        if item == .search {
-            if self.hiddenItems.contains(.search) {
-                self.hiddenItems.remove(.search)
-                self.searchMode = .button
-                self.externalItem = .search
-            } else {
-                self.hiddenItems.insert(.search)
-                self.searchMode = .hidden
-                if self.externalItem == .search {
-                    self.externalItem = nil
-                }
-            }
-            self.bottomItems.removeAll(where: { $0 == .search })
-            self.normalize()
-            return
-        }
+        if item == .search { self.setSearchMode(self.isVisible(.search) ? .hidden : .button); return }
         if self.hiddenItems.contains(item) {
             self.hiddenItems.remove(item)
             if self.externalItem != item && !self.bottomItems.contains(item) {
@@ -187,14 +165,7 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public mutating func show(_ item: RGBottomBarItemId) {
-        if item == .search {
-            self.hiddenItems.remove(.search)
-            if self.searchMode == .hidden {
-                self.searchMode = .button
-            }
-            self.normalize()
-            return
-        }
+        if item == .search { self.setSearchMode(.button); return }
         self.hiddenItems.remove(item)
         if self.externalItem != item && !self.bottomItems.contains(item) {
             self.bottomItems.append(item)
@@ -221,18 +192,15 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public mutating func moveToExternal(_ item: RGBottomBarItemId) {
+        // Search uses the native search control, never a navigation-item slot.
         if item == .search {
-            self.hiddenItems.remove(.search)
-            self.searchMode = .button
-            self.bottomItems.removeAll(where: { $0 == .search })
-            self.externalItem = .search
-            self.normalize()
+            self.setSearchMode(.button)
             return
         }
         self.hiddenItems.remove(item)
         let replacementIndex = self.bottomItems.firstIndex(of: item) ?? self.bottomItems.count
         self.bottomItems.removeAll(where: { $0 == item })
-        if let previous = self.externalItem, previous != item, !self.hiddenItems.contains(previous) {
+        if let previous = self.externalItem, previous != item, previous.isNavigationItem, !self.hiddenItems.contains(previous) {
             let index = max(0, min(replacementIndex, self.bottomItems.count))
             self.bottomItems.insert(previous, at: index)
         }
@@ -241,14 +209,7 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public mutating func moveToBottom(_ item: RGBottomBarItemId, at targetIndex: Int) {
-        if item == .search {
-            self.hiddenItems.remove(.search)
-            self.searchMode = .button
-            self.bottomItems.removeAll(where: { $0 == .search })
-            self.externalItem = .search
-            self.normalize()
-            return
-        }
+        if item == .search { self.setSearchMode(.button); return }
         self.hiddenItems.remove(item)
         if self.externalItem == item {
             self.externalItem = nil
@@ -261,11 +222,7 @@ public struct RGBottomBarSettings: Equatable {
 
     public mutating func setSearchMode(_ mode: RGBottomBarSearchMode) {
         self.searchMode = mode
-        if mode == .hidden {
-            self.hiddenItems.insert(.search)
-        } else {
-            self.hiddenItems.remove(.search)
-        }
+        if mode == .hidden { self.hiddenItems.insert(.search) } else { self.hiddenItems.remove(.search) }
         self.normalize()
     }
 
@@ -277,14 +234,12 @@ public struct RGBottomBarSettings: Equatable {
         // Required tabs are restored even in old backups or externally modified preferences.
         self.hiddenItems.subtract([.chats, .settings])
         self.alignment = .center
-        if self.searchMode == .bar { self.searchMode = .button }
-
+        // Legacy search placements become the native search control. Hidden wins over stale data.
+        let searchEnabled = !self.hiddenItems.contains(.search) && (self.bottomItems.contains(.search) || self.externalItem == .search || self.searchMode != .hidden)
         self.bottomItems.removeAll(where: { $0 == .search })
-
-        // Search is a legacy storage value only; never render it in the tab bar.
-        self.searchMode = .hidden
-        self.hiddenItems.insert(.search)
         if self.externalItem == .search { self.externalItem = nil }
+        self.searchMode = searchEnabled ? .button : .hidden
+        if searchEnabled { self.hiddenItems.remove(.search) } else { self.hiddenItems.insert(.search) }
 
         var seen = Set<RGBottomBarItemId>()
         self.bottomItems = self.bottomItems.compactMap { item in
@@ -317,7 +272,7 @@ public struct RGBottomBarSettings: Equatable {
 
     private var activeBottomItems: [RGBottomBarItemId] {
         return self.bottomItems.filter { item in
-            return item != .search && !self.hiddenItems.contains(item) && self.externalItem != item
+            return !self.hiddenItems.contains(item) && self.externalItem != item
         }
     }
 }
@@ -333,7 +288,11 @@ public extension RGBottomBarSettings {
                 buttonWidthFillRatio: (defaults.object(forKey: "tabBarWidthPercent") as? NSNumber)?.int32Value ?? 100
             )
         }
-        return RGBottomBarSettings(
+        return RGBottomBarSettings(storedValues: values)
+    }
+
+    init(storedValues values: [String: String]) {
+        self.init(
             automaticWidth: values["automaticWidth"] != "false",
             isBottomBarVisible: values["visible"] != "false",
             bottomItems: (values["items"] ?? "").split(separator: ",").compactMap { RGBottomBarItemId(rawValue: String($0)) },
@@ -345,19 +304,23 @@ public extension RGBottomBarSettings {
             slotMode: values["slots"].flatMap(RGBottomBarSlotMode.init(rawValue:)) ?? .visibleOnly,
             buttonWidthFillRatio: values["fill"].flatMap(Int32.init) ?? 100,
             alignment: values["alignment"].flatMap(RGBottomBarAlignment.init(rawValue:)) ?? .center,
-            searchMode: values["search"].flatMap(RGBottomBarSearchMode.init(rawValue:)) ?? .button
+            searchMode: values["search"].flatMap(RGBottomBarSearchMode.init(rawValue:)) ?? .hidden
         )
     }
 
-    func save(to defaults: UserDefaults = .standard) {
+    var storedValues: [String: String] {
         var value = self
         value.normalize()
-        defaults.set([
+        return [
             "automaticWidth": String(value.automaticWidth), "visible": String(value.isBottomBarVisible), "items": value.bottomItems.map(\.rawValue).joined(separator: ","),
             "external": value.externalItem?.rawValue ?? "", "hidden": RGBottomBarItemId.allCases.filter { value.hiddenItems.contains($0) }.map(\.rawValue).joined(separator: ","),
             "topSearch": String(value.topSearchVisible), "labels": String(value.showLabels),
             "width": value.widthMode.rawValue, "slots": value.slotMode.rawValue, "fill": String(value.buttonWidthFillRatio),
             "alignment": value.alignment.rawValue, "search": value.searchMode.rawValue
-        ], forKey: Self.storageKey)
+        ]
+    }
+
+    func save(to defaults: UserDefaults = .standard) {
+        defaults.set(self.storedValues, forKey: Self.storageKey)
     }
 }

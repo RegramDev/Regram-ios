@@ -2,7 +2,7 @@ import RGSimpleSettings
 import Foundation
 import Postbox
 import SwiftSignalKit
-import TelegramApi
+internal import TelegramApi
 
 
 public struct ChatListFilterPeerCategories: OptionSet, Hashable {
@@ -372,6 +372,97 @@ public enum ChatListFilter: Codable, Equatable {
                 try container.encodeIfPresent(data.color?.rawValue, forKey: "color")
         }
     }
+}
+
+// MARK: Regram — 让不依赖 ChatListUI 的分享面板复用文件夹筛选语义。
+public func makeChatListFilterPredicate(filter: ChatListFilterData, accountPeerId: EnginePeer.Id) -> ChatListFilterPredicate {
+    var includePeers = Set(filter.includePeers.peers)
+    var excludePeers = Set(filter.excludePeers)
+
+    if !filter.includePeers.pinnedPeers.isEmpty {
+        includePeers.subtract(filter.includePeers.pinnedPeers)
+        excludePeers.subtract(filter.includePeers.pinnedPeers)
+    }
+
+    var includeAdditionalPeerGroupIds: [PeerGroupId] = []
+    if !filter.excludeArchived {
+        includeAdditionalPeerGroupIds.append(Namespaces.PeerGroup.archive)
+    }
+
+    var messageTagSummary: ChatListMessageTagSummaryResultCalculation?
+    if filter.excludeRead || filter.excludeMuted {
+        messageTagSummary = ChatListMessageTagSummaryResultCalculation(
+            addCount: ChatListMessageTagSummaryResultComponent(
+                tag: .unseenPersonalMessage,
+                namespace: Namespaces.Message.Cloud
+            ),
+            subtractCount: ChatListMessageTagActionsSummaryResultComponent(
+                type: PendingMessageActionType.consumeUnseenPersonalMessage,
+                namespace: Namespaces.Message.Cloud
+            )
+        )
+    }
+
+    return ChatListFilterPredicate(
+        includePeerIds: includePeers,
+        excludePeerIds: excludePeers,
+        pinnedPeerIds: filter.includePeers.pinnedPeers,
+        messageTagSummary: messageTagSummary,
+        includeAdditionalPeerGroupIds: includeAdditionalPeerGroupIds,
+        include: { peer, isMuted, isUnread, isContact, messageTagSummaryResult in
+            if filter.excludeRead {
+                var effectiveUnread = isUnread
+                if messageTagSummaryResult == true {
+                    effectiveUnread = true
+                }
+                if !effectiveUnread {
+                    return false
+                }
+            }
+            if filter.excludeMuted && isMuted && messageTagSummaryResult != true {
+                return false
+            }
+            if !filter.categories.contains(.contacts) && isContact {
+                if let user = peer as? TelegramUser {
+                    if user.botInfo == nil && !user.flags.contains(.isSupport) {
+                        return false
+                    }
+                } else if peer is TelegramSecretChat {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.nonContacts) && !isContact && peer.id != accountPeerId {
+                if let user = peer as? TelegramUser {
+                    if user.botInfo == nil {
+                        return false
+                    }
+                } else if peer is TelegramSecretChat {
+                    return false
+                }
+            }
+            if filter.categories.contains(.nonContacts) && peer.id == accountPeerId {
+                return false
+            }
+            if !filter.categories.contains(.bots), let user = peer as? TelegramUser {
+                if user.botInfo != nil || user.flags.contains(.isSupport) {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.groups) {
+                if peer is TelegramGroup {
+                    return false
+                } else if let channel = peer as? TelegramChannel, case .group = channel.info {
+                    return false
+                } else if peer is TelegramCommunity {
+                    return false
+                }
+            }
+            if !filter.categories.contains(.channels), let channel = peer as? TelegramChannel, case .broadcast = channel.info {
+                return false
+            }
+            return true
+        }
+    )
 }
 
 extension ChatListFilter {
@@ -871,7 +962,9 @@ private func requestChatListFilters(accountPeerId: PeerId, postbox: Postbox, net
     }
 }
 
-private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer]) -> Signal<Never, NoError> {
+// MARK: Regram — community expansion reuses dialog loading without overwriting concurrent archive changes.
+func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network: Network, peers: [Api.InputPeer], onlyRestoreMissing: Bool = false) -> Signal<Never, NoError> {
+    if peers.isEmpty { return .complete() }
     return postbox.transaction { transaction -> [Api.InputDialogPeer] in
         return peers.map { peer -> Api.InputDialogPeer in
             if case let .inputPeerChannel(inputPeerChannelData) = peer {
@@ -947,9 +1040,10 @@ private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, 
                             }
                         }
                         
-                        if !isExcludedFromChatList {
+                        let currentInclusion = transaction.getPeerChatListInclusion(peerId)
+                        if !isExcludedFromChatList && (!onlyRestoreMissing || currentInclusion == .notIncluded) {
+                            // MARK: Regram — a manual archive/unarchive during the request takes precedence.
                             let groupId = PeerGroupId(rawValue: folderId ?? 0)
-                            let currentInclusion = transaction.getPeerChatListInclusion(peerId)
                             var currentPinningIndex: UInt16?
                             var currentMinTimestamp: Int32?
                             switch currentInclusion {
@@ -968,7 +1062,10 @@ private func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, 
                         
                         ttlPeriods[peer.peerId] = .known(ttlPeriod.flatMap(CachedPeerAutoremoveTimeout.Value.init(peerValue:)))
                         
-                        transaction.resetIncomingReadStates([peerId: [Namespaces.Message.Cloud: .idBased(maxIncomingReadId: readInboxMaxId, maxOutgoingReadId: readOutboxMaxId, maxKnownId: topMessage, count: unreadCount, markedUnread: false)]])
+                        // A channel the account is not a member of keeps no read state (NonMemberChannelReadState.swift).
+                        if dialogReadStateIsKept(peerId: peerId, responseChats: chats, storedPeer: transaction.getPeer(peerId)) {
+                            transaction.resetIncomingReadStates([peerId: [Namespaces.Message.Cloud: .idBased(maxIncomingReadId: readInboxMaxId, maxOutgoingReadId: readOutboxMaxId, maxKnownId: topMessage, count: unreadCount, markedUnread: false)]])
+                        }
                         
                         transaction.replaceMessageTagSummary(peerId: peerId, threadId: nil, tagMask: .unseenPersonalMessage, namespace: Namespaces.Message.Cloud, customTag: nil, count: unreadMentionsCount, maxId: topMessage)
                         transaction.replaceMessageTagSummary(peerId: peerId, threadId: nil, tagMask: .unseenReaction, namespace: Namespaces.Message.Cloud, customTag: nil, count: unreadReactionsCount, maxId: topMessage)

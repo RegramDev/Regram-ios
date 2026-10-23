@@ -10,13 +10,14 @@ import RGStrings
 import TelegramPresentationData
 
 private struct RGRevokedMarkerView: View {
+    @Environment(\.rgSettingsColors) private var colors
     @Environment(\.lang) private var lang
     @State private var marker = RGSimpleSettings.shared.revokedMarker
     let saved: () -> Void
     private var invalidColor: Bool { marker.style != .none && !marker.color.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && RGRevokedMarker.rgb(marker.color) == nil }
     var body: some View {
-        Form {
-            Section(footer: Text("RevokedMarker.Notice".i18n(lang))) {
+        RGSettingsForm {
+            RGSettingsSection(footer: Text("RevokedMarker.Notice".i18n(lang))) {
                 Picker("RevokedMarker.Style".i18n(lang), selection: $marker.style) {
                     ForEach(RGRevokedMarker.Style.allCases, id: \.self) { style in Text(style.titleKey.i18n(lang)).tag(style) }
                 }.pickerStyle(.menu).rgSettingsLink("style")
@@ -27,15 +28,15 @@ private struct RGRevokedMarkerView: View {
                 if marker.style != .none {
                     TextField("RevokedMarker.Color".i18n(lang), text: $marker.color, prompt: Text("#RRGGBB"))
                         .textInputAutocapitalization(.characters).autocorrectionDisabled().rgSettingsLink("color")
-                    if invalidColor { Text("RevokedMarker.InvalidColor".i18n(lang)).font(.footnote).foregroundColor(.secondary) }
+                    if invalidColor { Text("RevokedMarker.InvalidColor".i18n(lang)).font(.footnote).rgSecondaryText() }
                 }
             }
-            Section(header: Text("RevokedMarker.Preview".i18n(lang))) {
+            RGSettingsSection(header: Text("RevokedMarker.Preview".i18n(lang))) {
                 HStack(spacing: 4) {
                     if let label = marker.label(defaultText: "RevokedMarker.DefaultText".i18n(lang)) {
-                        Text(label).foregroundColor(RGRevokedMarker.rgb(marker.color).map { Color(uiColor: UIColor(rgb: $0)) } ?? .secondary)
+                        Text(label).foregroundColor(RGRevokedMarker.rgb(marker.color).map { Color(uiColor: UIColor(rgb: $0)) } ?? colors.secondary)
                     }
-                    Text("12:34").foregroundColor(.secondary)
+                    Text("12:34").rgSecondaryText()
                 }.font(.footnote)
             }
             Button("NetworkPolicy.Apply".i18n(lang)) { RGSimpleSettings.shared.revokedMarker = marker; saved() }.disabled(invalidColor).rgSettingsLink("apply")

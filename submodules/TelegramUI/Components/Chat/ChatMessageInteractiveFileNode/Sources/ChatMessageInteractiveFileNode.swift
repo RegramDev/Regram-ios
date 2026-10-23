@@ -355,7 +355,7 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
             return
         }
 
-        // MARK: Regram — Custom STT uses its own provider limits while preserving media boundaries.
+        // MARK: Regram — Apple and external STT use client limits while preserving media boundaries.
         let useCustomTranscription = RGTranscriptionService.isEnabled
         let clientTranscription = message.attributes.first(where: { $0 is AudioTranscriptionMessageAttribute }) as? AudioTranscriptionMessageAttribute
         let useManagedTranscription = useCustomTranscription || (clientTranscription?.requestId != nil && (clientTranscription?.source == .local || clientTranscription?.source == .external))
@@ -467,60 +467,6 @@ public final class ChatMessageInteractiveFileNode: ASDisplayNode {
                         self.requestUpdateLayout(true)
                         self.updateTranscriptionExpanded?(self.audioTranscriptionState)
                     }))
-                } else if RGSimpleSettings.shared.transcriptionBackendEnum == .apple {
-                    let appLocale = presentationData.strings.baseLanguageCode
-                    
-                    let signal: Signal<LocallyTranscribedAudio?, NoError> = context.engine.data.get(TelegramEngine.EngineData.Item.Messages.Message(id: message.id))
-                    |> mapToSignal { message -> Signal<String?, NoError> in
-                        guard let message = message else {
-                            return .single(nil)
-                        }
-                        guard let file = message.media.first(where: { $0 is TelegramMediaFile }) as? TelegramMediaFile else {
-                            return .single(nil)
-                        }
-                        return context.engine.resources.data(id: EngineMediaResource.Id(file.resource.id))
-                        |> take(1)
-                        |> mapToSignal { data -> Signal<String?, NoError> in
-                            if !data.isComplete {
-                                return .single(nil)
-                            }
-                            return .single(data.path)
-                        }
-                    }
-                    |> mapToSignal { result -> Signal<String?, NoError> in
-                        guard let result = result else {
-                            return .single(nil)
-                        }
-                        return convertOpusToAAC(sourcePath: result, allocateTempFile: {
-                            return EngineTempBox.shared.tempFile(fileName: "audio.m4a").path
-                        })
-                    }
-                    |> mapToSignal { result -> Signal<LocallyTranscribedAudio?, NoError> in
-                        guard let result = result else {
-                            return .single(nil)
-                        }
-                        return transcribeAudio(path: result, appLocale: appLocale)
-                    }
-                    
-                    self.transcribeDisposable = (signal
-                    |> deliverOnMainQueue).startStrict(next: { [weak self] result in
-                        guard let strongSelf = self, let arguments = strongSelf.arguments else {
-                            return
-                        }
-                        
-                        if let result = result {
-                            let _ = arguments.context.engine.messages.storeLocallyTranscribedAudio(messageId: arguments.message.id, text: result.text, isFinal: result.isFinal, error: nil).startStandalone()
-                        } else {
-                            strongSelf.audioTranscriptionState = .collapsed
-                            strongSelf.requestUpdateLayout(true)
-                        }
-                    }, completed: { [weak self] in
-                        guard let strongSelf = self else {
-                            return
-                        }
-                        strongSelf.transcribeDisposable?.dispose()
-                        strongSelf.transcribeDisposable = nil
-                    })
                 } else {
                     self.transcribeDisposable = (context.engine.messages.transcribeAudio(messageId: message.id)
                     |> deliverOnMainQueue).startStrict(next: { [weak self] result in

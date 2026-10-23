@@ -1,17 +1,30 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.0 / b34620** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34630** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 本分支为 `regram-beta`，使用 `com.regram.app`／`group.com.regram.app`，不包含应用内更新安装。主线历史构建与真机记录不代表 Beta 包已经验收。
 
 ## 功能与使用
 
+- [图标、跨设备备份与标记渲染复查](icon-backup-rendering-audit.md)：取消图标切换失败提醒、统一设置恢复状态、减少重复布局及修正外观同步；包含深灰配色 b34629 正式发布、历史本地测试包、包校验与缓存保留记录。
+- [共同群组、设置搜索与拖动预览复查](groups-settings-search-drag-fixes.md)：b34628 的分页、搜索状态与入口整合、原生开关拖动预览及顶部标记修正，包含构建、正式发布和验证边界。
+- [归档、手势与设置显示修复](navigation-community-badge-fixes.md)：b34627 的源码修复、编译、包校验及用户测试反馈，包含正式发布和公开下载核验记录。
+- [社群关联会话归档排查](community-archive-audit-20261022.md)：归档后回到主列表的原因，汇总、展开及异步补齐的修正和源码核对范围。
+- [设置横栏、图标与控件](settings-controls-34626.md)：b34626 的原生文件夹横栏、图标取舍和居中、深色开关与操作按钮颜色，包含构建与交付记录。
+- [过滤提及与设置层级](settings-navigation-34625.md)：b34625 的逐条隐藏提及处理、分类内设置与页内标签，包含构建及跳过测试的记录。
 - [完整功能清单](features.md)：九类设置、入口、默认行为、本机存储、容量和权限边界。
-- [近期更新记录](changelog.md)：消息、界面、网络、更新与图标的主要改动，区分历史修正与当前行为。
+- [近期更新记录](changelog.md)：b34630、b34629 及旧版本记录。
+- [b34624 界面与构建验证](settings-appearance.md)：设置与新增功能页样式、原生底栏搜索、构建来源、校验值及设备验收边界。
 - [翻译、语音、链接与设置](speech-links-settings.md)：独立总结接口、语音／圆视频识别、网页翻译、预览规则及设置导航。
+- [设置与兼容清理](settings-cleanup-34622.md)：b34622 的聊天功能移除、Inline 页面、盘古设置归组与 Swiftgram 兼容移除。
+- [聊天与界面增强](chat-and-interface-tools.md)：b34621 功能入口、逐项实现与验证记录，格式工具栏保持原样。
+- [分组、手势、设置定位与导入](settings-fixes-34623.md)：b34623 的修正范围、审查结论及验证边界。
 
 ## 构建与维护
 
+- [Beta 同步记录](beta-sync-20261023.md)：同步主线 13.1.1 / b34630，保留分支身份及无更新安装约定，记录本分支检查。
+- [Telegram 13.1.1 上游同步](upstream-sync-20261023.md)：同步范围、现有 UI 保留、功能兼容修正及 b34630 构建与交付记录。
+- [图标与截图标记](../Regram/RGBranding/README.md)：絮语、合流及各配色从同一源派生明确的深浅资源，原默认图标改为备用；截图标记跟随应用主题，保留 Regram、知秋原图。
 - [GitHub Actions](github-actions-build.md)：读取版本、构建一份 IPA、校验报告与确认发布流程。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从构建 IPA 生成可重新签名的 ad-hoc 参考包，并核对结构、权限及调试符号。
 - [UI 测试](ui-testing.md)：测试环境与 XCUITest 使用方式，不能替代真实账号和设备验收。
@@ -24,6 +37,9 @@
 - [实验性通知恢复](notification-recovery.md)：调试开关、通知专用读取与资源预算、缓存清理及一／二行预览修正，包含验证边界。
 
 ## 历史分析与设计资料
+
+- [Nagram 历史功能缺口（2026-10-20）](nagram-feature-gaps-2026-10-20.md)：追溯早期增强，列出 Regram 缺少的入口／功能与细分配置，附固定版本源码证据。
+- [Nagram 更新对照与置顶排查（2026-10-20）](nagram-review-2026-10-20.md)：本地置顶重建丢失修正、验证范围，以及适合后续吸收的修复与功能。
 
 [二维码与证书导入修正](qr-login-and-certificate-import.md)、[13.0 功能审查](telegram-13-feature-audit.md)、带构建号的问题分析，以及其他专项记录，保留当时的排查背景。与当前功能文档冲突时，按现行源码、功能清单及更新说明判断。
 

@@ -1,0 +1,22 @@
+{
+  "images" : [
+    {
+      "filename" : "RGMint-light.png",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "RGMint-dark.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "regram",
+    "version" : 1
+  }
+}

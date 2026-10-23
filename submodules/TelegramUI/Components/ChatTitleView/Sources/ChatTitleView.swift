@@ -1041,13 +1041,18 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         var titleFrame: CGRect
         
         var titleInsets: UIEdgeInsets = .zero
+        var inlineLeftIconWidth: CGFloat = 0.0
         if case .emojiStatus = self.titleVerifiedIcon, verifiedIconWidth > 0.0 {
-            titleInsets.left = verifiedIconWidth
+            if let image = self.titleLeftIconNode.image {
+                inlineLeftIconWidth = image.size.width + 3.0
+            }
+            titleInsets.left = verifiedIconWidth + inlineLeftIconWidth
         }
         
         var titleSize = self.titleTextNode.updateLayout(size: CGSize(width: size.width - leftIconWidth - credibilityIconWidth - verifiedIconWidth - statusIconWidth - rightIconWidth - titleSideInset * 2.0, height: size.height), insets: titleInsets, animated: titleTransition.isAnimated)
         titleSize.width += credibilityIconWidth
         titleSize.width += verifiedIconWidth
+        titleSize.width += inlineLeftIconWidth
         if statusIconWidth > 0.0 {
             titleSize.width += statusIconWidth
             if credibilityIconWidth > 0.0 {
@@ -1085,7 +1090,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         }
         
         if let image = self.titleLeftIconNode.image {
-            titleTransition.updateFrame(node: self.titleLeftIconNode, frame: CGRect(origin: CGPoint(x: -image.size.width - 3.0 - UIScreenPixel, y: 4.0), size: image.size))
+            let leftIconX: CGFloat = inlineLeftIconWidth > 0.0 ? verifiedIconWidth : -image.size.width - 3.0 - UIScreenPixel
+            titleTransition.updateFrame(node: self.titleLeftIconNode, frame: CGRect(origin: CGPoint(x: leftIconX, y: 4.0), size: image.size))
         }
         
         var nextIconX: CGFloat = titleFrame.width

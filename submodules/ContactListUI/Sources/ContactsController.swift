@@ -1,4 +1,6 @@
 import Foundation
+// MARK: Regram
+import RGFeatureSignals
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -36,7 +38,7 @@ private final class HeaderContextReferenceContentSource: ContextReferenceContent
     }
 
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds)
     }
 }
 
@@ -105,6 +107,14 @@ private final class SortHeaderButton: HighlightableButtonNode {
 public class ContactsController: ViewController {
     private let context: AccountContext
     
+    /// The contact list draws its own header (no Display bar); it takes part in navigation transitions itself.
+    override public var navigationBarTransitionSource: NavigationBarTransitionSource? {
+        guard self.isNodeLoaded else {
+            return nil
+        }
+        return self.contactsNode.navigationBarView.view as? ChatListNavigationBar.View
+    }
+
     private var contactsNode: ContactsControllerNode {
         return self.displayNode as! ContactsControllerNode
     }
@@ -134,9 +144,12 @@ public class ContactsController: ViewController {
     }
     
     private let sortButton: SortHeaderButton
+    // MARK: Regram — 从设置页推入（联系人 tab 被隐藏时），显示返回按钮
+    let rgFeatureIsPushed: Bool
     
-    public init(context: AccountContext) {
+    public init(context: AccountContext, rgFeatureIsPushed: Bool = false) { // MARK: Regram
         self.context = context
+        self.rgFeatureIsPushed = rgFeatureIsPushed
         
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
         
@@ -192,7 +205,7 @@ public class ContactsController: ViewController {
         }).strict()
         
         if #available(iOSApplicationExtension 10.0, iOS 10.0, *) {
-            self.authorizationDisposable = (combineLatest(DeviceAccess.authorizationStatus(subject: .contacts), combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
+            let permissionWarningSuppressedAndSortOrder: Signal<(Bool, ContactsSortOrder), NoError> = combineLatest(context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!), context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings)), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.contactSynchronizationSettings]))
             |> map { noticeView, preferences, sharedData -> (Bool, ContactsSortOrder) in
                 let settings: ContactsSettings = preferences?.get(ContactsSettings.self) ?? ContactsSettings.defaultSettings
                 let synchronizeDeviceContacts: Bool = settings.synchronizeContacts
@@ -209,11 +222,13 @@ public class ContactsController: ViewController {
                 } else {
                     return (false, sortOrder)
                 }
-            })
-            |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder in
+            }
+            let hidePermissionWarnings = rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)
+            self.authorizationDisposable = (combineLatest(DeviceAccess.authorizationStatus(subject: .contacts), permissionWarningSuppressedAndSortOrder, hidePermissionWarnings)
+            |> deliverOnMainQueue).start(next: { [weak self] status, suppressedAndSortOrder, hidePermissionWarnings in
                 if let strongSelf = self {
                     let (suppressed, sortOrder) = suppressedAndSortOrder
-                    strongSelf.tabBarItem.badgeValue = ![.allowed, .limited].contains(status) && !suppressed ? "!" : nil
+                    strongSelf.tabBarItem.badgeValue = ![.allowed, .limited].contains(status) && !suppressed && !hidePermissionWarnings ? "!" : nil
                     strongSelf.sortOrderPromise.set(.single(sortOrder))
                 }
             }).strict()
@@ -225,6 +240,8 @@ public class ContactsController: ViewController {
             })
         }
         
+        // MARK: Regram — native current-page search availability.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         self.sortButton.addTarget(self, action: #selector(self.sortPressed), forControlEvents: .touchUpInside)
     }
     
@@ -541,14 +558,25 @@ public class ContactsController: ViewController {
         self.sortButton.contextAction?(self.sortButton.containerNode, nil)
     }
     
-    private func activateSearch() {
-        self.contactsNode.activateSearch(placeholderNode: self.searchContentNode()?.placeholderNode)
-        (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
+    // MARK: Regram — keep top search local and attach only bottom search to the tab-bar field.
+    private func activateSearch(isFromTabBar: Bool = false) {
+        self.contactsNode.activateSearch(placeholderNode: isFromTabBar ? nil : self.searchContentNode()?.placeholderNode, searchBarIsExternal: isFromTabBar)
+        if isFromTabBar {
+            self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: .animated(duration: 0.5, curve: .spring))
+            if let searchBarNode = self.currentTabBarSearchNode?() as? SearchBarNode {
+                self.contactsNode.searchDisplayController?.setSearchBar(searchBarNode)
+                searchBarNode.activate()
+            }
+        } else {
+            (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: .animated(duration: 0.5, curve: .spring))
+        }
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
     
     private func deactivateSearch(animated: Bool) {
         self.contactsNode.deactivateSearch(placeholderNode: self.searchContentNode()?.placeholderNode, animated: animated)
+        // MARK: Regram — finish the native bottom-search presentation.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .animated(duration: 0.5, curve: .spring))
         (self.parent as? TabBarController)?.updateIsTabBarHidden(false, transition: .animated(duration: 0.5, curve: .spring))
         self.requestLayout(transition: .animated(duration: 0.5, curve: .spring))
     }
@@ -765,7 +793,7 @@ public class ContactsController: ViewController {
     }
     
     override public func tabBarActivateSearch() {
-        self.activateSearch()
+        self.activateSearch(isFromTabBar: true)
     }
 
     override public func tabBarDeactivateSearch() {
@@ -787,7 +815,7 @@ private final class ContactsTabBarContextReferenceContentSource: ContextReferenc
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
         return ContextControllerReferenceViewInfo(
             referenceView: self.sourceView.contentView,
-            contentAreaInScreenSpace: UIScreen.main.bounds,
+            contentAreaInScreenSpace: mainWindowScreenBounds,
             actionsPosition: .top
         )
     }
@@ -808,10 +836,10 @@ private final class ChatListHeaderBarContextExtractedContentSource: ContextExtra
     }
     
     func takeView() -> ContextControllerTakeViewInfo? {
-        return ContextControllerTakeViewInfo(containingItem: .node(self.sourceNode), contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerTakeViewInfo(containingItem: .node(self.sourceNode), contentAreaInScreenSpace: mainWindowScreenBounds)
     }
     
     func putBack() -> ContextControllerPutBackViewInfo? {
-        return ContextControllerPutBackViewInfo(contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerPutBackViewInfo(contentAreaInScreenSpace: mainWindowScreenBounds)
     }
 }

@@ -3,7 +3,6 @@ import Foundation
 import UIKit
 import SwiftSignalKit
 import TelegramCore
-import Postbox
 import AccountContext
 import TextFormat
 import RGSimpleSettings

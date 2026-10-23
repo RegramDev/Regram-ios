@@ -1,7 +1,7 @@
 import Foundation
 import Postbox
-import TelegramApi
-import RGSimpleSettings
+internal import TelegramApi
+import RGSimpleSettings // MARK: Regram
 
 public extension MessageFlags {
     var isSending: Bool {

@@ -97,6 +97,7 @@ private enum RGHiddenUsersEntry: ItemListNodeEntry {
         case let .peer(_, peer, revealed):
             return ItemListPeerItem(
                 presentationData: presentationData,
+                systemStyle: .glass,
                 dateTimeFormat: PresentationDateTimeFormat(),
                 nameDisplayOrder: presentationData.nameDisplayOrder,
                 context: arguments.context,

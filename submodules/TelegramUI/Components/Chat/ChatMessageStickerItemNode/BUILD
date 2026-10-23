@@ -12,7 +12,6 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//submodules/Postbox",
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",

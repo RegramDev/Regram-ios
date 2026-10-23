@@ -9,6 +9,7 @@ import TelegramCore
 import SettingsUI
 import PeerInfoStoryGridScreen
 import CallListUI
+import ContactListUI // MARK: Regram
 import PassportUI
 import AccountUtils
 import OverlayStatusController
@@ -57,13 +58,15 @@ extension PeerInfoScreenNode {
             }
         }
         switch section {
+        case .rgFeatureContacts:
+            push(ContactsController(context: self.context, rgFeatureIsPushed: true))
         // MARK: Regram — both current and legacy actions resolve to the single settings hub.
         case .regram, .regramPro:
             self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()
         case .edit:
-            self.headerNode.navigationButtonContainer.performAction?(.edit, nil, nil)
+            self.performNavigationButtonAction?(.edit, nil, nil)
         case .proxy:
             self.controller?.push(proxySettingsController(context: self.context))
         case .profile:

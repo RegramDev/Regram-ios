@@ -1,5 +1,4 @@
 import Foundation
-import Postbox
 import TelegramCore
 import AccountContext
 import ChatPresentationInterfaceState
@@ -10,7 +9,7 @@ import RGSimpleSettings
 // MARK: Regram — the double-tap actions that need the chat controller (RGDoubleTapMessageAction).
 // The item node handles the reaction and the menu itself and hands the rest back here.
 extension ChatControllerImpl {
-    func rgCanEditMessage(_ message: Message) -> Bool {
+    func rgCanEditMessage(_ message: EngineRawMessage) -> Bool {
         if case .pinnedMessages = self.subject {
             return false
         }
@@ -22,7 +21,7 @@ extension ChatControllerImpl {
         return canEditMessage(context: self.context, limitsConfiguration: self.context.currentLimitsConfiguration.with { EngineConfiguration.Limits($0) }, message: message)
     }
 
-    func rgPerformMessageDoubleTapAction(message: Message, actionRawValue: String) {
+    func rgPerformMessageDoubleTapAction(message: EngineRawMessage, actionRawValue: String) {
         guard self.isNodeLoaded, let action = RGSimpleSettings.MessageDoubleTapActionV2(rawValue: actionRawValue) else {
             return
         }

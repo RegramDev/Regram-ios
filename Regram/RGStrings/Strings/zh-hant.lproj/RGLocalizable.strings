@@ -15,7 +15,7 @@
 /* Example: Hide "All Chats" */
 "Settings.Folders.AllChatsHidden" = "隱藏 \"%@\"";
 "Settings.Folders.RememberLast" = "開啟最後瀏覽的對話盒";
-"Settings.Folders.RememberLast.Notice" = "Regram 會在重啟或帳號切換後開啟最後瀏覽的對話盒";
+"Settings.Folders.RememberLast.Notice" = "重新啟動應用程式或切換帳號時開啟所選分組；指定分組無法使用時開啟全部聊天。";
 
 "Settings.Folders.CompactNames" = "縮小間距";
 "Settings.Folders.AllChatsTitle" = "\"所有對話\"標題";
@@ -652,6 +652,7 @@
 "RG.BottomBarLayout" = "底欄佈局";
 "RG.BottomBarLayout.TopBar" = "頂欄";
 "RG.BottomBarLayout.TopSearch" = "頂部搜尋";
+"RG.BottomBarLayout.BottomSearch" = "底欄搜尋";
 "RG.BottomBarLayout.TopSearchHint.visible" = "頂部搜尋已顯示，可在下方狀態中關閉";
 "RG.BottomBarLayout.TopSearchHint.hidden" = "頂部搜尋已隱藏，可在下方狀態中開啟";
 "RG.BottomBarLayout.BottomBar" = "底欄";
@@ -677,7 +678,7 @@
 "RG.BottomBarLayout.Alignment.center" = "整體置中";
 "RG.BottomBarLayout.Alignment.disabled" = "佔滿時不適用";
 "RG.BottomBarLayout.Reset" = "重置底欄佈局";
-"RG.BottomBarLayout.Footer" = "在預覽區拖動按鈕調整順序。對話和設定必須保留。自動寬度跟隨可見標籤數量，關閉後可手動調整寬度。整個底欄保持置中。";
+"RG.BottomBarLayout.Footer" = "在預覽區拖動導覽按鈕調整順序。對話和設定必須保留。搜尋在底欄項目中開啟，原生搜尋按鈕開啟目前頁面的搜尋；頂部搜尋可單獨關閉。搜尋開啟時，獨立導覽按鈕暫時併入標籤列。自動寬度跟隨可見項目數量，關閉後可手動調整寬度。";
 "RG.BottomBarLayout.Item.contacts" = "聯絡人";
 "RG.BottomBarLayout.Item.calls" = "通話";
 "RG.BottomBarLayout.Item.chats" = "聊天";
@@ -696,7 +697,7 @@
 "Diagnostics.DC.Failed" = "失敗";
 "Browser.Translation.SystemUnavailable" = "Apple 網頁翻譯需要 iOS 18 或更新版本。請在本機選擇其他翻譯服務。";
 
-"AppBadge.Notice" = "設定截圖上顯示的應用程式標記。";
+"AppBadge.Notice" = "點按樣式即可套用，標記隨介面自動切換深淺色。預覽已放大，截圖中的標記維持正常大小。";
 "AppBadge.Title" = "截圖標記";
 "Common.Cancel" = "取消";
 "Common.KnowWhatYouDo" = "請在了解這些選項的作用後再修改。";
@@ -897,7 +898,6 @@
 "DNSDiagnostics.NoPolicyAddresses" = "沒有符合目前策略的位址。";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "無法切換圖示，請稍後再試。";
 "RevokedMarker.Title" = "已撤回訊息標記";
 "RevokedMarker.Style" = "標記樣式";
 "RevokedMarker.Style.icon" = "圖示";
@@ -931,6 +931,16 @@
 "CommonGroups.Failed" = "查詢未完成，請點按重試。";
 
 "CommonGroups.LoadMore" = "載入更多";
+"CommonGroups.PageTitle" = "共同群組發言";
+"CommonGroups.Results" = "發言 · %1$@";
+"CommonGroups.LoadingGroups" = "正在取得共同群組⋯";
+"CommonGroups.SummaryLoading" = "正在搜尋 · 已顯示 %1$@ 則發言";
+"CommonGroups.SummaryPaused" = "已暫停 · 已顯示 %1$@ 則發言";
+"CommonGroups.SummaryFailed" = "部分查詢未完成 · 已顯示 %1$@ 則發言";
+"CommonGroups.Paused" = "查詢已暫停，已載入的發言仍可檢視。";
+"CommonGroups.AllLoaded" = "已載入全部可顯示的發言";
+"CommonGroups.EmptyHint" = "可切換其他群組，或重新整理查詢。";
+"CommonGroups.OpenMessage" = "前往群組檢視原訊息";
 
 // Regram debug tools
 "Debug.NotificationExperiment" = "實驗性通知恢復";
@@ -938,3 +948,216 @@
 "Debug.ClearCache" = "清除快取";
 "Debug.ClearCache.Info" = "清除目前帳號的媒體快取及網頁、網路快取。快取媒體可能需要重新下載才能檢視。保留帳號、訊息、設定、憑證及已儲存的編輯歷史圖片。";
 "Debug.ClearCache.Done" = "快取已清除";
+
+/* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
+"features.AutoInlineBot.Enabled" = "自動查詢符合規則的連結";
+"features.AutoInlineBot.Footer" = "單獨輸入符合規則的連結時，將該連結交給對應 Inline 機器人查詢。不會查詢連結旁的草稿文字。";
+"features.InlineBotRules" = "比對規則";
+"features.InlineBotRules.Footer" = "規則唯讀並自動更新。每組顯示對應機器人與比對表達式，輸入框保留原始連結。";
+"features.StayAtLatestMessageAfterRefresh" = "重新整理後保持最新訊息";
+"features.HidePrivateChatActivities" = "隱藏對方輸入與錄音提示";
+"features.HideSavedAndArchivedMessagesInList" = "在列表中隱藏收藏夾和歸檔會話資訊";
+"features.KeepNewChatsVisibleAtTop" = "列表頂部保持顯示新訊息對話";
+"features.CommunityAvatarTapAction" = "點擊社群頭像行為";
+"features.CommunityAvatarTapAction.chat" = "一律進入聊天";
+"features.CommunityAvatarTapAction.community" = "一律開啟社群";
+"features.CommunityAvatarTapAction.arrow" = "僅點擊頭像右下角箭頭時開啟社群頁面";
+"features.MessagePlaceholderInSaved" = "這裡是您的收藏夾會話";
+"features.MessagePlaceholderInArchived" = "這裡是您的歸檔會話";
+"features.PanguOnReceiving" = "接收訊息時處理";
+"features.TextStyleMenu" = "選取文字選單";
+"features.TextStyleMenu.PositionHeader" = "插入位置";
+"features.TextStyleMenu.Position.first" = "最前面";
+"features.TextStyleMenu.Position.beforeFormat" = "「格式」之前（拷貝 / 貼上之後）";
+"features.TextStyleMenu.Position.afterFormat" = "「格式」之後";
+"features.TextStyleMenu.Position.last" = "最後面";
+"features.TextStyleMenu.PositionFooter" = "完整的「格式」選單始終保留在原位置。系統選單一頁約放 5 項，靠後的需要點「>」翻頁。";
+"features.TextStyleMenu.ItemsHeader" = "平鋪到選單的樣式";
+"features.TextStyleMenu.ItemsFooter" = "開啟的樣式會直接顯示在選取文字選單的第一層。點「編輯」後可拖曳排序。私密聊天不顯示引用、劇透和日期。";
+"features.TextStyleMenu.Reset" = "重設選取文字選單";
+"features.TextStyleMenu.ResetConfirm" = "重設所有選取文字選單的樣式、排序和插入位置？";
+"features.PanguOnEditing" = "編輯訊息時處理";
+"features.TapMessageRowToOpenContextMenu" = "點按訊息列開啟選單";
+"features.ChatListSwipeAction" = "對話列表橫滑";
+"features.ChatListSwipeAction.both" = "切換 + 快捷";
+"features.ChatListSwipeAction.switch" = "切換";
+"features.ChatListSwipeAction.quick" = "快捷";
+"features.ChatListSwipeAction.none" = "無";
+"features.ShowArchiveInFolders" = "資料夾顯示歸檔";
+"features.GroupProfileSettings" = "自訂群組資料頁設定項目";
+"features.GroupProfileSettings.Footer" = "只顯示已選取且目前群組與帳號權限允許的項目。";
+"features.GroupProfileSettings.Item.groupType" = "群組類型";
+"features.GroupProfileSettings.Item.inviteLinks" = "邀請連結";
+"features.GroupProfileSettings.Item.linkedChannel" = "關聯頻道";
+"features.GroupProfileSettings.Item.reactions" = "回應";
+"features.GroupProfileSettings.Item.appearance" = "外觀";
+"features.GroupProfileSettings.Item.history" = "聊天記錄";
+"features.GroupProfileSettings.Item.topics" = "話題";
+"features.GroupProfileSettings.Item.location" = "位置";
+"features.GroupProfileSettings.Item.members" = "成員";
+"features.GroupProfileSettings.Item.permissions" = "權限";
+"features.GroupProfileSettings.Item.admins" = "管理員";
+"features.GroupProfileSettings.Item.memberRequests" = "加入申請";
+"features.GroupProfileSettings.Item.removedUsers" = "已移除使用者";
+"features.GroupProfileSettings.Item.recentActions" = "管理記錄";
+"features.GroupProfileSettings.Item.community" = "社群";
+"features.GroupProfileSettings.Item.deleteGroup" = "刪除群組";
+"features.GroupProfileSettings.Item.other" = "其他設定";
+"features.HideTabBarPermissionWarnings" = "隱藏權限提醒角標";
+"features.HideTopStories" = "隱藏頂部動態區域";
+"features.DisableChatAvatarStories" = "關閉聊天頭像動態";
+"features.ChatListStartupFolder" = "啟動時打開分組";
+"features.ChatListStartupFolder.telegram" = "Telegram 預設";
+"features.ChatListStartupFolder.last" = "上次所在分組";
+"features.ChatListStartupFolder.specific" = "指定分組";
+"features.ChatListStartupFolder.notSet" = "未指定";
+"features.ChatListFolderTabDisplayMode" = "分組標籤顯示方式";
+"features.ChatListFolderTabDisplayMode.text" = "僅文字";
+"features.ChatListFolderTabDisplayMode.icon" = "僅圖示";
+"features.ChatListFolderTabDisplayMode.both" = "圖示和文字";
+"features.ShowFoldersInShareSheet" = "分享面板顯示資料夾";
+"features.HideFolderUnreadCount" = "隱藏資料夾標籤未讀數";
+"features.ChatFolderNoneAvailable" = "沒有可加入的資料夾。請先建立資料夾，或檢查此聊天是否已加入所有資料夾。";
+"features.InviteLinks.BulkRevoke" = "批次撤銷邀請連結…";
+"features.InviteLinks.ScopeInfo" = "僅處理額外的非永久邀請連結，主連結不會受到影響。";
+"features.InviteLinks.RevokeAll" = "撤銷所有連結";
+"features.InviteLinks.RevokeUnavailable" = "撤銷所有不可用連結";
+"features.InviteLinks.ConfirmAll" = "將撤銷你建立的全部 %@ 條額外邀請連結。主連結及其他永久連結不會受到影響。此操作無法復原。";
+"features.InviteLinks.ConfirmUnavailable" = "將撤銷 %@ 條已過期或達到使用次數上限的額外邀請連結。主連結、其他永久連結和仍可用的額外連結不會受到影響。此操作無法復原。";
+"features.InviteLinks.NoAdditional" = "沒有可撤銷的額外邀請連結。";
+"features.InviteLinks.NoUnavailable" = "沒有不可用的額外邀請連結。";
+"features.InviteLinks.FetchFailed" = "無法載入完整的額外邀請連結列表，請稍後再試。";
+"features.InviteLinks.Success" = "已撤銷 %@ 條額外邀請連結。";
+"features.InviteLinks.PartialFailure" = "已撤銷 %1$@ 條，另有 %2$@ 條撤銷失敗。列表正在重新整理。";
+"features.MutualContact.Description" = "此聯絡人是雙向聯絡人。";
+"features.UnpinAllMessagesAlert" = "要取消所有訊息的置頂嗎？";
+"features.ConfirmUnpin" = "取消置頂前確認";
+"features.SearchLink.Header" = "連結";
+"features.SearchLink.Open" = "開啟連結";
+"features.SearchLink.OpenMessage" = "跳至訊息";
+"features.SearchLink.OpenInvite" = "開啟邀請連結";
+
+"features.TextStyleMenu.Position" = "插入位置";
+
+
+
+
+"features.VideoPIPSwipeDirection" = "上滑開啟子母畫面";
+
+"features.VideoPIPSwipeDirection.up" = "開啟";
+
+"features.VideoPIPSwipeDirection.none" = "關閉";
+
+
+"features.TextStyleMenu.Style.quote" = "引用";
+
+"features.TextStyleMenu.Style.spoiler" = "劇透";
+
+"features.TextStyleMenu.Style.bold" = "粗體";
+
+"features.TextStyleMenu.Style.italic" = "斜體";
+
+"features.TextStyleMenu.Style.monospace" = "等寬";
+
+"features.TextStyleMenu.Style.link" = "連結";
+
+"features.TextStyleMenu.Style.date" = "日期";
+
+"features.TextStyleMenu.Style.strikethrough" = "刪除線";
+
+"features.TextStyleMenu.Style.underline" = "底線";
+
+"features.TextStyleMenu.Style.code" = "程式碼區塊";
+
+"features.ChatListStartupFolder.Unavailable" = "分組暫不可用";
+
+"features.InlineBots.Title" = "Inline 機器人";
+
+"features.PanguOnSending" = "傳送訊息時處理";
+
+"features.PanguInfo" = "在中日韓文字與拉丁字母或數字之間加入空格，三個開關獨立控制。傳送時沿用個別對話設定，保留程式碼、連結與文字格式。";
+"features.HidePrivateChatActivities.Notice" = "僅隱藏本機私聊及聊天列表中對方正在輸入、錄音等提示。若要隱藏自己向對方傳送的狀態，請使用幽靈模式。";
+"ContextMenu.importSettings" = "匯入設定";
+
+// Regram Pro category navigation and editor descriptions.
+"Settings.ProCategory.messages.Description" = "訊息操作、聊天列表與資料夾";
+"Settings.ProCategory.input.Description" = "輸入工具、傳送方式與文字格式";
+"Settings.ProCategory.translation.Description" = "翻譯服務、模型介面與語音辨識";
+"Settings.ProCategory.privacy.Description" = "內容過濾、防撤回與隱私控制";
+"Settings.ProCategory.media.Description" = "連結預覽、照片、貼圖與播放";
+"Settings.ProCategory.appearance.Description" = "字體、圖示、底欄與個人資料顯示";
+"Settings.ProCategory.notifications.Description" = "內容過濾、置頂與提及提醒";
+"Settings.ProCategory.network.Description" = "連線策略、傳輸參數與診斷";
+"Settings.ProCategory.tools.Description" = "備份回復、應用程式更新與本機資料";
+"Settings.CategoryTab.messageActions" = "訊息操作";
+"Settings.CategoryTab.chatList" = "聊天列表";
+"Settings.CategoryTab.folders" = "資料夾";
+"Settings.CategoryTab.media" = "播放與連結";
+"Settings.CategoryTab.photos" = "照片";
+"Settings.CategoryTab.stickers" = "貼圖";
+"Settings.CategoryTab.recording" = "錄製";
+"Settings.Section.Personalization" = "個人化";
+"Settings.Section.Interface" = "介面顯示";
+"Settings.Section.PrivacyDisplay" = "隱私顯示";
+"Settings.Section.Sending" = "傳送行為";
+"Settings.Section.Composer" = "輸入工具";
+"Settings.Section.Playback" = "播放與媒體";
+"Settings.Section.PrivacyControls" = "過濾與保護";
+"Settings.Section.Links" = "連結預覽";
+"Settings.Section.Connection" = "連線與診斷";
+"Settings.Section.Speech" = "語音辨識";
+"Settings.Editor.fonts.Description" = "拉丁與中日韓字體、匯入和預覽";
+"Settings.Editor.appBages.Description" = "截圖中的應用程式標記與樣式";
+"Settings.Editor.transcriptionSettings.Description" = "辨識方式、自訂介面與語言";
+"Settings.Editor.summarySettings.Description" = "獨立設定介面、模型與提示詞";
+"Settings.Editor.linkPreviewSettings.Description" = "網站規則與預覽服務";
+"Settings.Editor.messageFilter.Description" = "關鍵字、正則與對話範圍";
+"Settings.Editor.networkPolicy.Description" = "DNS 解析、IP 策略與代理連線";
+"Settings.Editor.diagnostics.Description" = "資料中心連線、解析與傳輸診斷";
+"Settings.Editor.bottomBarLayout.Description" = "顯示項目、順序、標籤與寬度";
+"Settings.Editor.llmTranslationSettings.Description" = "介面位址、模型、金鑰與提示詞";
+"Settings.Editor.contextMenuOrder.Description" = "顯示項目、拖移排序與分組";
+
+"Settings.Folders.AllChatsTitle.shortText" = "對話";
+"Settings.Folders.AllChatsTitle.longText" = "所有對話";
+
+"AppBadge.Current" = "目前標記";
+"AppBadge.Choose" = "選擇樣式";
+
+"AppIcon.Name.conversation" = "絮語";
+"AppBadge.Name.conversation" = "絮語";
+
+"AppIcon.Name.gathering" = "合流";
+"AppBadge.Name.gathering" = "合流";
+
+"AppIcon.Name.azure" = "晴空";
+
+"AppBadge.Name.azure" = "晴空";
+
+"AppIcon.Name.iris" = "鳶尾";
+
+"AppBadge.Name.iris" = "鳶尾";
+
+"AppIcon.Name.mint" = "薄荷";
+
+"AppBadge.Name.mint" = "薄荷";
+
+"AppIcon.Name.amber" = "琥珀";
+
+"AppBadge.Name.amber" = "琥珀";
+
+"AppIcon.Name.nebula" = "星河";
+
+"AppBadge.Name.nebula" = "星河";
+
+"AppIcon.Name.jade" = "青嵐";
+
+"AppBadge.Name.jade" = "青嵐";
+
+"AppIcon.Name.classic" = "Regram 經典";
+
+"AppBadge.Name.regram" = "Regram";
+
+"AppBadge.Name.zhiqiu" = "知秋";
+
+"features.HideTabBarPermissionWarnings.Notice" = "隱藏因系統通知或通訊錄權限關閉而顯示的驚嘆號。未讀數量及其他帳號提醒保留。";

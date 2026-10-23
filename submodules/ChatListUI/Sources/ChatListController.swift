@@ -1,3 +1,4 @@
+import RGFeatureSignals // MARK: Regram
 // MARK: Regram
 import RGJoinedChatFolderPicker
 // MARK: Regram
@@ -48,6 +49,7 @@ import ChatTitleView
 import PeerInfoUI
 import ComponentDisplayAdapters
 import ChatListHeaderComponent
+import NavigationBarComponent
 import ChatListTitleView
 import InviteLinksUI
 import ChatFolderLinkPreviewScreen
@@ -99,6 +101,13 @@ private final class ContextControllerContentSourceImpl: ContextControllerContent
 }
 
 public class ChatListControllerImpl: TelegramBaseController, ChatListController {
+    private var rgFeatureLayoutSettingsDisposable: Disposable?
+
+    /// iPhone Duo: this screen lays out its own side column, back button included.
+    override public var placesNavigationButtonInSideColumn: Bool {
+        return false
+    }
+    
     private var validLayout: ContainerViewLayout?
     
     public let context: AccountContext
@@ -113,6 +122,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     let openMessageFromSearchDisposable: MetaDisposable = MetaDisposable()
     
+    /// The chat list draws its own header (no Display bar); it takes part in navigation transitions itself. During a search too:
+    /// `displayNavigationBar` doubles as the search flag here, so it is not consulted.
+    override public var navigationBarTransitionSource: NavigationBarTransitionSource? {
+        guard self.isNodeLoaded else {
+            return nil
+        }
+        return self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View
+    }
+
     private var chatListDisplayNode: ChatListControllerNode {
         return super.displayNode as! ChatListControllerNode
     }
@@ -164,6 +182,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private let isReorderingTabsValue = ValuePromise<Bool>(false)
     
     private(set) var tabContainerData: ([ChatListFilterTabEntry], Bool, Int32?)?
+    private(set) var rgFeatureFolderTabIcons: [ChatListFilterTabEntryId: String] = [:] // MARK: Regram — 首页文件夹标签图标。
     var hasTabs: Bool {
         if let tabContainerData = self.tabContainerData {
             let isEmpty = tabContainerData.0.count <= 1 || tabContainerData.1
@@ -214,6 +233,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private var storyArchiveSubscriptionsDisposable: Disposable?
     
     private var rawStorySubscriptions: EngineStorySubscriptions?
+    private var rgFeatureAccountStoryCount: Int = 0 // MARK: Regram — 顶部隐藏后仍需保留发布数量限制。
     private var shouldFixStorySubscriptionOrder: Bool = false
     private var fixedStorySubscriptionOrder: [EnginePeer.Id] = []
     private(set) var orderedStorySubscriptions: EngineStorySubscriptions?
@@ -350,19 +370,20 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                         self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
                     }
                     
-                    self.primaryContext?.leftButton = AnyComponentWithIdentity(id: "edit", component: AnyComponent(NavigationButtonComponent(
+                    self.primaryContext?.leftButton = NavigationBarComponent.Button(id: "edit",
                         content: .text(title: self.presentationData.strings.Common_Edit, isBold: false),
-                        pressed: { [weak self] _ in
+                        action: { [weak self] _ in
                             self?.editPressed()
                         }
-                    )))
+                    )
                     
-                    self.primaryContext?.rightButton = AnyComponentWithIdentity(id: "compose", component: AnyComponent(NavigationButtonComponent(
+                    self.primaryContext?.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        pressed: { [weak self] _ in
+                        tint: .accent,
+                        action: { [weak self] _ in
                             self?.composePressed()
                         }
-                    )))
+                    )
                     
                     //let backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.DialogList_Title, style: .plain, target: nil, action: nil)
                     //backBarButtonItem.accessibilityLabel = self.presentationData.strings.Common_Back
@@ -370,12 +391,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 } else {
                     switch self.location {
                     case .chatList:
-                        self.primaryContext?.rightButton = AnyComponentWithIdentity(id: "edit", component: AnyComponent(NavigationButtonComponent(
+                        self.primaryContext?.rightButton = NavigationBarComponent.Button(id: "edit",
                             content: .text(title: self.presentationData.strings.Common_Edit, isBold: false),
-                            pressed: { [weak self] _ in
+                            action: { [weak self] _ in
                                 self?.editPressed()
                             }
-                        )))
+                        )
                     case .forum:
                         break
                     case .savedMessagesChats:
@@ -804,6 +825,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         })
         
         self.updateNavigationMetadata()
+        // MARK: Regram — expose the upstream current-page search control.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
         self.rgLayoutObserver = NotificationCenter.default.addObserver(forName: RGTabBarLayoutPolicy.settingsChanged, object: nil, queue: .main) { [weak self] _ in
             self?.requestLayout(transition: .immediate)
         }
@@ -823,6 +846,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
+        self.rgFeatureLayoutSettingsDisposable?.dispose() // MARK: Regram
         if let observer = self.rgLayoutObserver { NotificationCenter.default.removeObserver(observer) }
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
@@ -861,25 +885,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         switch currentContext.location {
         case .chatList:
             self.navigationBar?.userInfo = nil
-            self.navigationBar?.allowsCustomTransition = {
-                return false
-            }
         case let .forum(peerId):
             self.navigationBar?.userInfo = PeerInfoNavigationSourceTag(peerId: peerId, threadId: nil)
-            self.navigationBar?.allowsCustomTransition = { [weak self] in
-                guard let strongSelf = self else {
-                    return false
-                }
-                if strongSelf.navigationBar?.userInfo == nil {
-                    return false
-                }
-                return true
-            }
         case .savedMessagesChats:
             self.navigationBar?.userInfo = nil
-            self.navigationBar?.allowsCustomTransition = {
-                return false
-            }
         }
     }
     
@@ -2222,13 +2231,14 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 self.storiesReady.set(.single(true))
             } else {
                 // MARK: Regram
-                let hideStoriesSignal = rgSimpleSettingsBoolSignal(.hideStories, defaultValue: false)
+                let hideStoriesSignal = combineLatest(rgSimpleSettingsBoolSignal(.hideStories, defaultValue: false), rgFeatureBoolSignal("features.hideTopStories", defaultValue: false)) |> map { $0 || $1 }
                 
                 self.storySubscriptionsDisposable = (combineLatest(self.context.engine.messages.storySubscriptions(isHidden: self.location == .chatList(groupId: .archive)), hideStoriesSignal)
                 |> deliverOnMainQueue).startStrict(next: { [weak self] rawStorySubscriptions, hideStories in
                     guard let self else {
                         return
                     }
+                    self.rgFeatureAccountStoryCount = rawStorySubscriptions.accountItem?.storyCount ?? 0
                     var rawStorySubscriptions = rawStorySubscriptions
                     if hideStories {
                         rawStorySubscriptions = EngineStorySubscriptions(accountItem: nil, items: [], hasMoreToken: nil)
@@ -2420,6 +2430,13 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        self.rgFeatureLayoutSettingsDisposable?.dispose()
+        self.rgFeatureLayoutSettingsDisposable = (combineLatest(
+            rgFeatureBoolSignal("features.hideFolderUnreadCount", defaultValue: false),
+            rgFeatureBoolSignal("compactFolderNames", defaultValue: false),
+            rgFeatureStringSignal("features.chatListFolderTabDisplayMode", defaultValue: "text"))
+        |> deliverOnMainQueue).start(next: { [weak self] _ in self?.requestLayout(transition: .immediate) })
+
                 
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings
@@ -2934,13 +2951,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             if self.previousItem != nil {
                 displayBackButton = true
             }
-            var navigationBackTitle: String?
-            if case .chatList(.archive) = self.location {
-                navigationBackTitle = self.presentationData.strings.Common_Back
-            }
             primaryContent = ChatListHeaderComponent.Content(
                 title: self.plainTitle,
-                navigationBackTitle: navigationBackTitle,
                 titleComponent: primaryContext.chatTitleComponent.flatMap { AnyComponent<Empty>($0) },
                 chatListTitle: primaryContext.chatListTitle,
                 leftButton: primaryContext.leftButton,
@@ -2950,14 +2962,14 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                         return
                     }
                     self.navigationBackPressed()
-                } : nil
+                } : nil,
+                overflowInfo: chatListHeaderOverflowInfo(strings: self.presentationData.strings)
             )
         }
         var secondaryContent: ChatListHeaderComponent.Content?
         if let secondaryContext = self.secondaryContext {
             secondaryContent = ChatListHeaderComponent.Content(
                 title: self.plainTitle,
-                navigationBackTitle: nil,
                 titleComponent: secondaryContext.chatTitleComponent.flatMap { AnyComponent<Empty>($0) },
                 chatListTitle: secondaryContext.chatListTitle,
                 leftButton: secondaryContext.leftButton,
@@ -2967,7 +2979,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                         return
                     }
                     self.setInlineChatList(location: nil)
-                }
+                },
+                overflowInfo: chatListHeaderOverflowInfo(strings: self.presentationData.strings)
             )
         }
         
@@ -3016,7 +3029,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     private weak var storyCameraTooltip: TooltipScreen?
-    fileprivate func openStoryCamera(fromList: Bool, gesturePullOffset: CGFloat? = nil) {
+    fileprivate func openStoryCamera(fromList: Bool, gesturePullOffset: CGFloat? = nil, sourceView: UIView? = nil) {
         guard !self.context.isFrozen else {
             let controller = self.context.sharedContext.makeAccountFreezeInfoScreen(context: self.context)
             self.push(controller)
@@ -3034,12 +3047,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
         
         let storiesCountLimit = self.context.userLimits.maxExpiringStoriesCount
-        var storiesCount = 0
-        if let rawStorySubscriptions = self.rawStorySubscriptions, let accountItem = rawStorySubscriptions.accountItem {
-            storiesCount = accountItem.storyCount
-            if accountItem.storyCount >= self.context.userLimits.maxExpiringStoriesCount {
-                reachedCountLimit = true
-            }
+        // MARK: Regram — 隐藏顶部区域不影响手动发布时的数量限制。
+        let storiesCount = self.rgFeatureAccountStoryCount
+        if storiesCount >= self.context.userLimits.maxExpiringStoriesCount {
+            reachedCountLimit = true
         }
         
         switch self.storyPostingAvailability {
@@ -3094,7 +3105,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                         }
                     }
                 } else {
-                    if let rightButtonView = componentView.rightButtonViews["story"] {
+                    if let rightButtonView = componentView.rightButtonViews["story"] ?? sourceView {
                         sourceFrame = rightButtonView.convert(rightButtonView.bounds, to: nil).offsetBy(dx: 5.0, dy: -8.0)
                     }
                 }
@@ -3603,7 +3614,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     private func updateLayout(layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         var tabContainerOffset: CGFloat = 0.0
         if !self.displayNavigationBar {
-            tabContainerOffset += layout.statusBarHeight ?? 0.0
+            tabContainerOffset += layout.navigationBarStatusBarHeight ?? 0.0
             tabContainerOffset += 44.0 + 20.0
         }
 
@@ -3629,20 +3640,20 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     @objc func editPressed() {
         if self.secondaryContext == nil {
             if case .chatList(.root) = self.chatListDisplayNode.effectiveContainerNode.location {
-                self.effectiveContext?.leftButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+                self.effectiveContext?.leftButton = NavigationBarComponent.Button(id: "done",
                     content: .text(title: self.presentationData.strings.Common_Done, isBold: true),
-                    pressed: { [weak self] _ in
+                    action: { [weak self] _ in
                         self?.donePressed()
                     }
-                )))
+                )
                 (self.navigationController as? NavigationController)?.updateMasterDetailsBlackout(.details, transition: .animated(duration: 0.5, curve: .spring))
             } else {
-                self.effectiveContext?.rightButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+                self.effectiveContext?.rightButton = NavigationBarComponent.Button(id: "done",
                     content: .text(title: self.presentationData.strings.Common_Done, isBold: true),
-                    pressed: { [weak self] _ in
+                    action: { [weak self] _ in
                         self?.donePressed()
                     }
-                )))
+                )
                 (self.navigationController as? NavigationController)?.updateMasterDetailsBlackout(.master, transition: .animated(duration: 0.5, curve: .spring))
             }
         }
@@ -4064,6 +4075,25 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         })
     }
     
+    /// iPhone Duo: the side column's "…" menu, the buttons that did not fit; each runs its own action
+    /// from the "…" button.
+    func openSideColumnOverflowMenu(sourceView: UIView, items: [NavigationBarComponent.OverflowItem]) {
+        let presentationData = self.presentationData
+        let menuItems: [ContextMenuItem] = items.map { item in
+            return .action(ContextMenuActionItem(text: item.title, icon: { theme in
+                guard let iconName = item.iconName else {
+                    return nil
+                }
+                return generateScaledImage(image: generateTintedImage(image: UIImage(bundleImageName: iconName), color: theme.contextMenu.primaryColor), size: CGSize(width: 24.0, height: 24.0), opaque: false)
+            }, action: { _, f in
+                f(.default)
+                item.action(sourceView)
+            }))
+        }
+        let contextController = makeContextController(presentationData: presentationData, source: .reference(HeaderContextReferenceContentSource(controller: self, sourceView: sourceView)), items: .single(ContextController.Items(content: .list(menuItems))), gesture: nil)
+        self.presentInGlobalOverlay(contextController)
+    }
+    
     private var initializedFilters = false
     private func reloadFilters(firstUpdate: (() -> Void)? = nil) {
         let filterItems = chatListFilterItems(context: self.context)
@@ -4094,20 +4124,29 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             
             let (_, items) = countAndFilterItems
             var filterItems: [ChatListFilterTabEntry] = []
+            var rgFeatureFolderTabIcons: [ChatListFilterTabEntryId: String] = [:] // MARK: Regram
             
             for (filter, unreadCount, hasUnmutedUnread) in items {
                 switch filter {
                     case .allChats:
+                        rgFeatureFolderTabIcons[.all] = "💬" // MARK: Regram
                         if let isPremium = isPremium, !isPremium && filterItems.count > 0 {
                             filterItems.insert(.all(unreadCount: 0), at: 0)
                         } else {
                             filterItems.append(.all(unreadCount: 0))
                         }
-                    case let .filter(id, title, _, _):
+                    case let .filter(id, title, emoticon, _):
                         filterItems.append(.filter(id: id, text: title, unread: ChatListFilterTabEntryUnreadCount(value: unreadCount, hasUnmuted: hasUnmutedUnread)))
+                        let trimmedEmoticon = emoticon?.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if let trimmedEmoticon, trimmedEmoticon.count == 1 {
+                            rgFeatureFolderTabIcons[.filter(id)] = trimmedEmoticon // MARK: Regram
+                        } else {
+                            rgFeatureFolderTabIcons[.filter(id)] = "📁" // MARK: Regram
+                        }
                 }
             }
             
+            strongSelf.rgFeatureFolderTabIcons = rgFeatureFolderTabIcons
             var resolvedItems = filterItems
             if case .chatList(.root) = strongSelf.location {
             } else {
@@ -4123,10 +4162,15 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     firstItemEntryId = .filter(id)
             }
             // MARK: Regram
-            if !strongSelf.initializedFilters && RGSimpleSettings.shared.rememberLastFolder {
-                if let lastFolder = RGSimpleSettings.shared.lastAccountFolders["\(strongSelf.context.account.peerId.id._internalGetInt64Value())"]{
-                    firstItemEntryId = lastFolder == -1 ? .all : .filter(lastFolder)
+            if !strongSelf.initializedFilters {
+                let accountId = strongSelf.context.account.peerId.toInt64()
+                let folderId: Int32?
+                switch RGSimpleSettings.shared.chatListStartupFolderModeValue {
+                case .telegramDefault: folderId = nil
+                case .last: folderId = RGSimpleSettings.shared.chatListStartupLastFolderId(accountPeerId: accountId)
+                case .specific: folderId = RGSimpleSettings.shared.chatListStartupSpecificFolderId(accountPeerId: accountId)
                 }
+                if let folderId { firstItemEntryId = folderId == -1 ? .all : .filter(folderId) }
             }
             
             var selectedEntryId = !strongSelf.initializedFilters ? firstItemEntryId : strongSelf.chatListDisplayNode.mainContainerNode.currentItemFilter
@@ -4136,9 +4180,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 if let tabContainerData = strongSelf.tabContainerData {
                     var found = false
                     if let index = tabContainerData.0.firstIndex(where: { $0.id == selectedEntryId }) {
-                        for i in (0 ..< index - 1).reversed() {
-                            if resolvedItems.contains(where: { $0.id == tabContainerData.0[i].id }) {
-                                selectedEntryId = tabContainerData.0[i].id
+                        // MARK: Regram — include the immediate predecessor and allow index zero.
+                        for previousItem in tabContainerData.0.prefix(index).reversed() {
+                            if resolvedItems.contains(where: { $0.id == previousItem.id }) {
+                                selectedEntryId = previousItem.id
                                 found = true
                                 break
                             }
@@ -4742,12 +4787,17 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     public private(set) var isSearchActive: Bool = false
     
     public func activateSearch(filter: ChatListSearchFilter, query: String? = nil) {
+        self.rgActivateSearch(isFromTabBar: false, filter: filter, query: query)
+    }
+
+    // MARK: Regram — only the bottom control borrows the native tab-bar input field.
+    private func rgActivateSearch(isFromTabBar: Bool, filter: ChatListSearchFilter, query: String? = nil) {
         var searchContentNode: NavigationBarSearchContentNode?
-        if let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
+        if !isFromTabBar, let navigationBarView = self.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View {
             searchContentNode = navigationBarView.searchContentNode
         }
         
-        self.activateSearch(filter: filter, query: query, skipScrolling: false, searchContentNode: searchContentNode)
+        self.activateSearch(filter: filter, query: query, skipScrolling: false, searchContentNode: searchContentNode, isFromTabBar: isFromTabBar)
     }
     
     public func activateSearch(query: String? = nil) {
@@ -4763,7 +4813,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     // MARK: Regram — update the chat header when bottom-bar layout changes.
     private var rgLayoutObserver: NSObjectProtocol?
     private var previousSearchToggleTimestamp: Double?
-    func activateSearch(filter: ChatListSearchFilter = .chats, query: String? = nil, skipScrolling: Bool = false, searchContentNode: NavigationBarSearchContentNode?) {
+    func activateSearch(filter: ChatListSearchFilter = .chats, query: String? = nil, skipScrolling: Bool = false, searchContentNode: NavigationBarSearchContentNode?, isFromTabBar: Bool = false) {
         Task { @MainActor [weak self] in
             guard let self else {
                 return
@@ -4790,7 +4840,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 do {
                     let displaySearchFilters = true
                     
-                    if let filterContainerNodeAndActivate = await self.chatListDisplayNode.activateSearch(placeholderNode: searchContentNode?.placeholderNode, displaySearchFilters: displaySearchFilters, hasDownloads: self.hasDownloads, initialFilter: filter, navigationController: self.navigationController as? NavigationController, searchBarIsExternal: false) {
+                    if let filterContainerNodeAndActivate = await self.chatListDisplayNode.activateSearch(placeholderNode: searchContentNode?.placeholderNode, displaySearchFilters: displaySearchFilters, hasDownloads: self.hasDownloads, initialFilter: filter, navigationController: self.navigationController as? NavigationController, searchBarIsExternal: isFromTabBar) {
                         let activate = filterContainerNodeAndActivate
                         
                         activate(filter != .downloads)
@@ -4802,7 +4852,16 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     
                     let transition: ContainedViewLayoutTransition = .animated(duration: 0.4, curve: .spring)
                     self.setDisplayNavigationBar(false, transition: transition)
-                    (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: transition)
+                    // MARK: Regram — preserve the original top-search hide path.
+                    if isFromTabBar {
+                        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: true), transition: transition)
+                        if let searchBarNode = self.currentTabBarSearchNode?() as? SearchBarNode {
+                            self.chatListDisplayNode.searchDisplayController?.setSearchBar(searchBarNode)
+                            searchBarNode.activate()
+                        }
+                    } else {
+                        (self.parent as? TabBarController)?.updateIsTabBarHidden(true, transition: transition)
+                    }
 
                     self.isSearchActive = true
                     if let navigationController = self.navigationController as? NavigationController {
@@ -4827,7 +4886,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             return
         }
         let currentTimestamp = CACurrentMediaTime()
-        if let previousSearchActivationTimestamp = self.previousSearchToggleTimestamp, currentTimestamp < previousSearchActivationTimestamp + 0.6 {
+        // MARK: Regram — required teardown bypasses debounce only when its input control was disabled.
+        let bottomBarSettings = RGSimpleSettings.shared.bottomBarSettings
+        let mustFinishBottomSearch = self.tabBarSearchState?.isActive == true && (!bottomBarSettings.isBottomBarVisible || !bottomBarSettings.isVisible(.search))
+        if !mustFinishBottomSearch, let previousSearchActivationTimestamp = self.previousSearchToggleTimestamp, currentTimestamp < previousSearchActivationTimestamp + 0.6 {
             return
         }
         self.previousSearchToggleTimestamp = currentTimestamp
@@ -4856,6 +4918,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         
         let transition: ContainedViewLayoutTransition = animated ? .animated(duration: 0.4, curve: .spring) : .immediate
         self.setDisplayNavigationBar(true, transition: transition)
+        // MARK: Regram — collapse the bottom search field before restoring the bar.
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: transition)
         
         completion?()
         
@@ -6387,9 +6451,17 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             let _ = strongSelf.context.engine.peers.markChatListFeaturedFiltersAsSeen().startStandalone()
             let (_, filterItems) = filterItemsAndTotalCount
             
+            // The list keeps an .allChats entry (the server's dialogFilterDefault) without any folders
+            let hasFolders = presetList.contains(where: { filter in
+                if case .filter = filter {
+                    return true
+                }
+                return false
+            })
+            
             var items: [ContextMenuItem] = []
-            items.append(.action(ContextMenuActionItem(text: presetList.isEmpty ? strongSelf.presentationData.strings.ChatList_AddFolder : strongSelf.presentationData.strings.ChatList_EditFolders, icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: presetList.isEmpty ? "Chat/Context Menu/Add" : "Chat/Context Menu/EditFolder"), color: theme.contextMenu.primaryColor)
+            items.append(.action(ContextMenuActionItem(text: hasFolders ? strongSelf.presentationData.strings.ChatList_EditFolders : strongSelf.presentationData.strings.ChatList_AddFolder, icon: { theme in
+                return generateTintedImage(image: UIImage(bundleImageName: hasFolders ? "Chat/Context Menu/EditFolder" : "Chat/Context Menu/Add"), color: theme.contextMenu.primaryColor)
             }, action: { c, f in
                 c?.dismiss(completion: {
                     guard let strongSelf = self else {
@@ -6414,8 +6486,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             }
 
             if strongSelf.chatListDisplayNode.effectiveContainerNode.currentItemNode.chatListFilter != nil {
+                items.append(.separator)
+                
                 items.append(.action(ContextMenuActionItem(text: strongSelf.presentationData.strings.ChatList_FolderAllChats, icon: { theme in
-                    return nil
+                    return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Chats"), color: theme.contextMenu.primaryColor)
                 }, action: { c, f in
                     f(.dismissWithoutContent)
                     guard let strongSelf = self else {
@@ -6425,10 +6499,11 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 })))
             }
             
-            if !presetList.isEmpty {
-                if presetList.count > 1 {
+            if hasFolders {
+                if strongSelf.chatListDisplayNode.effectiveContainerNode.currentItemNode.chatListFilter == nil {
                     items.append(.separator)
                 }
+                
                 var filterCount = 0
                 for case let .filter(id, title, _, data) in presetList {
                     let filterType = chatListFilterType(data)
@@ -6502,7 +6577,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
 
     override public func tabBarActivateSearch() {
-        self.activateSearch(filter: .chats, query: nil)
+        self.rgActivateSearch(isFromTabBar: true, filter: .chats, query: nil)
     }
 
     override public func tabBarDeactivateSearch() {
@@ -6753,6 +6828,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     var isStoryPostingAvailable: Bool {
+        guard !RGSimpleSettings.shared.disableStoryCameraSwipeEffective else { return false }
         guard !self.context.isFrozen else {
             return false
         }
@@ -6782,7 +6858,7 @@ private final class ChatListTabBarContextReferenceContentSource: ContextReferenc
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
         return ContextControllerReferenceViewInfo(
             referenceView: self.sourceView.contentView,
-            contentAreaInScreenSpace: UIScreen.main.bounds,
+            contentAreaInScreenSpace: mainWindowScreenBounds,
             actionsPosition: .top
         )
     }
@@ -6803,7 +6879,7 @@ private final class ChatListHeaderBarContextReferenceContentSource: ContextRefer
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
         return ContextControllerReferenceViewInfo(
             referenceView: self.sourceView.contentView,
-            contentAreaInScreenSpace: UIScreen.main.bounds,
+            contentAreaInScreenSpace: mainWindowScreenBounds,
             actionsPosition: .bottom
         )
     }
@@ -6827,14 +6903,14 @@ private final class ChatListHeaderBarContextExtractedContentSource: ContextExtra
     
     func takeView() -> ContextControllerTakeViewInfo? {
         if let sourceNode = self.sourceNode {
-            return ContextControllerTakeViewInfo(containingItem: .node(sourceNode), contentAreaInScreenSpace: UIScreen.main.bounds)
+            return ContextControllerTakeViewInfo(containingItem: .node(sourceNode), contentAreaInScreenSpace: mainWindowScreenBounds)
         } else {
-            return ContextControllerTakeViewInfo(containingItem: .view(self.sourceView!), contentAreaInScreenSpace: UIScreen.main.bounds)
+            return ContextControllerTakeViewInfo(containingItem: .view(self.sourceView!), contentAreaInScreenSpace: mainWindowScreenBounds)
         }
     }
     
     func putBack() -> ContextControllerPutBackViewInfo? {
-        return ContextControllerPutBackViewInfo(contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerPutBackViewInfo(contentAreaInScreenSpace: mainWindowScreenBounds)
     }
 }
 
@@ -6848,7 +6924,7 @@ private final class ChatListContextLocationContentSource: ContextLocationContent
     }
     
     func transitionInfo() -> ContextControllerLocationViewInfo? {
-        return ContextControllerLocationViewInfo(location: self.location, contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerLocationViewInfo(location: self.location, contentAreaInScreenSpace: mainWindowScreenBounds)
     }
 }
 
@@ -6862,8 +6938,19 @@ private final class HeaderContextReferenceContentSource: ContextReferenceContent
     }
 
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: UIScreen.main.bounds)
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds)
     }
+}
+
+/// iPhone Duo: titles, menu icons and overflow priorities of the chat list's header buttons in the
+/// side column (spec 2026-10-06): compose stays longest, then proxy (it shows status), then story.
+private func chatListHeaderOverflowInfo(strings: PresentationStrings) -> [AnyHashable: NavigationBarComponent.OverflowInfo] {
+    return [
+        "compose": NavigationBarComponent.OverflowInfo(title: strings.Compose_NewMessage, iconName: "Chat List/ComposeIcon", priority: 3),
+        "proxy": NavigationBarComponent.OverflowInfo(title: strings.SocksProxySetup_Title, iconName: "Chat List/ProxyShieldIcon", priority: 2),
+        "story": NavigationBarComponent.OverflowInfo(title: strings.StoryFeed_AddStory, iconName: "Chat List/AddStoryIcon", priority: 1),
+        "more": NavigationBarComponent.OverflowInfo(title: strings.Common_More, iconName: nil, priority: nil)
+    ]
 }
 
 private final class ChatListLocationContext {
@@ -6880,29 +6967,32 @@ private final class ChatListLocationContext {
     private(set) var chatTitleComponent: ChatTitleComponent?
     private(set) var chatListTitle: NetworkStatusTitle?
     
-    var leftButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-    var rightButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+    var leftButton: NavigationBarComponent.Button?
+    var rightButton: NavigationBarComponent.Button?
     private var rgSettingsEditing = false // MARK: Regram
     private var rgSettingsReordering = false
     // MARK: Regram — evaluate visibility during layout, not only on a network/list event.
-    var settingsButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>? {
+    var settingsButton: NavigationBarComponent.Button? {
         let isRoot: Bool
         if case .chatList(.root) = self.location { isRoot = true } else { isRoot = false }
         guard RGHiddenTabBarPolicy.showSettings(isTabBarVisible: RGSimpleSettings.shared.bottomBarSettings.isBottomBarVisible, isRootChatList: isRoot, editing: rgSettingsEditing, reordering: rgSettingsReordering) else { return nil }
-        return AnyComponentWithIdentity(id: "settings", component: AnyComponent(NavigationButtonComponent(
-            content: .settings(title: self.context.sharedContext.currentPresentationData.with { $0 }.strings.Settings_Title),
-            pressed: { [weak self] _ in self?.parentController?.settingsPressed() },
+        let title = self.context.sharedContext.currentPresentationData.with { $0 }.strings.Settings_Title
+        let image = UIImage(systemName: "gearshape", withConfiguration: UIImage.SymbolConfiguration(pointSize: 22.0, weight: .regular)) ?? UIImage()
+        return NavigationBarComponent.Button(id: "rgSettings",
+            content: .image(image.withRenderingMode(.alwaysTemplate)),
+            overflow: NavigationBarComponent.OverflowInfo(title: title, iconName: nil, priority: nil, image: image),
+            action: { [weak self] _ in self?.parentController?.settingsPressed() },
             contextAction: { [weak self] sourceView, gesture in
                 guard let self, let root = self.context.sharedContext.mainWindow?.viewController as? TelegramRootControllerInterface else { return }
                 root.accountSettingsController?.tabBarItemContextActionRawUIView(sourceView: sourceView, gesture: gesture)
             }
-        )))
+        )
     }
-    var proxyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
-    var storyButton: AnyComponentWithIdentity<NavigationButtonComponentEnvironment>?
+    var proxyButton: NavigationBarComponent.Button?
+    var storyButton: NavigationBarComponent.Button?
     
-    var rightButtons: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>] {
-        var result: [AnyComponentWithIdentity<NavigationButtonComponentEnvironment>] = []
+    var rightButtons: [NavigationBarComponent.Button] {
+        var result: [NavigationBarComponent.Button] = []
         if let settingsButton = self.settingsButton {
             result.append(settingsButton)
         }
@@ -6924,6 +7014,14 @@ private final class ChatListLocationContext {
     
     private var didSetReady: Bool = false
     let ready = Promise<Bool>()
+    
+    /// Whether the screen is in a window (a screen being pushed is not, until the push starts).
+    private var parentIsShown: Bool {
+        guard let parentController = self.parentController, parentController.isViewLoaded else {
+            return false
+        }
+        return parentController.view.window != nil
+    }
     
     private var stateDisposable: Disposable?
     
@@ -7320,12 +7418,12 @@ private final class ChatListLocationContext {
                 self.storyButton = nil
                 self.proxyButton = nil
             }
-            self.leftButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+            self.leftButton = NavigationBarComponent.Button(id: "done",
                 content: .text(title: presentationData.strings.Common_Done, isBold: true),
-                pressed: { [weak self] _ in
+                action: { [weak self] _ in
                     let _ = self?.parentController?.reorderingDonePressed()
                 }
-            )))
+            )
             
             let (_, connectsViaProxy) = proxy
             
@@ -7350,50 +7448,51 @@ private final class ChatListLocationContext {
                 isRoot = true
                 
                 if isReorderingTabs {
-                    self.rightButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+                    self.rightButton = NavigationBarComponent.Button(id: "done",
                         content: .text(title: presentationData.strings.Common_Done, isBold: true),
-                        pressed: { [weak self] _ in
+                        action: { [weak self] _ in
                             self?.parentController?.editPressed()
                         }
-                    )))
+                    )
                 } else {
-                    self.rightButton = AnyComponentWithIdentity(id: "compose", component: AnyComponent(NavigationButtonComponent(
+                    self.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        pressed: { [weak self] _ in
+                        tint: .accent,
+                        action: { [weak self] _ in
                             self?.parentController?.composePressed()
                         }
-                    )))
+                    )
                 }
                 
                 if isReorderingTabs {
-                    self.leftButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+                    self.leftButton = NavigationBarComponent.Button(id: "done",
                         content: .text(title: presentationData.strings.Common_Done, isBold: true),
-                        pressed: { [weak self] _ in
+                        action: { [weak self] _ in
                             let _ = self?.parentController?.reorderingDonePressed()
                         }
-                    )))
+                    )
                 } else {
                     if stateAndFilterId.state.editing {
-                        self.leftButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+                        self.leftButton = NavigationBarComponent.Button(id: "done",
                             content: .text(title: presentationData.strings.Common_Done, isBold: true),
-                            pressed: { [weak self] _ in
+                            action: { [weak self] _ in
                                 self?.parentController?.donePressed()
                             }
-                        )))
+                        )
                     } else {
-                        self.leftButton = AnyComponentWithIdentity(id: "edit", component: AnyComponent(NavigationButtonComponent(
+                        self.leftButton = NavigationBarComponent.Button(id: "edit",
                             content: .text(title: presentationData.strings.Common_Edit, isBold: false),
-                            pressed: { [weak self] _ in
+                            action: { [weak self] _ in
                                 self?.parentController?.editPressed()
                             }
-                        )))
+                        )
                     }
                 }
                 
                 if storyPostingAvailable && !hideStories {
-                    self.storyButton = AnyComponentWithIdentity(id: "story", component: AnyComponent(NavigationButtonComponent(
+                    self.storyButton = NavigationBarComponent.Button(id: "story",
                         content: .icon(imageName: "Chat List/AddStoryIcon"),
-                        pressed: { [weak self] _ in
+                        action: { [weak self] sourceView in
                             guard let self, let parentController = self.parentController else {
                                 return
                             }
@@ -7401,10 +7500,10 @@ private final class ChatListLocationContext {
                             if let componentView = parentController.chatListHeaderView(), let storyPeerListView = componentView.storyPeerListView(), storyPeerListView.isLiveStreaming {
                                 parentController.displayContinueLiveStream()
                             } else {
-                                parentController.openStoryCamera(fromList: false)
+                                parentController.openStoryCamera(fromList: false, sourceView: sourceView)
                             }
                         }
-                    )))
+                    )
                 } else {
                     self.storyButton = nil
                 }
@@ -7412,9 +7511,9 @@ private final class ChatListLocationContext {
 
             } else {
                 let parentController = self.parentController
-                self.rightButton = AnyComponentWithIdentity(id: "more", component: AnyComponent(NavigationButtonComponent(
+                self.rightButton = NavigationBarComponent.Button(id: "more",
                     content: .more,
-                    pressed: { [weak parentController] sourceView in
+                    action: { [weak parentController] sourceView in
                         if let primaryContext = parentController?.primaryContext {
                             primaryContext.performMoreAction(sourceView: sourceView)
                         }
@@ -7425,7 +7524,7 @@ private final class ChatListLocationContext {
                         }
                         parentController.openArchiveMoreMenu(sourceView: sourceView, gesture: gesture)
                     }
-                )))
+                )
             }
             
             let (hasProxy, connectsViaProxy) = proxy
@@ -7454,15 +7553,15 @@ private final class ChatListLocationContext {
                     proxyStatus = .available
                 }
                 
-                self.proxyButton = AnyComponentWithIdentity(id: "proxy", component: AnyComponent(NavigationButtonComponent(
-                    content: .proxy(status: proxyStatus),
-                    pressed: { [weak self] _ in
+                self.proxyButton = NavigationBarComponent.Button(id: "proxy",
+                    content: .custom(AnyComponent(ChatListProxyButtonComponent(theme: presentationData.theme, status: proxyStatus))),
+                    action: { [weak self] _ in
                         guard let self, let parentController = self.parentController else {
                             return
                         }
                         (parentController.navigationController as? NavigationController)?.pushViewController(self.context.sharedContext.makeProxySettingsController(context: self.context))
                     }
-                )))
+                )
                 
                 titleContent.hasProxy = false
                 titleContent.connectsViaProxy = false
@@ -7498,12 +7597,15 @@ private final class ChatListLocationContext {
             }
         }
         
-        if !self.didSetReady {
+        // The header takes this content before ready lets a push start: a push lifts the header as it is then and holds
+        // it until the push ends. Content for a screen not shown yet is laid out at once.
+        let isFirstUpdate = !self.didSetReady
+        self.parentController?.requestLayout(transition: self.parentIsShown ? .animated(duration: 0.45, curve: .spring) : .immediate)
+        
+        if isFirstUpdate {
             self.didSetReady = true
             self.ready.set(.single(true))
         }
-        
-        self.parentController?.requestLayout(transition: .animated(duration: 0.45, curve: .spring))
         
         Queue.mainQueue().after(1.0, { [weak self] in
             guard let self else {
@@ -7573,17 +7675,17 @@ private final class ChatListLocationContext {
         }
         
         if stateAndFilterId.state.editing {
-            self.rightButton = AnyComponentWithIdentity(id: "done", component: AnyComponent(NavigationButtonComponent(
+            self.rightButton = NavigationBarComponent.Button(id: "done",
                 content: .text(title: presentationData.strings.Common_Done, isBold: true),
-                pressed: { [weak self] _ in
+                action: { [weak self] _ in
                     self?.parentController?.donePressed()
                 }
-            )))
+            )
         } else {
             let parentController = self.parentController
-            self.rightButton = AnyComponentWithIdentity(id: "more", component: AnyComponent(NavigationButtonComponent(
+            self.rightButton = NavigationBarComponent.Button(id: "more",
                 content: .more,
-                pressed: { [weak parentController] sourceView in
+                action: { [weak parentController] sourceView in
                     if let secondaryContext = parentController?.secondaryContext {
                         secondaryContext.performMoreAction(sourceView: sourceView)
                     } else if let primaryContext = parentController?.primaryContext {
@@ -7596,21 +7698,26 @@ private final class ChatListLocationContext {
                     }
                     ChatListControllerImpl.openMoreMenu(context: self.context, peerId: peerId, sourceController: parentController, isViewingAsTopics: true, sourceView: sourceView, gesture: gesture)
                 }
-            )))
+            )
         }
         
-        if !self.didSetReady {
-            self.didSetReady = true
-            self.ready.set(.single(true))
-        }
-        
+        let isFirstUpdate = !self.didSetReady
         if let channel = peerView.peers[peerView.peerId] as? TelegramChannel, !channel.isForumOrMonoForum {
+            if isFirstUpdate {
+                self.didSetReady = true
+                self.ready.set(.single(true))
+            }
             if let parentController = self.parentController, let navigationController = parentController.navigationController as? NavigationController {
                 let chatController = self.context.sharedContext.makeChatController(context: self.context, chatLocation: .peer(id: peerId), subject: nil, botStart: nil, mode: .standard(.default), params: nil)
                 navigationController.replaceController(parentController, with: chatController, animated: true)
             }
         } else {
-            self.parentController?.requestLayout(transition: .animated(duration: 0.45, curve: .spring))
+            // As in `updateChatList`: the header takes the forum's title and buttons before ready lets a push lift it.
+            self.parentController?.requestLayout(transition: self.parentIsShown ? .animated(duration: 0.45, curve: .spring) : .immediate)
+            if isFirstUpdate {
+                self.didSetReady = true
+                self.ready.set(.single(true))
+            }
         }
     }
     
@@ -7645,7 +7752,7 @@ private final class AdsInfoContextReferenceContentSource: ContextReferenceConten
     }
     
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: UIScreen.main.bounds.inset(by: self.insets), insets: self.contentInsets)
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds.inset(by: self.insets), insets: self.contentInsets)
     }
 }
 

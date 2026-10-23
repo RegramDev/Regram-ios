@@ -37,7 +37,7 @@ private final class LegacyActionSheetContextReferenceContentSource: ContextRefer
     }
 
     func transitionInfo() -> ContextControllerReferenceViewInfo? {
-        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: UIScreen.main.bounds, actionsPosition: .top)
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds, actionsPosition: .top)
     }
 }
 
@@ -444,6 +444,14 @@ public final class LegacyControllerContext: NSObject, LegacyComponentsContext {
         return UIEdgeInsets()
     }
     
+    public func statusIslandTrailingInset() -> CGFloat {
+        // A modal card sits below the island, like its zeroed top inset in `safeAreaInset()` assumes.
+        if let controller = self.controller as? LegacyController, let validLayout = controller.validLayout, controller.navigationPresentation != .modal {
+            return validLayout.navigationBarTrailingButtonsInset
+        }
+        return 0.0
+    }
+    
     public func prefersLightStatusBar() -> Bool {
         if let controller = self.controller {
             switch controller.statusBar.statusBarStyle {
@@ -590,6 +598,7 @@ open class LegacyController: ViewController, PresentableController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: Regram — hosted SwiftUI screens extend binding to track their layout and appearance.
     open func bind(controller: UIViewController) {
         self.legacyController = controller
         if let controller = controller as? TGViewController {

@@ -1,5 +1,6 @@
 import RGSimpleSettings
 import Foundation
+import RGStrings // MARK: Regram — match the all-chats picker and top folder tabs.
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -30,6 +31,33 @@ import LiveLocationHeaderPanelComponent
 import ChatListHeaderNoticeComponent
 import ChatListFilterTabContainerNode
 import GlassControls
+import SideColumnLayout
+
+// MARK: Regram — 首页文件夹标签支持仅文字、仅图标和图标加文字。
+private func rgFeatureFolderTabTitle(
+    text: String,
+    entities: [MessageTextEntity],
+    enableAnimations: Bool,
+    icon: String,
+    displayMode: RGFeatureChatListFolderTabDisplayMode
+) -> HorizontalTabsComponent.Tab.Title {
+    switch displayMode {
+    case .text:
+        return HorizontalTabsComponent.Tab.Title(text: text, entities: entities, enableAnimations: enableAnimations)
+    case .icon:
+        return HorizontalTabsComponent.Tab.Title(text: icon, entities: [], enableAnimations: false)
+    case .iconAndText:
+        let prefix = "\(icon) "
+        let offset = prefix.utf16.count
+        let shiftedEntities = entities.map { entity in
+            return MessageTextEntity(
+                range: (entity.range.lowerBound + offset) ..< (entity.range.upperBound + offset),
+                type: entity.type
+            )
+        }
+        return HorizontalTabsComponent.Tab.Title(text: prefix + text, entities: shiftedEntities, enableAnimations: enableAnimations)
+    }
+}
 
 public enum ChatListContainerNodeFilter: Equatable {
     case all
@@ -55,6 +83,15 @@ public enum ChatListContainerNodeFilter: Equatable {
 }
 
 public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDelegate {
+    func currentSearchScrollHeight() -> CGFloat {
+        let visible: Bool
+        if case .chatList(.root) = self.location { visible = RGSimpleSettings.shared.bottomBarSettings.topSearchVisible }
+        else { visible = true }
+        return visible ? ChatListNavigationBar.searchScrollHeight : 0.0
+    }
+    func currentNavigationScrollHeight() -> CGFloat { self.currentSearchScrollHeight() }
+
+
     private let context: AccountContext
     private weak var controller: ChatListControllerImpl?
     let location: ChatListControllerLocation
@@ -148,6 +185,16 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     private var didSetupContentOffset = false
     private var isSettingUpContentOffset = false
     
+    private func syncItemNodeNavigationOffset(_ itemNode: ChatListContainerItemNode) { // MARK: Regram
+        let scrollOffset: CGFloat
+        if let currentItemNodeValue = self.currentItemNodeValue, currentItemNodeValue.listNode.isNavigationHidden {
+            scrollOffset = self.currentSearchScrollHeight()
+        } else {
+            scrollOffset = 0.0
+        }
+        let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
+    }
+
     private func applyItemNodeAsCurrent(id: ChatListFilterTabEntryId, itemNode: ChatListContainerItemNode) {
         if let previousItemNode = self.currentItemNodeValue {
             previousItemNode.listNode.activateSearch = nil
@@ -545,6 +592,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
         self.applyItemNodeAsCurrent(id: .all, itemNode: itemNode)
         
         let panRecognizer = InteractiveTransitionGestureRecognizer(target: self, action: #selector(self.panGesture(_:)), allowedDirections: { [weak self] _ in // MARK: Regram
+            guard RGSimpleSettings.shared.chatListSwipeActionMode.allowsFolderSwitch else { return [] }
             guard let self, self.availableFilters.count > 1 || (self.controller?.isStoryPostingAvailable == true && !(self.context.sharedContext.callManager?.hasActiveCall ?? false) && !RGSimpleSettings.shared.disableSwipeToRecordStory) else {
                 return []
             }
@@ -639,11 +687,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     if id != selectedId {
                         itemNode.emptyNode?.restartAnimation()
                         
-                        if let controller = self.controller, let chatListDisplayNode = controller.displayNode as? ChatListControllerNode, let navigationBarComponentView = chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
-                            let scrollOffset = clippedScrollOffset
-                            
-                            let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
-                        }
+                        self.syncItemNodeNavigationOffset(itemNode)
                     }
                 }
                 
@@ -916,11 +960,7 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     return
                 }
                 
-                if let controller = self.controller, let chatListDisplayNode = controller.displayNode as? ChatListControllerNode, let navigationBarComponentView = chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
-                    let scrollOffset = clippedScrollOffset
-                    
-                    let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
-                }
+                self.syncItemNodeNavigationOffset(itemNode)
                 
                 self.selectedId = id
                 self.applyItemNodeAsCurrent(id: id, itemNode: itemNode)
@@ -960,12 +1000,9 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                     strongSelf.pendingItemNode?.2.dispose()
                     strongSelf.pendingItemNode = nil
                     itemNode.listNode.tempTopInset = strongSelf.tempTopInset
+                    itemNode.listNode.navigationScrollHeightTopInset = strongSelf.currentNavigationScrollHeight()
                     
-                    if let controller = strongSelf.controller, let chatListDisplayNode = controller.displayNode as? ChatListControllerNode, let navigationBarComponentView = chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let clippedScrollOffset = navigationBarComponentView.clippedScrollOffset {
-                        let scrollOffset = clippedScrollOffset
-                        
-                        let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
-                    }
+                    strongSelf.syncItemNodeNavigationOffset(itemNode)
                     
                     guard let (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset) = strongSelf.validLayout else {
                         strongSelf.itemNodes[id] = itemNode
@@ -1058,6 +1095,13 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     
     public func update(layout: ContainerViewLayout, navigationBarHeight: CGFloat, visualNavigationHeight: CGFloat, originalNavigationHeight: CGFloat, cleanNavigationBarHeight: CGFloat, insets: UIEdgeInsets, isReorderingFilters: Bool, isEditing: Bool, inlineNavigationLocation: ChatListControllerLocation?, inlineNavigationTransitionFraction: CGFloat, storiesInset: CGFloat, transition: ContainedViewLayoutTransition) {
         self.validLayout = (layout, navigationBarHeight, visualNavigationHeight, originalNavigationHeight, cleanNavigationBarHeight, insets, isReorderingFilters, isEditing, inlineNavigationLocation, inlineNavigationTransitionFraction, storiesInset)
+        // MARK: Regram — new and reused folder nodes agree about the navigation area above rows.
+        defer {
+            let navigationInset = self.currentNavigationScrollHeight()
+            for (_, node) in self.itemNodes { node.listNode.navigationScrollHeightTopInset = navigationInset }
+            self.pendingItemNode?.1.listNode.navigationScrollHeightTopInset = navigationInset
+        }
+
         
         // MARK: Regram — apply top-search visibility to existing and pending lists.
         let rgSearchHeight: CGFloat = self.location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? 0.0 : ChatListNavigationBar.searchScrollHeight
@@ -1345,7 +1389,10 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 return false
             }
             
-            if let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
+            // MARK: Regram — revealing archive rows does not require unlocking the story strip.
+            if self.mainContainerNode.currentItemNode.hasItemsToBeRevealed() {
+                return true
+            } else if let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
                 if let navigationBarComponentView = self.navigationBarView.view as? ChatListNavigationBar.View {
                     if navigationBarComponentView.storiesUnlocked {
                         return true
@@ -1568,6 +1615,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
         var tabs: AnyComponent<Empty>? // MARK: Regram
         if self.controller?.tabContainerData != nil || !panels.isEmpty {
             if let tabContainerData = self.controller?.tabContainerData, tabContainerData.0.count > 1 {
+                let rgFeatureFolderTabDisplayMode = RGSimpleSettings.shared.chatListFolderTabDisplayModeValue // MARK: Regram
+                let rgFeatureFolderTabIcons = self.controller?.rgFeatureFolderTabIcons ?? [:] // MARK: Regram
                 let folderFilterIndex: (ChatListFilterTabEntryId, [ChatListFilterTabEntry]) -> Int? = { id, entries in
                     var index = 0
                     for entry in entries {
@@ -1608,12 +1657,12 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         switch entry {
                         case .all:
                             id = Int32.min
-                            title = HorizontalTabsComponent.Tab.Title(text: rgUseShortAllChatsTitle(true) ? self.presentationData.strings.ChatList_Tabs_All : self.presentationData.strings.ChatList_Tabs_AllChats, entities: [], enableAnimations: false)
+                            title = rgFeatureFolderTabTitle(text: rgAllChatsTitle(shortTitle: self.presentationData.strings.ChatList_Tabs_All, longTitle: self.presentationData.strings.ChatList_Tabs_AllChats, useShortTitle: rgUseShortAllChatsTitle(true), languageCode: RGLocalizationManager.shared.preferredLocale(primary: self.presentationData.strings.primaryComponent.languageCode, secondary: self.presentationData.strings.secondaryComponent?.languageCode)), entities: [], enableAnimations: false, icon: rgFeatureFolderTabIcons[entry.id] ?? "💬", displayMode: rgFeatureFolderTabDisplayMode)
                             isMainTab = true
                         case let .filter(idValue, text, unread):
                             id = AnyHashable(idValue)
-                            title = HorizontalTabsComponent.Tab.Title(text: text.text, entities: text.entities, enableAnimations: text.enableAnimations)
-                            if unread.value != 0 {
+                            title = rgFeatureFolderTabTitle(text: text.text, entities: text.entities, enableAnimations: text.enableAnimations, icon: rgFeatureFolderTabIcons[entry.id] ?? "📁", displayMode: rgFeatureFolderTabDisplayMode)
+                            if unread.value != 0 && !RGSimpleSettings.shared.hideFolderUnreadCount { // MARK: Regram
                                 badge = HorizontalTabsComponent.Tab.Badge(
                                     title: "\(unread.value)",
                                     isAccent: unread.hasUnmuted
@@ -1700,6 +1749,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                     },
                     selectedTab: selectedTab,
                     isEditing: isEditing,
+                    layout: RGSimpleSettings.shared.chatListFolderTabsCompact ? .fit : .fill, // MARK: Regram
                     liftWhileSwitching: layout.deviceMetrics.type != .tablet
                 ))
             }
@@ -1722,15 +1772,25 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             }
         }
         
+        // iPhone Duo: the header's back and icon buttons go into the side strip, above the vertical tab
+        // bar when this list is a tab (spec 2026-10-06). A preview's layout is not the screen's.
+        var sideColumn: SideColumnRegion?
+        if let controller = self.controller, !controller.previewing {
+            let reservedBelow = (controller.parent as? TabBarController)?.verticalTabBarFrame(for: layout)
+            sideColumn = sideColumnRegion(layout: layout, minY: (layout.statusBarHeight ?? 0.0) + 8.0, reservedBelow: reservedBelow)
+        }
+        
         let navigationBarSize = self.navigationBarView.update(
             transition: transition,
             component: AnyComponent(ChatListNavigationBar(
                 context: self.context,
                 theme: self.presentationData.theme,
                 strings: self.presentationData.strings,
-                statusBarHeight: layout.statusBarHeight ?? 0.0,
+                // Beside iPhone Duo's status island the header stays near the top, its right buttons clear of it.
+                statusBarHeight: layout.navigationBarStatusBarHeight ?? 0.0,
                 leftInset: layout.safeInsets.left,
                 rightInset: layout.safeInsets.right,
+                trailingButtonsInset: layout.navigationBarTrailingButtonsInset,
                 // MARK: Regram — home search visibility is part of the bottom-bar layout.
                 search: self.location == .chatList(groupId: .root) && !RGSimpleSettings.shared.bottomBarSettings.topSearchVisible ? nil : ChatListNavigationBar.Search(isEnabled: true),
                 activeSearch: self.isSearchDisplayControllerActive,
@@ -1775,6 +1835,13 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         return
                     }
                     controller.allowAutomaticOrder()
+                },
+                sideColumn: sideColumn,
+                openSideColumnOverflow: { [weak self] sourceView, items in
+                    guard let self, let controller = self.controller else {
+                        return
+                    }
+                    controller.openSideColumnOverflowMenu(sourceView: sourceView, items: items)
                 }
             )),
             environment: {},
@@ -1932,8 +1999,14 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
             }
             
             let sideInset: CGFloat = 20.0
+            // The bottom toolbar spans iPhone Duo's side strip; it keeps clear only of a corner block at the bottom, as the
+            // root list's toolbar does (`tabBarSideToolbarFrame`). Equal insets keep the 20pt margins.
+            let toolbarInsetsDiffer = layout.safeInsets.left != layout.safeInsets.right
+            let toolbarBottomInsets = layout.bottomEdgeSideInsets()
+            let toolbarLeftInset = toolbarInsetsDiffer ? max(sideInset, toolbarBottomInsets.left) : sideInset
+            let toolbarRightInset = toolbarInsetsDiffer ? max(sideInset, toolbarBottomInsets.right) : sideInset
             let toolbarHeight = 44.0
-            let toolbarFrame = CGRect(origin: CGPoint(x: sideInset, y: layout.size.height - panelsBottomInset - toolbarHeight), size: CGSize(width: layout.size.width - sideInset * 2.0, height: toolbarHeight))
+            let toolbarFrame = CGRect(origin: CGPoint(x: toolbarLeftInset, y: layout.size.height - panelsBottomInset - toolbarHeight), size: CGSize(width: layout.size.width - toolbarLeftInset - toolbarRightInset, height: toolbarHeight))
             
             let toolbar: ComponentView<Empty>
             var toolbarTransition = ComponentTransition(transition)
@@ -2276,8 +2349,10 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 overscrollHiddenChatItemsAllowed = storyPeerListView.overscrollHiddenChatItemsAllowed
             }
             
+            var hasItemsToBeRevealed = false
             if let chatListNode = listView as? ChatListNode {
-                if chatListNode.hasItemsToBeRevealed() {
+                hasItemsToBeRevealed = chatListNode.hasItemsToBeRevealed()
+                if hasItemsToBeRevealed {
                     overscrollSelectedId = nil
                 }
             }
@@ -2306,7 +2381,9 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                         var manuallyAllow = false
                         
                         if isPrimary {
-                            if let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
+                            if hasItemsToBeRevealed {
+                                manuallyAllow = true
+                            } else if let storySubscriptions = controller.orderedStorySubscriptions, shouldDisplayStoriesInChatListHeader(storySubscriptions: storySubscriptions, isHidden: controller.location == .chatList(groupId: .archive)) {
                             } else {
                                 manuallyAllow = true
                             }
@@ -2330,6 +2407,7 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                             if let currentOverscrollItemExpansionTimestamp = self.currentOverscrollItemExpansionTimestamp, currentOverscrollItemExpansionTimestamp <= timestamp - 0.0 {
                                 self.allowOverscrollItemExpansion = false
                                 
+                                // MARK: Regram — pulling only reveals hidden items; opening remains explicit.
                                 if isPrimary {
                                     self.mainContainerNode.currentItemNode.revealScrollHiddenItem()
                                 } else {

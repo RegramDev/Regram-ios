@@ -26,8 +26,8 @@ private struct RGChatPreferencesView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        List {
-            Section(footer: Text("ChatPreferences.Notice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("ChatPreferences.Notice".i18n(lang))) {
                 Button(peer?.debugDisplayTitle ?? "ChatPreferences.SelectChat".i18n(lang)) {
                     selectChat { peer in
                         self.peer = peer
@@ -37,7 +37,7 @@ private struct RGChatPreferencesView: View {
                 }.rgSettingsLink("selectChat")
             }
             if peer != nil {
-                Section {
+                RGSettingsSection {
                     Picker("OutgoingFormatting.Title".i18n(lang), selection: Binding(get: { preferences.formatting ?? "inherit" }, set: { preferences.formatting = $0 == "inherit" ? nil : $0 })) {
                         Text("ChatPreferences.Inherit".i18n(lang)).tag("inherit")
                         ForEach(RGSimpleSettings.DefaultOutgoingFormat.allCases, id: \.rawValue) { format in
@@ -51,7 +51,7 @@ private struct RGChatPreferencesView: View {
                     }.pickerStyle(.menu).rgSettingsLink("panguSpacing")
                     Button("ChatPreferences.Reset".i18n(lang)) { preferences = RGChatPreferences() }.rgSettingsLink("reset")
                 }
-                Section(footer: Text("ChatPreferences.Reveal.Notice".i18n(lang))) {
+                RGSettingsSection(footer: Text("ChatPreferences.Reveal.Notice".i18n(lang))) {
                     Button((revealed ? "ChatPreferences.Reveal.End" : "ChatPreferences.Reveal").i18n(lang)) {
                         guard let peer else { return }
                         if revealed { RGSimpleSettings.shared.endTemporaryReveal(accountId: context.account.peerId.toInt64(), peerId: peer.id.toInt64()) }

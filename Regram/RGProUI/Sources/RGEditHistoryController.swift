@@ -80,6 +80,7 @@ private struct RGHistoryPhotoView: View {
     @StateObject private var model: RGHistoryPhotoModel
     @State private var revealed = false
     @Environment(\.lang) private var lang
+    @Environment(\.rgSettingsColors) private var colors
     let version: RGEditHistoryVersion
     let showImage: (UIImage) -> Void
     init(context: AccountContext, messageId: MessageId, version: RGEditHistoryVersion, showImage: @escaping (UIImage) -> Void) {
@@ -100,10 +101,10 @@ private struct RGHistoryPhotoView: View {
                 .accessibilityLabel((hidden ? "EditHistory.RevealPhoto" : "EditHistory.ViewPhoto").i18n(lang))
                 if model.loading { ProgressView("EditHistory.LoadingPhoto".i18n(lang)) }
                 else if model.needsOriginal { Button("EditHistory.LoadOriginal".i18n(lang)) { model.load(original: true) } }
-                if model.failed { Text("EditHistory.PhotoUnavailable".i18n(lang)).font(.footnote).foregroundColor(.secondary) }
+                if model.failed { Text("EditHistory.PhotoUnavailable".i18n(lang)).font(.footnote).foregroundColor(colors.secondary) }
             } else if model.loading { ProgressView("EditHistory.LoadingPhoto".i18n(lang)) }
             else {
-                if model.failed { Text("EditHistory.PhotoUnavailable".i18n(lang)).font(.footnote).foregroundColor(.secondary) }
+                if model.failed { Text("EditHistory.PhotoUnavailable".i18n(lang)).font(.footnote).foregroundColor(colors.secondary) }
                 Button("EditHistory.LoadPhoto".i18n(lang)) { model.load() }
             }
         }
@@ -130,26 +131,28 @@ private struct RGHistoryImageDetailView: View {
 
 private struct RGEditHistoryView: View {
     @Environment(\.lang) private var lang
+    @Environment(\.rgSettingsColors) private var colors
     let context: AccountContext
     let messageId: MessageId
     let versions: [RGEditHistoryVersion]
     let copy: (String) -> Void
     let showImage: (UIImage) -> Void
     var body: some View {
-        List {
-            Section(footer: Text("EditHistory.Notice".i18n(lang))) {
+        RGSettingsList {
+            RGSettingsSection(footer: Text("EditHistory.Notice".i18n(lang))) {
                 ForEach(versions) { version in
                     VStack(alignment: .leading, spacing: 6) {
                         if version.image != nil { RGHistoryPhotoView(context: context, messageId: messageId, version: version, showImage: showImage) }
                         if !version.text.isEmpty || version.image == nil {
                             Text(version.text.isEmpty ? "EditHistory.EmptyText".i18n(lang) : version.text)
-                                .foregroundColor(version.text.isEmpty ? .secondary : .primary).textSelection(.enabled)
+                                .foregroundColor(version.text.isEmpty ? colors.secondary : colors.primary).textSelection(.enabled)
                         }
-                        HStack(spacing: 6) {
-                            if version.isCurrent { Text("EditHistory.Current".i18n(lang)).font(.caption.weight(.semibold)).foregroundColor(.accentColor) }
-                            else if version.isOriginal { Text("EditHistory.Original".i18n(lang)).font(.caption.weight(.semibold)).foregroundColor(.secondary) }
-                            Text(Date(timeIntervalSince1970: Double(version.date)), style: .date).font(.caption).foregroundColor(.secondary)
-                            Text(Date(timeIntervalSince1970: Double(version.date)), style: .time).font(.caption).foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 3) {
+                            if version.isCurrent { Text("EditHistory.Current".i18n(lang)).font(.caption.weight(.semibold)).foregroundColor(colors.accent) }
+                            else if version.isOriginal { Text("EditHistory.Original".i18n(lang)).font(.caption.weight(.semibold)).foregroundColor(colors.secondary) }
+                            Text("\(Text(Date(timeIntervalSince1970: Double(version.date)), style: .date)) · \(Text(Date(timeIntervalSince1970: Double(version.date)), style: .time))")
+                                .font(.caption).foregroundColor(colors.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }.padding(.vertical, 5)
                     .contextMenu { if !version.text.isEmpty { Button("EditHistory.Copy".i18n(lang)) { copy(version.text) } } }

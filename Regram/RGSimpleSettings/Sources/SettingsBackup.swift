@@ -59,20 +59,49 @@ public struct RGSettingsBackup: Codable {
     public static let filename = "regram-settings.json"
     public static let maximumBytes = 2 * 1024 * 1024
 
+    /// Shared exports may acquire a copy suffix; unrelated JSON must not get a settings action.
+    public static func isExportFileName(_ filename: String) -> Bool {
+        let name = filename.lowercased()
+        return name.hasPrefix("regram-settings") && name.hasSuffix(".json")
+    }
+
+    public static func read(from url: URL) throws -> RGSettingsBackup {
+        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard size <= maximumBytes else { throw ValidationError.tooLarge }
+        return try decode(Data(contentsOf: url, options: .mappedIfSafe))
+    }
+
     public init(values: [String: RGBackupValue], createdAt: Date = Date()) {
         self.version = 1; self.createdAt = createdAt
-        self.values = values.filter { Self.category(for: $0.key) != nil }
+        var normalizedValues = values.filter { Self.category(for: $0.key) != nil }
+        if case let .string(name)? = normalizedValues["customAppBadge"] {
+            normalizedValues["customAppBadge"] = .string(RGAppBadgeNames.canonicalName(name))
+        }
+        // A portable layout and its legacy/native flags must describe the same navigation state.
+        if case let .dictionary(stored)? = normalizedValues[RGBottomBarSettings.storageKey] {
+            let layout = RGBottomBarSettings(storedValues: stored)
+            normalizedValues[RGBottomBarSettings.storageKey] = .dictionary(layout.storedValues)
+            normalizedValues["hideTabBar"] = .bool(!layout.isBottomBarVisible)
+            normalizedValues["showTabNames"] = .bool(layout.showLabels)
+            normalizedValues["tabBarWidthPercent"] = .integer(Int64(layout.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(layout.buttonWidthFillRatio)))
+            normalizedValues["native.showContactsTab"] = .bool(layout.isVisible(.contacts))
+            normalizedValues["native.showCallsTab"] = .bool(layout.isVisible(.calls))
+        }
+        self.values = normalizedValues
     }
 
     public static let categoryKeys: [RGBackupCategory: [String]] = [
-        .appearance: ["bottomBarLayout", "showTabNames", "fontFamily", "fontChineseFamily", "fontImportedLatin", "fontImportedChinese", "fontApplyToMessages", "fontApplyToInterface", "accountColorsSaturation", "rememberLastFolder", "hideReactions", "disableScrollToNextChannel", "disableScrollToNextTopic", "disableChatSwipeOptions", "disableDeleteChatSwipeOption", "disableSnapDeletionEffect", "hideTabBar", "hideChatListSeparators", "compactChatList", "chatListLines", "compactFolderNames", "allChatsTitleLengthOverride", "allChatsHidden", "wideChannelPosts", "secondsInMessages", "hideChannelBottomButton", "customAppBadge", "tabBarWidthPercent", "hideStories", "showRepostToStoryV2", "nyStyle", "stickerSize", "stickerTimestamp", "recentStickerLimit", "native.showContactsTab", "native.showCallsTab", "native.foldersAtBottom", "unlimitedPinnedChats", "recentChatsEnabled", "chooseFolderAfterJoining"],
-        .messages: ["messageSummaryEnabled", "contextShowSelectFromUser", "contextShowSaveToCloud", "contextShowRestrict", "contextShowHideForwardName", "contextShowReport", "contextShowReply", "contextShowPin", "contextShowSaveMedia", "contextShowMessageReplies", "contextShowJson", "contextShowRepeatForward", "contextShowRepeatCopy", "contextShowEditHistory", "contextMenuOrder", "contextMenuDisabledItems", "mentionAsUserIdLink", "disableLinkPreview", "fixLinkPreviews", "linkPreviewXHost", "linkPreviewInstagramHost", "defaultEmojisFirst", "messageDoubleTapActionOutgoing", "messageDoubleTapAction", "messageDoubleTapActionWithoutEditPermission", "showMessageId", "automaticallyRevealSpoilers", "showForwardedMessageDate","forceEmojiTab", "inputToolbar", "panguSpacing", "defaultOutgoingFormatting", "sendWithReturnKey", "hideRecordingButton", "disableSendAsButton", "chatPreferences"],
-        .privacy: ["hidePhoneInSettings", "profileDefaultTabGroupsInCommon", "showDC", "showCreationDate", "showRegDate", "showProfileId", "confirmCalls", "messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "antiRevokePeerIds", "disableAllAds", "antiRevoke", "revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "saveEditHistory", "antiAutoDelete", "antiSelfDestruct", "antiScreenshotNotification", "allowSavingProtectedContent", "allowDownloadingStories", "ghostDontReadStories", "ghostDontSendOnline", "ghostDontSendTyping", "storyStealthMode", "disableSwipeToRecordStory", "warnOnStoriesOpen"],
+        .appearance: ["bottomBarLayout", "showTabNames", "fontFamily", "fontChineseFamily", "fontImportedLatin", "fontImportedChinese", "fontApplyToMessages", "fontApplyToInterface", "accountColorsSaturation", "rememberLastFolder", "hideReactions", "disableScrollToNextChannel", "disableScrollToNextTopic", "disableChatSwipeOptions", "disableDeleteChatSwipeOption", "disableSnapDeletionEffect", "hideTabBar", "hideChatListSeparators", "compactChatList", "chatListLines", "compactFolderNames", "allChatsTitleLengthOverride", "allChatsHidden", "wideChannelPosts", "secondsInMessages", "hideChannelBottomButton", "customAppBadge", "tabBarWidthPercent", "hideStories", "showRepostToStoryV2", "nyStyle", "stickerSize", "stickerTimestamp", "recentStickerLimit", "native.showContactsTab", "native.showCallsTab", "native.foldersAtBottom", "unlimitedPinnedChats", "recentChatsEnabled", "chooseFolderAfterJoining", "features.chatListFolderTabDisplayMode", "features.chatListSwipeAction", "features.communityAvatarTapAction", "features.groupProfileSettingItems", "features.hideFolderUnreadCount", "features.hideTopStories", "features.keepNewChatsVisibleAtTop", "features.showArchiveInFolders", "features.showFoldersInShareSheet", "features.chatListStartupFolderMode", "features.startupFolders", "features.stayAtLatestMessageAfterRefresh"],
+        .messages: ["messageSummaryEnabled", "contextShowSelectFromUser", "contextShowSaveToCloud", "contextShowRestrict", "contextShowHideForwardName", "contextShowReport", "contextShowReply", "contextShowPin", "contextShowSaveMedia", "contextShowMessageReplies", "contextShowJson", "contextShowRepeatForward", "contextShowRepeatCopy", "contextShowEditHistory", "contextMenuOrder", "contextMenuDisabledItems", "mentionAsUserIdLink", "disableLinkPreview", "fixLinkPreviews", "linkPreviewXHost", "linkPreviewInstagramHost", "defaultEmojisFirst", "messageDoubleTapActionOutgoing", "messageDoubleTapAction", "messageDoubleTapActionWithoutEditPermission", "showMessageId", "automaticallyRevealSpoilers", "showForwardedMessageDate", "forceEmojiTab", "inputToolbar", "panguSpacing", "defaultOutgoingFormatting", "sendWithReturnKey", "hideRecordingButton", "disableSendAsButton", "chatPreferences", "features.autoInlineBotEnabled", "features.tapMessageRowToOpenContextMenu", "features.confirmUnpin", "features.enablePanguOnEditing", "features.enablePanguOnReceiving", "features.textStyleMenu.order", "features.textStyleMenu.enabled", "features.textStyleMenu.position"],
+        .privacy: ["hidePhoneInSettings", "profileDefaultTabGroupsInCommon", "showDC", "showCreationDate", "showRegDate", "showProfileId", "confirmCalls", "messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "antiRevokePeerIds", "disableAllAds", "antiRevoke", "revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "saveEditHistory", "antiAutoDelete", "antiSelfDestruct", "antiScreenshotNotification", "allowSavingProtectedContent", "allowDownloadingStories", "ghostDontReadStories", "ghostDontSendOnline", "ghostDontSendTyping", "storyStealthMode", "disableSwipeToRecordStory", "warnOnStoriesOpen", "features.hideSavedAndArchivedMessagesInList", "features.hidePrivateChatActivities", "features.disableChatAvatarStories"],
         .translation: ["sttBaseURL", "sttEndpoint", "sttModel", "sttLanguage", "sttPrompt", "summaryLLMAPIFormat", "summaryLLMBaseURL", "summaryLLMEndpoint", "summaryLLMModel", "summaryLLMPrompt", "summaryLLMTemperatureTenths", "translationLLMAPIFormat", "translationLLMBaseURL", "translationLLMEndpoint", "translationLLMModel", "translationLLMPrompt", "translationLLMUseContext", "translationLLMTemperatureTenths", "quickTranslateButton", "translationBackend", "transcriptionBackend", "outgoingLanguageTranslation"],
-        .media: ["startTelescopeWithRearCam", "forceBuiltInMic", "uploadSpeedBoost", "downloadSpeedBoost", "mediaLoadingExperiment", "showMediaMetadata", "defaultVideoQuality", "customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost", "sendLargePhotos", "outgoingPhotoQuality", "disableGalleryCamera", "disableGalleryCameraPreview", "forceSystemSharing", "native.enableVoipTcp"],
-        .notifications: ["pinnedMessageNotifications", "mentionsAndRepliesNotifications", "pinnedMessageNotificationsExceptions", "mentionsAndRepliesNotificationsExceptions", "filterNotifications"]
+        .media: ["startTelescopeWithRearCam", "forceBuiltInMic", "uploadSpeedBoost", "downloadSpeedBoost", "mediaLoadingExperiment", "showMediaMetadata", "defaultVideoQuality", "customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost", "sendLargePhotos", "outgoingPhotoQuality", "disableGalleryCamera", "disableGalleryCameraPreview", "forceSystemSharing", "native.enableVoipTcp", "features.videoPIPSwipeDirection"],
+        .notifications: ["pinnedMessageNotifications", "mentionsAndRepliesNotifications", "pinnedMessageNotificationsExceptions", "mentionsAndRepliesNotificationsExceptions", "filterNotifications", "features.hideTabBarPermissionWarnings"]
     ]
-    public static func category(for key: String) -> RGBackupCategory? { RGBackupCategory.allCases.first { categoryKeys[$0]?.contains(key) == true } }
+    private static let categoriesByKey = Dictionary(RGBackupCategory.allCases.flatMap { category in
+        (categoryKeys[category] ?? []).map { ($0, category) }
+    }, uniquingKeysWith: { first, _ in first })
+    public static func category(for key: String) -> RGBackupCategory? { categoriesByKey[key] }
 
     public func selectedValues(categories: Set<RGBackupCategory>) -> [String: RGBackupValue] {
         self.values.filter { Self.category(for: $0.key).map(categories.contains) == true }
@@ -95,6 +124,32 @@ public struct RGSettingsBackup: Codable {
     }
     private static func isValid(_ value: RGBackupValue, key: String) -> Bool {
         switch key {
+        case "features.chatListStartupFolderMode":
+            if case let .string(v) = value { return RGFeatureChatListStartupFolderMode(rawValue: v) != nil }; return false
+        case "features.chatListSwipeAction":
+            if case let .string(v) = value { return RGFeatureChatListSwipeAction(rawValue: v) != nil }; return false
+        case "features.chatListFolderTabDisplayMode":
+            if case let .string(v) = value { return RGFeatureChatListFolderTabDisplayMode(rawValue: v) != nil }; return false
+        case "features.communityAvatarTapAction":
+            if case let .string(v) = value { return RGFeatureCommunityAvatarTapAction(rawValue: v) != nil }; return false
+        case "features.videoPIPSwipeDirection":
+            if case let .string(v) = value { return ["up", "none"].contains(v) }; return false
+        case "features.textStyleMenu.position":
+            if case let .string(v) = value { return RGFeatureTextStyleMenuPosition(rawValue: v) != nil }; return false
+        case "features.groupProfileSettingItems":
+            if case let .string(v) = value {
+                return v.isEmpty || (v.utf8.count <= 2048 && v.split(separator: ",", omittingEmptySubsequences: false).allSatisfy { RGFeatureGroupProfileSettingItem(rawValue: String($0)) != nil })
+            }; return false
+        case "features.textStyleMenu.order", "features.textStyleMenu.enabled":
+            if case let .string(v) = value {
+                return v.isEmpty || (v.utf8.count <= 2048 && v.split(separator: ",", omittingEmptySubsequences: false).allSatisfy { RGFeatureTextStyleMenuItemId(rawValue: String($0)) != nil })
+            }; return false
+        case "features.startupFolders":
+            if case let .dictionary(v) = value {
+                return v.count <= 10000 && v.allSatisfy { entry in
+                    Int64(entry.key) != nil && Int32(entry.value).map { $0 >= -1 } == true
+                }
+            }; return false
         case "revokedMarkerStyle": if case let .string(v) = value { return RGRevokedMarker.Style(rawValue: v) != nil }; return false
         case "revokedMarkerText": if case let .string(v) = value { return v.utf8.count <= 384 && v == RGRevokedMarker.normalizedText(v) }; return false
         case "revokedMarkerColor": if case let .string(v) = value { return v.isEmpty || RGRevokedMarker.rgb(v) != nil }; return false

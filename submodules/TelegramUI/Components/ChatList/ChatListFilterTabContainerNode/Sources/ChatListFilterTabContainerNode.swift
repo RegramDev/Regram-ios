@@ -1,5 +1,7 @@
 import Foundation
+import RGStrings // MARK: Regram — distinct short/full all-chats labels and settings previews.
 import RGSimpleSettings
+import RGSimpleSettings // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -475,18 +477,20 @@ public enum ChatListFilterTabEntry: Equatable {
     }
     
     func title(strings: PresentationStrings) -> ChatFolderTitle {
+        let languageCode = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode) // MARK: Regram
         switch self {
         case .all:
-            return ChatFolderTitle(text: strings.ChatList_Tabs_AllChats, entities: [], enableAnimations: true)
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: false, languageCode: languageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }
     }
     
     func shortTitle(strings: PresentationStrings) -> ChatFolderTitle {
+        let languageCode = RGLocalizationManager.shared.preferredLocale(primary: strings.primaryComponent.languageCode, secondary: strings.secondaryComponent?.languageCode) // MARK: Regram
         switch self {
         case .all:
-            return ChatFolderTitle(text: strings.ChatList_Tabs_All, entities: [], enableAnimations: true)
+            return ChatFolderTitle(text: rgAllChatsTitle(shortTitle: strings.ChatList_Tabs_All, longTitle: strings.ChatList_Tabs_AllChats, useShortTitle: true, languageCode: languageCode), entities: [], enableAnimations: true) // MARK: Regram
         case let .filter(_, text, _):
             return text
         }
@@ -818,7 +822,7 @@ public final class ChatListFilterTabContainerNode: ASDisplayNode {
                 })
                 self.itemNodes[filter.id] = itemNode
             }
-            let unreadCount: Int
+            var unreadCount: Int // MARK: Regram
             let unreadHasUnmuted: Bool
             var isNoFilter = false
             var isDisabled = false
@@ -835,6 +839,10 @@ public final class ChatListFilterTabContainerNode: ASDisplayNode {
                     isDisabled = !canReorderAllChats && folderIndex >= filtersLimit
                 }
                 folderIndex += 1
+            }
+            // MARK: Regram - Hide the badge and its spacing without changing actual unread counts.
+            if RGSimpleSettings.shared.hideFolderUnreadCount {
+                unreadCount = 0
             }
             if !wasAdded && (itemNode.unreadCount != 0) != (unreadCount != 0) {
                 badgeAnimations[filter.id] = (unreadCount != 0) ? .in : .out

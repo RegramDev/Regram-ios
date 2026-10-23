@@ -1,5 +1,6 @@
 // MARK: Regram — interactive root-tab return without the normal tab-selection scale animation.
 import UIKit
+import Display
 
 final class RGRootTabBackTransition {
     private weak var host: UIView?
@@ -8,6 +9,7 @@ final class RGRootTabBackTransition {
     private let snapshot: UIView
     private let dimView = UIView()
     private let width: CGFloat
+    private var frameRateLink: SharedDisplayLinkDriver.Link?
     private(set) var progress: CGFloat = 0
 
     init(host: UIView, destination: UIView, snapshot: UIView, frame: CGRect) {
@@ -22,12 +24,21 @@ final class RGRootTabBackTransition {
         self.snapshot.layer.shadowOpacity = 0.14
         self.snapshot.layer.shadowRadius = 6
         self.snapshot.layer.shadowOffset = CGSize(width: -3, height: 0)
+        // MARK: Regram — the snapshot bounds stay fixed until this transition ends.
+        // Avoid deriving a full-screen alpha shadow on every interactive frame.
+        self.snapshot.layer.shadowPath = UIBezierPath(rect: self.snapshot.bounds).cgPath
         self.dimView.frame = host.bounds
         self.dimView.backgroundColor = .black
         self.dimView.isUserInteractionEnabled = false
         host.addSubview(self.dimView)
         host.addSubview(self.snapshot)
         update(progress: 0)
+        // MARK: Regram — match navigation transitions throughout dragging and settling.
+        self.frameRateLink = SharedDisplayLinkDriver.shared.add(framesPerSecond: .max, { _ in })
+    }
+
+    deinit {
+        self.frameRateLink?.invalidate()
     }
 
     func update(progress: CGFloat) {
@@ -46,6 +57,8 @@ final class RGRootTabBackTransition {
     }
 
     func remove() {
+        self.frameRateLink?.invalidate()
+        self.frameRateLink = nil
         snapshot.layer.removeAllAnimations()
         destination?.layer.removeAllAnimations()
         dimView.layer.removeAllAnimations()

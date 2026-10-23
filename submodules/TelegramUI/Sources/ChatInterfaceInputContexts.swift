@@ -11,6 +11,9 @@ import SwiftSignalKit
 import TextFormat
 import ChatContextQuery
 import ChatTextInputPanelNode
+// MARK: Regram
+import RGLinkMetadata
+import RGSimpleSettings
 
 func serviceTasksForChatPresentationIntefaceState(context: AccountContext, chatPresentationInterfaceState: ChatPresentationInterfaceState, updateState: @escaping ((ChatPresentationInterfaceState) -> ChatPresentationInterfaceState) -> Void) -> [AnyHashable: () -> Disposable] {
     // Read the STRUCTURAL model, not the derived `inputText`: the flat projection drops whole blocks
@@ -83,6 +86,13 @@ func inputContextQueriesForChatPresentationIntefaceState(_ chatPresentationInter
             result.append(.contextRequest(addressName: query, query: additionalString))
         } else if possibleTypes == [.emojiSearch], !query.isEmpty, let inputLanguage = chatPresentationInterfaceState.interfaceState.inputLanguage {
             result.append(.emojiSearch(query: query, languageCode: inputLanguage, range: possibleQueryRange))
+        }
+    }
+    // MARK: Regram — Query a configured inline bot for recognized links while
+    // keeping the URL itself in the compose field.
+    if RGSimpleSettings.shared.autoInlineBotEnabled, !result.contains(where: { $0.kind == .contextRequest }) {
+        if let text = rgInlineBotQueryText(inputState.inputText.string), let rule = RGLinkMetadata.shared.inlineBot(for: text) {
+            result.append(.contextRequest(addressName: rule.username, query: text))
         }
     }
     return result

@@ -29,15 +29,42 @@ extension String {
         assert(contains("分隔线", "settings.chatList", "hideChatListSeparators"))
         assert(RGSettingsCatalog.results(query: "检查更新", language: "zh-hans").isEmpty)
         assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=updates")!, appSpecificScheme: "fixture-app") == nil)
+        assert(contains("感叹号", "pro.notifications", "hideTabBarPermissionWarnings"))
+        assert(contains("权限", "pro.notifications", "hideTabBarPermissionWarnings"))
+        assert(RGSettingsDestination(page: "settings.privacy", item: "hideTabBarPermissionWarnings") == RGSettingsDestination(page: "pro.notifications", item: "hideTabBarPermissionWarnings"))
+        assert(RGSettingsCatalog.entries.filter { $0.destination.item == "hideTabBarPermissionWarnings" }.count == 1)
         assert(contains("DC1", "datacenters", "start"))
+        assert(RGSettingsDestination(page: "bottomBar", item: "bottomSearch") == RGSettingsDestination(page: "bottomBar", item: "visibility"))
+        assert(RGSettingsDestination(page: "bottomBar", item: "searchMode") == RGSettingsDestination(page: "bottomBar", item: "visibility"))
+        assert(contains("底栏 搜索", "bottomBar", "visibility"))
+        assert(contains("独立搜索", "bottomBar", "visibility"))
+        assert(contains("右下角", "bottomBar", "visibility"))
         assert(RGSettingsCatalog.results(query: "书签", language: "zh-hans").isEmpty, "Bookmarks belong on outer Settings, not the Pro catalog")
         assert(contains("总结", "pro.messages", "summarySettings"))
         assert(contains("DoH", "networkPolicy", "enabled"))
         assert(RGSettingsCatalog.results(query: "色调", language: "zh-hans").isEmpty)
         assert(RGSettingsDestination(page: "settings.appearance", item: "liquidGlassTintPercent") == RGSettingsDestination(page: "bottomBar"))
+        assert(RGSettingsDestination(page: "settings.folders", item: "rememberLastFolder") == RGSettingsDestination(page: "settings.folders", item: "startupFolder"))
+        assert(RGSettingsDestination(page: "settings.chatList", item: "disableChatSwipeOptions") == RGSettingsDestination(page: "settings.chatList", item: "chatListSwipeAction"))
+        assert(RGSettingsDestination(page: "pro.messages", item: "inputToolbar") == RGSettingsDestination(page: "pro.input", item: "inputToolbar"))
+        for item in [nil, "mode", "specific"] as [String?] {
+            assert(RGSettingsDestination(page: "startupFolder", item: item) == RGSettingsDestination(page: "settings.folders", item: "startupFolder"))
+        }
+        assert(contains("指定分组", "settings.folders", "startupFolder"))
+        assert(RGSettingsCatalog.entries.filter { $0.destination.item == "startupFolder" }.count == 1)
         assert(contains("DNS", "networkPolicy", "test"))
         assert(contains("总结", "summary", "enabled"))
         assert(contains("盘古", "pro.input", "panguSpacing"))
+        assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnEditing") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnEditing"))
+        assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnReceiving") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnReceiving"))
+        assert(RGSettingsDestination(page: "settings.messageActions", item: "autoInlineBotEnabled") == RGSettingsDestination(page: "inlineBots", item: "enabled"))
+        let panguItems = Set(["panguSpacing", "enablePanguOnEditing", "enablePanguOnReceiving"])
+        let groupedPangu = RGSettingsCatalog.entries.filter { panguItems.contains($0.destination.item ?? "") && $0.destination.page != "chatPreferences" }
+        assert(groupedPangu.count == 3 && groupedPangu.allSatisfy { $0.destination.page == "pro.input" })
+        for retired in ["chatToolsEnabled", "chatSearchFieldAtBottom", "bottomUpChatSearchResults"] {
+            assert(RGSettingsDestination(page: "settings.messageActions", item: retired) == nil)
+            assert(!RGSettingsCatalog.entries.contains { $0.destination.item == retired })
+        }
         assert(contains("上传", "settings.transfer", "uploadSpeedBoost"))
         assert(RGSettingsDestination(page: "pro.messages", item: "panguSpacing") == RGSettingsDestination(page: "pro.input", item: "panguSpacing"))
         assert(RGSettingsDestination(page: "settings.app", item: "enableVoipTcp") == RGSettingsDestination(page: "settings.transfer", item: "enableVoipTcp"))
@@ -49,8 +76,11 @@ extension String {
         for url in ["https://rg/settings?page=pro.privacy", "tg://user:secret@rg/settings?page=llm", "tg://rg/settings?page=llm&page=updates", "tg://rg/settings?page=unknown", "tg://rg/settings?page=llm&item=../apiKey", "tg://rg/settings?page=llm&apiKey=secret", "tg://rg/settings?page=llm#value", "tg://rg/settings?page=llm&item="] {
             assert(RGSettingsDestination.parse(URL(string: url)!, appSpecificScheme: "fixture-app") == nil, url)
         }
-        for url in ["tg://sg/settings?page=llm&item=model", "RG://settings?page=llm&item=model", "fixture-app://rg/settings?page=llm&item=model"] {
+        for url in ["tg://rg/settings?page=llm&item=model", "RG://settings?page=llm&item=model", "fixture-app://rg/settings?page=llm&item=model"] {
             assert(RGSettingsDestination.parse(URL(string: url)!, appSpecificScheme: "fixture-app") == RGSettingsDestination(page: "llm", item: "model"))
+        }
+        for url in ["tg://sg/settings?page=llm", "sg://settings?page=llm", "sg://rg/settings?page=llm"] {
+            assert(RGSettingsDestination.parse(URL(string: url)!, appSpecificScheme: "sg") == nil, url)
         }
         print("Settings catalog checks passed: global leaf search, locale coverage, stable unique destinations, URL round-trips and invalid links")
     }

@@ -2,6 +2,7 @@ import RGSwiftUI
 // MARK: Regram — local enhancement settings, organized into focused pages.
 import RGSettingsUI
 import Foundation
+import UIKit
 import UniformTypeIdentifiers
 import RGItemListUI
 import UndoUI
@@ -27,7 +28,8 @@ public enum RGProSettingsPage: String {
 }
 
 private enum RGProControllerSection: Int32, RGItemListSection {
-    case search
+    // Keep section identities distinct when combined with RGSettingsUI controls.
+    case search = 100
     case base
     case antiFeatures
     case appearance
@@ -37,6 +39,7 @@ private enum RGProControllerSection: Int32, RGItemListSection {
     case media
     case input
     case network
+    case pangu
 }
 
 private enum RGProDisclosureLink: String {
@@ -91,7 +94,10 @@ private enum RGProToggles: String {
     case localPremium
     case disableLinkPreview
     case panguSpacing
+    case enablePanguOnReceiving
+    case enablePanguOnEditing
     case filterNotifications
+    case hideTabBarPermissionWarnings
 }
 
 private enum RGProOneFromManySetting: String {
@@ -116,15 +122,25 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
         entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: ""), text: searchQuery, placeholder: presentationData.strings.Common_Search))
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
-            for (link, destination) in [(RGProDisclosureLink.messagesPage, RGProSettingsPage.messages), (.inputPage, .input), (.translationPage, .translation), (.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications), (.networkPage, .network), (.toolsPage, .tools)] {
-                entries.append(.disclosure(id: id.count, section: .base, link: link, text: destination.titleKey.i18n(lang)))
+            // Match the small, grouped categories on Telegram's settings home.
+            let groups: [(RGProControllerSection, [(RGProDisclosureLink, RGProSettingsPage)])] = [
+                (.base, [(.messagesPage, .messages), (.inputPage, .input), (.translationPage, .translation)]),
+                (.appearance, [(.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications)]),
+                (.network, [(.networkPage, .network), (.toolsPage, .tools)])
+            ]
+            for (section, destinations) in groups {
+                for (link, destination) in destinations {
+                    entries.append(.disclosure(id: id.count, section: section, link: link, text: destination.titleKey.i18n(lang)))
+                }
             }
         } else {
             let matches = Set(RGSettingsCatalog.results(query: query, language: lang).map(\.id))
             for (index, entry) in RGSettingsCatalog.entries.enumerated() where matches.contains(entry.id) {
                 entries.append(.settingsResult(id: 10_000 + index, section: .base, entry: entry))
             }
-            if entries.count == 1 { entries.append(.notice(id: id.count, section: .base, text: "Settings.Search.NoResults".i18n(lang))) }
+            // This row must never reuse a category's identity: native text/disclosure nodes
+            // have different update contracts and cannot replace each other in place.
+            if entries.count == 1 { entries.append(.notice(id: 9_999, section: .base, text: "Settings.Search.NoResults".i18n(lang))) }
         }
         return entries
     }
@@ -141,9 +157,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     // MARK: Regram — link previews off.
     entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
-    // MARK: Regram — pangu spacing.
-    entries.append(.toggle(id: id.count, section: .input, settingName: .panguSpacing, value: RGSimpleSettings.shared.panguSpacing, text: "Pangu.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .input, text: "Pangu.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .input, settingName: .defaultOutgoingFormatting, text: "OutgoingFormatting.Title".i18n(lang), value: "OutgoingFormatting.\(RGSimpleSettings.shared.defaultOutgoingFormat.rawValue)".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .input, text: "OutgoingFormatting.Notice".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .input, link: .chatPreferences, text: "ChatPreferences.Title".i18n(lang)))
@@ -157,11 +170,13 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
 
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .notifications, text: "features.HideTabBarPermissionWarnings.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .mentionsAndRepliesNotifications, text: "Notifications.MentionsAndReplies.Title".i18n(lang), value: "Notifications.MentionsAndReplies.value.\(RGSimpleSettings.shared.mentionsAndRepliesNotifications)".i18n(lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .filterNotifications, value: RGSimpleSettings.shared.filterNotifications, text: "Notifications.ContentFilter".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
     entries.append(.notice(id: id.count, section: .notifications, text: (RGSimpleSettings.shared.canSharePreferencesWithExtensions ? "Notifications.ContentFilter.Notice" : "Notifications.ContentFilter.Unavailable").i18n(lang)))
-    entries.append(.header(id: id.count, section: .appearance, text: presentationData.strings.Appearance_Title.uppercased(), badge: nil))
+    entries.append(.header(id: id.count, section: .appearance, text: "Settings.Section.Personalization".i18n(lang), badge: nil))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .fonts, text: "Fonts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
@@ -195,6 +210,13 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .network, link: .networkPolicy, text: "NetworkPolicy.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .network, link: .transferSettings, text: RGSettingsPage.transfer.titleKey.i18n(lang)))
 
+    // MARK: Regram — the receiving, sending and editing choices share one visible group.
+    entries.append(.header(id: id.count, section: .pangu, text: "Pangu.Title".i18n(lang), badge: nil))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .enablePanguOnReceiving, value: RGSimpleSettings.shared.enablePanguOnReceiving, text: "features.PanguOnReceiving".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .panguSpacing, value: RGSimpleSettings.shared.enablePanguOnSending, text: "features.PanguOnSending".i18n(lang), enabled: true))
+    entries.append(.toggle(id: id.count, section: .pangu, settingName: .enablePanguOnEditing, value: RGSimpleSettings.shared.enablePanguOnEditing, text: "features.PanguOnEditing".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .pangu, text: "features.PanguInfo".i18n(lang)))
+
     let section: RGProControllerSection
     switch page {
     case .home, .messages: section = .base
@@ -207,7 +229,21 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     case .notifications: section = .notifications
     case .tools: section = .footer
     }
-    return entries.filter { $0.section == section.rawValue }
+    if page == .input {
+        return [.header(id: -1, section: .input, text: "Settings.Section.Composer".i18n(lang), badge: nil)] + entries.filter { $0.section == section.rawValue } + entries.filter { $0.section == RGProControllerSection.pangu.rawValue }
+    }
+    let headerKey: String?
+    switch page {
+    case .messages: headerKey = "Summary.Title"
+    case .privacy: headerKey = "Settings.Section.PrivacyControls"
+    case .media: headerKey = "Settings.Section.Links"
+    case .network: headerKey = "Settings.Section.Connection"
+    case .tools: headerKey = "Settings.ProCategory.tools"
+    default: headerKey = nil
+    }
+    // Header identity must also stay distinct from the first privacy control (id 0).
+    let header: [RGProControllerEntry] = headerKey.map { [.header(id: -1, section: section, text: $0.i18n(lang), badge: nil)] } ?? []
+    return header + entries.filter { $0.section == section.rawValue }
 
 }
 
@@ -215,7 +251,7 @@ public func okUndoController(_ text: String, _ presentationData: PresentationDat
     return UndoOverlayController(presentationData: presentationData, content: .succeed(text: text, timeout: nil, customUndoText: nil), elevatedLayout: false, action: { _ in return false })
 }
 
-public func rgProController(context: AccountContext, initialSearchQuery: String? = nil, page: RGProSettingsPage = .home, focusSetting: String? = nil) -> ViewController {
+public func rgProController(context: AccountContext, initialSearchQuery: String? = nil, page: RGProSettingsPage = .home, focusSetting: String? = nil, initialSettingsPage: RGSettingsPage? = nil) -> ViewController {
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var askForRestart: (() -> Void)?
@@ -223,6 +259,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     var cancelSearchSelection: (() -> Void)?
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
     let searchPromise = ValuePromise(initialSearchQuery ?? "", ignoreRepeated: true)
+    var searchGeneration = 0
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -238,12 +275,18 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .disableLinkPreview:
                 // Read live on every preview query, so no restart is needed.
                 RGSimpleSettings.shared.disableLinkPreview = value
+            case .enablePanguOnReceiving:
+                RGSimpleSettings.shared.enablePanguOnReceiving = value
+            case .enablePanguOnEditing:
+                RGSimpleSettings.shared.enablePanguOnEditing = value
             case .panguSpacing:
                 // Read on each send, so no restart is needed.
-                RGSimpleSettings.shared.panguSpacing = value
+                RGSimpleSettings.shared.enablePanguOnSending = value
             case .filterNotifications:
                 RGSimpleSettings.shared.filterNotifications = value
                 RGSimpleSettings.shared.synchronizeShared()
+            case .hideTabBarPermissionWarnings:
+                RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
         }
     }, setOneFromManyValue: { setting in
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
@@ -382,10 +425,61 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
     }, searchInput: { value in
         cancelSearchSelection?()
-        // Defer list replacement until UIKit finishes dispatching the text-input event.
-        Queue.mainQueue().async { searchPromise.set(value) }
+        // Finish UIKit's input event, then publish only the newest edit (including clearing).
+        searchGeneration += 1
+        let generation = searchGeneration
+        Queue.mainQueue().async {
+            guard generation == searchGeneration else { return }
+            searchPromise.set(value)
+        }
     }, settingsPage: "pro." + page.rawValue, openSettingsResult: { destination in
         if let controller = rgControllerForSettingsLink(context: context, destination: destination) { pushControllerImpl?(controller) }
+    }, disclosureIcon: { link in
+        // Category artwork stays native; specialised editors use distinct, centered symbols.
+        switch link {
+        case .messagesPage: return PresentationResourcesSettings.messages
+        case .inputPage: return PresentationResourcesSettings.upload
+        case .translationPage: return PresentationResourcesSettings.language
+        case .privacyPage: return PresentationResourcesSettings.security
+        case .mediaPage: return PresentationResourcesSettings.photos
+        case .appearancePage: return PresentationResourcesSettings.appearance
+        case .notificationsPage: return PresentationResourcesSettings.notifications
+        case .networkPage: return PresentationResourcesSettings.proxy
+        case .toolsPage: return PresentationResourcesSettings.settings
+        case .fonts: return RGSettingsIcons.fonts
+        case .appIcons: return RGSettingsIcons.appIcon
+        case .appBages: return RGSettingsIcons.screenshotBadge
+        case .transcriptionSettings: return RGSettingsIcons.transcription
+        case .summarySettings: return RGSettingsIcons.summary
+        // The privacy group already has a clear heading. Keep all its titles aligned without icons.
+        case .messageFilter, .hiddenUsers, .antiFeatures, .antiRevokeChats, .ghostMode, .revokedMessages: return nil
+        case .linkPreviewSettings: return nil
+        case .networkPolicy: return RGSettingsIcons.network
+        case .diagnostics: return RGSettingsIcons.diagnostics
+        case .backup: return RGSettingsIcons.backup
+        default: return nil
+        }
+    }, disclosureSubtitle: { link in
+        let lang = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
+        let category: RGProSettingsPage?
+        switch link {
+        case .messagesPage: category = .messages
+        case .inputPage: category = .input
+        case .translationPage: category = .translation
+        case .privacyPage: category = .privacy
+        case .mediaPage: category = .media
+        case .appearancePage: category = .appearance
+        case .notificationsPage: category = .notifications
+        case .networkPage: category = .network
+        case .toolsPage: category = .tools
+        default: category = nil
+        }
+        if let category { return (category.titleKey + ".Description").i18n(lang) }
+        switch link {
+        case .fonts, .appBages, .transcriptionSettings, .summarySettings, .linkPreviewSettings, .messageFilter, .networkPolicy, .diagnostics:
+            return ("Settings.Editor." + link.rawValue + ".Description").i18n(lang)
+        default: return nil
+        }
     })
     
     let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
@@ -400,7 +494,29 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         return (controllerState, (listState, arguments))
     }
     
-    let controller = RGSettingsListController(context: context, state: signal)
+    let controller: ViewController
+    if let layout = RGProCategoryLayout(page: page) {
+        controller = rgSettingsController(context: context, page: layout.pages[0], focusSetting: focusSetting, additionalPages: Array(layout.pages.dropFirst()), usesTabs: layout.usesTabs, initialPage: initialSettingsPage, titleKey: page.titleKey, additionalUpdates: simplePromise.get(), additionalContent: { presentationData, activePage in
+            let rows = RGProControllerEntries(presentationData: presentationData, page: page, searchQuery: "").filter { entry in
+                if layout.usesTabs && activePage != layout.pages[0] { return false }
+                guard case let .disclosure(_, _, link, _) = entry else { return true }
+                return !RGProCategoryLayout.inlinedLinks.contains(link.rawValue)
+            }
+            let bound = rows.map { RGSettingsBoundEntry($0, arguments: arguments, scope: "pro." + page.rawValue, order: 0) }
+            if page == .translation {
+                let header = RGProControllerEntry.header(id: 50_001, section: .translation, text: "Settings.Section.Speech".i18n(presentationData.strings.rgLanguageCode), badge: nil)
+                return RGSettingsSupplement(trailing: [RGSettingsBoundEntry(header, arguments: arguments, scope: "pro.translation", order: 0)] + bound)
+            }
+            if page == .input {
+                return RGSettingsSupplement(leading: zip(rows, bound).filter { $0.0.section != RGProControllerSection.pangu.rawValue }.map { $0.1 }, trailing: zip(rows, bound).filter { $0.0.section == RGProControllerSection.pangu.rawValue }.map { $0.1 })
+            }
+            return RGSettingsSupplement(leading: bound)
+        })
+    } else {
+        let listController = RGSettingsListController(context: context, state: signal)
+        listController.focusSetting = focusSetting
+        controller = listController
+    }
     cancelSearchSelection = { [weak controller] in
         ((controller?.displayNode as? ItemListControllerNode)?.listNode as? ListViewImpl)?.cancelSelection()
     }

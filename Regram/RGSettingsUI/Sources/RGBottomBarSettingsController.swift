@@ -20,12 +20,10 @@ import UIKit
 
 private final class RGBottomBarArguments {
     let update: ((inout RGBottomBarSettings) -> Void) -> Void
-    let option: (RGBottomBarOption) -> Void
     let reset: () -> Void
 
-    init(update: @escaping ((inout RGBottomBarSettings) -> Void) -> Void, option: @escaping (RGBottomBarOption) -> Void, reset: @escaping () -> Void) {
+    init(update: @escaping ((inout RGBottomBarSettings) -> Void) -> Void, reset: @escaping () -> Void) {
         self.update = update
-        self.option = option
         self.reset = reset
     }
 }
@@ -37,17 +35,12 @@ private enum RGBottomBarSwitchOption: Int32 {
     case automaticWidth
 }
 
-private enum RGBottomBarOption: Int32 {
-    case searchMode
-}
-
 private enum RGBottomBarEntry: ItemListNodeEntry {
     case preview(section: Int32, settings: RGBottomBarSettings, strings: PresentationStrings, itemTitles: [RGBottomBarItemId: String], topSearchTitle: String, topSearchVisibleHint: String, topSearchHiddenHint: String, bottomBarTitle: String, emptyBottomTitle: String)
     case header(stableId: Int32, section: Int32, text: String)
     case toggle(stableId: Int32, section: Int32, title: String, value: Bool, option: RGBottomBarSwitchOption)
     case visibility(stableId: Int32, section: Int32, title: String, settings: RGBottomBarSettings, itemTitles: [RGBottomBarItemId: String])
     case slider(stableId: Int32, section: Int32, title: String, value: Int32)
-    case disclosure(stableId: Int32, section: Int32, title: String, label: String, option: RGBottomBarOption)
     case reset(stableId: Int32, section: Int32, title: String)
     case footer(stableId: Int32, section: Int32, text: String)
 
@@ -62,8 +55,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         case let .visibility(_, section, _, _, _):
             return section
         case let .slider(_, section, _, _):
-            return section
-        case let .disclosure(_, section, _, _, _):
             return section
         case let .reset(_, section, _):
             return section
@@ -83,8 +74,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         case let .visibility(stableId, _, _, _, _):
             return stableId
         case let .slider(stableId, _, _, _):
-            return stableId
-        case let .disclosure(stableId, _, _, _, _):
             return stableId
         case let .reset(stableId, _, _):
             return stableId
@@ -118,11 +107,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         case let .slider(lId, lSection, lTitle, lValue):
             if case let .slider(rId, rSection, rTitle, rValue) = rhs {
                 return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue
-            }
-            return false
-        case let .disclosure(lId, lSection, lTitle, lLabel, lOption):
-            if case let .disclosure(rId, rSection, rTitle, rLabel, rOption) = rhs {
-                return lId == rId && lSection == rSection && lTitle == rTitle && lLabel == rLabel && lOption == rOption
             }
             return false
         case let .reset(lId, lSection, lTitle):
@@ -191,12 +175,12 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                 }
             }, tag: self.tag)
         case let .visibility(_, section, title, settings, itemTitles):
-            let chips = RGBottomBarItemId.allCases.filter(\.isNavigationItem).map { id in
+            let chips = RGBottomBarItemId.allCases.map { id in
                 let isSelected = settings.isVisible(id)
                 let isEnabled = settings.canHide(id)
                 return RGBottomBarChipRowItem.Chip(id: id.rawValue, title: itemTitles[id] ?? id.rawValue, isSelected: isSelected, isEnabled: isEnabled)
             }
-            return RGBottomBarChipRowItem(theme: presentationData.theme, title: title, chips: chips, sectionId: section, selected: { rawValue in
+            return RGBottomBarChipRowItem(presentationData: presentationData, title: title, chips: chips, sectionId: section, selected: { rawValue in
                 guard let id = RGBottomBarItemId(rawValue: rawValue) else {
                     return
                 }
@@ -220,10 +204,6 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                     settings.slotMode = value <= 0 ? .preserveHidden : .visibleOnly
                 }
             }, tag: self.tag)
-        case let .disclosure(_, section, title, label, option):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: label, sectionId: section, style: .blocks, action: {
-                arguments.option(option)
-            }, tag: self.tag)
         case let .reset(_, section, title):
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: section, style: .blocks, action: {
                 arguments.reset()
@@ -234,23 +214,11 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
     }
 }
 
-private func rgBottomBarSettingsCanUseSearchBar(_ settings: RGBottomBarSettings) -> Bool {
-    return settings.isVisible(.search) && settings.visibleBottomItems.isEmpty
-}
-
-private func rgBottomBarSettingsNormalizedForLayout(_ settings: RGBottomBarSettings) -> RGBottomBarSettings {
-    var result = settings
-    if result.searchMode == .bar && !rgBottomBarSettingsCanUseSearchBar(result) {
-        result.setSearchMode(.button)
-    }
-    return result
-}
-
 private func rgBottomBarSettings(_ settings: RGBottomBarSettings, applyingShowCallsTab showCallsTab: Bool, showContactsTab: Bool) -> RGBottomBarSettings {
     var result = settings
     result.setVisible(.calls, visible: showCallsTab)
     result.setVisible(.contacts, visible: showContactsTab)
-    return rgBottomBarSettingsNormalizedForLayout(result)
+    return result
 }
 
 public func rgBottomBarSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
@@ -261,14 +229,13 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
         updatePromise.set(updateValue)
     }
 
-    var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var currentShowContactsTab = CallListSettings.defaultSettings.showContactsTab
     var currentShowCallsTab = CallListSettings.defaultSettings.showTab
     var pendingShowCallsTab: Bool?
     var pendingShowContactsTab: Bool?
 
     let saveSettings: (RGBottomBarSettings) -> Void = { settings in
-        let normalizedSettings = rgBottomBarSettingsNormalizedForLayout(settings)
+        let normalizedSettings = settings
         let nextShowContactsTab = normalizedSettings.isVisible(.contacts)
         if nextShowContactsTab != currentShowContactsTab {
             currentShowContactsTab = nextShowContactsTab
@@ -291,45 +258,6 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
         update(&settings)
         saveSettings(settings)
         bump()
-    }, option: { option in
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        let lang = presentationData.strings.rgLanguageCode
-        let actionSheet = ActionSheetController(presentationData: presentationData)
-        let dismissAction: () -> Void = { [weak actionSheet] in
-            actionSheet?.dismissAnimated()
-        }
-
-        let titleKey: String
-        let items: [(String, (inout RGBottomBarSettings) -> Void)]
-        switch option {
-        case .searchMode:
-            titleKey = "RG.BottomBarLayout.SearchStyle"
-            let settings = rgBottomBarSettings(RGSimpleSettings.shared.bottomBarSettings, applyingShowCallsTab: currentShowCallsTab, showContactsTab: currentShowContactsTab)
-            items = [
-                ("RG.BottomBarLayout.SearchStyle.button", { $0.setSearchMode(.button) })
-            ] + (rgBottomBarSettingsCanUseSearchBar(settings) ? [
-                ("RG.BottomBarLayout.SearchStyle.bar", { $0.setSearchMode(.bar) })
-            ] : [])
-        }
-
-        var actionItems: [ActionSheetItem] = [ActionSheetTextItem(title: i18n(titleKey, lang))]
-        for (key, apply) in items {
-            actionItems.append(ActionSheetButtonItem(title: i18n(key, lang), color: .accent, action: {
-                dismissAction()
-                var settings = rgBottomBarSettings(RGSimpleSettings.shared.bottomBarSettings, applyingShowCallsTab: currentShowCallsTab, showContactsTab: currentShowContactsTab)
-                apply(&settings)
-                saveSettings(settings)
-                bump()
-            }))
-        }
-        if option == .searchMode && items.count == 1 {
-            actionItems.append(ActionSheetTextItem(title: i18n("RG.BottomBarLayout.SearchStyle.BarDisabled", lang)))
-        }
-        actionSheet.setItemGroups([
-            ActionSheetItemGroup(items: actionItems),
-            ActionSheetItemGroup(items: [ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, action: { dismissAction() })])
-        ])
-        presentControllerImpl?(actionSheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
     }, reset: {
         saveSettings(RGBottomBarSettings())
         bump()
@@ -382,27 +310,25 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
             .header(stableId: 1, section: 1, text: i18n("RG.BottomBarLayout.State", lang)),
             .toggle(stableId: 2, section: 1, title: i18n("Settings.Tabs.HideTabBar", lang), value: !settings.isBottomBarVisible, option: .hidden),
             .toggle(stableId: 3, section: 1, title: i18n("RG.BottomBarLayout.TopSearch", lang), value: settings.topSearchVisible, option: .topSearch),
-            .visibility(stableId: 4, section: 1, title: i18n("RG.BottomBarLayout.Visibility", lang), settings: settings, itemTitles: itemTitles),
-            .header(stableId: 5, section: 2, text: i18n("RG.BottomBarLayout.Options", lang)),
-            .toggle(stableId: 6, section: 2, title: i18n("Settings.Tabs.Width.Automatic", lang), value: settings.automaticWidth, option: .automaticWidth),
-            .toggle(stableId: 7, section: 2, title: i18n("RG.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
+            .visibility(stableId: 5, section: 1, title: i18n("RG.BottomBarLayout.Visibility", lang), settings: settings, itemTitles: itemTitles),
+            .header(stableId: 6, section: 2, text: i18n("RG.BottomBarLayout.Options", lang)),
+            .toggle(stableId: 7, section: 2, title: i18n("Settings.Tabs.Width.Automatic", lang), value: settings.automaticWidth, option: .automaticWidth),
+            .toggle(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
             .reset(stableId: 10, section: 3, title: i18n("RG.BottomBarLayout.Reset", lang)),
             .footer(stableId: 11, section: 3, text: i18n("RG.BottomBarLayout.Footer", lang))
         ]
 
         if !settings.automaticWidth {
-            entries.insert(.slider(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
+            entries.insert(.slider(stableId: 9, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
         }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("RG.BottomBarLayout", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
-        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting == "width" && settings.automaticWidth ? "automaticWidth" : focusSetting), animateChanges: false)
+        let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting == "bottomSearch" || focusSetting == "searchMode" ? "visibility" : focusSetting == "width" && settings.automaticWidth ? "automaticWidth" : focusSetting), animateChanges: false)
         return (controllerState, (listState, arguments))
     }
 
     let controller = RGSettingsListController(context: context, state: signal)
+    controller.focusSetting = focusSetting == "bottomSearch" || focusSetting == "searchMode" ? "visibility" : focusSetting == "width" && RGSimpleSettings.shared.bottomBarSettings.automaticWidth ? "automaticWidth" : focusSetting
     controller.navigationPresentation = .default
-    presentControllerImpl = { [weak controller] c, presentationArguments in
-        controller?.present(c, in: .window(.root), with: presentationArguments)
-    }
     return controller
 }
 
@@ -414,18 +340,25 @@ private final class RGBottomBarChipRowItem: ListViewItem, ItemListItem {
         let isEnabled: Bool
     }
 
-    let theme: PresentationTheme
+    let presentationData: ItemListPresentationData
+    var theme: PresentationTheme {
+        return self.presentationData.theme
+    }
     let title: String
     let chips: [Chip]
     let sectionId: ItemListSectionId
     let selected: (String) -> Void
 
-    init(theme: PresentationTheme, title: String, chips: [Chip], sectionId: ItemListSectionId, selected: @escaping (String) -> Void) {
-        self.theme = theme
+    init(presentationData: ItemListPresentationData, title: String, chips: [Chip], sectionId: ItemListSectionId, selected: @escaping (String) -> Void) {
+        self.presentationData = presentationData
         self.title = title
         self.chips = chips
         self.sectionId = sectionId
         self.selected = selected
+    }
+
+    var tag: ItemListItemTag? {
+        return RGSettingsItemTag("visibility")
     }
 
     var selectable: Bool {
@@ -463,10 +396,15 @@ private final class RGBottomBarChipRowItem: ListViewItem, ItemListItem {
 
 private final class RGBottomBarChipButton: UIButton {
     var chipId: String?
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        self.titleLabel?.frame = self.bounds.insetBy(dx: 6.0, dy: 10.0)
+    }
 }
 
 private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNode {
     private let backgroundNode = ASDisplayNode()
+    private let highlightNode = ASDisplayNode()
     private let topStripeNode = ASDisplayNode()
     private let bottomStripeNode = ASDisplayNode()
     private let maskNode = ASImageNode()
@@ -475,11 +413,12 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
     private var item: RGBottomBarChipRowItem?
 
     var tag: ItemListItemTag? {
-        return nil
+        return self.item?.tag
     }
 
     init() {
         self.backgroundNode.isLayerBacked = true
+        self.highlightNode.isLayerBacked = true
         super.init(layerBacked: false)
         self.addSubnode(self.backgroundNode)
     }
@@ -489,11 +428,49 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
         self.view.addSubview(self.titleLabel)
     }
 
+    func displayHighlight() {
+        // Use the same search-focus fill and animation as native ItemList rows.
+        self.highlightNode.layer.removeAllAnimations()
+        self.insertSubnode(self.highlightNode, aboveSubnode: self.backgroundNode)
+        Queue.mainQueue().after(1.2, { [weak self] in
+            guard let self else { return }
+            self.highlightNode.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.3, removeOnCompletion: false, completion: { [weak self] _ in
+                self?.highlightNode.removeFromSupernode()
+            })
+        })
+    }
+
     func asyncLayout() -> (_ item: RGBottomBarChipRowItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
         return { [weak self] item, params, neighbors in
             let separatorHeight = UIScreenPixel
             let separatorRightInset: CGFloat = 16.0
-            let contentHeight: CGFloat = 84.0
+            let leftInset = params.leftInset + 16.0
+            let availableWidth = max(1.0, params.width - params.leftInset - params.rightInset - 32.0)
+            let baseFontSize = item.presentationData.fontSize.itemListBaseFontSize
+            let titleFont = Font.regular(baseFontSize)
+            let chipFont = Font.medium(floor(baseFontSize * 13.0 / 17.0))
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineBreakMode = .byWordWrapping
+            let titleBounds = (item.title as NSString).boundingRect(with: CGSize(width: availableWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: [.font: titleFont, .paragraphStyle: paragraphStyle], context: nil)
+            let titleFrame = CGRect(x: leftInset, y: 12.0, width: availableWidth, height: ceil(max(titleFont.lineHeight, titleBounds.height)))
+            let chipCount = max(1, item.chips.count)
+            let gap = min(7.0, max(0.0, (availableWidth - CGFloat(chipCount) * 48.0) / CGFloat(max(1, chipCount - 1))))
+            let chipInsets = UIEdgeInsets(top: 10.0, left: 6.0, bottom: 10.0, right: 6.0)
+            let naturalWidths = item.chips.map { max(1.0, ceil(($0.title as NSString).size(withAttributes: [.font: chipFont]).width)) }
+            let totalNaturalWidth = max(1.0, naturalWidths.reduce(0.0, +))
+            let totalChipWidth = max(1.0, availableWidth - gap * CGFloat(chipCount - 1))
+            let minimumChipWidth = min(44.0, totalChipWidth / CGFloat(chipCount))
+            let remainingWidth = max(0.0, totalChipWidth - minimumChipWidth * CGFloat(chipCount))
+            let chipHeight = max(44.0, ceil(chipFont.lineHeight) + chipInsets.top + chipInsets.bottom)
+            var chipFrames: [CGRect] = []
+            var nextX: CGFloat = 0.0
+            let rowY = titleFrame.maxY + 10.0
+            for naturalWidth in naturalWidths {
+                let chipWidth = minimumChipWidth + remainingWidth * naturalWidth / totalNaturalWidth
+                chipFrames.append(CGRect(x: leftInset + nextX, y: rowY, width: chipWidth, height: chipHeight))
+                nextX += chipWidth + gap
+            }
+            let contentHeight = rowY + (item.chips.isEmpty ? 0.0 : chipHeight) + 12.0
             let layout = ListViewItemNodeLayout(contentSize: CGSize(width: params.width, height: contentHeight), insets: itemListNeighborsGroupedInsets(neighbors, params))
             let insets = layout.insets
             return (layout, { [weak self] in
@@ -502,6 +479,7 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
                 }
                 self.item = item
                 self.backgroundNode.backgroundColor = item.theme.list.itemBlocksBackgroundColor
+                self.highlightNode.backgroundColor = item.theme.list.itemSearchHighlightColor
                 self.topStripeNode.backgroundColor = item.theme.list.itemBlocksSeparatorColor
                 self.bottomStripeNode.backgroundColor = item.theme.list.itemBlocksSeparatorColor
 
@@ -541,30 +519,33 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
 
                 self.maskNode.image = hasCorners ? PresentationResourcesItemList.cornersImage(item.theme, top: hasTopCorners, bottom: hasBottomCorners, glass: true) : nil
                 self.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentHeight + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
+                self.highlightNode.frame = self.backgroundNode.frame
                 self.maskNode.frame = self.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
                 self.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: separatorHeight))
                 self.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentHeight + bottomStripeOffset), size: CGSize(width: params.width - params.rightInset - bottomStripeInset - separatorRightInset, height: separatorHeight))
 
                 self.titleLabel.text = item.title
-                self.titleLabel.font = Font.regular(17.0)
+                self.titleLabel.font = titleFont
+                self.titleLabel.numberOfLines = 0
+                self.titleLabel.lineBreakMode = .byWordWrapping
                 self.titleLabel.textColor = item.theme.list.itemPrimaryTextColor
-                self.titleLabel.frame = CGRect(x: params.leftInset + 16.0, y: 12.0, width: params.width - params.leftInset - params.rightInset - 32.0, height: 22.0)
+                self.titleLabel.frame = titleFrame
 
-                let availableWidth = params.width - params.leftInset - params.rightInset - 32.0
-                let gap: CGFloat = 7.0
-                let chipCount = max(1, item.chips.count)
-                let chipWidth = floor((availableWidth - gap * CGFloat(chipCount - 1)) / CGFloat(chipCount))
                 var activeIds = Set<String>()
+                var accessibilityElements: [Any] = [self.titleLabel]
                 for (index, chip) in item.chips.enumerated() {
                     activeIds.insert(chip.id)
                     let button = self.button(for: chip.id)
                     button.chipId = chip.id
-                    button.frame = CGRect(x: params.leftInset + 16.0 + CGFloat(index) * (chipWidth + gap), y: 44.0, width: chipWidth, height: 30.0)
+                    button.frame = chipFrames[index]
+                    button.titleLabel?.font = chipFont
                     self.configure(button: button, chip: chip, theme: item.theme)
+                    accessibilityElements.append(button)
                 }
                 for (id, button) in self.buttons {
                     button.isHidden = !activeIds.contains(id)
                 }
+                self.view.accessibilityElements = accessibilityElements
             })
         }
     }
@@ -576,7 +557,11 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
         let button = RGBottomBarChipButton(type: .system)
         button.layer.cornerRadius = 15.0
         button.layer.borderWidth = UIScreenPixel
-        button.titleLabel?.font = Font.medium(13.0)
+        button.titleLabel?.numberOfLines = 1
+        button.titleLabel?.adjustsFontSizeToFitWidth = true
+        button.titleLabel?.minimumScaleFactor = 0.4
+        button.titleLabel?.baselineAdjustment = .alignCenters
+        button.titleLabel?.textAlignment = .center
         button.addTarget(self, action: #selector(self.buttonPressed(_:)), for: .touchUpInside)
         self.view.addSubview(button)
         self.buttons[id] = button
@@ -586,24 +571,36 @@ private final class RGBottomBarChipRowItemNode: ListViewItemNode, ItemListItemNo
     private func configure(button: RGBottomBarChipButton, chip: RGBottomBarChipRowItem.Chip, theme: PresentationTheme) {
         button.setTitle(chip.title, for: .normal)
         button.isEnabled = chip.isEnabled
+        button.isAccessibilityElement = true
+        button.accessibilityLabel = chip.title
+        var accessibilityTraits: UIAccessibilityTraits = [.button]
+        if chip.isSelected {
+            accessibilityTraits.insert(.selected)
+        }
+        if !chip.isEnabled {
+            accessibilityTraits.insert(.notEnabled)
+        }
+        button.accessibilityTraits = accessibilityTraits
         if chip.isSelected {
             let selectedColor = theme.list.itemCheckColors.fillColor // MARK: Regram — paired theme colors stay legible.
             button.backgroundColor = selectedColor
             button.layer.borderColor = selectedColor.cgColor
             button.setTitleColor(theme.list.itemCheckColors.foregroundColor, for: .normal)
+            button.setTitleColor(theme.list.itemCheckColors.foregroundColor, for: .disabled)
         } else {
             button.backgroundColor = theme.list.itemInputField.backgroundColor
             button.layer.borderColor = theme.list.itemBlocksSeparatorColor.cgColor
             button.setTitleColor(theme.list.itemSecondaryTextColor, for: .normal)
+            button.setTitleColor(theme.list.itemSecondaryTextColor, for: .disabled)
         }
         button.alpha = chip.isEnabled ? 1.0 : 0.75
     }
 
     @objc private func buttonPressed(_ button: RGBottomBarChipButton) {
-        guard let chipId = button.chipId else {
+        guard button.isEnabled, let chipId = button.chipId, let item = self.item, item.chips.contains(where: { $0.id == chipId && $0.isEnabled }) else {
             return
         }
-        self.item?.selected(chipId)
+        item.selected(chipId)
     }
 }
 
@@ -825,7 +822,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
         let visibleBottomItems = previewSettings.visibleBottomItems
         let visibleComponentItems = visibleBottomItems.map(makeComponentItem)
         let externalComponentItem: TabBarComponent.Item?
-        if let externalItem = previewSettings.externalItem, externalItem != .search, !previewSettings.hiddenItems.contains(externalItem) {
+        if let externalItem = previewSettings.externalItem, !previewSettings.hiddenItems.contains(externalItem) {
             externalComponentItem = makeComponentItem(externalItem)
         } else {
             externalComponentItem = nil
@@ -853,7 +850,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 strings: item.strings,
                 items: visibleComponentItems,
                 externalItem: externalComponentItem,
-                search: nil,
+                search: previewSettings.isVisible(.search) ? TabBarComponent.Search(isActive: false, activate: {}, deactivate: {}) : nil,
                 selectedId: selectedId,
                 outerInsets: .zero,
                 showItemTitles: previewSettings.showLabels,
@@ -881,7 +878,8 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 }
             }
 
-            let bottomItemFrames = visibleBottomItems.compactMap { self.itemFrames[$0] }
+            let previewCapsuleItems = visibleBottomItems + (previewSettings.isVisible(.search) ? previewSettings.externalItem.map { [$0] } ?? [] : [])
+            let bottomItemFrames = previewCapsuleItems.compactMap { self.itemFrames[$0] }
             self.bottomFrame = bottomItemFrames.reduce(CGRect.null) { partialResult, frame in
                 return partialResult.isNull ? frame : partialResult.union(frame)
             }
@@ -890,7 +888,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             }
 
             let fixedExternalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
-            if let externalItem = previewSettings.externalItem, externalItem != .search, let frame = self.itemFrames[externalItem] {
+            if let externalItem = previewSettings.externalItem, let frame = self.itemFrames[externalItem] {
                 self.externalFrame = frame
 
             } else {
@@ -920,7 +918,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 return
             }
             self.draggingItem = nil
-            if self.externalFrame.insetBy(dx: -16.0, dy: -16.0).contains(point) {
+            if self.item?.settings.isVisible(.search) == false, !self.bottomFrame.contains(point), self.externalFrame.insetBy(dx: -16.0, dy: -16.0).contains(point) {
                 self.item?.update { settings in
                     settings.moveToExternal(draggingItem)
                 }
@@ -956,9 +954,6 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
     }
 
     private func itemId(at point: CGPoint) -> RGBottomBarItemId? {
-        if let item = self.item, item.settings.isVisible(.search), self.externalFrame.insetBy(dx: -8.0, dy: -8.0).contains(point) {
-            return .search
-        }
         if let match = self.itemFrames.first(where: { $0.value.insetBy(dx: -8.0, dy: -8.0).contains(point) }) {
             return match.key
         }

@@ -14,14 +14,32 @@ public func rgControllerForSettingsLink(context: AccountContext, destination: RG
         "messagesPage": "pro.messages", "inputPage": "pro.input", "networkPage": "pro.network", "translationPage": "pro.translation", "privacyPage": "pro.privacy", "mediaPage": "pro.media", "appearancePage": "pro.appearance", "notificationsPage": "pro.notifications", "toolsPage": "pro.tools",
         "messageActionsSettings": "settings.messageActions", "chatListSettings": "settings.chatList", "folderSettings": "settings.folders", "translationSettings": "settings.translation", "transcriptionSettings": "stt", "photoSettings": "settings.photos", "stickerSettings": "settings.stickers", "recordingSettings": "settings.recording", "mediaSettings": "settings.media", "appearanceSettings": "settings.appearance", "profileSettings": "settings.profiles", "storiesSettings": "settings.stories", "appSettings": "settings.app",
         "inputSettings": "settings.input", "transferSettings": "settings.transfer", "privacySettings": "settings.privacy", "bookmarks": "bookmarks",
-        "summarySettings": "summary", "networkPolicy": "networkPolicy", "llmTranslationSettings": "llm", "bottomBarLayout": "bottomBar", "contextMenuOrder": "contextMenu", "linkPreviewSettings": "linkPreview", "antiFeatures": "antiFeatures", "ghostMode": "ghostMode", "messageFilter": "messageFilter", "hiddenUsers": "hiddenUsers", "antiRevokeChats": "antiRevokeChats", "fonts": "fonts", "backup": "backup", "chatPreferences": "chatPreferences", "revokedMessages": "revokedMessages", "diagnostics": "diagnostics", "appIcons": "appIcons", "appBages": "appBadges"
+        "inlineBotRules": "inlineBots", "groupProfileSettings": "groupProfile", "textStyleMenu": "textStyleMenu", "summarySettings": "summary", "networkPolicy": "networkPolicy", "llmTranslationSettings": "llm", "bottomBarLayout": "bottomBar", "contextMenuOrder": "contextMenu", "linkPreviewSettings": "linkPreview", "antiFeatures": "antiFeatures", "ghostMode": "ghostMode", "messageFilter": "messageFilter", "hiddenUsers": "hiddenUsers", "antiRevokeChats": "antiRevokeChats", "fonts": "fonts", "backup": "backup", "chatPreferences": "chatPreferences", "revokedMessages": "revokedMessages", "diagnostics": "diagnostics", "appIcons": "appIcons", "appBages": "appBadges"
     ]
     if destination.page.hasPrefix("pro.") || destination.page.hasPrefix("settings."), let focus, let page = disclosed[focus], let target = RGSettingsDestination(page: page) {
         return rgControllerForSettingsLink(context: context, destination: target)
     }
     if destination.page.hasPrefix("pro."), let page = RGProSettingsPage(rawValue: String(destination.page.dropFirst(4))) { return rgProController(context: context, page: page, focusSetting: focus) }
-    if destination.page.hasPrefix("settings."), let page = RGSettingsPage(rawValue: String(destination.page.dropFirst(9))) { return rgSettingsController(context: context, page: page, focusSetting: focus) }
+    if destination.page.hasPrefix("settings."), let page = RGSettingsPage(rawValue: String(destination.page.dropFirst(9))) {
+        let category: RGProSettingsPage?
+        switch page {
+        case .appearance, .profiles: category = .appearance
+        case .messageActions, .chatList, .folders: category = .messages
+        case .input: category = .input
+        case .translation: category = .translation
+        case .privacy, .stories, .app: category = .privacy
+        case .media, .photos, .stickers, .recording: category = .media
+        case .transfer: category = .network
+        case .home, .transcription: category = nil
+        }
+        if let category { return rgProController(context: context, page: category, focusSetting: focus, initialSettingsPage: page) }
+        return rgSettingsController(context: context, page: page, focusSetting: focus)
+    }
     switch destination.page {
+    case "inlineBots": return rgFeatureInlineBotRulesController(context: context, focusSetting: focus)
+    case "groupProfile": return rgFeatureGroupProfileSettingsController(context: context, focusOnRow: focus)
+    case "textStyleMenu": return rgFeatureTextStyleMenuSettingsController(context: context, focusOnRow: focus)
+
     case "bottomBar": return rgBottomBarSettingsController(context: context, focusSetting: focus)
     case "summary": return rgLLMSummarySettingsController(context: context, focusSetting: focus)
     case "networkPolicy":

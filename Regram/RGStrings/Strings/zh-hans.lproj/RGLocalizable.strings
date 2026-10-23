@@ -15,7 +15,7 @@
 /* Example: Hide "All Chats" */
 "Settings.Folders.AllChatsHidden" = "隐藏 \"%@\"";
 "Settings.Folders.RememberLast" = "打开上次分组";
-"Settings.Folders.RememberLast.Notice" = "Regram 将在重启或切换账户后打开最后使用的分组";
+"Settings.Folders.RememberLast.Notice" = "重启应用或切换账号时打开所选分组；指定分组不可用时打开全部聊天。";
 
 "Settings.Folders.CompactNames" = "缩小分组间距";
 "Settings.Folders.AllChatsTitle" = "\"所有对话\"标题";
@@ -674,6 +674,7 @@
 "RG.BottomBarLayout" = "底栏布局";
 "RG.BottomBarLayout.TopBar" = "顶栏";
 "RG.BottomBarLayout.TopSearch" = "顶部搜索";
+"RG.BottomBarLayout.BottomSearch" = "底栏搜索";
 "RG.BottomBarLayout.TopSearchHint.visible" = "顶部搜索已显示，可在下方状态中关闭";
 "RG.BottomBarLayout.TopSearchHint.hidden" = "顶部搜索已隐藏，可在下方状态中开启";
 "RG.BottomBarLayout.BottomBar" = "底栏";
@@ -699,7 +700,7 @@
 "RG.BottomBarLayout.Alignment.center" = "整体居中";
 "RG.BottomBarLayout.Alignment.disabled" = "占满时不适用";
 "RG.BottomBarLayout.Reset" = "重置底栏布局";
-"RG.BottomBarLayout.Footer" = "在预览区拖动按钮调整顺序。聊天和设置必须保留。自动宽度跟随可见标签数量，关闭后可手动调整宽度。整个底栏保持居中。";
+"RG.BottomBarLayout.Footer" = "在预览区拖动导航按钮调整顺序。聊天和设置必须保留。搜索在底栏项目中开启，原生搜索按钮打开当前页面的搜索；顶部搜索可单独关闭。搜索开启时，独立导航按钮暂时并入标签栏。自动宽度跟随可见项目数量，关闭后可手动调整宽度。";
 "RG.BottomBarLayout.Item.contacts" = "联系人";
 "RG.BottomBarLayout.Item.calls" = "通话";
 "RG.BottomBarLayout.Item.chats" = "聊天";
@@ -718,7 +719,7 @@
 "Diagnostics.DC.Failed" = "失败";
 "Browser.Translation.SystemUnavailable" = "Apple 网页翻译需要 iOS 18 或更高版本。请在本机选择其他翻译服务。";
 
-"AppBadge.Notice" = "设置截图上显示的应用标记。";
+"AppBadge.Notice" = "点按样式即可应用，标记随界面自动切换深浅色。预览已放大，截图中的标记保持正常大小。";
 "AppBadge.Title" = "截图标记";
 "Common.KnowWhatYouDo" = "请在了解这些选项的作用后再修改。";
 "LocalPremium.Notice" = "在本机启用会员界面与客户端选项。贴纸、回应等需要 Telegram 服务端验证的权益仍需有效订阅。";
@@ -899,7 +900,6 @@
 "DNSDiagnostics.NoPolicyAddresses" = "没有符合当前策略的地址。";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "无法切换图标，请稍后重试。";
 "RevokedMarker.Title" = "已撤回消息标记";
 "RevokedMarker.Style" = "标记样式";
 "RevokedMarker.Style.icon" = "图标";
@@ -933,6 +933,16 @@
 "CommonGroups.Failed" = "查询未完成，请点按重试。";
 
 "CommonGroups.LoadMore" = "加载更多";
+"CommonGroups.PageTitle" = "共同群组发言";
+"CommonGroups.Results" = "发言 · %1$@";
+"CommonGroups.LoadingGroups" = "正在获取共同群组…";
+"CommonGroups.SummaryLoading" = "正在查找 · 已显示 %1$@ 条发言";
+"CommonGroups.SummaryPaused" = "已暂停 · 已显示 %1$@ 条发言";
+"CommonGroups.SummaryFailed" = "部分查询未完成 · 已显示 %1$@ 条发言";
+"CommonGroups.Paused" = "查询已暂停，已加载的发言仍可查看。";
+"CommonGroups.AllLoaded" = "已加载全部可显示的发言";
+"CommonGroups.EmptyHint" = "可切换其他群组，或刷新查询。";
+"CommonGroups.OpenMessage" = "前往群组查看原消息";
 
 // Regram debug tools
 "Debug.NotificationExperiment" = "实验性通知恢复";
@@ -940,3 +950,216 @@
 "Debug.ClearCache" = "清除缓存";
 "Debug.ClearCache.Info" = "清除当前账号的媒体缓存及网页、网络缓存。缓存媒体可能需要重新下载才能查看。保留账号、消息、设置、证书及已保存的编辑历史图片。";
 "Debug.ClearCache.Done" = "缓存已清除";
+
+/* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
+"features.AutoInlineBot.Enabled" = "自动查询匹配链接";
+"features.AutoInlineBot.Footer" = "单独输入匹配链接时，将该链接交给对应 Inline 机器人查询。不会查询链接旁的草稿文字。";
+"features.InlineBotRules" = "匹配规则";
+"features.InlineBotRules.Footer" = "规则只读并自动更新。每组显示对应机器人与匹配表达式，输入框保留原始链接。";
+"features.StayAtLatestMessageAfterRefresh" = "刷新后保持最新消息";
+"features.HidePrivateChatActivities" = "隐藏对方输入与录音提示";
+"features.HideSavedAndArchivedMessagesInList" = "在列表中隐藏收藏夹和归档会话信息";
+"features.KeepNewChatsVisibleAtTop" = "列表顶部保持显示新消息会话";
+"features.CommunityAvatarTapAction" = "点击社区头像行为";
+"features.CommunityAvatarTapAction.chat" = "始终进入聊天";
+"features.CommunityAvatarTapAction.community" = "始终打开社区";
+"features.CommunityAvatarTapAction.arrow" = "仅在点击头像右下角箭头时打开社区页";
+"features.MessagePlaceholderInSaved" = "这里是您的收藏夹会话";
+"features.MessagePlaceholderInArchived" = "这里是您的归档会话";
+"features.PanguOnReceiving" = "接收消息时处理";
+"features.TextStyleMenu" = "选中文字菜单";
+"features.TextStyleMenu.PositionHeader" = "插入位置";
+"features.TextStyleMenu.Position.first" = "最前面";
+"features.TextStyleMenu.Position.beforeFormat" = "「格式」之前（拷贝 / 粘贴之后）";
+"features.TextStyleMenu.Position.afterFormat" = "「格式」之后";
+"features.TextStyleMenu.Position.last" = "最后面";
+"features.TextStyleMenu.PositionFooter" = "完整的「格式」菜单始终保留在原位置。系统菜单一屏约放 5 项，靠后的需要点「>」翻页。";
+"features.TextStyleMenu.ItemsHeader" = "平铺到菜单的样式";
+"features.TextStyleMenu.ItemsFooter" = "开启的样式会直接显示在选中文字菜单的第一层。点「编辑」后可拖动排序。私密聊天不显示引用、剧透和日期。";
+"features.TextStyleMenu.Reset" = "重置选中文字菜单";
+"features.TextStyleMenu.ResetConfirm" = "重置所有选中文字菜单的样式、排序和插入位置？";
+"features.PanguOnEditing" = "编辑消息时处理";
+"features.TapMessageRowToOpenContextMenu" = "点击消息行打开菜单";
+"features.ChatListSwipeAction" = "对话列表横滑";
+"features.ChatListSwipeAction.both" = "切换 + 快捷";
+"features.ChatListSwipeAction.switch" = "切换";
+"features.ChatListSwipeAction.quick" = "快捷";
+"features.ChatListSwipeAction.none" = "无";
+"features.ShowArchiveInFolders" = "文件夹显示归档";
+"features.GroupProfileSettings" = "自定义群资料页设置项";
+"features.GroupProfileSettings.Footer" = "仅显示已选择且当前群组与账号权限允许的项目。";
+"features.GroupProfileSettings.Item.groupType" = "群组类型";
+"features.GroupProfileSettings.Item.inviteLinks" = "邀请链接";
+"features.GroupProfileSettings.Item.linkedChannel" = "关联频道";
+"features.GroupProfileSettings.Item.reactions" = "反应";
+"features.GroupProfileSettings.Item.appearance" = "外观";
+"features.GroupProfileSettings.Item.history" = "聊天记录";
+"features.GroupProfileSettings.Item.topics" = "话题";
+"features.GroupProfileSettings.Item.location" = "位置";
+"features.GroupProfileSettings.Item.members" = "成员";
+"features.GroupProfileSettings.Item.permissions" = "权限";
+"features.GroupProfileSettings.Item.admins" = "管理员";
+"features.GroupProfileSettings.Item.memberRequests" = "入群申请";
+"features.GroupProfileSettings.Item.removedUsers" = "已移除用户";
+"features.GroupProfileSettings.Item.recentActions" = "管理日志";
+"features.GroupProfileSettings.Item.community" = "社区";
+"features.GroupProfileSettings.Item.deleteGroup" = "删除群组";
+"features.GroupProfileSettings.Item.other" = "其他设置";
+"features.HideTabBarPermissionWarnings" = "隐藏权限提醒角标";
+"features.HideTopStories" = "隐藏顶部动态区域";
+"features.DisableChatAvatarStories" = "关闭聊天头像动态";
+"features.ChatListStartupFolder" = "启动时打开分组";
+"features.ChatListStartupFolder.telegram" = "Telegram 默认";
+"features.ChatListStartupFolder.last" = "上次所在分组";
+"features.ChatListStartupFolder.specific" = "指定分组";
+"features.ChatListStartupFolder.notSet" = "未指定";
+"features.ChatListFolderTabDisplayMode" = "分组标签显示方式";
+"features.ChatListFolderTabDisplayMode.text" = "仅文字";
+"features.ChatListFolderTabDisplayMode.icon" = "仅图标";
+"features.ChatListFolderTabDisplayMode.both" = "图标和文字";
+"features.ShowFoldersInShareSheet" = "分享面板显示文件夹";
+"features.HideFolderUnreadCount" = "隐藏分组标签未读数";
+"features.ChatFolderNoneAvailable" = "没有可添加的分组。请先创建分组，或检查此聊天是否已加入所有分组。";
+"features.InviteLinks.BulkRevoke" = "批量撤销邀请链接…";
+"features.InviteLinks.ScopeInfo" = "仅处理额外的非永久邀请链接，主链接不会受到影响。";
+"features.InviteLinks.RevokeAll" = "撤销所有链接";
+"features.InviteLinks.RevokeUnavailable" = "撤销所有不可用链接";
+"features.InviteLinks.ConfirmAll" = "将撤销你创建的全部 %@ 条额外邀请链接。主链接及其他永久链接不会受到影响。此操作无法撤销。";
+"features.InviteLinks.ConfirmUnavailable" = "将撤销 %@ 条已过期或达到使用次数上限的额外邀请链接。主链接、其他永久链接和仍可用的额外链接不会受到影响。此操作无法撤销。";
+"features.InviteLinks.NoAdditional" = "没有可撤销的额外邀请链接。";
+"features.InviteLinks.NoUnavailable" = "没有不可用的额外邀请链接。";
+"features.InviteLinks.FetchFailed" = "无法加载完整的额外邀请链接列表，请稍后重试。";
+"features.InviteLinks.Success" = "已撤销 %@ 条额外邀请链接。";
+"features.InviteLinks.PartialFailure" = "已撤销 %1$@ 条，另有 %2$@ 条撤销失败。列表正在刷新。";
+"features.MutualContact.Description" = "此联系人是双向联系人。";
+"features.UnpinAllMessagesAlert" = "要取消所有消息的置顶吗？";
+"features.ConfirmUnpin" = "取消置顶前确认";
+"features.SearchLink.Header" = "链接";
+"features.SearchLink.Open" = "打开链接";
+"features.SearchLink.OpenMessage" = "跳转到消息";
+"features.SearchLink.OpenInvite" = "打开邀请链接";
+
+"features.TextStyleMenu.Position" = "插入位置";
+
+
+
+
+"features.VideoPIPSwipeDirection" = "上滑开启画中画";
+
+"features.VideoPIPSwipeDirection.up" = "开启";
+
+"features.VideoPIPSwipeDirection.none" = "关闭";
+
+
+"features.TextStyleMenu.Style.quote" = "引用";
+
+"features.TextStyleMenu.Style.spoiler" = "剧透";
+
+"features.TextStyleMenu.Style.bold" = "粗体";
+
+"features.TextStyleMenu.Style.italic" = "斜体";
+
+"features.TextStyleMenu.Style.monospace" = "等宽";
+
+"features.TextStyleMenu.Style.link" = "链接";
+
+"features.TextStyleMenu.Style.date" = "日期";
+
+"features.TextStyleMenu.Style.strikethrough" = "删除线";
+
+"features.TextStyleMenu.Style.underline" = "下划线";
+
+"features.TextStyleMenu.Style.code" = "代码块";
+
+"features.ChatListStartupFolder.Unavailable" = "分组暂不可用";
+
+"features.InlineBots.Title" = "Inline 机器人";
+
+"features.PanguOnSending" = "发送消息时处理";
+
+"features.PanguInfo" = "在中日韩文字与拉丁字母或数字之间添加空格，三个开关独立控制。发送时沿用会话独立设置，保留代码、链接和文字格式。";
+"features.HidePrivateChatActivities.Notice" = "仅隐藏本机私聊及聊天列表中对方正在输入、录音等提示。要隐藏自己向对方发送的状态，请使用幽灵模式。";
+"ContextMenu.importSettings" = "导入设置";
+
+// Regram Pro category navigation and editor descriptions.
+"Settings.ProCategory.messages.Description" = "消息操作、聊天列表与分组";
+"Settings.ProCategory.input.Description" = "输入工具、发送方式与文字格式";
+"Settings.ProCategory.translation.Description" = "翻译服务、模型接口与语音识别";
+"Settings.ProCategory.privacy.Description" = "内容过滤、防撤回与隐私控制";
+"Settings.ProCategory.media.Description" = "链接预览、照片、贴纸与播放";
+"Settings.ProCategory.appearance.Description" = "字体、图标、底栏与资料显示";
+"Settings.ProCategory.notifications.Description" = "内容过滤、置顶与提及提醒";
+"Settings.ProCategory.network.Description" = "连接策略、传输参数与诊断";
+"Settings.ProCategory.tools.Description" = "备份恢复、应用更新与本地数据";
+"Settings.CategoryTab.messageActions" = "消息操作";
+"Settings.CategoryTab.chatList" = "聊天列表";
+"Settings.CategoryTab.folders" = "分组";
+"Settings.CategoryTab.media" = "播放与链接";
+"Settings.CategoryTab.photos" = "照片";
+"Settings.CategoryTab.stickers" = "贴纸";
+"Settings.CategoryTab.recording" = "录制";
+"Settings.Section.Personalization" = "个性化";
+"Settings.Section.Interface" = "界面显示";
+"Settings.Section.PrivacyDisplay" = "隐私显示";
+"Settings.Section.Sending" = "发送行为";
+"Settings.Section.Composer" = "输入工具";
+"Settings.Section.Playback" = "播放与媒体";
+"Settings.Section.PrivacyControls" = "过滤与保护";
+"Settings.Section.Links" = "链接预览";
+"Settings.Section.Connection" = "连接与诊断";
+"Settings.Section.Speech" = "语音识别";
+"Settings.Editor.fonts.Description" = "拉丁与中日韩字体、导入和预览";
+"Settings.Editor.appBages.Description" = "截图中的应用标记与样式";
+"Settings.Editor.transcriptionSettings.Description" = "识别方式、自定义接口与语言";
+"Settings.Editor.summarySettings.Description" = "独立配置接口、模型与提示词";
+"Settings.Editor.linkPreviewSettings.Description" = "站点规则与预览服务";
+"Settings.Editor.messageFilter.Description" = "关键词、正则与会话范围";
+"Settings.Editor.networkPolicy.Description" = "DNS 解析、IP 策略与代理连接";
+"Settings.Editor.diagnostics.Description" = "数据中心连接、解析与传输诊断";
+"Settings.Editor.bottomBarLayout.Description" = "显示项目、顺序、标签与宽度";
+"Settings.Editor.llmTranslationSettings.Description" = "接口地址、模型、密钥与提示词";
+"Settings.Editor.contextMenuOrder.Description" = "显示项目、拖动排序与分组";
+
+"Settings.Folders.AllChatsTitle.shortText" = "对话";
+"Settings.Folders.AllChatsTitle.longText" = "所有对话";
+
+"AppBadge.Current" = "当前标记";
+"AppBadge.Choose" = "选择样式";
+
+"AppIcon.Name.conversation" = "絮语";
+"AppBadge.Name.conversation" = "絮语";
+
+"AppIcon.Name.gathering" = "合流";
+"AppBadge.Name.gathering" = "合流";
+
+"AppIcon.Name.azure" = "晴空";
+
+"AppBadge.Name.azure" = "晴空";
+
+"AppIcon.Name.iris" = "鸢尾";
+
+"AppBadge.Name.iris" = "鸢尾";
+
+"AppIcon.Name.mint" = "薄荷";
+
+"AppBadge.Name.mint" = "薄荷";
+
+"AppIcon.Name.amber" = "琥珀";
+
+"AppBadge.Name.amber" = "琥珀";
+
+"AppIcon.Name.nebula" = "星河";
+
+"AppBadge.Name.nebula" = "星河";
+
+"AppIcon.Name.jade" = "青岚";
+
+"AppBadge.Name.jade" = "青岚";
+
+"AppIcon.Name.classic" = "Regram 经典";
+
+"AppBadge.Name.regram" = "Regram";
+
+"AppBadge.Name.zhiqiu" = "知秋";
+
+"features.HideTabBarPermissionWarnings.Notice" = "隐藏因系统通知或通讯录权限关闭而显示的感叹号。未读数量及其他账号提醒保留。";

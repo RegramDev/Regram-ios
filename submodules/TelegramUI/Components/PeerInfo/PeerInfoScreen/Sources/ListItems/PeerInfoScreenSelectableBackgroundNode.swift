@@ -4,6 +4,25 @@ import AsyncDisplayKit
 import Display
 import TelegramPresentationData
 
+// MARK: Regram — sliding across a settings row must cancel its pending tap.
+final class PeerInfoScreenSelectableButton: HighlightTrackingButton {
+    private var touchOrigin = CGPoint.zero
+
+    override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        self.touchOrigin = touch.location(in: self)
+        return super.beginTracking(touch, with: event)
+    }
+
+    override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        let point = touch.location(in: self)
+        if hypot(point.x - self.touchOrigin.x, point.y - self.touchOrigin.y) > 10 {
+            self.cancelTracking(with: event)
+            return false
+        }
+        return super.continueTracking(touch, with: event)
+    }
+}
+
 final class PeerInfoScreenSelectableBackgroundNode: ASDisplayNode {
     private let backgroundNode: ASDisplayNode
     private let button: HighlightTrackingButton
@@ -25,7 +44,7 @@ final class PeerInfoScreenSelectableBackgroundNode: ASDisplayNode {
         self.backgroundNode.isLayerBacked = true
         self.backgroundNode.alpha = 0.0
         
-        self.button = HighlightTrackingButton()
+        self.button = PeerInfoScreenSelectableButton() // MARK: Regram
         self.button.isAccessibilityElement = false
         
         super.init()

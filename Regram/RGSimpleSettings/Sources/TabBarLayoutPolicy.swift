@@ -8,7 +8,7 @@ public enum RGTabBarLayoutPolicy {
     public static let maximumWidth: Double = 500.0
     public static let minimumItemWidth: Double = 44.0
 
-    /// Zero balances content fit with comfortable spacing; explicit widths use the supported bar width.
+    /// Zero uses Swiftgram automatic compact widths; explicit percentages retain manual control.
     public static func normalizedPercent(_ value: Int32) -> Int32 {
         return value <= 0 ? 0 : min(maximumPercent, max(minimumPercent, value))
     }
@@ -25,12 +25,11 @@ public enum RGTabBarLayoutPolicy {
         let reservedSearchWidth = searchButtonWidth.isFinite ? max(0.0, searchButtonWidth) : 0.0
         let requestedWidth: Double
         if normalized == 0 {
-            let widths = naturalItemWidths?.count == itemCount ? naturalItemWidths! : Array(repeating: 64.0, count: itemCount)
-            // Leave breathing room for the native selection lens and avoid squeezing short labels.
-            let comfortableItemWidth = max(88.0, widths.filter(\.isFinite).max() ?? 64.0)
-            let contentWidth = Double(itemCount) * comfortableItemWidth + 8.0 + reservedSearchWidth
-            let comfortableBarWidth = min(320.0, availableWidth * 0.9)
-            requestedWidth = max(contentWidth, comfortableBarWidth)
+            // Match Swiftgram's automatic compact bar: fewer navigation items reduce the whole bar.
+            // Search is included in this width and is reserved exactly once by the native component.
+            let reducer: Double
+            switch itemCount { case 1: reducer = 1.75; case 2: reducer = 1.5; case 3: reducer = 1.25; default: reducer = 1.0 }
+            requestedWidth = availableWidth / reducer - (reservedSearchWidth == 0 ? 56.0 : 0.0)
         } else {
             requestedWidth = availableWidth * Double(normalized) / 100.0
         }

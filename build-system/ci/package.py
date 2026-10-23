@@ -37,6 +37,15 @@ def verify_notification_filtering(bundle, entitlements):
         raise RuntimeError('Notification filtering must be declared only by the notification service extension')
 
 
+def verify_share_access_entitlements(bundle_id, entitlements):
+    if not bundle_id.endswith('.Share'):
+        return
+    team = entitlements.get('com.apple.developer.team-identifier')
+    keychain = entitlements.get('keychain-access-groups')
+    if not isinstance(team, str) or not team or not isinstance(keychain, list) or not keychain or not all(isinstance(group, str) and group for group in keychain):
+        raise RuntimeError('Share extension must retain its profile team and keychain declarations')
+
+
 def extract(archive, directory):
     with zipfile.ZipFile(archive) as reader:
         if reader.testzip() is not None:
@@ -75,6 +84,7 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
                 raise RuntimeError('Unexpected build number or minimum iOS version')
             entitlements = plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(bundle)]))
             verify_notification_filtering(bundle, entitlements)
+            verify_share_access_entitlements(metadata['CFBundleIdentifier'], entitlements)
             if entitlements.get('com.apple.security.application-groups') != ['group.' + config['telegram_bundle_id']]:
                 raise RuntimeError('Every bundle must use its own identity App Group')
         for profile in app.rglob('embedded.mobileprovision'):
@@ -87,7 +97,9 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         verified = extract(archive, work / 'verified')
         run(['codesign', '--verify', '--deep', '--strict', str(verified)])
         for bundle in [verified] + sorted((verified / 'PlugIns').glob('*.appex')):
-            verify_notification_filtering(bundle, plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(bundle)])))
+            entitlements = plistlib.loads(run(['codesign', '-d', '--entitlements', ':-', str(bundle)]))
+            verify_notification_filtering(bundle, entitlements)
+            verify_share_access_entitlements(info(bundle)['CFBundleIdentifier'], entitlements)
         if list(verified.rglob('embedded.mobileprovision')):
             raise RuntimeError('Reference package must not contain provisioning profiles')
         catalog = root / 'Regram/RGTypography/RGFontCatalog.json'
@@ -144,6 +156,7 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
         'signatures_and_architectures_verified': True, 'matching_debug_symbols': True,
         'font_catalog_and_licenses_verified': True, 'device_tested': False,
         'notification_filtering_declaration_verified': True,
+        'share_access_entitlements_verified': True,
         'artifacts': {final.name: {'size_bytes': final.stat().st_size, 'sha256': checksum(final)}},
     }
     report_path.parent.mkdir(parents=True, exist_ok=True)

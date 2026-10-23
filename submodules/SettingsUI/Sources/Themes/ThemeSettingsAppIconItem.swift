@@ -8,6 +8,8 @@ import TelegramPresentationData
 import ItemListUI
 import PresentationDataUtils
 import AppBundle
+import RGStrings // MARK: Regram
+import RGSimpleSettings // MARK: Regram
 
 private func generateBorderImage(theme: PresentationTheme, bordered: Bool, selected: Bool) -> UIImage? {
     return generateImage(CGSize(width: 30.0, height: 30.0), rotatedContext: { size, context in
@@ -256,7 +258,10 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
             let separatorHeight = UIScreenPixel
             
             let nodeSize = CGSize(width: 74.0, height: 102.0)
-            let height: CGFloat = nodeSize.height * ceil(CGFloat(item.icons.count) / 4.0) + 12.0
+            let sideInset: CGFloat = 8.0
+            let availableWidth = params.width - sideInset * 2.0 - params.leftInset - params.rightInset
+            let columnCount = 4 // MARK: Regram — preserve our current four-column icon picker.
+            let height: CGFloat = nodeSize.height * ceil(CGFloat(item.icons.count) / CGFloat(columnCount)) + 12.0
             
             contentSize = CGSize(width: params.width, height: height)
             insets = itemListNeighborsGroupedInsets(neighbors, params)
@@ -338,23 +343,30 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     
                     strongSelf.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
                     strongSelf.highlightNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
-                    strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
+                    strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.inset(by: UIEdgeInsets(top: 0.0, left: params.leftInset, bottom: 0.0, right: params.rightInset))
                     strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                     strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset), size: CGSize(width: layoutSize.width - bottomStripeInset, height: separatorHeight))
                     
                     strongSelf.containerNode.frame = CGRect(origin: CGPoint(x: params.leftInset, y: 2.0), size: CGSize(width: layoutSize.width - params.leftInset - params.rightInset, height: layoutSize.height))
                     
-                    let sideInset: CGFloat = 8.0
-                    let spacing: CGFloat = floorToScreenPixels((params.width - sideInset * 2.0 - params.leftInset - params.rightInset - nodeSize.width * 4.0) / 3.0)
+                    // MARK: Regram — use the current presentation language for the icon titles.
+                    let iconLanguage = RGLocalizationManager.shared.preferredLocale(primary: item.strings.primaryComponent.languageCode, secondary: item.strings.secondaryComponent?.languageCode)
+                    let spacing: CGFloat = floorToScreenPixels((availableWidth - nodeSize.width * CGFloat(columnCount)) / CGFloat(columnCount - 1))
                     let verticalSpacing: CGFloat = 0.0
                     
-                    var x: CGFloat = sideInset
+                    // MARK: Regram — center each row, including a partially filled last row.
+                    func rowInset(_ start: Int) -> CGFloat {
+                        let count = min(columnCount, item.icons.count - start)
+                        let usedWidth = nodeSize.width * CGFloat(count) + spacing * CGFloat(max(0, count - 1))
+                        return max(sideInset, (layoutSize.width - params.leftInset - params.rightInset - usedWidth) / 2.0)
+                    }
+                    var x: CGFloat = rowInset(0)
                     var y: CGFloat = 0.0
                     
                     var i = 0
                     for icon in item.icons {
-                        if i > 0 && i % 4 == 0 {
-                            x = sideInset
+                        if i > 0 && i % columnCount == 0 {
+                            x = rowInset(i)
                             y += nodeSize.height + verticalSpacing
                         }
                         let nodeFrame = CGRect(x: x, y: y, width: nodeSize.width, height: nodeSize.height)
@@ -370,99 +382,12 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                         }
                         imageNode.lockNode.image = strongSelf.lockImage
                         
-                        if let image = UIImage(named: icon.imageName, in: getAppBundle(), compatibleWith: nil) {
+                        if let image = UIImage(named: icon.imageName, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: item.theme.overallDarkAppearance ? .dark : .light)) {
                             let selected = icon.name == item.currentIconName
 
-                            var name = "Icon"
-                            var bordered = true
-                            // MARK: Regram — product icon identifiers use RG names.
-                            switch icon.name {
-                                case "RGDefault":
-                                    name = item.strings.Appearance_AppIconDefault
-                                    bordered = false
-                                case "RGBlack":
-                                    name = "Black"
-                                    bordered = false
-                                case "RGLegacy":
-                                    name = "Legacy"
-                                    bordered = false
-                                case "RGInverted":
-                                    name = "Inverted"
-                                case "RGWhite":
-                                    name = "White"
-                                case "RGNight":
-                                    name = "Night"
-                                    bordered = false
-                                case "RGSky":
-                                    name = "Sky"
-                                    bordered = false
-                                case "RGTitanium":
-                                    name = "Titanium"
-                                    bordered = false
-                                case "RGNeon":
-                                    name = "Neon"
-                                    bordered = false
-                                case "RGNeonBlue":
-                                    name = "Neon Blue"
-                                    bordered = false
-                                case "RGGlass":
-                                    name = "Glass"
-                                    bordered = false
-                                case "RGSparkling":
-                                    name = "Sparkling"
-                                    bordered = false
-                                case "RGBeta":
-                                    name = "β Beta"
-                                    bordered = false
-                                case "RGPro":
-                                    name = "Pro"
-                                    bordered = false
-                                case "RGGold":
-                                    name = "Gold"
-                                    bordered = false
-                                case "RGDucky":
-                                    name = "Ducky"
-                                    bordered = false
-                                case "RGDay":
-                                    name = "Day"
-                                    bordered = false
-                                case "RGAnime":
-                                    name = "Regram"
-                                    bordered = false
-                                case "RGSilver":
-                                    name = "Silver"
-                                    bordered = false
-                                case "BlueIcon":
-                                    // Not Appearance_AppIconDefault: that string is already used by
-                                    // RGDefault above, and two rows labelled "Default" is unusable.
-                                    name = "Telegram"
-                                case "BlackIcon":
-                                    name = "Telegram X"
-                                case "BlueClassicIcon":
-                                    name = item.strings.Appearance_AppIconClassic
-                                case "BlackClassicIcon":
-                                    name = item.strings.Appearance_AppIconClassicX
-                                case "BlueFilledIcon":
-                                    name = item.strings.Appearance_AppIconFilled
-                                    bordered = false
-                                case "BlackFilledIcon":
-                                    name = item.strings.Appearance_AppIconFilledX
-                                    bordered = false
-                                case "WhiteFilledIcon":
-                                    name = "⍺ White"
-                                case "New1":
-                                    name = item.strings.Appearance_AppIconNew1
-                                case "New2":
-                                    name = item.strings.Appearance_AppIconNew2
-                                case "Premium":
-                                    name = item.strings.Appearance_AppIconPremium
-                                case "PremiumBlack":
-                                    name = item.strings.Appearance_AppIconBlack
-                                case "PremiumTurbo":
-                                    name = item.strings.Appearance_AppIconTurbo
-                                default:
-                                    name = icon.name
-                            }
+                            // MARK: Regram — share stable palette names across the picker and badge list.
+                            let name = RGAppIconNames.titleKey(icon.name).i18n(iconLanguage)
+                            let bordered = false
                         
                             imageNode.setup(theme: item.theme, icon: image, title: NSAttributedString(string: name, font: selected ? selectedTextFont : textFont, textColor: selected  ? item.theme.list.itemAccentColor : item.theme.list.itemPrimaryTextColor, paragraphAlignment: .center), locked: !item.isPremium && icon.isPremium, color: item.theme.list.itemPrimaryTextColor, bordered: bordered, selected: selected, action: {
                                 item.updated(icon)

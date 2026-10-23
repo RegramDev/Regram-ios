@@ -12,14 +12,86 @@ public struct RGSettingsCatalogEntry: Hashable {
     public var pageTitleKey: String {
         let page = destination.page
         if page.hasPrefix("pro.") { return "Settings.ProCategory." + page.dropFirst(4) }
-        if page.hasPrefix("settings.") { return "Settings.Category." + page.dropFirst(9) }
-        return ["summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        if page.hasPrefix("settings.") {
+            let categories = ["appearance": "appearance", "profiles": "appearance", "messageActions": "messages", "chatList": "messages", "folders": "messages", "input": "input", "translation": "translation", "privacy": "privacy", "stories": "privacy", "app": "privacy", "media": "media", "photos": "media", "stickers": "media", "recording": "media", "transfer": "network"]
+            if let category = categories[String(page.dropFirst(9))] { return "Settings.ProCategory." + category }
+            return "Settings.Category." + page.dropFirst(9)
+        }
+        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
 
+public struct RGSettingsSearchQuery {
+    private let tokens: [String]
+    private let locale: Locale
+    public init(_ query: String, language: String) {
+        self.locale = Locale(identifier: language)
+        self.tokens = query.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: self.locale).split(whereSeparator: { $0.isWhitespace }).map(String.init)
+    }
+    public var isEmpty: Bool { self.tokens.isEmpty }
+    public func matches(_ text: String) -> Bool {
+        guard !self.isEmpty else { return false }
+        let text = text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: self.locale)
+        return self.tokens.allSatisfy { text.contains($0) }
+    }
+}
+
 public enum RGSettingsCatalog {
     public static let entries: [RGSettingsCatalogEntry] = [
+        .init("inlineBots", "enabled", "features.AutoInlineBot.Enabled", keywords: "inline bot 自动查询 机器人"),
+        .init("pro.messages", "inputToolbar", "InputToolbar.Title"),
+        .init("textStyleMenu", "quote", "features.TextStyleMenu.Style.quote"),
+        .init("textStyleMenu", "spoiler", "features.TextStyleMenu.Style.spoiler"),
+        .init("textStyleMenu", "bold", "features.TextStyleMenu.Style.bold"),
+        .init("textStyleMenu", "italic", "features.TextStyleMenu.Style.italic"),
+        .init("textStyleMenu", "monospace", "features.TextStyleMenu.Style.monospace"),
+        .init("textStyleMenu", "link", "features.TextStyleMenu.Style.link"),
+        .init("textStyleMenu", "date", "features.TextStyleMenu.Style.date"),
+        .init("textStyleMenu", "strikethrough", "features.TextStyleMenu.Style.strikethrough"),
+        .init("textStyleMenu", "underline", "features.TextStyleMenu.Style.underline"),
+        .init("textStyleMenu", "code", "features.TextStyleMenu.Style.code"),
+
+        .init("settings.messageActions", "inlineBotRules", "features.InlineBots.Title", keywords: "bot Twitter Pixiv Music163 rules 机器人 規則 规则"),
+        .init("settings.folders", "showFoldersInShareSheet", "features.ShowFoldersInShareSheet"),
+        .init("settings.messageActions", "tapMessageRowToOpenContextMenu", "features.TapMessageRowToOpenContextMenu"),
+        .init("settings.messageActions", "confirmUnpin", "features.ConfirmUnpin"),
+        .init("settings.chatList", "hideSavedAndArchivedMessagesInList", "features.HideSavedAndArchivedMessagesInList"),
+        .init("settings.chatList", "hidePrivateChatActivities", "features.HidePrivateChatActivities", keywords: "隐藏私聊活动状态 隱藏私聊活動狀態 incoming typing recording 对方 正在输入 錄音"),
+        .init("settings.folders", "hideFolderUnreadCount", "features.HideFolderUnreadCount"),
+        .init("settings.folders", "showArchiveInFolders", "features.ShowArchiveInFolders"),
+        .init("settings.messageActions", "stayAtLatestMessageAfterRefresh", "features.StayAtLatestMessageAfterRefresh"),
+        .init("pro.input", "enablePanguOnEditing", "features.PanguOnEditing"),
+        .init("pro.input", "enablePanguOnReceiving", "features.PanguOnReceiving"),
+        .init("settings.stories", "hideTopStories", "features.HideTopStories"),
+        .init("settings.stories", "disableChatAvatarStories", "features.DisableChatAvatarStories"),
+        .init("settings.chatList", "keepNewChatsVisibleAtTop", "features.KeepNewChatsVisibleAtTop"),
+        .init("settings.chatList", "chatListSwipeAction", "features.ChatListSwipeAction"),
+        .init("settings.folders", "chatListFolderTabDisplayMode", "features.ChatListFolderTabDisplayMode"),
+        .init("settings.chatList", "communityAvatarTapAction", "features.CommunityAvatarTapAction"),
+        .init("settings.media", "videoPIPSwipeDirection", "features.VideoPIPSwipeDirection"),
+        .init("settings.profiles", "groupProfileSettings", "features.GroupProfileSettings"),
+        .init("settings.folders", "startupFolder", "features.ChatListStartupFolder", keywords: "remember last specific folder 记住上次分组 指定分组 記住上次分組 指定分組"),
+        .init("settings.input", "textStyleMenu", "features.TextStyleMenu"),
+        .init("groupProfile", "groupType", "features.GroupProfileSettings.Item.groupType"),
+        .init("groupProfile", "inviteLinks", "features.GroupProfileSettings.Item.inviteLinks"),
+        .init("groupProfile", "linkedChannel", "features.GroupProfileSettings.Item.linkedChannel"),
+        .init("groupProfile", "reactions", "features.GroupProfileSettings.Item.reactions"),
+        .init("groupProfile", "appearance", "features.GroupProfileSettings.Item.appearance"),
+        .init("groupProfile", "history", "features.GroupProfileSettings.Item.history"),
+        .init("groupProfile", "topics", "features.GroupProfileSettings.Item.topics"),
+        .init("groupProfile", "location", "features.GroupProfileSettings.Item.location"),
+        .init("groupProfile", "members", "features.GroupProfileSettings.Item.members"),
+        .init("groupProfile", "permissions", "features.GroupProfileSettings.Item.permissions"),
+        .init("groupProfile", "admins", "features.GroupProfileSettings.Item.admins"),
+        .init("groupProfile", "memberRequests", "features.GroupProfileSettings.Item.memberRequests"),
+        .init("groupProfile", "removedUsers", "features.GroupProfileSettings.Item.removedUsers"),
+        .init("groupProfile", "recentActions", "features.GroupProfileSettings.Item.recentActions"),
+        .init("groupProfile", "community", "features.GroupProfileSettings.Item.community"),
+        .init("groupProfile", "deleteGroup", "features.GroupProfileSettings.Item.deleteGroup"),
+        .init("groupProfile", "other", "features.GroupProfileSettings.Item.other"),
+        .init("textStyleMenu", "position", "features.TextStyleMenu.Position"),
+
         .init("settings.appearance", "nyStyleSnow", "Settings.NY.Style.snow"),
         .init("settings.appearance", "nyStyleLightning", "Settings.NY.Style.lightning"),
         .init("settings.appearance", "nyStyle", "Settings.NY.Style"),
@@ -29,11 +101,9 @@ public enum RGSettingsCatalog {
         .init("settings.folders", "allChatsHidden", "Settings.Folders.AllChatsHidden"),
         .init("settings.folders", "compactFolderNames", "Settings.Folders.CompactNames"),
         .init("settings.folders", "allChatsTitleLengthOverride", "Settings.Folders.AllChatsTitle"),
-        .init("settings.folders", "rememberLastFolder", "Settings.Folders.RememberLast"),
         .init("settings.folders", "chooseFolderAfterJoining", "JoinFolder.Setting"),
         .init("settings.chatList", "compactChatList", "Settings.CompactChatList"),
         .init("settings.chatList", "chatListLines", "Settings.ChatList.Lines"),
-        .init("settings.chatList", "disableChatSwipeOptions", "Settings.ChatSwipeOptions"),
         .init("settings.chatList", "disableDeleteChatSwipeOption", "Settings.DeleteChatSwipeOption"),
         .init("settings.chatList", "hideChatListSeparators", "Settings.ChatList.HideSeparators"),
         .init("settings.chatList", "unlimitedPinnedChats", "Settings.UnlimitedPinnedChats"),
@@ -89,11 +159,10 @@ public enum RGSettingsCatalog {
         .init("settings.profiles", "hidePhoneInSettings", "Settings.HidePhoneInSettingsUI"),
         .init("pro.privacy", "messageFilter", "MessageFilter.Title"),
         .init("pro.privacy", "hiddenUsers", "HiddenUsers.Title"),
-        .init("pro.messages", "inputToolbar", "InputToolbar.Title"),
         .init("pro.messages", "mentionAsUserIdLink", "Mention.UserIdLink"),
         .init("pro.privacy", "localPremium", "LocalPremium.Title"),
         .init("pro.media", "disableLinkPreview", "LinkPreview.Disable"),
-        .init("pro.messages", "panguSpacing", "Pangu.Title"),
+        .init("pro.input", "panguSpacing", "features.PanguOnSending", keywords: "pangu 盘古之白 盤古之白"),
         .init("pro.messages", "defaultOutgoingFormatting", "OutgoingFormatting.Title"),
         .init("pro.messages", "chatPreferences", "ChatPreferences.Title"),
         .init("pro.privacy", "antiFeatures", "AntiFeatures.Header"),
@@ -103,6 +172,7 @@ public enum RGSettingsCatalog {
         .init("pro.notifications", "pinnedMessageNotifications", "Notifications.PinnedMessages.Title"),
         .init("pro.notifications", "mentionsAndRepliesNotifications", "Notifications.MentionsAndReplies.Title"),
         .init("pro.notifications", "filterNotifications", "Notifications.ContentFilter"),
+        .init("pro.notifications", "hideTabBarPermissionWarnings", "features.HideTabBarPermissionWarnings", keywords: "notifications permissions exclamation warning badge 通知 权限 感叹号 角标 通知 權限 驚嘆號"),
         .init("pro.appearance", "fonts", "Fonts.Title"),
         .init("pro.appearance", "appIcons", "Catalog.AppIcons"),
         .init("pro.appearance", "appBages", "AppBadge.Title"),
@@ -179,7 +249,7 @@ public enum RGSettingsCatalog {
         .init("stt", "test", "RG.STTTest"),
         .init("bottomBar", "hidden", "Settings.Tabs.HideTabBar"),
         .init("bottomBar", "topSearch", "RG.BottomBarLayout.TopSearch"),
-        .init("bottomBar", "visibility", "RG.BottomBarLayout.Visibility"),
+        .init("bottomBar", "visibility", "RG.BottomBarLayout.Visibility", keywords: "global search bottom tabs standalone 全局搜索 底栏 搜索开关 独立搜索 右下角 全域搜尋 底欄 搜尋開關 獨立搜尋"),
         .init("bottomBar", "automaticWidth", "Settings.Tabs.Width.Automatic"),
         .init("bottomBar", "labels", "RG.BottomBarLayout.ShowLabels"),
         .init("bottomBar", "width", "RG.BottomBarLayout.Width"),
@@ -206,15 +276,15 @@ public enum RGSettingsCatalog {
         .init("chatPreferences", "panguSpacing", "Pangu.Title"),
         .init("chatPreferences", "reset", "ChatPreferences.Reset"),
     ]
+    public static func searchableText(for entry: RGSettingsCatalogEntry, language: String) -> String {
+        let pageContext = ["summary": "LLM OpenAI Anthropic AI summary summarize 大模型 总结 摘要 總結", "llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
+        let aliases = (entry.destination.item.flatMap { RGProSearchIndex.keys[$0] } ?? []) + [pageContext[entry.destination.page] ?? ""]
+        let values = ["Regram Pro", entry.titleKey.i18n(language), entry.titleKey.i18n("en"), entry.pageTitleKey.i18n(language), entry.pageTitleKey.i18n("en"), entry.keywords, entry.destination.item ?? ""] + aliases.map { $0.contains(".") ? $0.i18n(language) : $0 }
+        return values.joined(separator: " ")
+    }
     public static func results(query: String, language: String) -> [RGSettingsCatalogEntry] {
-        let tokens = query.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language)).split(whereSeparator: { $0.isWhitespace })
-        guard !tokens.isEmpty else { return [] }
-        return entries.filter { entry in
-            let pageContext = ["summary": "LLM OpenAI Anthropic AI summary summarize 大模型 总结 摘要 總結", "llm": "LLM OpenAI Anthropic 大模型", "stt": "STT ASR OpenAI Whisper 自定义识别 自訂辨識"]
-            let aliases = (entry.destination.item.flatMap { RGProSearchIndex.keys[$0] } ?? []) + [pageContext[entry.destination.page] ?? ""]
-            let values = [entry.titleKey.i18n(language), entry.titleKey.i18n("en"), entry.pageTitleKey.i18n(language), entry.pageTitleKey.i18n("en"), entry.keywords, entry.destination.item ?? ""] + aliases.map { $0.contains(".") ? $0.i18n(language) : $0 }
-            let text = values.joined(separator: " ").folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: language))
-            return tokens.allSatisfy { text.contains($0) }
-        }
+        let query = RGSettingsSearchQuery(query, language: language)
+        guard !query.isEmpty else { return [] }
+        return entries.filter { query.matches(searchableText(for: $0, language: language)) }
     }
 }

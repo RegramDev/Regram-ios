@@ -18,7 +18,7 @@
 /* Example: Hide "All Chats" */
 "Settings.Folders.AllChatsHidden" = "Hide \"%@\"";
 "Settings.Folders.RememberLast" = "Open Last Folder";
-"Settings.Folders.RememberLast.Notice" = "Regram will open the last used folder when you restart the app or switch accounts.";
+"Settings.Folders.RememberLast.Notice" = "Open the selected destination when restarting the app or switching accounts. If a folder is unavailable, All Chats opens instead.";
 
 "Settings.Folders.CompactNames" = "Smaller spacing";
 "Settings.Folders.AllChatsTitle" = "\"All Chats\" title";
@@ -252,7 +252,7 @@ Matching is case-insensitive.";
 "PayWall.ValidationError.Expired" = "Your subscription expired. Subscribe again to regain access to Pro features.";
 
 "AppBadge.Title" = "App Badge";
-"AppBadge.Notice" = "Customize App Badge shown on screenshots";
+"AppBadge.Notice" = "Choose a style once; the badge follows the interface's light or dark appearance. Previews are enlarged; screenshots use the normal size.";
 
 "Settings.NY.Header" = "HOLIDAY EFFECTS";
 "Settings.NY.Style" = "Style";
@@ -708,6 +708,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout" = "Bottom Bar Layout";
 "RG.BottomBarLayout.TopBar" = "Top Bar";
 "RG.BottomBarLayout.TopSearch" = "Top Search";
+"RG.BottomBarLayout.BottomSearch" = "Bottom Search";
 "RG.BottomBarLayout.TopSearchHint.visible" = "Top search is shown. Toggle it in State below.";
 "RG.BottomBarLayout.TopSearchHint.hidden" = "Top search is hidden. Toggle it in State below.";
 "RG.BottomBarLayout.BottomBar" = "Bottom Bar";
@@ -733,7 +734,7 @@ Matching is case-insensitive.";
 "RG.BottomBarLayout.Alignment.center" = "Center All";
 "RG.BottomBarLayout.Alignment.disabled" = "Not used in full width";
 "RG.BottomBarLayout.Reset" = "Reset Bottom Bar Layout";
-"RG.BottomBarLayout.Footer" = "Drag buttons in the preview to change their order. Chats and Settings are always selected. Automatic width follows the number of visible tabs; turn it off to adjust the width manually. The complete bar is centered.";
+"RG.BottomBarLayout.Footer" = "Drag navigation buttons in the preview to change their order. Chats and Settings are always visible. Enable Search with the other bottom bar controls; its native button opens search for the current page. Top Search is independent. A standalone navigation button temporarily joins the tabs while Search is enabled. Automatic width follows visible items; turn it off to adjust the width manually.";
 "RG.BottomBarLayout.Item.contacts" = "Contacts";
 "RG.BottomBarLayout.Item.calls" = "Calls";
 "RG.BottomBarLayout.Item.chats" = "Chats";
@@ -906,7 +907,6 @@ Matching is case-insensitive.";
 "DNSDiagnostics.NoPolicyAddresses" = "No address matches the selected policy.";
 
 // Regram: icon selection and retained-message markers
-"AppIcon.ChangeFailed" = "Unable to change the icon. Please try again shortly.";
 "RevokedMarker.Title" = "Deleted-message marker";
 "RevokedMarker.Style" = "Marker style";
 "RevokedMarker.Style.icon" = "Icon";
@@ -940,6 +940,16 @@ Matching is case-insensitive.";
 "CommonGroups.Failed" = "The search did not finish. Tap Retry to continue.";
 
 "CommonGroups.LoadMore" = "Load More";
+"CommonGroups.PageTitle" = "Messages in Common Groups";
+"CommonGroups.Results" = "Messages · %1$@";
+"CommonGroups.LoadingGroups" = "Finding common groups…";
+"CommonGroups.SummaryLoading" = "Searching · %1$@ messages shown";
+"CommonGroups.SummaryPaused" = "Paused · %1$@ messages shown";
+"CommonGroups.SummaryFailed" = "Some queries unfinished · %1$@ messages shown";
+"CommonGroups.Paused" = "Search paused. Loaded messages are still available.";
+"CommonGroups.AllLoaded" = "All available messages loaded";
+"CommonGroups.EmptyHint" = "Try another group or refresh the search.";
+"CommonGroups.OpenMessage" = "Open the original message in its group";
 
 // Regram debug tools
 "Debug.NotificationExperiment" = "Experimental notification recovery";
@@ -947,3 +957,216 @@ Matching is case-insensitive.";
 "Debug.ClearCache" = "Clear cache";
 "Debug.ClearCache.Info" = "Clear cached media for this account and web/network caches. Locally cached media may become unavailable until downloaded again. Keeps accounts, messages, settings, certificates and saved edit-history images.";
 "Debug.ClearCache.Done" = "Cache cleared";
+
+/* Regram chat and interface options; adapted translations from NextAlone/Nagram-iOS. */
+"features.AutoInlineBot.Enabled" = "Automatically query matching links";
+"features.AutoInlineBot.Footer" = "When you enter a matching link on its own, that link is queried through the matching inline bot. Text beside the link is not queried.";
+"features.InlineBotRules" = "Matching Rules";
+"features.InlineBotRules.Footer" = "Read-only rules update automatically. Each group shows the bot and its link patterns. Your original link stays in the input field.";
+"features.StayAtLatestMessageAfterRefresh" = "Stay at Latest After Refresh";
+"features.HidePrivateChatActivities" = "Hide Others’ Typing and Recording";
+"features.HideSavedAndArchivedMessagesInList" = "Hide Saved and Archived Messages in List";
+"features.KeepNewChatsVisibleAtTop" = "Keep New Chats Visible at Top";
+"features.CommunityAvatarTapAction" = "Community Avatar Tap Action";
+"features.CommunityAvatarTapAction.chat" = "Always Open Chat";
+"features.CommunityAvatarTapAction.community" = "Always Open Community";
+"features.CommunityAvatarTapAction.arrow" = "Open Community Only with the Bottom-Right Arrow";
+"features.MessagePlaceholderInSaved" = "Here are your Saved Messages chats";
+"features.MessagePlaceholderInArchived" = "Here are your Archived chats";
+"features.PanguOnReceiving" = "Apply to received messages";
+"features.TextStyleMenu" = "Selection Menu";
+"features.TextStyleMenu.PositionHeader" = "Insert Position";
+"features.TextStyleMenu.Position.first" = "At the Beginning";
+"features.TextStyleMenu.Position.beforeFormat" = "Before “Format” (after Copy / Paste)";
+"features.TextStyleMenu.Position.afterFormat" = "After “Format”";
+"features.TextStyleMenu.Position.last" = "At the End";
+"features.TextStyleMenu.PositionFooter" = "The full Format menu always stays in its usual place. The system menu shows about 5 items per page; later items need “>” to page.";
+"features.TextStyleMenu.ItemsHeader" = "Styles Shown in the Menu";
+"features.TextStyleMenu.ItemsFooter" = "Enabled styles appear directly on the first level of the text selection menu. Tap Edit to reorder. Quote, Spoiler and Date are hidden in secret chats.";
+"features.TextStyleMenu.Reset" = "Reset Selection Menu";
+"features.TextStyleMenu.ResetConfirm" = "Reset all selection menu styles, order and position?";
+"features.PanguOnEditing" = "Apply when editing messages";
+"features.TapMessageRowToOpenContextMenu" = "Tap Message Row for Menu";
+"features.ChatListSwipeAction" = "Chat List Swipe";
+"features.ChatListSwipeAction.both" = "Switch + Quick Actions";
+"features.ChatListSwipeAction.switch" = "Switch Folders";
+"features.ChatListSwipeAction.quick" = "Quick Actions";
+"features.ChatListSwipeAction.none" = "None";
+"features.ShowArchiveInFolders" = "Show Archive in Folders";
+"features.GroupProfileSettings" = "Customize Group Profile Items";
+"features.GroupProfileSettings.Footer" = "Only selected items that are available for the current group and your permissions will be shown.";
+"features.GroupProfileSettings.Item.groupType" = "Group Type";
+"features.GroupProfileSettings.Item.inviteLinks" = "Invite Links";
+"features.GroupProfileSettings.Item.linkedChannel" = "Linked Channel";
+"features.GroupProfileSettings.Item.reactions" = "Reactions";
+"features.GroupProfileSettings.Item.appearance" = "Appearance";
+"features.GroupProfileSettings.Item.history" = "Chat History";
+"features.GroupProfileSettings.Item.topics" = "Topics";
+"features.GroupProfileSettings.Item.location" = "Location";
+"features.GroupProfileSettings.Item.members" = "Members";
+"features.GroupProfileSettings.Item.permissions" = "Permissions";
+"features.GroupProfileSettings.Item.admins" = "Administrators";
+"features.GroupProfileSettings.Item.memberRequests" = "Join Requests";
+"features.GroupProfileSettings.Item.removedUsers" = "Removed Users";
+"features.GroupProfileSettings.Item.recentActions" = "Recent Actions";
+"features.GroupProfileSettings.Item.community" = "Community";
+"features.GroupProfileSettings.Item.deleteGroup" = "Delete Group";
+"features.GroupProfileSettings.Item.other" = "Other Settings";
+"features.HideTabBarPermissionWarnings" = "Hide Permission Warning Badges";
+"features.HideTopStories" = "Hide Top Stories Area";
+"features.DisableChatAvatarStories" = "Disable Chat Avatar Stories";
+"features.ChatListStartupFolder" = "Open Folder on Startup";
+"features.ChatListStartupFolder.telegram" = "Telegram Default";
+"features.ChatListStartupFolder.last" = "Last Opened Folder";
+"features.ChatListStartupFolder.specific" = "Specific Folder";
+"features.ChatListStartupFolder.notSet" = "Not Set";
+"features.ChatListFolderTabDisplayMode" = "Folder Tab Display";
+"features.ChatListFolderTabDisplayMode.text" = "Text Only";
+"features.ChatListFolderTabDisplayMode.icon" = "Icon Only";
+"features.ChatListFolderTabDisplayMode.both" = "Icon and Text";
+"features.ShowFoldersInShareSheet" = "Show Folders in Share Sheet";
+"features.HideFolderUnreadCount" = "Hide Folder Unread Counts";
+"features.ChatFolderNoneAvailable" = "No folders are available. Create a folder first, or check whether this chat is already in every folder.";
+"features.InviteLinks.BulkRevoke" = "Revoke Invitation Links…";
+"features.InviteLinks.ScopeInfo" = "Only additional, non-permanent invite links will be processed. The main link will not be affected.";
+"features.InviteLinks.RevokeAll" = "Revoke All Links";
+"features.InviteLinks.RevokeUnavailable" = "Revoke All Unavailable Links";
+"features.InviteLinks.ConfirmAll" = "Revoke all additional invite links you created (%@ total)? The main link and other permanent links will not be affected. This cannot be undone.";
+"features.InviteLinks.ConfirmUnavailable" = "Revoke unavailable additional invite links (%@ total) that have expired or reached their usage limit? The main link, other permanent links, and usable additional links will not be affected. This cannot be undone.";
+"features.InviteLinks.NoAdditional" = "No additional invite links can be revoked.";
+"features.InviteLinks.NoUnavailable" = "No unavailable additional invite links.";
+"features.InviteLinks.FetchFailed" = "Couldn't load the complete list of additional invite links. Please try again later.";
+"features.InviteLinks.Success" = "Revoked additional invite links: %@.";
+"features.InviteLinks.PartialFailure" = "Revoked: %1$@. Failed: %2$@. The list is refreshing.";
+"features.MutualContact.Description" = "This contact is a mutual contact.";
+"features.UnpinAllMessagesAlert" = "Would you like to unpin all messages?";
+"features.ConfirmUnpin" = "Confirm Before Unpinning";
+"features.SearchLink.Header" = "Link";
+"features.SearchLink.Open" = "Open Link";
+"features.SearchLink.OpenMessage" = "Go to Message";
+"features.SearchLink.OpenInvite" = "Open Invite Link";
+
+"features.TextStyleMenu.Position" = "Insert Position";
+
+
+
+
+"features.VideoPIPSwipeDirection" = "Swipe up for Picture-in-Picture";
+
+"features.VideoPIPSwipeDirection.up" = "Enabled";
+
+"features.VideoPIPSwipeDirection.none" = "Disabled";
+
+
+"features.TextStyleMenu.Style.quote" = "Quote";
+
+"features.TextStyleMenu.Style.spoiler" = "Spoiler";
+
+"features.TextStyleMenu.Style.bold" = "Bold";
+
+"features.TextStyleMenu.Style.italic" = "Italic";
+
+"features.TextStyleMenu.Style.monospace" = "Monospace";
+
+"features.TextStyleMenu.Style.link" = "Link";
+
+"features.TextStyleMenu.Style.date" = "Date";
+
+"features.TextStyleMenu.Style.strikethrough" = "Strikethrough";
+
+"features.TextStyleMenu.Style.underline" = "Underline";
+
+"features.TextStyleMenu.Style.code" = "Code Block";
+
+"features.ChatListStartupFolder.Unavailable" = "Folder temporarily unavailable";
+
+"features.InlineBots.Title" = "Inline Bots";
+
+"features.PanguOnSending" = "Apply when sending messages";
+
+"features.PanguInfo" = "Insert spaces between Chinese/Japanese/Korean text and Latin letters or numbers. These three options are independent. Sending follows your existing per-chat setting; code, links and text entities keep their formatting.";
+"features.HidePrivateChatActivities.Notice" = "Hides the other person’s typing, recording and other activity indicators in your private chats and chat list. Ghost Mode controls whether your own activity is sent to others.";
+"ContextMenu.importSettings" = "Import Settings";
+
+// Regram Pro category navigation and editor descriptions.
+"Settings.ProCategory.messages.Description" = "Message actions, chat list and folders";
+"Settings.ProCategory.input.Description" = "Composer, sending and text formatting";
+"Settings.ProCategory.translation.Description" = "Translation services, models and transcription";
+"Settings.ProCategory.privacy.Description" = "Content filters, deleted messages and privacy";
+"Settings.ProCategory.media.Description" = "Link previews, photos, stickers and playback";
+"Settings.ProCategory.appearance.Description" = "Fonts, icons, bottom bar and profiles";
+"Settings.ProCategory.notifications.Description" = "Content filtering, pins and mentions";
+"Settings.ProCategory.network.Description" = "Connection policy, transfers and diagnostics";
+"Settings.ProCategory.tools.Description" = "Backup, app updates and local data";
+"Settings.CategoryTab.messageActions" = "Messages";
+"Settings.CategoryTab.chatList" = "Chat List";
+"Settings.CategoryTab.folders" = "Folders";
+"Settings.CategoryTab.media" = "Playback & Links";
+"Settings.CategoryTab.photos" = "Photos";
+"Settings.CategoryTab.stickers" = "Stickers";
+"Settings.CategoryTab.recording" = "Recording";
+"Settings.Section.Personalization" = "Personalisation";
+"Settings.Section.Interface" = "Interface";
+"Settings.Section.PrivacyDisplay" = "Privacy Display";
+"Settings.Section.Sending" = "Sending";
+"Settings.Section.Composer" = "Composer";
+"Settings.Section.Playback" = "Playback & Media";
+"Settings.Section.PrivacyControls" = "Filters & Protection";
+"Settings.Section.Links" = "Link Previews";
+"Settings.Section.Connection" = "Connection & Diagnostics";
+"Settings.Section.Speech" = "Speech Recognition";
+"Settings.Editor.fonts.Description" = "Latin and CJK fonts, imports and previews";
+"Settings.Editor.appBages.Description" = "App badges and styles in screenshots";
+"Settings.Editor.transcriptionSettings.Description" = "Recognition service, custom API and language";
+"Settings.Editor.summarySettings.Description" = "Separate API, model and prompt settings";
+"Settings.Editor.linkPreviewSettings.Description" = "Site rules and preview services";
+"Settings.Editor.messageFilter.Description" = "Keywords, regular expressions and chat scope";
+"Settings.Editor.networkPolicy.Description" = "DNS, IP policy and proxy connections";
+"Settings.Editor.diagnostics.Description" = "Datacentre, DNS and transfer diagnostics";
+"Settings.Editor.bottomBarLayout.Description" = "Visible items, order, labels and width";
+"Settings.Editor.llmTranslationSettings.Description" = "API endpoint, model, key and prompt";
+"Settings.Editor.contextMenuOrder.Description" = "Visible actions, drag order and groups";
+
+"Settings.Folders.AllChatsTitle.shortText" = "Chats";
+"Settings.Folders.AllChatsTitle.longText" = "All Chats";
+
+"AppBadge.Current" = "Current badge";
+"AppBadge.Choose" = "Choose a style";
+
+"AppIcon.Name.conversation" = "Whisper";
+"AppBadge.Name.conversation" = "Whisper";
+
+"AppIcon.Name.gathering" = "Confluence";
+"AppBadge.Name.gathering" = "Confluence";
+
+"AppIcon.Name.azure" = "Azure";
+
+"AppBadge.Name.azure" = "Azure";
+
+"AppIcon.Name.iris" = "Iris";
+
+"AppBadge.Name.iris" = "Iris";
+
+"AppIcon.Name.mint" = "Mint";
+
+"AppBadge.Name.mint" = "Mint";
+
+"AppIcon.Name.amber" = "Amber";
+
+"AppBadge.Name.amber" = "Amber";
+
+"AppIcon.Name.nebula" = "Nebula";
+
+"AppBadge.Name.nebula" = "Nebula";
+
+"AppIcon.Name.jade" = "Jade";
+
+"AppBadge.Name.jade" = "Jade";
+
+"AppIcon.Name.classic" = "Regram Classic";
+
+"AppBadge.Name.regram" = "Regram";
+
+"AppBadge.Name.zhiqiu" = "Zhiqiu";
+
+"features.HideTabBarPermissionWarnings.Notice" = "Hide exclamation badges caused by disabled notification or contacts access. Unread counts and other account reminders remain visible.";

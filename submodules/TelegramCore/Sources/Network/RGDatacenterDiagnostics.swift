@@ -1,7 +1,7 @@
 // MARK: Regram — bounded diagnostic requests over the account's existing network/proxy engine.
 import Foundation
 import SwiftSignalKit
-import TelegramApi
+internal import TelegramApi
 import MtProtoKit
 
 public struct RGDatacenterProbeSample {

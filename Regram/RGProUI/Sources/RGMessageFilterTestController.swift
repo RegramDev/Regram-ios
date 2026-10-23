@@ -9,6 +9,7 @@ import Display
 import TelegramPresentationData
 
 private struct RGMessageFilterTestView: View {
+    @Environment(\.rgSettingsColors) private var colors
     @Environment(\.lang) private var lang
     let rules: [RGMessageFilterRule]
     @State private var text = ""
@@ -26,9 +27,9 @@ private struct RGMessageFilterTestView: View {
     }
 
     var body: some View {
-        List {
-            Section(footer: Text("MessageFilter.Test.Notice".i18n(lang))) {
-                TextEditor(text: $text).frame(minHeight: 130)
+        RGSettingsList {
+            RGSettingsSection(footer: Text("MessageFilter.Test.Notice".i18n(lang))) {
+                RGSettingsTextEditor(text: $text).frame(minHeight: 130)
                     .accessibilityIdentifier("regram.filter.test.text")
                 Button("MessageFilter.Test.Run".i18n(lang)) {
                     let input = text
@@ -48,9 +49,9 @@ private struct RGMessageFilterTestView: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(rule.pattern)
                         Text(resultKey(results[index]).i18n(lang))
-                            .foregroundColor(results[index] == .matched ? .accentColor : .secondary)
+                            .foregroundColor(results[index] == .matched ? colors.accent : colors.secondary)
                         Text((rule.isException ? "MessageFilter.Rule.Keep" : "MessageFilter.Rule.Hide").i18n(lang))
-                            .font(.caption).foregroundColor(.secondary)
+                            .font(.caption).rgSecondaryText()
                     }
                 }
             }

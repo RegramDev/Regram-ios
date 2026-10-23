@@ -5,7 +5,6 @@ import AVFoundation
 import AsyncDisplayKit
 import Display
 import SwiftSignalKit
-import Postbox
 import TelegramCore
 import CoreImage
 import TelegramPresentationData
@@ -49,6 +48,7 @@ import MessageHaptics
 import ChatMessageTransitionNode
 import ChatMessageSuggestedPostInfoNode
 import TelegramStringFormatting
+import RGSimpleSettings // MARK: Regram
 
 private let nameFont = Font.medium(14.0)
 private let inlineBotPrefixFont = Font.regular(14.0)
@@ -1200,11 +1200,11 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 }
             }
             
-            var replyMessage: Message?
+            var replyMessage: EngineRawMessage?
             var replyForward: QuotedReplyMessageAttribute?
             var replyQuote: (quote: EngineMessageReplyQuote, isQuote: Bool)?
             var replyInnerSubject: EngineMessageReplyInnerSubject?
-            var replyStory: StoryId?
+            var replyStory: EngineStoryId?
             var inlineBotNameString: String?
             for attribute in item.message.attributes {
                 if let attribute = attribute as? InlineBotMessageAttribute {
@@ -1239,6 +1239,11 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 } else if let attribute = attribute as? ReplyMarkupMessageAttribute, attribute.flags.contains(.inline), !attribute.rows.isEmpty {
                     replyMarkup = attribute
                 }
+            }
+            
+            // A suspicious sender's buttons are not shown, as their links are not.
+            if item.associatedData.isSuspiciousPeer && item.message.effectivelyIncoming(item.context.account.peerId) {
+                replyMarkup = nil
             }
             
             var hasReply = replyMessage != nil || replyForward != nil || replyStory != nil
@@ -1312,7 +1317,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 contentHeight = max(imageSize.height + imageVerticalInset * 2.0, layoutConstants.image.minDimensions.height)
             }
             
-            var forwardSource: Peer?
+            var forwardSource: EnginePeer?
             var forwardAuthorSignature: String?
             var forwardPsaType: String?
             
@@ -1322,12 +1327,12 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 forwardPsaType = forwardInfo.psaType
                 
                 let resolvedForwardInfo = chatMessageForwardInfoDisplay(forwardInfo: forwardInfo, messageId: item.message.id, previouslyApplied: currentForwardInfo, peerDisplayTitle: { peer in
-                    return EnginePeer(peer).displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    return peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                 })
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableWidth = max(60.0, availableContentWidth + 6.0)
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource, forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             var needsReplyBackground = false
@@ -1355,13 +1360,13 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 }
                 
                 var buttonDeclineValue: UInt8 = 0
-                let buttonDecline = MemoryBuffer(data: Data(bytes: &buttonDeclineValue, count: 1))
+                let buttonDecline = EngineMemoryBuffer(data: Data(bytes: &buttonDeclineValue, count: 1))
                 var buttonApproveValue: UInt8 = 1
-                let buttonApprove = MemoryBuffer(data: Data(bytes: &buttonApproveValue, count: 1))
+                let buttonApprove = EngineMemoryBuffer(data: Data(bytes: &buttonApproveValue, count: 1))
                 var buttonSuggestChangesValue: UInt8 = 2
-                let buttonSuggestChanges = MemoryBuffer(data: Data(bytes: &buttonSuggestChangesValue, count: 1))
+                let buttonSuggestChanges = EngineMemoryBuffer(data: Data(bytes: &buttonSuggestChangesValue, count: 1))
                 
-                let customInfos: [MemoryBuffer: ChatMessageActionButtonsNode.CustomInfo] = [
+                let customInfos: [EngineMemoryBuffer: ChatMessageActionButtonsNode.CustomInfo] = [
                     buttonDecline: ChatMessageActionButtonsNode.CustomInfo(
                         isEnabled: true,
                         icon: .suggestedPostReject
@@ -2039,6 +2044,10 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        if case .tap = gesture, let item = self.item {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                            break
+                        }
                         // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
                         if case .doubleTap = gesture {
                             if item.controllerInteraction.selectionState == nil {
@@ -2082,6 +2091,35 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         default:
             break
         }
+    }
+
+    // MARK: Regram
+    private func rgFeatureTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let threadInfoNode = self.threadInfoNode, threadInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.imageNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func startAdditionalAnimationsCommitTimer() {
@@ -2210,7 +2248,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         self.playEffectAnimation(resource: effect.resource, isStickerEffect: true)
     }
     
-    public func playEffectAnimation(resource: MediaResource, isStickerEffect: Bool = false) {
+    public func playEffectAnimation(resource: TelegramMediaResource, isStickerEffect: Bool = false) {
         guard let item = self.item else {
             return
         }
@@ -2610,6 +2648,9 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                         }
                     }
                 }
+            }
+            if let action = self.rgFeatureTapMessageRowToOpenContextMenuAction(location: location) {
+                return action
             }
             return nil
         case .longTap, .doubleTap, .secondaryTap:
@@ -3229,7 +3270,7 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
         return nil
     }
     
-    override public func targetForStoryTransition(id: StoryId) -> UIView? {
+    override public func targetForStoryTransition(id: EngineStoryId) -> UIView? {
         guard let item = self.item else {
             return nil
         }
@@ -3303,7 +3344,7 @@ public struct AnimatedEmojiSoundsConfiguration {
                     
                     if let idString = dict["id"], let id = Int64(idString), let accessHashString = dict["access_hash"], let accessHash = Int64(accessHashString), let fileReference = Data(base64Encoded: fileReferenceString) {
                         let resource = CloudDocumentMediaResource(datacenterId: 1, fileId: id, accessHash: accessHash, size: nil, fileReference: fileReference, fileName: nil)
-                        let file = TelegramMediaFile(fileId: MediaId(namespace: Namespaces.Media.LocalFile, id: 0), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: nil, attributes: [], alternativeRepresentations: [])
+                        let file = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: 0), partialReference: nil, resource: resource, previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: nil, mimeType: "audio/ogg", size: nil, attributes: [], alternativeRepresentations: [])
                         sounds[key] = file
                     }
                 }

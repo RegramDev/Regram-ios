@@ -180,6 +180,8 @@ private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: Presenta
         return "ContextMenu.factCheck".i18n(lang)
     case .selectAll:
         return "ContextMenu.selectAll".i18n(lang)
+    case .importSettings:
+        return "ContextMenu.importSettings".i18n(lang)
     case .addFilter:
         return "MessageFilter.AddToFilter".i18n(lang)
     case .retry:

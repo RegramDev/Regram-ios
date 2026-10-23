@@ -90,6 +90,7 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
     }
 
     let controller = RGSettingsListController(context: context, state: signal)
+    controller.focusSetting = focusSetting
     push = { [weak controller] target in (controller?.navigationController as? NavigationController)?.pushViewController(target) }
     return controller
 }

@@ -58,6 +58,8 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
     let openSettingsResult: (RGSettingsDestination) -> Void
     let settingsPage: String?
     let searchInput: (String) -> Void
+    let disclosureIcon: (DisclosureLink) -> UIImage?
+    let disclosureSubtitle: (DisclosureLink) -> String?
 
     
     public init(
@@ -70,7 +72,9 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         action: @escaping (ActionType) -> Void = { _ in },
         searchInput: @escaping (String) -> Void = { _ in },
         settingsPage: String? = nil,
-        openSettingsResult: @escaping (RGSettingsDestination) -> Void = { _ in }
+        openSettingsResult: @escaping (RGSettingsDestination) -> Void = { _ in },
+        disclosureIcon: @escaping (DisclosureLink) -> UIImage? = { _ in nil },
+        disclosureSubtitle: @escaping (DisclosureLink) -> String? = { _ in nil }
     ) {
         self.context = context
         //
@@ -82,6 +86,12 @@ public final class RGItemListArguments<BoolSetting: Hashable, SliderSetting: Has
         self.openSettingsResult = openSettingsResult
         self.settingsPage = settingsPage
         self.searchInput = searchInput
+        self.disclosureIcon = disclosureIcon
+        self.disclosureSubtitle = disclosureSubtitle
+    }
+
+    public func withSettingsPage(_ page: String) -> RGItemListArguments {
+        RGItemListArguments(context: self.context, setBoolValue: self.setBoolValue, updateSliderValue: self.updateSliderValue, setOneFromManyValue: self.setOneFromManyValue, openDisclosureLink: self.openDisclosureLink, action: self.action, searchInput: self.searchInput, settingsPage: page, openSettingsResult: self.openSettingsResult, disclosureIcon: self.disclosureIcon, disclosureSubtitle: self.disclosureSubtitle)
     }
 }
 
@@ -224,7 +234,8 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
         case let .notice(_, _, string):
             return ItemListTextItem(presentationData: presentationData, text: .markdown(string), sectionId: self.section)
         case let .disclosure(_, _, link, text):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: text, label: "", sectionId: self.section, style: .blocks, action: {
+            let subtitle = arguments.disclosureSubtitle(link)
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, icon: arguments.disclosureIcon(link), title: text, label: subtitle ?? "", labelStyle: subtitle == nil ? .text : .detailText, rgLabelMaximumNumberOfLines: subtitle == nil ? 1 : 0, sectionId: self.section, style: .blocks, action: {
                 arguments.openDisclosureLink(link)
             }, tag: self.tag)
         case let .percentageSlider(_, _, setting, value):
@@ -255,9 +266,9 @@ public enum RGItemListUIEntry<Section: RGItemListSection, BoolSetting: Hashable,
             }, tag: self.tag)
         case let .settingsResult(_, _, entry):
             let language = RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: entry.titleKey.i18n(language).replacingOccurrences(of: "%@", with: ""), label: entry.pageTitleKey.i18n(language), sectionId: self.section, style: .blocks, action: { arguments.openSettingsResult(entry.destination) })
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: entry.titleKey.i18n(language).replacingOccurrences(of: "%@", with: ""), label: entry.pageTitleKey.i18n(language), labelStyle: .detailText, sectionId: self.section, style: .blocks, action: { arguments.openSettingsResult(entry.destination) })
         case let .searchInput(_, _, title, text, placeholder):
-            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: title, text: text, placeholder: placeholder, returnKeyType: .done, spacing: 3.0, clearType: .always, selectAllOnFocus: true, secondaryStyle: true, sectionId: self.section, textUpdated: { input in arguments.searchInput(input) }, action: {}, dismissKeyboardOnEnter: true)
+            return ItemListSingleLineInputItem(presentationData: presentationData, systemStyle: .glass, title: title, text: text, placeholder: placeholder, type: .regular(capitalization: false, autocorrection: false), returnKeyType: .done, spacing: 3.0, clearType: .always, secondaryStyle: true, sectionId: self.section, textUpdated: { input in arguments.searchInput(input) }, action: {}, dismissKeyboardOnEnter: true, updatesTextWhileEditing: false)
         }
     }
 }

@@ -1,3 +1,4 @@
+import RGSimpleSettings // MARK: Regram — search availability during live layout changes.
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -45,9 +46,6 @@ public protocol TabBarContainedController {
 }
 
 open class TabBarControllerImpl: ViewController, TabBarController {
-    // MARK: Regram — the configurable search button always opens chat search.
-    public var rgActivateSearch: (() -> Void)?
-
     // MARK: Regram — a pan owns its transition until completion, cancellation or navigation.
     private final class RGBackState {
         let sourceIndex: Int
@@ -107,6 +105,14 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         return self.currentController?.navigationBar
     }
     
+    override public var navigationBarTransitionSource: NavigationBarTransitionSource? {
+        return self.currentController?.navigationBarTransitionSource
+    }
+
+    override public func navigationExpansionSource(above controller: ViewController, operation: NavigationExpansionOperation) -> NavigationExpansionSource? {
+        return self.currentController?.navigationExpansionSource(above: controller, operation: operation)
+    }
+    
     private let pendingControllerDisposable = MetaDisposable()
     
     private var theme: PresentationTheme
@@ -159,6 +165,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         return self.tabBarControllerNode.isPointInsideContentArea(point: point)
     }
     
+    public func verticalTabBarFrame(for layout: ContainerViewLayout) -> CGRect? {
+        return self.tabBarControllerNode.sidePlacement(for: layout)?.frame
+    }
+    
     public func updateIsTabBarEnabled(_ value: Bool, transition: ContainedViewLayoutTransition) {
         self.tabBarControllerNode.updateIsTabBarEnabled(value, transition: transition)
     }
@@ -200,7 +210,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                     
                     // MARK: Regram — use the same measured bottom bar as a full layout pass.
                     let bottomInset = strongSelf.tabBarControllerNode.containerLayoutUpdated(validLayout, toolbar: strongSelf.currentController?.toolbar, transition: .immediate)
-                    if !strongSelf.tabBarControllerNode.tabBarHidden {
+                    if !strongSelf.tabBarControllerNode.tabBarHidden, let bottomInset {
                         updatedLayout.intrinsicInsets.bottom = bottomInset
                     }
 
@@ -266,7 +276,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             guard let self else {
                 return
             }
-            if let activate = self.rgActivateSearch { activate() } else { self.currentController?.tabBarActivateSearch() }
+            // MARK: Regram — native search belongs to the currently selected page.
+            self.currentController?.tabBarActivateSearch()
         }, deactivateSearch: { [weak self] in
             guard let self else {
                 return
@@ -274,10 +285,17 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             self.currentController?.tabBarDeactivateSearch()
         })
         
-        // MARK: Regram — update the active controller's bottom inset when label height changes.
+        // MARK: Regram — end external search before settings remove its input surface.
         self.tabBarControllerNode.rgAppearanceChanged = { [weak self] in
-            guard let self, let layout = self.validLayout else { return }
-            self.containerLayoutUpdated(layout, transition: .immediate)
+            guard let self else { return }
+            let settings = RGSimpleSettings.shared.bottomBarSettings
+            if self.currentController?.tabBarSearchState?.isActive == true,
+               !settings.isBottomBarVisible || !settings.isVisible(.search) {
+                self.currentController?.tabBarDeactivateSearch()
+            }
+            if let layout = self.validLayout {
+                self.containerLayoutUpdated(layout, transition: .immediate)
+            }
         }
         self.updateSelectedIndex()
         self.displayNodeDidLoad()
@@ -448,7 +466,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             if self.rgBackState == nil { currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size) }
             
             var updatedLayout = layout
-            if !self.tabBarControllerNode.tabBarHidden {
+            if !self.tabBarControllerNode.tabBarHidden, let bottomInset {
                 updatedLayout.intrinsicInsets.bottom = bottomInset
             }
             
@@ -469,7 +487,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             
             // MARK: Regram — a child relayout must not replace the measured glass bar with 49/34.
             let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: .immediate)
-            if !self.tabBarControllerNode.tabBarHidden {
+            if !self.tabBarControllerNode.tabBarHidden, let bottomInset {
                 updatedLayout.intrinsicInsets.bottom = bottomInset
             }
 

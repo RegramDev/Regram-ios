@@ -3,6 +3,8 @@ load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 rgdeps = [
+    "//Regram/RGSearchLink:RGSearchLink", # MARK: Regram
+    "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",
     "//Regram/RGAPIWebSettings:RGAPIWebSettings",
     "//Regram/RGAPIToken:RGAPIToken",
@@ -100,6 +102,8 @@ swift_library(
         "//submodules/AnimationUI:AnimationUI",
         "//submodules/PeerInfoUI",
         "//submodules/TelegramUI/Components/ChatListHeaderComponent",
+        "//submodules/TelegramUI/Components/NavigationBarComponent",
+        "//submodules/TelegramUI/Components/SideColumnLayout",
         "//submodules/TelegramUI/Components/ChatListTitleView",
         "//submodules/AvatarNode:AvatarNode",
         "//submodules/AvatarVideoNode:AvatarVideoNode",

@@ -27,6 +27,7 @@ import ChatMessageShareButton
 import ChatMessageActionButtonsNode
 import ChatSwipeToReplyRecognizer
 import ChatMessageReactionsFooterContentNode
+import RGSimpleSettings // MARK: Regram
 
 private let nameFont = Font.medium(14.0)
 
@@ -420,7 +421,7 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
             var automaticDownload = true
             for media in item.message.media {
                 if let file = media as? TelegramMediaFile {
-                    automaticDownload = shouldDownloadMediaAutomatically(settings: item.controllerInteraction.automaticMediaDownloadSettings, peerType: item.associatedData.automaticDownloadPeerType, networkType: item.associatedData.automaticDownloadNetworkType, authorPeerId: item.message.author?.id, contactsPeerIds: item.associatedData.contactsPeerIds, media: file)
+                    automaticDownload = shouldDownloadMediaAutomatically(settings: item.controllerInteraction.automaticMediaDownloadSettings, peerType: item.associatedData.automaticDownloadPeerType, networkType: item.associatedData.automaticDownloadNetworkType, authorPeerId: item.message.author?.id, contactsPeerIds: item.associatedData.contactsPeerIds, media: .file(file))
                 }
             }
             
@@ -520,6 +521,11 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                 }
             }
             
+            // A suspicious sender's buttons are not shown, as their links are not.
+            if item.associatedData.isSuspiciousPeer && item.message.effectivelyIncoming(item.context.account.peerId) {
+                replyMarkup = nil
+            }
+            
             if replyMessage != nil || replyForward != nil || replyStory != nil {
                 replyInfoApply = makeReplyInfoLayout(ChatMessageReplyInfoNode.Arguments(
                     presentationData: item.presentationData,
@@ -552,7 +558,7 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
             
             let availableContentWidth = params.width - params.leftInset - params.rightInset - layoutConstants.bubble.edgeInset * 2.0 - avatarInset - layoutConstants.bubble.contentInsets.left
             
-            var forwardSource: EngineRawPeer?
+            var forwardSource: EnginePeer?
             var forwardAuthorSignature: String?
             
             var forwardInfoSizeApply: (CGSize, (CGFloat) -> ChatMessageForwardInfoNode)?
@@ -561,12 +567,12 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                 let forwardPsaType = forwardInfo.psaType
                 
                 let resolvedForwardInfo = chatMessageForwardInfoDisplay(forwardInfo: forwardInfo, messageId: item.message.id, previouslyApplied: currentForwardInfo, peerDisplayTitle: { peer in
-                    return EnginePeer(peer).displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    return peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                 })
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableWidth = max(60.0, availableContentWidth - normalDisplaySize.width + 6.0)
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource, forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             if replyInfoApply != nil || viaBotApply != nil || forwardInfoSizeApply != nil {
@@ -958,6 +964,10 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        if case .tap = gesture, let item = self.item {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                            break
+                        }
                         // MARK: Regram — configurable double tap on round video messages.
                         guard case .doubleTap = gesture, let item = self.item, item.controllerInteraction.selectionState == nil else { break }
                         rgHandleDoubleTapMessageAction(message: openContextMenu.tapMessage, canEditMessage: item.controllerInteraction.rgCanEditMessage(openContextMenu.tapMessage), sendReaction: {
@@ -977,6 +987,35 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
         default:
             break
         }
+    }
+
+    // MARK: Regram
+    private func rgFeatureTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if self.interactiveVideoNode.frame.contains(location) {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.interactiveVideoNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
@@ -1024,6 +1063,9 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                         return .optionalAction(performAction)
                     }
                 }
+            }
+            if let action = self.rgFeatureTapMessageRowToOpenContextMenuAction(location: location) {
+                return action
             }
             return nil
         case .longTap, .doubleTap, .secondaryTap:

@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
+        "//Regram/RGStrings:RGStrings", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/TelegramCore",

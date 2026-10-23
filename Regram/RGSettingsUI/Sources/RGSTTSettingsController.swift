@@ -275,6 +275,7 @@ public func rgSTTSettingsController(context: AccountContext, focusSetting: Strin
         testDisposable.dispose()
     }
     let controller = RGSettingsListController(context: context, state: signal)
+    controller.focusSetting = focusSetting
     controller.navigationPresentation = .default
     presentControllerImpl = { [weak controller] alert in
         controller?.present(alert, in: .window(.root), with: nil)

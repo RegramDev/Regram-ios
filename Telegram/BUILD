@@ -1,3 +1,4 @@
+load(":framework_exported_symbols.bzl", "framework_exported_symbols")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 
 load("@bazel_skylib//rules:common_settings.bzl",
@@ -67,13 +68,6 @@ load(
 
 # MARK: Regram — reject build inputs for another application identity.
 load("//build-system/bazel-utils:beta_identity.bzl", "require_beta_bundle_id")
-load("@build_bazel_rules_apple//apple:resources.bzl",
-    "swift_intent_library",
-)
-
-load("//build-system/bazel-utils:spm.bzl",
-    "generate_spm",
-)
 
 require_beta_bundle_id(telegram_bundle_id)
 
@@ -318,88 +312,7 @@ filegroup(
     ], exclude = ["Telegram-iOS/Icons.xcassets/**/.*"]),
 )
 
-filegroup(
-    name = "DefaultAppIcon",
-    srcs = glob([
-        "Telegram-iOS/DefaultAppIcon.xcassets/**/*",
-    ], exclude = ["Telegram-iOS/DefaultAppIcon.xcassets/**/.*"]),
-)
-
-# MARK: Regram alternative icons
-alternate_icon_folders = [
-    "RGDefault",
-    "RGBlack",
-    "RGLegacy",
-    "RGInverted",
-    "RGWhite",
-    "RGNight",
-    "RGSky",
-    "RGTitanium",
-    "RGNeon",
-    "RGNeonBlue",
-    "RGGlass",
-    "RGSparkling",
-    "RGBeta",
-    "RGPro",
-    "RGGold",
-    "RGDucky",
-    "RGDay",
-    # MARK: Regram — custom icons
-    "RGAnime",
-    "RGSilver",
-    "iKun",
-    # Stock Telegram icons, restored from upstream (Regram replaces the list wholesale).
-    "BlueIcon",
-    "BlackIcon",
-    "BlueClassicIcon",
-    "BlackClassicIcon",
-    "BlueFilledIcon",
-    "BlackFilledIcon",
-    "WhiteFilledIcon",
-    "New1",
-    "New2",
-    "Premium",
-    "PremiumTurbo",
-    "PremiumBlack"
-]
-
-# MARK: Regram — iOS persists alternate-icon identifiers. Generate legacy aliases from RG assets
-# so an update keeps the selected icon, while all source files and picker entries use RG names.
-rg_renamed_icon_folders = [name for name in alternate_icon_folders if name.startswith("RG") and name not in ["RGAnime", "RGSilver"]]
-
-[
-    genrule(
-        name = "RGLegacyAppIcon" + name[2:],
-        srcs = glob(["Telegram-iOS/{}.alticon/*.png".format(name)]),
-        # Generated filenames must match the legacy name in CFBundleIconFiles.
-        outs = ["RGAppIconAliases/SG{}.alticon/SG{}@{}x.png".format(name[2:], name[2:], scale) for scale in [2, 3]],
-        cmd = " && ".join([
-            "cp $(location Telegram-iOS/{name}.alticon/{name}@{scale}x.png) $(location RGAppIconAliases/SG{suffix}.alticon/SG{suffix}@{scale}x.png)".format(name = name, suffix = name[2:], scale = scale)
-            for scale in [2, 3]
-        ]),
-    ) for name in rg_renamed_icon_folders
-]
-
-# MARK: Regram — compile the primary icon with Icon Composer; alternate icons use PNG resources.
-composer_icon_folders = ["Regram"]
-
-[
-    filegroup(
-        name = "{}".format(name),
-        srcs = glob([
-            "Telegram-iOS/{}.alticon/*.png".format(name),
-        ]),
-    ) for name in alternate_icon_folders
-]
-
-[
-    filegroup(
-        name = "{}_icon".format(name),
-        srcs = glob([
-            "Telegram-iOS/{}.icon/**/*".format(name),
-        ]),
-    ) for name in composer_icon_folders
-]
+# MARK: Regram — B1/B2 appearance-aware app icons live in //Regram/RGBranding.
 
 filegroup(
     name = "LaunchScreen",
@@ -416,7 +329,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets"]
+RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets", "//Regram/RGBranding:Images"]
 
 swift_library(
     name = "Lib",
@@ -497,8 +410,6 @@ plist_fragment(
             <array>
                 <string>regram</string>
                 <string>rg</string>
-                <!-- MARK: Regram — keep previously distributed links working. -->
-                <string>sg</string>
             </array>
         </dict>
     </array>
@@ -873,6 +784,31 @@ plist_fragment(
     )
 )
 
+# TelegramCoreFramework exports only what its clients use: TelegramUI (linked into
+# TelegramUIFramework), the app binary and every extension. See framework_exported_symbols.bzl.
+framework_exported_symbols(
+    name = "TelegramCoreFrameworkExportedSymbols",
+    framework_deps = [
+        "//submodules/TelegramCore:TelegramCore",
+    ],
+    provided_by_frameworks = [
+        "//submodules/MtProtoKit:MtProtoKit",
+        "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        "//submodules/Postbox:Postbox",
+    ],
+    clients = [
+        "//submodules/TelegramUI:TelegramUI",
+        ":Main",
+        ":Lib",
+        ":ShareExtensionLib",
+        ":NotificationContentExtensionLib",
+        ":BroadcastUploadExtensionLib",
+        ":WidgetExtensionLib",
+        ":IntentsExtensionLib",
+        "//Telegram/NotificationService:NotificationServiceExtensionLib",
+    ],
+)
+
 ios_framework(
     name = "TelegramCoreFramework",
     bundle_id = "{telegram_bundle_id}.TelegramCore".format(
@@ -896,6 +832,13 @@ ios_framework(
     minimum_os_version = minimum_os_version,
     extension_safe = True,
     ipa_post_processor = strip_framework,
+    # Exports only what TelegramUI, the app binary and the extensions use. TelegramApi, private to
+    # TelegramCore, is therefore never exported (it used to need -unexported_symbol patterns).
+    # Release only: debug keeps every symbol exported (debugger, faster edit-build cycle).
+    exported_symbols_lists = select({
+        ":debug": [],
+        "//conditions:default": [":TelegramCoreFrameworkExportedSymbols"],
+    }),
     deps = [
         "//submodules/TelegramCore:TelegramCore",
     ],
@@ -1002,6 +945,29 @@ plist_fragment(
     )
 )
 
+# TelegramUIFramework exports only what the app binary and the extensions that link it use:
+# 194 of its 161,496 public symbols at the time of writing. See framework_exported_symbols.bzl.
+framework_exported_symbols(
+    name = "TelegramUIFrameworkExportedSymbols",
+    framework_deps = [
+        "//submodules/TelegramUI:TelegramUI",
+    ],
+    provided_by_frameworks = [
+        "//submodules/MtProtoKit:MtProtoKit",
+        "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
+        "//submodules/Postbox:Postbox",
+        "//submodules/TelegramCore:TelegramCore",
+    ],
+    clients = [
+        ":Main",
+        ":Lib",
+        ":ShareExtensionLib",
+        ":NotificationContentExtensionLib",
+        ":BroadcastUploadExtensionLib",
+        "//Telegram/NotificationService:NotificationServiceExtensionLib",
+    ],
+)
+
 ios_framework(
     name = "TelegramUIFramework",
     additional_linker_inputs = [
@@ -1029,6 +995,11 @@ ios_framework(
     minimum_os_version = minimum_os_version,
     extension_safe = True,
     ipa_post_processor = strip_framework,
+    # Release only: debug keeps every symbol exported (debugger, faster edit-build cycle).
+    exported_symbols_lists = select({
+        ":debug": [],
+        "//conditions:default": [":TelegramUIFrameworkExportedSymbols"],
+    }),
     linkopts = [
         "$(location //third-party/boringssl:crypto)",
     ],
@@ -1104,8 +1075,21 @@ swift_library(
     ],
 )
 
+plist_fragment(
+    name = "ShareExtensionEntitlements",
+    extension = "entitlements",
+    template = """
+<key>com.apple.security.application-groups</key>
+<array>
+    <string>group.{telegram_bundle_id}</string>
+</array>
+""".format(telegram_bundle_id = telegram_bundle_id),
+)
+
 ios_extension(
     name = "ShareExtension",
+    # MARK: Regram — retain the profile's existing team, keychain and communication declarations.
+    # An App Group-only override drops them from the re-signable reference package.
     bundle_id = "{telegram_bundle_id}.Share".format(
         telegram_bundle_id = telegram_bundle_id,
     ),
@@ -1273,7 +1257,6 @@ swift_library(
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
         "//submodules/AppLockState:AppLockState",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/Postbox:Postbox",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/PasscodeCore",
         "//submodules/OpenSSLEncryptionProvider:OpenSSLEncryptionProvider",
@@ -1394,7 +1377,6 @@ swift_library(
         "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Postbox:Postbox",
-        "//submodules/TelegramApi:TelegramApi",
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/OpenSSLEncryptionProvider:OpenSSLEncryptionProvider",
@@ -1971,18 +1953,13 @@ ios_application(
         ":RequiredDeviceCapabilitiesPlist",
         ":UrlTypesInfoPlist",
     ],
-    primary_app_icon = "Regram",
-    app_icons = [ ":{}_icon".format(name) for name in composer_icon_folders ],
-    alternate_icons = [
-        ":{}".format(name) for name in alternate_icon_folders
-    ] + [
-        ":RGLegacyAppIcon{}".format(name[2:]) for name in rg_renamed_icon_folders
-    ],
+    # MARK: Regram — actool declares both appiconsets and their native appearance variants.
+    primary_app_icon = "RGConversation",
+    app_icons = ["//Regram/RGBranding:AppIcons"],
     resources = [
         ":LaunchScreen",
         # MARK: Regram — the STT test uses getAppBundle(), which resolves the main app.
         "//Regram/RGTranscription:TestAudio",
-        #":DefaultAppIcon",
     ],
     frameworks = [
         ":MtProtoKitFramework",
@@ -2077,49 +2054,6 @@ ios_ui_test_suite(
 )
 
 # Temporary targets used to simplify build tests
-
-ios_application(
-    name = "spm_build_app",
-    bundle_id = "{telegram_bundle_id}".format(
-        telegram_bundle_id = telegram_bundle_id,
-    ),
-    families = ["iphone", "ipad"],
-    minimum_os_version = minimum_os_version,
-    provisioning_profile = select({
-        ":disableProvisioningProfilesSetting": None,
-        "//conditions:default": "@build_configuration//provisioning:Telegram.mobileprovision",
-    }),
-    entitlements = ":TelegramEntitlements.entitlements",
-    infoplists = [
-        ":TelegramInfoPlist",
-        ":BuildNumberInfoPlist",
-        ":VersionInfoPlist",
-        ":RequiredDeviceCapabilitiesPlist",
-        ":UrlTypesInfoPlist",
-    ],
-    deps = [
-        #"//submodules/Display",
-        #"//submodules/TelegramCore",
-        #"//submodules/FFMpegBinding",
-        #"//third-party/webrtc",
-        #"//third-party/webrtc:webrtc_objc",
-        #"//submodules/AsyncDisplayKit",
-        #"//submodules/ObjCRuntimeUtils",
-        #"//submodules/OpusBinding",
-        #"//third-party/boringssl:ssl",
-        #"//third-party/boringssl:crypto",
-        #"//submodules/TelegramVoip",
-        #"//third-party/recaptcha:RecaptchaEnterprise",
-        "//submodules/TelegramUI",
-    ],
-)
-
-generate_spm(
-    name = "spm_build_root",
-    deps = [
-        ":spm_build_app",
-    ]
-)
 
 ios_application(
     name = "webrtc_build_test",

@@ -45,6 +45,7 @@ import AccountUtils
 import CoreSpotlight
 import TelegramAudio
 import DebugSettingsUI
+import CrashReporting
 import BackgroundTasks
 import UIKitRuntimeUtils
 import StoreKit
@@ -57,7 +58,9 @@ import TelegramUIDeclareEncodables
 import ContextMenuScreen
 import MetalEngine
 import RecaptchaEnterprise
-import NavigationBarImpl
+import NavigationBarNode
+import NavigationBarComponent
+import NavigationExpansionTransition
 import ContextUI
 import ContextControllerImpl
 import ProxyServerPreviewScreen
@@ -267,6 +270,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         if let observer = rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
     }
 
+    private let crashReportPromptDisposable = MetaDisposable()
     private var buildConfig: BuildConfig?
     let episodeId = arc4random()
     
@@ -373,6 +377,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         precondition(!testIsLaunched)
         testIsLaunched = true
+        CrashReportCollector.shared.start()
         
         let _ = voipTokenPromise.get().start(next: { token in
             self.voipDeviceToken.set(.single(token))
@@ -384,7 +389,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let launchStartTime = CFAbsoluteTimeGetCurrent()
         
         defaultNavigationBarImpl = { presentationData in
-            return NavigationBarImpl(presentationData: presentationData)
+            return NavigationBarNode(presentationData: presentationData)
+        }
+        defaultNavigationBarTransitionRenderer = { bottom, top in
+            return makeNavigationBarTransitionRenderer(bottom: bottom, top: top)
+        }
+        defaultNavigationExpansionRenderer = { source, destination, operation in
+            return NavigationExpansionRendererImpl.make(source: source, destination: destination, operation: operation)
         }
         makeContextControllerImpl = { context, presentationData, configuration, recognizer, gesture, workaroundUseLegacyImplementation, disableScreenshots, hideReactionPanelTail in
             return ContextControllerImpl(
@@ -846,7 +857,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, currentHorizontalClassGetter: {
             return UIUserInterfaceSizeClass.compact
         }, documentsPath: legacyDocumentsPath(), currentApplicationBounds: {
-            return UIScreen.main.bounds
+            return mainWindowScreenBounds
         }, canOpenUrl: { url in
             return UIApplication.shared.canOpenURL(url)
         }, openUrl: { url in
@@ -897,8 +908,22 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, changed: {
             NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil)
         }, canApply: { application.applicationState == .active })
+        // MARK: Regram — reset a removed system icon once, even if persistence already resolves to nil.
+        var resettingRetiredIcon = false
+        let refreshIcon: (RGAppIconSwitchCoordinator) -> Void = { switcher in
+            switcher.resume()
+            guard !resettingRetiredIcon, application.applicationState == .active,
+                  iconSelection.needsRetiredIconReset(systemName: application.alternateIconName) else { return }
+            resettingRetiredIcon = true
+            switcher.request(nil, forceApply: true) { succeeded in
+                if !succeeded { resettingRetiredIcon = false }
+            }
+        }
         self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak iconSwitcher] _ in
-            iconSwitcher?.resume()
+            if let iconSwitcher { refreshIcon(iconSwitcher) }
+        }
+        DispatchQueue.main.async { [weak iconSwitcher] in
+            if let iconSwitcher { refreshIcon(iconSwitcher) }
         }
         let applicationBindings = TelegramApplicationBindings(isMainApp: true, appBundleId: baseAppBundleId, appBuildType: buildConfig.isAppStoreBuild ? .public : .internal, containerPath: appGroupUrl.path, appSpecificScheme: buildConfig.appSpecificUrlScheme, openUrl: { url in
             var parsedUrl = URL(string: url)
@@ -1069,76 +1094,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, dismissNativeController: {
             self.window?.rootViewController?.dismiss(animated: true, completion: nil)
         }, getAvailableAlternateIcons: {
-            if #available(iOS 10.3, *) {
-                var icons = [
-                    PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon", isDefault: buildConfig.isAppStoreBuild),
-                    PresentationAppIcon(name: "New2", imageName: "New2"),
-                    PresentationAppIcon(name: "New1", imageName: "New1"),
-                    PresentationAppIcon(name: "BlackIcon", imageName: "BlackIcon"),
-                    PresentationAppIcon(name: "BlueClassicIcon", imageName: "BlueClassicIcon"),
-                    PresentationAppIcon(name: "BlackClassicIcon", imageName: "BlackClassicIcon"),
-                    PresentationAppIcon(name: "BlueFilledIcon", imageName: "BlueFilledIcon"),
-                    PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon")
-                ]
-                if buildConfig.isInternalBuild {
-                    icons.append(PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"))
-                }
-                
-                icons.append(PresentationAppIcon(name: "Premium", imageName: "Premium", isPremium: true))
-                icons.append(PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo", isPremium: true))
-                icons.append(PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack", isPremium: true))
-                
-                
-                // MARK: Regram
-                icons = [
-                    // MARK: Regram — the default entry applies `setAlternateIconName(nil)`, i.e. the
-                    // primary icon, which this build ships as Regram. Its thumbnail has to match that
-                    // so the picker preview matches the installed Regram icon.
-                    PresentationAppIcon(name: "RGDefault", imageName: "RGAnime", isDefault: true),
-                    PresentationAppIcon(name: "RGBlack", imageName: "RGBlack"),
-                    PresentationAppIcon(name: "RGLegacy", imageName: "RGLegacy"),
-                    PresentationAppIcon(name: "RGInverted", imageName: "RGInverted"),
-                    PresentationAppIcon(name: "RGWhite", imageName: "RGWhite"),
-                    PresentationAppIcon(name: "RGNight", imageName: "RGNight"),
-                    PresentationAppIcon(name: "RGSky", imageName: "RGSky"),
-                    PresentationAppIcon(name: "RGTitanium", imageName: "RGTitanium"),
-                    PresentationAppIcon(name: "RGPro", imageName: "RGPro"),
-                    PresentationAppIcon(name: "RGDay", imageName: "RGDay"),
-                    PresentationAppIcon(name: "RGGold", imageName: "RGGold"),
-                    (RGSimpleSettings.shared.duckyAppIconAvailable || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGDucky") ? PresentationAppIcon(name: "RGDucky", imageName: "RGDucky") : PresentationAppIcon(name: "", imageName: ""), // Empty
-                    PresentationAppIcon(name: "RGNeon", imageName: "RGNeon"),
-                    PresentationAppIcon(name: "RGNeonBlue", imageName: "RGNeonBlue"),
-                    PresentationAppIcon(name: "RGGlass", imageName: "RGGlass"),
-                    PresentationAppIcon(name: "RGSparkling", imageName: "RGSparkling"),
-                    // MARK: Regram — no separate "RGAnime" entry: it is the primary icon now, so it is
-                    // already offered above as the default. The alticon asset stays in the bundle so
-                    // that anyone who applied it as an alternate before this change keeps a valid icon.
-                    PresentationAppIcon(name: "RGSilver", imageName: "RGSilver"),
-                    PresentationAppIcon(name: "iKun", imageName: "iKun"),
-                    // Stock Telegram icons. Regram replaces the whole list above rather than
-                    // appending, which is why these have to be re-added explicitly. Not marked
-                    // isPremium: this build has no Premium gate to check them against.
-                    PresentationAppIcon(name: "BlueIcon", imageName: "BlueIcon"),
-                    PresentationAppIcon(name: "BlackIcon", imageName: "BlackIcon"),
-                    PresentationAppIcon(name: "BlueClassicIcon", imageName: "BlueClassicIcon"),
-                    PresentationAppIcon(name: "BlackClassicIcon", imageName: "BlackClassicIcon"),
-                    PresentationAppIcon(name: "BlueFilledIcon", imageName: "BlueFilledIcon"),
-                    PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon"),
-                    PresentationAppIcon(name: "WhiteFilledIcon", imageName: "WhiteFilledIcon"),
-                    PresentationAppIcon(name: "New1", imageName: "New1"),
-                    PresentationAppIcon(name: "New2", imageName: "New2"),
-                    PresentationAppIcon(name: "Premium", imageName: "Premium"),
-                    PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo"),
-                    PresentationAppIcon(name: "PremiumBlack", imageName: "PremiumBlack"),
-                ]
-
-                if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" || RGAppIconNames.canonicalName(iconSwitcher.currentIconName) == "RGBeta" {
-                    icons.append(PresentationAppIcon(name: "RGBeta", imageName: "RGBeta"))
-                }
-                
-                return icons.filter { !$0.name.isEmpty && !$0.imageName.isEmpty }
-            } else {
-                return []
+            // MARK: Regram — the bubble identity is primary; the former primary is an alternate.
+            return RGAppIconNames.allNames.map { name in
+                PresentationAppIcon(name: name, imageName: RGAppIconNames.previewName(name == RGAppIconNames.primaryName ? nil : name), isDefault: name == RGAppIconNames.primaryName)
             }
         }, getAlternateIconName: {
             if #available(iOS 10.3, *) {
@@ -1153,7 +1111,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 return
             }
             // MARK: Regram — dispatch even callers arriving from a database callback onto main.
-            DispatchQueue.main.async { iconSwitcher.request(name, completion: completion) }
+            DispatchQueue.main.async { iconSwitcher.request(RGAppIconNames.canonicalName(name), completion: completion) }
         }, forceOrientation: { orientation in
             let value = orientation.rawValue
             if #available(iOSApplicationExtension 16.0, iOS 16.0, *) {
@@ -1280,6 +1238,25 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     }
                 }
             }, appDelegate: self, testingEnvironment: isUITest)
+            navigationBarOverflowMenuPresenter = { [weak sharedContext] sourceView, items in
+                guard let sharedContext, let mainWindow = sharedContext.mainWindow else {
+                    return
+                }
+                let presentationData = sharedContext.currentPresentationData.with { $0 }
+                let menuItems: [ContextMenuItem] = items.map { item in
+                    return .action(ContextMenuActionItem(text: item.title, icon: { theme in
+                        guard let image = item.image ?? item.iconName.flatMap({ UIImage(bundleImageName: $0) }) else {
+                            return nil
+                        }
+                        return generateScaledImage(image: generateTintedImage(image: image, color: theme.contextMenu.primaryColor), size: CGSize(width: 24.0, height: 24.0), opaque: false)
+                    }, action: { _, f in
+                        f(.default)
+                        item.action(sourceView)
+                    }))
+                }
+                let contextController = makeContextController(presentationData: presentationData, source: .reference(NavigationBarOverflowMenuReferenceSource(sourceView: sourceView)), items: .single(ContextController.Items(content: .list(menuItems))), gesture: nil)
+                mainWindow.presentInGlobalOverlay(contextController)
+            }
             
             presentationDataPromise.set(sharedContext.presentationData)
             #if targetEnvironment(simulator)
@@ -1509,6 +1486,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 contextValue.context.account.shouldExplicitelyKeepWorkerConnections.set(.single(false))
                 contextValue.context.account.shouldKeepBackgroundDownloadConnections.set(.single(false))
             }
+            self.crashReportPromptDisposable.set(nil)
             self.contextValue = context
             if let context = context {
                 setupLegacyComponents(context: context.context)
@@ -1555,6 +1533,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         // MARK: Regram — local features do not refresh a subscription state.
                     }
                     
+                    self.crashReportPromptDisposable.set(setupCrashReportPrompt(context: context.context, isInternalBuild: buildConfig.isInternalBuild, navigationController: context.rootController, present: { [weak appDelegate = self, weak applicationContext = context] controller in
+                        guard let appDelegate, let applicationContext, appDelegate.contextValue === applicationContext else { return }
+                        appDelegate.mainWindow.present(controller, on: .root)
+                    }))
                 }))
             } else {
                 self.mainWindow.viewController = nil
@@ -1718,10 +1700,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         })
         
         if let url = launchOptions?[.url] {
-            // MARK: Regram — recognize current links at launch and retain the old scheme alias.
-            if let url = url as? URL, url.scheme == "tg" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "sg" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
+            // MARK: Regram — recognize current application links at launch.
+            if let url = url as? URL, url.scheme == "tg" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
                 self.openUrlWhenReady(url: rgActionRequestHandlerSanitizer(url), external: true)
-            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("sg:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
+            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
                 self.openUrlWhenReady(url: url, external: true)
             }
         }
@@ -3151,7 +3133,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.walletTonConnectNotificationDisposable.set(signal.start(next: { [weak self] context, message in
             guard let self else { return }
             let isWalletAvailable = WalletConfiguration.with(appConfiguration: context.context.currentAppConfiguration.with { $0 }).isAvailable
-            if isWalletAvailable, let message, let request = walletTonConnectRequestRoute(message: message._asMessage(), accountPeerId: context.context.account.peerId) {
+            if isWalletAvailable, let message, let request = walletTonConnectRequestRoute(message: message, accountPeerId: context.context.account.peerId) {
                 context.context.walletContext?.openTonConnectRequest(sessionId: request.sessionId, messageId: request.messageId)
             } else {
                 context.openChatWithPeerId(peerId: route.messageId.peerId, threadId: nil, messageId: route.messageId,
@@ -3712,15 +3694,14 @@ final class UpdateSettings: Codable, Equatable {
     }
 }
 
-// MARK: Regram
-@available(iOS 13.0, *)
-extension AppDelegate {
+private final class NavigationBarOverflowMenuReferenceSource: ContextReferenceContentSource {
+    private let sourceView: UIView
 
-                        
-                        
-    
+    init(sourceView: UIView) {
+        self.sourceView = sourceView
+    }
 
-    
-        
-
+    func transitionInfo() -> ContextControllerReferenceViewInfo? {
+        return ContextControllerReferenceViewInfo(referenceView: self.sourceView, contentAreaInScreenSpace: mainWindowScreenBounds)
+    }
 }

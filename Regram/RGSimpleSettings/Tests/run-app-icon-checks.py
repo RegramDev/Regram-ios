@@ -39,27 +39,28 @@ struct TextAlertAction {enum Kind {case defaultAction};init(type:Kind,title:Stri
 func textAlertController(context:Context,title:String,text:String,actions:[TextAlertAction])->String {text}
 final class UI {
  let application=RawApplication();let coordinator:RGAppIconSwitchCoordinator;let context:Context
- var selected="RGDefault";var alerts=0
+ var selected="RGConversation";var alerts=0
  init(){let raw=application;coordinator=RGAppIconSwitchCoordinator(current:{raw.alternateIconName},apply:{raw.requests.append(($0,$1))},changed:{},schedule:{_,_ in})
  context=Context(sharedContext:Shared(applicationBindings:Bindings(coordinator,makeGetter(iconSwitcher:coordinator,application:raw))))}
- func choose(_ name:String?) {let icon=Icon(name:name ?? "RGDefault",isDefault:name==nil);let context=self.context
- let refreshAppIcon={self.selected=context.sharedContext.applicationBindings.getAlternateIconName() ?? "RGDefault"}
+ func choose(_ name:String?) {let icon=Icon(name:name ?? "RGConversation",isDefault:name==nil);let context=self.context
+ let refreshAppIcon={self.selected=context.sharedContext.applicationBindings.getAlternateIconName() ?? "RGConversation"}
  let presentControllerImpl:((String,Any?)->Void)?={_,_ in self.alerts+=1}
+ _ = presentControllerImpl // Keep the alert adapter available to detect any reintroduced popup.
 '''+apply+'''
  apply()
  }
 }
 @main enum Checks {static func main(){
- let ui=UI();ui.choose("RGBlack");ui.application.finish(0,true)
- precondition(ui.application.desktopIcon=="RGBlack" && ui.application.alternateIconName==nil)
- precondition(ui.selected=="RGBlack" && ui.alerts==0,"A successful change with a stale UIKit getter must select the new icon without an application alert")
+ let ui=UI();ui.choose("RGGathering");ui.application.finish(0,true)
+ precondition(ui.application.desktopIcon=="RGGathering" && ui.application.alternateIconName==nil)
+ precondition(ui.selected=="RGGathering" && ui.alerts==0,"A successful change with a stale UIKit getter must select the new icon without an application alert")
  ui.coordinator.resume()
- precondition(ui.context.sharedContext.applicationBindings.getAlternateIconName()=="RGBlack")
- ui.choose("RGGold");ui.application.finish(1,false)
- precondition(ui.alerts==1 && ui.selected=="RGBlack","Only a genuine failed completion may present an application error")
+ precondition(ui.context.sharedContext.applicationBindings.getAlternateIconName()=="RGGathering")
+ ui.choose(nil);ui.application.finish(1,false)
+ precondition(ui.alerts==0 && ui.selected=="RGGathering","A rejected change must quietly retain the current selection")
  ui.choose(nil);ui.application.finish(2,true)
- precondition(ui.alerts==1 && ui.selected=="RGDefault","Restoring the primary icon must also complete quietly")
- print("Production icon getter and Appearance completion: delayed UIKit state selects the acknowledged icon; successful alternate/primary changes show no application alert; genuine failure shows one.")
+ precondition(ui.alerts==0 && ui.selected=="RGConversation","Restoring the primary icon must also complete quietly")
+ print("Production icon getter and Appearance completion: delayed UIKit state selects the acknowledged icon; success and failure show no application alert; failed changes retain the prior selection.")
 }}
 '''
     source=Path(d)/'UI.swift';source.write_text(boundary)

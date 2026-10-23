@@ -28,6 +28,7 @@ import ChatMessageActionButtonsNode
 import ChatMessageReactionsFooterContentNode
 import ChatSwipeToReplyRecognizer
 import ChatMessageSuggestedPostInfoNode
+import RGSimpleSettings // MARK: Regram
 
 private let nameFont = Font.medium(14.0)
 private let inlineBotPrefixFont = Font.regular(14.0)
@@ -723,6 +724,11 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 }
             }
             
+            // A suspicious sender's buttons are not shown, as their links are not.
+            if item.associatedData.isSuspiciousPeer && item.message.effectivelyIncoming(item.context.account.peerId) {
+                replyMarkup = nil
+            }
+            
             var hasReply = replyMessage != nil || replyForward != nil || replyStory != nil
             if case let .peer(peerId) = item.chatLocation, (peerId == replyMessage?.id.peerId || item.message.threadId == 1), let peer = item.message.peers[item.message.id.peerId], peer.isForumOrMonoForum, item.message.associatedThreadInfo != nil {
                 if let threadId = item.message.threadId, let replyMessage = replyMessage, Int64(replyMessage.id.id) == threadId {
@@ -789,7 +795,7 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
             
             let contentHeight = max(imageSize.height, layoutConstants.image.minDimensions.height)
             
-            var forwardSource: EngineRawPeer?
+            var forwardSource: EnginePeer?
             var forwardAuthorSignature: String?
             var forwardPsaType: String?
             
@@ -799,12 +805,12 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                 forwardPsaType = forwardInfo.psaType
                 
                 let resolvedForwardInfo = chatMessageForwardInfoDisplay(forwardInfo: forwardInfo, messageId: item.message.id, previouslyApplied: currentForwardInfo, peerDisplayTitle: { peer in
-                    return EnginePeer(peer).displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
+                    return peer.displayTitle(strings: item.presentationData.strings, displayOrder: item.presentationData.nameDisplayOrder)
                 })
                 forwardSource = resolvedForwardInfo.source
                 forwardAuthorSignature = resolvedForwardInfo.authorSignature
                 let availableForwardWidth = max(60.0, availableWidth + 6.0)
-                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource.flatMap(EnginePeer.init), forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableForwardWidth, height: CGFloat.greatestFiniteMagnitude))
+                forwardInfoSizeApply = makeForwardInfoLayout(item.context, item.presentationData, item.presentationData.strings, .standalone, forwardSource, forwardAuthorSignature, forwardPsaType == nil ? inlineBotNameString : nil, forwardPsaType, nil, item.message.forwardInfo?.date, CGSize(width: availableForwardWidth, height: CGFloat.greatestFiniteMagnitude))
             }
             
             var needsReplyBackground = false
@@ -1465,6 +1471,10 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                     case let .optionalAction(f):
                         f()
                     case let .openContextMenu(openContextMenu):
+                        if case .tap = gesture, let item = self.item {
+                            item.controllerInteraction.openMessageContextMenu(openContextMenu.tapMessage, openContextMenu.selectAll, self, openContextMenu.subFrame, nil, nil)
+                            break
+                        }
                         // MARK: Regram — the configurable double-tap action (RGDoubleTapMessageAction).
                         if case .doubleTap = gesture {
                             if item.controllerInteraction.selectionState == nil {
@@ -1495,6 +1505,35 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
         default:
             break
         }
+    }
+
+    // MARK: Regram
+    private func rgFeatureTapMessageRowToOpenContextMenuAction(location: CGPoint) -> InternalBubbleTapAction? {
+        guard RGSimpleSettings.shared.tapMessageRowToOpenContextMenu, let item = self.item else {
+            return nil
+        }
+        guard item.controllerInteraction.selectionState == nil, self.bounds.contains(location) else {
+            return nil
+        }
+        if let actionButtonsNode = self.actionButtonsNode, actionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let shareButtonNode = self.shareButtonNode, shareButtonNode.frame.contains(location) {
+            return nil
+        }
+        if let reactionButtonsNode = self.reactionButtonsNode, reactionButtonsNode.frame.contains(location) {
+            return nil
+        }
+        if let threadInfoNode = self.threadInfoNode, threadInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let replyInfoNode = self.replyInfoNode, replyInfoNode.frame.contains(location) {
+            return nil
+        }
+        if let forwardInfoNode = self.forwardInfoNode, forwardInfoNode.frame.contains(location) {
+            return nil
+        }
+        return .openContextMenu(InternalBubbleTapAction.OpenContextMenu(tapMessage: item.message, selectAll: false, subFrame: self.imageNode.frame, disableDefaultPressAnimation: true))
     }
     
     private func gestureRecognized(gesture: TapLongTapOrDoubleTapGesture, location: CGPoint, recognizer: TapLongTapOrDoubleTapGestureRecognizer?) -> InternalBubbleTapAction? {
@@ -1579,7 +1618,9 @@ public class ChatMessageStickerItemNode: ChatMessageItemView {
                         let _ = item.controllerInteraction.openMessage(item.message, OpenMessageParams(mode: .default))
                     })
                 }
-            
+                if let action = self.rgFeatureTapMessageRowToOpenContextMenuAction(location: location) {
+                    return action
+                }
                 return nil
             case .longTap, .doubleTap, .secondaryTap:
                 if let item = self.item, self.imageNode.frame.contains(location) {

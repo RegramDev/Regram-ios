@@ -43,6 +43,7 @@ swift_library(
         "//submodules/TelegramUI/Components/InteractiveTextComponent",
         "//submodules/TelegramUI/Components/ShimmeringMask",
         "//submodules/TelegramUI/Components/StreamingTextReveal:StreamingTextReveal",
+        # MARK: Regram — 接收展示时盘古之白
     ],
     visibility = [
         "//visibility:public",
