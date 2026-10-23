@@ -27,6 +27,18 @@ public func rgLocalGiftsEnabled(context: AccountContext) -> Bool {
     RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context)).enabled
 }
 
+public func rgLocalGiftBalance(context: AccountContext) -> Int64? {
+    let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
+    return state.enabled ? state.balance : nil
+}
+
+/// Gift screens project this balance without changing the real wallet or its transactions.
+public func rgGiftStarsBalance(context: AccountContext, source: Signal<StarsContext.State?, NoError>) -> Signal<StarsAmount, NoError> {
+    combineLatest(source, rgLocalGiftsState(context: context)) |> map { remote, local in
+        local.enabled ? StarsAmount(value: local.balance, nanos: 0) : (remote?.balance ?? .zero)
+    } |> deliverOnMainQueue
+}
+
 private let fallbackId: Int64 = -84631001
 
 /// Bundled animation means a newly installed account can also buy a local gift offline.
@@ -56,7 +68,7 @@ private func localAssets(context: AccountContext) -> URL? {
 }
 
 private func localArtwork(_ file: TelegramMediaFile, path: String, id: Int64) -> TelegramMediaFile {
-    TelegramMediaFile(fileId: file.fileId, partialReference: nil,
+    TelegramMediaFile(fileId: .init(namespace: file.fileId.namespace, id: id), partialReference: nil,
         resource: LocalFileReferenceMediaResource(localFilePath: path, randomId: id),
         previewRepresentations: [], videoThumbnails: [], immediateThumbnailData: file.immediateThumbnailData,
         mimeType: file.mimeType, size: file.size, attributes: file.attributes, alternativeRepresentations: [])
@@ -83,49 +95,135 @@ public func rgCachedLocalGift(context: AccountContext, gift: StarGift.Gift) -> S
 }
 
 public func rgBuyLocalGift(context: AccountContext, gift: StarGift.Gift) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    rgBuyLocalGift(context: context, gift: .generic(gift), price: gift.price)
+}
+
+private func localUniqueCopy(_ gift: StarGift.UniqueGift, id: Int64, attributes: [StarGift.UniqueGift.Attribute], owner: EnginePeer.Id) -> StarGift.UniqueGift {
+    // A simulated collectible has no server slug, sale, wallet address or original owner.
+    StarGift.UniqueGift(id: id, giftId: gift.giftId, title: gift.title, number: gift.number,
+        slug: "", owner: .peerId(owner), attributes: attributes, availability: gift.availability,
+        giftAddress: nil, resellAmounts: nil, resellForTonOnly: false, releasedBy: nil,
+        valueAmount: nil, valueCurrency: nil, valueUsdAmount: nil, flags: [], themePeerId: nil,
+        peerColor: nil, hostPeerId: nil, minOfferStars: nil, craftChancePermille: nil)
+}
+
+public func rgBuyLocalGift(context: AccountContext, gift: StarGift, price: Int64) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
     guard rgLocalGiftsEnabled(context: context) else { return .failure(.disabled) }
-    // Snapshot already cached artwork. No resource-fetch or checkout service is involved.
-    guard let directory = localAssets(context: context),
-          let source = rgCachedLocalGift(context: context, gift: gift)?.file ?? rgLocalFallbackGift()?.file,
-          let resource = source.resource as? LocalFileReferenceMediaResource else { return .failure(.storage) }
+    guard price > 0 else { return .failure(.invalidAmount) }
+    guard let directory = localAssets(context: context) else { return .failure(.storage) }
+    var snapshots: [URL] = []
+    var committed = false
+    defer { if !committed { for path in snapshots { try? FileManager.default.removeItem(at: path) } } }
     do {
-        let attributes = try FileManager.default.attributesOfItem(atPath: resource.localFilePath)
-        guard let size = attributes[.size] as? NSNumber, size.int64Value > 0, size.int64Value <= 8 * 1024 * 1024 else { return .failure(.storage) }
-        let artwork = try Data(contentsOf: URL(fileURLWithPath: resource.localFilePath))
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let destination = directory.appendingPathComponent(UUID().uuidString + ".asset")
-        try artwork.write(to: destination, options: .atomic)
-        let file = localArtwork(source, path: destination.path, id: Int64.random(in: Int64.min...Int64.max))
-        let data = try JSONEncoder().encode(StarGift.generic(localCopy(gift, file: file)))
+        func snapshot(_ file: TelegramMediaFile) throws -> TelegramMediaFile {
+            let path: String?
+            if let resource = file.resource as? LocalFileReferenceMediaResource {
+                path = resource.localFilePath
+            } else {
+                path = context.engine.resources.completedResourcePath(id: EngineMediaResource(file.resource).id)
+            }
+            guard let path else { throw RGLocalGiftsError.storage }
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            guard let size = attributes[.size] as? NSNumber, size.int64Value > 0, size.int64Value <= 8 * 1024 * 1024 else { throw RGLocalGiftsError.storage }
+            let destination = directory.appendingPathComponent(UUID().uuidString + ".asset")
+            do {
+                try Data(contentsOf: URL(fileURLWithPath: path)).write(to: destination, options: .atomic)
+            } catch {
+                try? FileManager.default.removeItem(at: destination)
+                throw error
+            }
+            snapshots.append(destination)
+            return localArtwork(file, path: destination.path, id: Int64.random(in: Int64.min...Int64.max))
+        }
+        let stored: StarGift
+        let title: String
         let language = context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode
-        let result = RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: rgLocalGiftTitle(gift, language: language), price: gift.price, gift: data)
-        if case .failure = result { try? FileManager.default.removeItem(at: destination) }
+        switch gift {
+        case let .generic(generic):
+            let source = rgCachedLocalGift(context: context, gift: generic)?.file
+            guard let source else { return .failure(.storage) }
+            stored = .generic(localCopy(generic, file: try snapshot(source)))
+            title = rgLocalGiftTitle(generic, language: language)
+        case let .unique(unique):
+            var attributes: [StarGift.UniqueGift.Attribute] = []
+            var hasModel = false
+            for attribute in unique.attributes {
+                switch attribute {
+                case let .model(name, file, rarity, crafted):
+                    attributes.append(.model(name: name, file: try snapshot(file), rarity: rarity, crafted: crafted))
+                    hasModel = true
+                case let .pattern(name, file, rarity):
+                    if let file = try? snapshot(file) { attributes.append(.pattern(name: name, file: file, rarity: rarity)) }
+                case .backdrop:
+                    attributes.append(attribute)
+                case .originalInfo:
+                    break
+                }
+            }
+            guard hasModel else { return .failure(.storage) }
+            stored = .unique(localUniqueCopy(unique, id: Int64.random(in: Int64.min ... -1), attributes: attributes, owner: context.account.peerId))
+            title = unique.title + " #\(unique.number)"
+        }
+        let data = try JSONEncoder().encode(stored)
+        let result = RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: title, price: price, gift: data)
+        if case .success = result { committed = true }
         return result
     } catch { return .failure(.storage) }
 }
 
-public func rgLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> StarGift.Gift? {
-    guard let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), case let .generic(generic) = gift else { return nil }
+public func rgLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> StarGift? {
+    guard let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift) else { return nil }
     // An iOS data container/bundle path can change on upgrade; rebind to the current container.
-    if let directory = localAssets(context: context), let resource = generic.file.resource as? LocalFileReferenceMediaResource {
+    func rebound(_ file: TelegramMediaFile) -> TelegramMediaFile? {
+        guard let directory = localAssets(context: context), let resource = file.resource as? LocalFileReferenceMediaResource else { return nil }
         let path = directory.appendingPathComponent(URL(fileURLWithPath: resource.localFilePath).lastPathComponent).path
         if FileManager.default.fileExists(atPath: path) {
-            return localCopy(generic, file: localArtwork(generic.file, path: path, id: resource.randomId))
+            return localArtwork(file, path: path, id: resource.randomId)
         }
+        return nil
     }
-    if let fallback = rgLocalFallbackGift() { return localCopy(generic, file: fallback.file) }
-    return nil
+    switch gift {
+    case let .generic(generic):
+        guard let file = rebound(generic.file) ?? rgLocalFallbackGift()?.file else { return nil }
+        return .generic(localCopy(generic, file: file))
+    case let .unique(unique):
+        var attributes: [StarGift.UniqueGift.Attribute] = []
+        var hasModel = false
+        for attribute in unique.attributes {
+            switch attribute {
+            case let .model(name, file, rarity, crafted):
+                if let file = rebound(file) { attributes.append(.model(name: name, file: file, rarity: rarity, crafted: crafted)); hasModel = true }
+            case let .pattern(name, file, rarity):
+                if let file = rebound(file) { attributes.append(.pattern(name: name, file: file, rarity: rarity)) }
+            case .backdrop: attributes.append(attribute)
+            case .originalInfo: break
+            }
+        }
+        guard hasModel else { return nil }
+        return .unique(localUniqueCopy(unique, id: unique.id, attributes: attributes, owner: context.account.peerId))
+    }
 }
 
 public func rgRemoveLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
     let result = RGLocalGiftsStore.shared.remove(account: rgLocalGiftsAccount(context), id: purchase.id)
-    if case .success = result,
-       let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), case let .generic(generic) = gift,
-       let resource = generic.file.resource as? LocalFileReferenceMediaResource,
-       let directory = localAssets(context: context) {
+    if case .success = result, let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), let directory = localAssets(context: context) {
+        let files: [TelegramMediaFile]
+        switch gift {
+        case let .generic(generic): files = [generic.file]
+        case let .unique(unique): files = unique.attributes.compactMap { attribute in
+            switch attribute {
+            case let .model(_, file, _, _), let .pattern(_, file, _): return file
+            default: return nil
+            }
+        }
+        }
         // Every purchase owns a unique snapshot. Only remove a file inside this account's asset directory.
-        let file = directory.appendingPathComponent(URL(fileURLWithPath: resource.localFilePath).lastPathComponent)
-        try? FileManager.default.removeItem(at: file)
+        for file in files {
+            guard let resource = file.resource as? LocalFileReferenceMediaResource else { continue }
+            let path = directory.appendingPathComponent(URL(fileURLWithPath: resource.localFilePath).lastPathComponent)
+            try? FileManager.default.removeItem(at: path)
+        }
     }
     return result
 }
@@ -144,7 +242,7 @@ public func rgLocalGiftProfileState(context: AccountContext, peerId: EnginePeer.
         var state = remote
         let gifts: [ProfileGiftsContext.State.StarGift] = local.purchases.compactMap { purchase in
             guard let gift = rgLocalGift(context: context, purchase: purchase) else { return nil }
-            return ProfileGiftsContext.State.StarGift(gift: .generic(gift), reference: nil, fromPeer: nil,
+            return ProfileGiftsContext.State.StarGift(gift: gift, reference: nil, fromPeer: nil,
                 date: purchase.date, text: "Regram.LocalGift:" + purchase.id.uuidString, entities: nil,
                 nameHidden: false, savedToProfile: true, pinnedToTop: false, convertStars: nil,
                 canUpgrade: false, canExportDate: nil, upgradeStars: nil, transferStars: nil,
@@ -152,22 +250,36 @@ public func rgLocalGiftProfileState(context: AccountContext, peerId: EnginePeer.
                 upgradeSeparate: false, dropOriginalDetailsStars: nil, number: nil, isRefunded: false, canCraftAt: nil)
         }
         let filtered = gifts.filter { item in
-            guard state.filter.contains(.displayed), case let .generic(gift) = item.gift else { return false }
-            if state.filter.contains(.peerColor), !gift.flags.contains(.peerColorAvailable) { return false }
-            if gift.availability == nil { return state.filter.contains(.unlimited) }
-            return state.filter.contains(gift.upgradeStars == nil ? .limitedNonUpgradable : .limitedUpgradable)
+            guard state.filter.contains(.displayed) else { return false }
+            switch item.gift {
+            case let .generic(gift):
+                if state.filter.contains(.peerColor), !gift.flags.contains(.peerColorAvailable) { return false }
+                if gift.availability == nil { return state.filter.contains(.unlimited) }
+                return state.filter.contains(.limitedNonUpgradable)
+            case let .unique(gift):
+                if state.filter.contains(.peerColor), gift.peerColor == nil { return false }
+                return state.filter.contains(.unique)
+            }
         }
         // Preserve upstream ordering between server gifts; only insert local items around it.
+        let prices = Dictionary(uniqueKeysWithValues: local.purchases.map { ($0.id, $0.price) })
+        func price(_ item: ProfileGiftsContext.State.StarGift) -> Int64? {
+            if let id = rgLocalGiftPurchaseId(gift: item), let value = prices[id] { return value }
+            switch item.gift {
+            case let .generic(gift): return gift.price
+            case let .unique(gift): return gift.resellAmounts?.first(where: { $0.currency == .stars })?.amount.value
+            }
+        }
         func merged(_ serverItems: [ProfileGiftsContext.State.StarGift], _ additions: [ProfileGiftsContext.State.StarGift]) -> [ProfileGiftsContext.State.StarGift] {
             var result = serverItems
             let sorted = additions.sorted { lhs, rhs in
-                if remote.sorting == .value, case let .generic(a) = lhs.gift, case let .generic(b) = rhs.gift, a.price != b.price { return a.price > b.price }
+                if remote.sorting == .value, let a = price(lhs), let b = price(rhs), a != b { return a > b }
                 return lhs.date > rhs.date
             }
             for item in sorted {
                 let index = result.firstIndex { other in
                     guard !other.pinnedToTop else { return false }
-                    if remote.sorting == .value, case let .generic(a) = item.gift, case let .generic(b) = other.gift { return a.price > b.price }
+                    if remote.sorting == .value, let a = price(item), let b = price(other) { return a > b }
                     if remote.sorting == .value { return false }
                     return item.date > other.date
                 } ?? result.endIndex

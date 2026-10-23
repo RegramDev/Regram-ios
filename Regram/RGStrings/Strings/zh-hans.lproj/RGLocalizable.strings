@@ -1261,8 +1261,6 @@
 "LocalGifts.BalanceHint" = "输入 0 至 9000000000000000 的整数后保存。";
 "LocalGifts.SaveBalance" = "保存数量";
 "LocalGifts.CurrentBalance" = "可用本地星币";
-"LocalGifts.Catalog" = "购买本地礼物";
-"LocalGifts.CatalogHint" = "点击礼物即可在本地购买。列表使用已缓存的 Telegram 礼物和应用内置礼物。";
 "LocalGifts.Owned" = "我的本地礼物";
 "LocalGifts.OwnedHint" = "本地购买不会发送付款或赠送请求，无法在 Telegram 转赠、出售、升级或兑换。";
 "LocalGifts.Empty" = "还没有本地礼物";
@@ -1276,4 +1274,6 @@
 "LocalGifts.InvalidAmount" = "请输入范围内有效的非负整数。";
 "LocalGifts.Insufficient" = "本地星币不足。请前往 Regram Pro → 管理与工具 → 本地星币与礼物修改数量。";
 "LocalGifts.Limit" = "本地礼物已达到存储上限（最多 500 份），请移除部分礼物后再试。";
-"LocalGifts.StorageError" = "无法保存本地礼物记录，本次购买未完成。";
+"LocalGifts.StorageError" = "本地记录无法保存，或礼物预览尚未加载完成。本次购买未完成。";
+"LocalGifts.NativeHint" = "保存后，到 Telegram 原有礼物页面购买普通或收藏礼物。目录和预览正常联网加载；购买和星币扣除仅在本机模拟。";
+"LocalGifts.StarsOnly" = "本地购买仅使用星币，请选择有星币报价的收藏礼物。暂不模拟 TON 付款。";

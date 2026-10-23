@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import UIKit
 import Display
 import ComponentFlow
@@ -77,13 +78,13 @@ final class BalanceComponent: Component {
             if self.balanceDisposable == nil {
                 if let starsContext = component.context.starsContext, let tonContext = component.context.tonContext {
                     self.balanceDisposable = combineLatest(queue: Queue.mainQueue(),
-                        starsContext.state,
+                        rgGiftStarsBalance(context: component.context, source: starsContext.state), // MARK: Regram
                         tonContext.state
                     ).start(next: { [weak self] starsState, tonState in
                         guard let self else {
                             return
                         }
-                        self.starsBalance = starsState?.balance.value ?? 0
+                        self.starsBalance = starsState.value // MARK: Regram
                         self.tonBalance = tonState?.balance.value ?? 0
                         if !self.isUpdating {
                             self.componentState?.updated()
@@ -95,7 +96,7 @@ final class BalanceComponent: Component {
             let presentationData = component.context.sharedContext.currentPresentationData.with { $0 }
 
             var rawString: String = ""
-            let starsBalanceString = "**⭐️\(presentationStringsFormattedNumber(Int32(clamping: self.starsBalance), presentationData.dateTimeFormat.groupingSeparator))**"
+            let starsBalanceString = "**⭐️\(formatStarsAmountText(StarsAmount(value: self.starsBalance, nanos: 0), dateTimeFormat: presentationData.dateTimeFormat))**" // MARK: Regram
             if self.tonBalance > 0 {
                 let tonBalanceString = "**💎\(formatTonAmountText(self.tonBalance, dateTimeFormat: presentationData.dateTimeFormat))**"
                 rawString = starsBalanceString + "\n" + tonBalanceString

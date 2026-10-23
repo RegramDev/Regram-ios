@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import LottieSettings
 import UIKit
 import Display
@@ -1271,6 +1272,11 @@ final class GiftStoreScreenComponent: Component {
         }
         
         func presentBalanceMenu() {
+            // MARK: Regram — the simulated balance opens its editor instead of the real wallet.
+            if let component = self.component, rgLocalGiftsEnabled(context: component.context), let controller = self.environment?.controller() {
+                controller.push(rgLocalGiftsController(context: component.context))
+                return
+            }
             guard let component = self.component, let starsContext = component.context.starsContext, let tonContext = component.context.tonContext, let controller = self.environment?.controller() else {
                 return
             }

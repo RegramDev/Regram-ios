@@ -1259,8 +1259,6 @@
 "LocalGifts.BalanceHint" = "輸入 0 至 9000000000000000 的整數後儲存。";
 "LocalGifts.SaveBalance" = "儲存數量";
 "LocalGifts.CurrentBalance" = "可用本機星幣";
-"LocalGifts.Catalog" = "購買本機禮物";
-"LocalGifts.CatalogHint" = "點選禮物即可在本機購買。列表使用已快取的 Telegram 禮物和應用程式內建禮物。";
 "LocalGifts.Owned" = "我的本機禮物";
 "LocalGifts.OwnedHint" = "本機購買不會傳送付款或贈送請求，無法在 Telegram 轉贈、出售、升級或兌換。";
 "LocalGifts.Empty" = "還沒有本機禮物";
@@ -1274,4 +1272,6 @@
 "LocalGifts.InvalidAmount" = "請輸入範圍內有效的非負整數。";
 "LocalGifts.Insufficient" = "本機星幣不足。請前往 Regram Pro → 管理與工具 → 本機星幣與禮物修改數量。";
 "LocalGifts.Limit" = "本機禮物已達到儲存上限（最多 500 份），請移除部分禮物後再試。";
-"LocalGifts.StorageError" = "無法儲存本機禮物紀錄，本次購買未完成。";
+"LocalGifts.StorageError" = "本機紀錄無法儲存，或禮物預覽尚未載入完成。本次購買未完成。";
+"LocalGifts.NativeHint" = "儲存後，到 Telegram 原有禮物頁面購買普通或收藏禮物。目錄和預覽正常連線載入；購買和星幣扣除僅在本機模擬。";
+"LocalGifts.StarsOnly" = "本機購買僅使用星幣，請選擇有星幣報價的收藏禮物。暫不模擬 TON 付款。";

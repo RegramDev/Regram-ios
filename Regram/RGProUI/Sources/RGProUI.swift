@@ -464,6 +464,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         case .networkPolicy: return RGSettingsIcons.network
         case .diagnostics: return RGSettingsIcons.diagnostics
         case .backup: return RGSettingsIcons.backup
+        case .localGifts: return RGSettingsIcons.localGifts
         case .appUpdate: return RGSettingsIcons.update
         default: return nil
         }

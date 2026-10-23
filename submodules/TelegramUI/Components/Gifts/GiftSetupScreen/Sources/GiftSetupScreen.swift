@@ -501,7 +501,13 @@ private final class GiftSetupScreenComponent: Component {
                 rgPresentLocalGiftPurchase(context: component.context, gift: gift, controller: controller, completion: { [weak self, weak controller] success in
                     self?.inProgress = false
                     self?.state?.updated()
-                    if success { controller?.dismiss() }
+                    if success {
+                        // MARK: Regram — keep Telegram's purchase celebration without sending a gift.
+                        if let navigationController = controller?.navigationController {
+                            navigationController.view.addSubview(ConfettiView(frame: navigationController.view.bounds))
+                        }
+                        controller?.dismiss()
+                    }
                 })
                 return
             }
@@ -1960,8 +1966,8 @@ private final class GiftSetupScreenComponent: Component {
                     finalPrice += upgradePrice
                 }
                 let amountString = presentationStringsFormattedNumber(Int32(finalPrice), presentationData.dateTimeFormat.groupingSeparator)
-                // MARK: Regram — make the local action explicit while keeping Telegram's button design.
-                let buttonTitle = rgLocalGiftsEnabled(context: component.context) ? "LocalGifts.Buy".i18n(presentationData.strings.rgLanguageCode) : (isSelfGift ? environment.strings.Gift_Send_Buy : environment.strings.Gift_Send_Send)
+                // MARK: Regram — keep Telegram's native purchase label and star icon in local mode.
+                let buttonTitle = (isSelfGift || rgLocalGiftsEnabled(context: component.context)) ? environment.strings.Gift_Send_Buy : environment.strings.Gift_Send_Send // MARK: Regram
                 buttonString = "\(buttonTitle)  # \(amountString)"
                 if let availability = starGift.availability, availability.remains == 0, !rgLocalGiftsEnabled(context: component.context) {
                     buttonIsEnabled = false

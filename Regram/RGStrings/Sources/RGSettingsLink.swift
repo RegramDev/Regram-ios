@@ -12,6 +12,7 @@ public struct RGSettingsDestination: Hashable {
     ]
     public init?(page: String, item: String? = nil) {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }
+        if page == "localGifts", item == "catalog" || item == "owned" { self.page = page; self.item = "balance"; return }
         if (page == "settings.appearance" && item == "liquidGlassTintPercent") || (page == "bottomBar" && item == "tint") { self.page = "bottomBar"; self.item = nil; return }
         if page == "settings.chatList", item == "disableChatSwipeOptions" { self.page = page; self.item = "chatListSwipeAction"; return }
         if page == "startupFolder" || (page == "settings.folders" && item == "rememberLastFolder") {

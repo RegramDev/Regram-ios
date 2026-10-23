@@ -8,6 +8,9 @@ import PresentationDataUtils
 import TelegramStringFormatting
 import BalanceNeededScreen
 import GiftSetupScreen
+import ConfettiEffect // MARK: Regram
+import RGLocalGifts // MARK: Regram
+import RGStrings // MARK: Regram
 
 public func buyStarGiftImpl(
     context: AccountContext,
@@ -25,6 +28,8 @@ public func buyStarGiftImpl(
     completion: @escaping () -> Void
 ) {
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+    // MARK: Regram — pin local mode for an open confirmation; disabling it must not charge the server.
+    let beganLocally = rgLocalGiftsEnabled(context: context)
                     
     let action: (CurrencyAmount.Currency, GiftMessageScreen.Result, @escaping () -> Void) -> Void = { currency, message, beforeCompletion in
         guard let resellAmount = uniqueGift.resellAmounts?.first(where: { $0.currency == currency }) else {
@@ -49,6 +54,30 @@ public func buyStarGiftImpl(
             finalPrice = acceptedPrice
         } else {
             finalPrice = resellAmount
+        }
+
+        // MARK: Regram — retain native confirmation, bypass all wallet/payment and server ownership callbacks.
+        if beganLocally || rgLocalGiftsEnabled(context: context) {
+            guard let controller = getController() else { beforeCompletion(); return }
+            guard currency == .stars, finalPrice.amount.nanos == 0 else {
+                beforeCompletion()
+                controller.present(textAlertController(context: context, title: nil,
+                    text: "LocalGifts.StarsOnly".i18n(presentationData.strings.rgLanguageCode),
+                    actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                return
+            }
+            updateProgress(true)
+            rgPresentLocalGiftPurchase(context: context, gift: .unique(uniqueGift), price: finalPrice.amount.value, controller: controller, completion: { success in
+                beforeCompletion()
+                updateProgress(false)
+                if success {
+                    if let navigationController = controller.navigationController {
+                        navigationController.view.addSubview(ConfettiView(frame: navigationController.view.bounds))
+                    }
+                    controller.dismiss()
+                }
+            })
+            return
         }
         
         let proceed: () -> Void = {

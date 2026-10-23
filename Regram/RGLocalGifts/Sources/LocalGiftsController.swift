@@ -16,10 +16,8 @@ import RGSwiftUI
 
 @MainActor private final class LocalGiftsModel: ObservableObject {
     @Published var state: RGLocalGiftsState
-    @Published var catalog: [StarGift.Gift] = []
     @Published var balanceText: String
     private var stateDisposable: Disposable?
-    private var catalogDisposable: Disposable?
     let context: AccountContext
     let account: String
 
@@ -34,19 +32,9 @@ import RGSwiftUI
             if self.state.balance != state.balance { self.balanceText = String(state.balance) }
             self.state = state
         })
-        // Read the existing catalog cache only; a bundled gift is always available offline.
-        self.catalogDisposable = (context.engine.payments.cachedStarGifts() |> deliverOnMainQueue).start(next: { [weak self] gifts in
-            var catalog = rgLocalFallbackGift().map { [$0] } ?? []
-            var ids = Set(catalog.map(\.id))
-            for case let .generic(gift) in gifts ?? [] where gift.price > 0 {
-                if ids.insert(gift.id).inserted, let local = rgCachedLocalGift(context: context, gift: gift) { catalog.append(local) }
-            }
-            self?.catalog = catalog
-        })
-        self.catalog = rgLocalFallbackGift().map { [$0] } ?? []
     }
 
-    deinit { stateDisposable?.dispose(); catalogDisposable?.dispose() }
+    deinit { stateDisposable?.dispose() }
 }
 
 private final class GiftPreviewView: UIView {
@@ -57,7 +45,8 @@ private final class GiftPreviewView: UIView {
 
 private struct LocalGiftPreview: UIViewRepresentable {
     let accountContext: AccountContext
-    let gift: StarGift.Gift
+    let gift: StarGift
+    let price: Int64
     let presentation: PresentationData
     var profile = false
     let action: () -> Void
@@ -66,10 +55,15 @@ private struct LocalGiftPreview: UIViewRepresentable {
     func updateUIView(_ view: GiftPreviewView, context: Context) {
         view.updateContent = { [weak view] in
             guard let view, view.bounds.width > 0 else { return }
+            let subject: GiftItemComponent.Subject
+            switch gift {
+            case let .generic(gift): subject = .starGift(gift: gift, price: "# \(price)")
+            case let .unique(gift): subject = .uniqueGift(gift: gift, price: "# \(price)")
+            }
             let size = view.component.update(transition: .immediate,
                 component: AnyComponent(GiftItemComponent(context: accountContext, style: .glass,
                     theme: presentation.theme, strings: presentation.strings,
-                    subject: .starGift(gift: gift, price: String(gift.price)), mode: profile ? .profile : .generic,
+                    subject: subject, mode: profile ? .profile : .generic,
                     action: action)), environment: {}, containerSize: view.bounds.size)
             if let content = view.component.view {
                 if content.superview !== view { view.addSubview(content) }
@@ -86,15 +80,13 @@ private struct LocalGiftPreview: UIViewRepresentable {
     @SwiftUI.Environment(\.rgPresentationTheme) private var theme
     let selectedPurchase: UUID?
     let showMessage: (String) -> Void
-    let buy: (StarGift.Gift) -> Void
     let remove: (RGLocalGiftPurchase) -> Void
     private var secondary: Color { Color(uiColor: theme?.list.itemSecondaryTextColor ?? .secondaryLabel) }
 
-    init(context: AccountContext, selectedPurchase: UUID?, showMessage: @escaping (String) -> Void, buy: @escaping (StarGift.Gift) -> Void, remove: @escaping (RGLocalGiftPurchase) -> Void) {
+    init(context: AccountContext, selectedPurchase: UUID?, showMessage: @escaping (String) -> Void, remove: @escaping (RGLocalGiftPurchase) -> Void) {
         _model = StateObject(wrappedValue: LocalGiftsModel(context: context))
         self.selectedPurchase = selectedPurchase
         self.showMessage = showMessage
-        self.buy = buy
         self.remove = remove
     }
 
@@ -111,9 +103,9 @@ private struct LocalGiftPreview: UIViewRepresentable {
                     })).rgSettingsLink("enabled")
                 }
                 if model.state.enabled {
-                    RGSettingsSection(header: Text("LocalGifts.Balance".i18n(lang)), footer: Text("LocalGifts.BalanceHint".i18n(lang)).foregroundColor(secondary)) {
+                    RGSettingsSection(header: Text("LocalGifts.Balance".i18n(lang)), footer: Text(("LocalGifts.BalanceHint".i18n(lang)) + "\n" + "LocalGifts.NativeHint".i18n(lang)).foregroundColor(secondary)) {
                         HStack {
-                            Text("★").foregroundColor(.orange)
+                            starIcon
                             TextField("LocalGifts.Balance".i18n(lang), text: $model.balanceText).keyboardType(.numberPad)
                                 .accessibilityLabel("LocalGifts.Balance".i18n(lang))
                         }.rgSettingsLink("balance")
@@ -124,40 +116,36 @@ private struct LocalGiftPreview: UIViewRepresentable {
                             handle(RGLocalGiftsStore.shared.setBalance(account: model.account, balance: amount))
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
-                        HStack { Text("LocalGifts.CurrentBalance".i18n(lang)); Spacer(); Text("★ \(model.state.balance)").foregroundColor(secondary) }
-                    }
-                    RGSettingsSection(header: Text("LocalGifts.Catalog".i18n(lang)), footer: Text("LocalGifts.CatalogHint".i18n(lang)).foregroundColor(secondary)) {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                            ForEach(model.catalog, id: \.id) { gift in
-                                LocalGiftPreview(accountContext: model.context, gift: gift,
-                                    presentation: model.context.sharedContext.currentPresentationData.with { $0 }, action: { buy(gift) })
-                                    .frame(height: 154)
-                                    .accessibilityLabel(rgLocalGiftTitle(gift, language: lang) + ", ★ \(gift.price)")
-                                    .accessibilityAddTraits(.isButton)
-                            }
-                        }.padding(.vertical, 4).rgSettingsLink("catalog")
+                        HStack { Text("LocalGifts.CurrentBalance".i18n(lang)); Spacer(); starIcon; Text(String(model.state.balance)).foregroundColor(secondary) }
                     }
                 }
             }
-            if model.state.enabled {
+            if model.state.enabled, let selectedPurchase {
                 RGSettingsSection(header: Text("LocalGifts.Owned".i18n(lang)), footer: Text("LocalGifts.OwnedHint".i18n(lang)).foregroundColor(secondary)) {
-                    if model.state.purchases.isEmpty { Text("LocalGifts.Empty".i18n(lang)).foregroundColor(secondary) }
-                    ForEach(model.state.purchases.filter { selectedPurchase == nil || $0.id == selectedPurchase }, id: \.id) { purchase in
+                    ForEach(model.state.purchases.filter { $0.id == selectedPurchase }, id: \.id) { purchase in
                         HStack {
                             if let gift = rgLocalGift(context: model.context, purchase: purchase) {
-                                LocalGiftPreview(accountContext: model.context, gift: gift,
+                                LocalGiftPreview(accountContext: model.context, gift: gift, price: purchase.price,
                                     presentation: model.context.sharedContext.currentPresentationData.with { $0 }, profile: true, action: {})
                                     .frame(width: 92, height: 120).allowsHitTesting(false)
                             }
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(purchase.title)
-                                Text("★ \(purchase.price)").foregroundColor(secondary)
+                                HStack(spacing: 4) { starIcon; Text(String(purchase.price)).foregroundColor(secondary) }
                                 Text(Date(timeIntervalSince1970: TimeInterval(purchase.date)), style: .date).font(.footnote).foregroundColor(secondary)
                                 Button("LocalGifts.Remove".i18n(lang), role: .destructive) { remove(purchase) }
                             }
                         }
                     }
                 }.rgSettingsLink("owned")
+            }
+        }
+    }
+
+    private var starIcon: some View {
+        Group {
+            if let image = UIImage(bundleImageName: "Premium/Stars/StarSmall") {
+                Image(uiImage: image).resizable().scaledToFit().frame(width: 18, height: 18).accessibilityHidden(true)
             }
         }
     }
@@ -177,9 +165,13 @@ public func rgLocalGiftError(_ error: RGLocalGiftsError, language: String) -> St
 
 /// Used before native checkout guards: completing this path never fetches a payment form.
 public func rgPresentLocalGiftPurchase(context: AccountContext, gift: StarGift.Gift, controller: ViewController, completion: ((Bool) -> Void)? = nil) {
+    rgPresentLocalGiftPurchase(context: context, gift: .generic(gift), price: gift.price, controller: controller, completion: completion)
+}
+
+public func rgPresentLocalGiftPurchase(context: AccountContext, gift: StarGift, price: Int64, controller: ViewController, completion: ((Bool) -> Void)? = nil) {
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let language = data.strings.rgLanguageCode
-    let result = rgBuyLocalGift(context: context, gift: gift)
+    let result = rgBuyLocalGift(context: context, gift: gift, price: price)
     let title: String
     let text: String
     let success: Bool
@@ -212,19 +204,6 @@ public func rgLocalGiftsController(context: AccountContext, focusSetting: String
                 let data = context.sharedContext.currentPresentationData.with { $0 }
                 controller.present(textAlertController(context: context, title: "LocalGifts.Title".i18n(data.strings.rgLanguageCode), text: text,
                     actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root))
-            }, buy: { [weak controller] gift in
-                guard let controller else { return }
-                let data = context.sharedContext.currentPresentationData.with { $0 }
-                let language = data.strings.rgLanguageCode
-                controller.present(textAlertController(context: context, title: "LocalGifts.Buy".i18n(language),
-                    text: rgLocalGiftTitle(gift, language: language) + " · ★ \(gift.price)\n\n" + "LocalGifts.SuccessHint".i18n(language),
-                    actions: [TextAlertAction(type: .genericAction, title: data.strings.Common_Cancel, action: {}),
-                        TextAlertAction(type: .defaultAction, title: "LocalGifts.Buy".i18n(language), action: { [weak controller] in
-                            Queue.mainQueue().after(0.25) {
-                                guard let controller else { return }
-                                rgPresentLocalGiftPurchase(context: context, gift: gift, controller: controller)
-                            }
-                        })]), in: .window(.root))
             }, remove: { [weak controller] purchase in
                 guard let controller else { return }
                 let data = context.sharedContext.currentPresentationData.with { $0 }

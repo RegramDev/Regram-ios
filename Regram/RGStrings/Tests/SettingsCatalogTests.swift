@@ -21,7 +21,11 @@ extension String {
             RGSettingsCatalog.results(query: query, language: "zh-hans").contains { $0.destination.page == page && $0.destination.item == item }
         }
         assert(contains("本地星币", "pro.tools", "localGifts"))
-        assert(contains("本地礼物", "localGifts", "owned"))
+        assert(contains("本地礼物", "localGifts", "enabled"))
+        for retired in ["catalog", "owned"] {
+            assert(RGSettingsDestination(page: "localGifts", item: retired) == RGSettingsDestination(page: "localGifts", item: "balance"))
+            assert(!RGSettingsCatalog.entries.contains { $0.destination.page == "localGifts" && $0.destination.item == retired })
+        }
         assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=localGifts&item=enabled")!, appSpecificScheme: "fixture-app") == RGSettingsDestination(page: "localGifts", item: "enabled"))
         assert(contains("本地会员", "pro.tools", "localPremium"))
         assert(contains("温度", "llm", "temperature"))

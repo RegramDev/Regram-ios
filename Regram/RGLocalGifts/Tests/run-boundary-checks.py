@@ -12,12 +12,25 @@ projection = (module / 'LocalGifts.swift').read_text()
 assert 'peerId == context.account.peerId, profileGifts.collectionId == nil, !canSelect' in projection
 assert 'reference: nil' in projection and 'canUpgrade: false' in projection
 assert 'completedResourcePath' in projection and 'LocalFileReferenceMediaResource' in projection
-assert 'cachedStarGifts()' in source
+ui = (module / 'LocalGiftsController.swift').read_text()
+assert 'cachedStarGifts()' not in ui and 'LazyVGrid' not in ui, 'Purchases belong in the native Telegram screens'
+assert 'case let .unique(unique)' in projection and 'case .originalInfo:' in projection
+assert 'slug: "", owner: .peerId(owner)' in projection and 'giftAddress: nil, resellAmounts: nil' in projection
+assert 'case let .unique(gift)' in projection and 'state.filter.contains(.unique)' in projection
 setup = (root / 'submodules/TelegramUI/Components/Gifts/GiftSetupScreen/Sources/GiftSetupScreen.swift').read_text()
 method = setup.split('private func proceedWithStarGift() {', 1)[1].split('let context = component.context', 1)[0]
 assert method.index('rgLocalGiftsEnabled') < method.index('let starsContext')
 assert 'guard !self.inProgress, let controller = self.environment?.controller() else { return }' in method
 assert 'rgPresentLocalGiftPurchase' in method and 'return' in method.split('rgPresentLocalGiftPurchase', 1)[1]
+buy = (root / 'submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewBuyGift.swift').read_text()
+local = buy.split('if beganLocally || rgLocalGiftsEnabled(context: context) {', 1)[1].split('let proceed: () -> Void', 1)[0]
+assert 'currency == .stars, finalPrice.amount.nanos == 0' in local
+assert 'rgPresentLocalGiftPurchase' in local and 'return' in local.split('rgPresentLocalGiftPurchase', 1)[1]
+assert buy.index('if beganLocally ||') < buy.index('context.engine.payments.buyStarGift') < buy.index('makeStarsPurchaseScreen')
+viewer = (root / 'submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftViewScreen.swift').read_text()
+assert 'arguments.resellAmounts, !isOwn, !rgLocalGiftsEnabled(context: context)' in viewer
+assert 'self.buyForm != nil || rgLocalGiftsEnabled(context: context)' in viewer
+assert 'giftPurchaseAlertController(' in buy, 'Keep the native collectible confirmation'
 list_view = (root / 'submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift').read_text()
 assert 'rgLocalGiftProfileState' in list_view
 assert list_view.index('let purchaseId = rgLocalGiftPurchaseId') < list_view.index('let controller = GiftViewScreen')

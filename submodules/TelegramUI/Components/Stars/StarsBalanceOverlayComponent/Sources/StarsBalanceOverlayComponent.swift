@@ -12,12 +12,14 @@ import MultilineTextWithEntitiesComponent
 import TextFormat
 import Markdown
 import TelegramStringFormatting
+import RGLocalGifts // MARK: Regram
 
 public final class StarsBalanceOverlayComponent: Component {
     private let context: AccountContext
     private let peerId: EnginePeer.Id
     private let theme: PresentationTheme
     private let currency: CurrencyAmount.Currency
+    private let useLocalGiftBalance: Bool // MARK: Regram
     private let action: () -> Void
     
     public init(
@@ -25,12 +27,14 @@ public final class StarsBalanceOverlayComponent: Component {
         peerId: EnginePeer.Id,
         theme: PresentationTheme,
         currency: CurrencyAmount.Currency,
+        useLocalGiftBalance: Bool = false, // MARK: Regram — opt in only for gift purchasing.
         action: @escaping () -> Void
     ) {
         self.context = context
         self.peerId = peerId
         self.theme = theme
         self.currency = currency
+        self.useLocalGiftBalance = useLocalGiftBalance // MARK: Regram
         self.action = action
     }
 
@@ -41,6 +45,7 @@ public final class StarsBalanceOverlayComponent: Component {
         if lhs.currency != rhs.currency {
             return false
         }
+        if lhs.useLocalGiftBalance != rhs.useLocalGiftBalance { return false } // MARK: Regram
         return true
     }
     
@@ -93,18 +98,28 @@ public final class StarsBalanceOverlayComponent: Component {
             let previousComponent = self.component
             self.component = component
             self.state = state
+
+            // MARK: Regram — changing this opt-in also replaces the display-only subscription.
+            if previousComponent?.useLocalGiftBalance != component.useLocalGiftBalance {
+                self.balanceDisposable?.dispose()
+                self.balanceDisposable = nil
+            }
             
             if self.balanceDisposable == nil {
                 if component.peerId == component.context.account.peerId {
                     if let starsContext = component.context.starsContext, let tonContext = component.context.tonContext {
+                        // MARK: Regram — the wallet's source is never mutated.
+                        let starsBalance: Signal<StarsAmount, NoError> = component.useLocalGiftBalance
+                            ? rgGiftStarsBalance(context: component.context, source: starsContext.state)
+                            : (starsContext.state |> map { $0?.balance ?? .zero })
                         self.balanceDisposable = combineLatest(queue: Queue.mainQueue(),
-                            starsContext.state,
+                            starsBalance,
                             tonContext.state
                         ).start(next: { [weak self] starsState, tonState in
                             guard let self else {
                                 return
                             }
-                            self.starsBalance = starsState?.balance.value ?? 0
+                            self.starsBalance = starsState.value // MARK: Regram
                             self.tonBalance = tonState?.balance.value ?? 0
                             if !self.isUpdating {
                                 self.state?.updated()
@@ -133,7 +148,7 @@ public final class StarsBalanceOverlayComponent: Component {
             }
             
             let presentationData = component.context.sharedContext.currentPresentationData.with { $0 }
-            let balance = presentationStringsFormattedNumber(Int32(self.starsBalance), presentationData.dateTimeFormat.groupingSeparator)
+            let balance = formatStarsAmountText(StarsAmount(value: self.starsBalance, nanos: 0), dateTimeFormat: presentationData.dateTimeFormat) // MARK: Regram — preserve Int64 local balances.
             
             let rawString: String
             if component.peerId == component.context.account.peerId {

@@ -33,6 +33,7 @@ import ContextUI
 import TelegramNotices
 import PremiumLockButtonSubtitleComponent
 import StarsBalanceOverlayComponent
+import RGLocalGifts // MARK: Regram
 import BalanceNeededScreen
 import GiftItemComponent
 import GiftAnimationComponent
@@ -546,7 +547,8 @@ private final class GiftViewSheetContent: CombinedComponent {
                         isOwn = true
                     }
                     
-                    if let _ = arguments.resellAmounts, !isOwn {
+                    // MARK: Regram — local collectible purchases never prefetch a server payment form.
+                    if let _ = arguments.resellAmounts, !isOwn, !rgLocalGiftsEnabled(context: context) {
                         self.buyFormDisposable = (context.engine.payments.fetchBotPaymentForm(source: .starGiftResale(slug: gift.slug, toPeerId: context.account.peerId, ton: gift.resellForTonOnly, hideName: true, text: nil, entities: nil), themeParams: nil)
                         |> deliverOnMainQueue).start(next: { [weak self] paymentForm in
                             guard let self else {
@@ -2459,7 +2461,7 @@ private final class GiftViewSheetContent: CombinedComponent {
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             let giftTitle = "\(uniqueGift.title) #\(formatCollectibleNumber(uniqueGift.number, dateTimeFormat: presentationData.dateTimeFormat))"
             
-            if let resellTooEarlyTimestamp = self.resellTooEarlyTimestamp {
+            if let resellTooEarlyTimestamp = self.resellTooEarlyTimestamp, !rgLocalGiftsEnabled(context: context) { // MARK: Regram
                 let dateString = stringForFullDate(timestamp: resellTooEarlyTimestamp, strings: presentationData.strings, dateTimeFormat: presentationData.dateTimeFormat)
                 let alertController = textAlertController(
                     context: context,
@@ -2474,7 +2476,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                 return
             }
             
-            guard let _ = self.buyForm else {
+            guard self.buyForm != nil || rgLocalGiftsEnabled(context: context) else { // MARK: Regram
                 let alertController = textAlertController(
                     context: context,
                     title: nil,
@@ -7238,7 +7240,14 @@ public class GiftViewScreen: ViewControllerComponentContainer {
                         peerId: context.account.peerId,
                         theme: context.sharedContext.currentPresentationData.with { $0 }.theme,
                         currency: self.balanceCurrency,
+                        useLocalGiftBalance: true, // MARK: Regram
                         action: { [weak self] in
+                            // MARK: Regram — editing simulated Stars must not open a real top-up.
+                            if rgLocalGiftsEnabled(context: context), let self {
+                                self.push(rgLocalGiftsController(context: context))
+                                self.dismissAnimated()
+                                return
+                            }
                             guard let self, let starsContext = context.starsContext, let navigationController = self.navigationController as? NavigationController else {
                                 return
                             }

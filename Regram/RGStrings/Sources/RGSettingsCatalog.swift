@@ -198,8 +198,6 @@ public enum RGSettingsCatalog {
         .init("pro.tools", "localGifts", "LocalGifts.Title", keywords: "local stars gifts purchase 本地 星币 礼物 购买"),
         .init("localGifts", "enabled", "LocalGifts.Enabled"),
         .init("localGifts", "balance", "LocalGifts.Balance"),
-        .init("localGifts", "catalog", "LocalGifts.Catalog"),
-        .init("localGifts", "owned", "LocalGifts.Owned"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),
