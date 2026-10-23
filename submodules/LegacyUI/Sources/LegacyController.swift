@@ -533,9 +533,6 @@ public final class LegacyControllerContext: NSObject, LegacyComponentsContext {
 }
 
 open class LegacyController: ViewController, PresentableController {
-    // MARK: Regram — allow hosted Regram screens to opt into Telegram's glass
-    // navigation at construction time, keeping upstream legacy callers unchanged.
-    open class var navigationBarStyle: NavigationBar.Style { .legacy }
     public private(set) var legacyController: UIViewController!
     private let presentation: LegacyControllerPresentation
     
@@ -579,8 +576,7 @@ open class LegacyController: ViewController, PresentableController {
         
         let navigationBarPresentationData: NavigationBarPresentationData?
         if let theme = theme, let strings = strings, case .navigation = presentation {
-            // MARK: Regram — the style must be chosen before button nodes are created.
-            navigationBarPresentationData = NavigationBarPresentationData(theme: NavigationBarTheme(rootControllerTheme: theme, style: Self.navigationBarStyle), strings: NavigationBarStrings(presentationStrings: strings))
+            navigationBarPresentationData = NavigationBarPresentationData(theme: NavigationBarTheme(rootControllerTheme: theme), strings: NavigationBarStrings(presentationStrings: strings))
         } else {
             navigationBarPresentationData = nil
         }
@@ -602,6 +598,7 @@ open class LegacyController: ViewController, PresentableController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    // MARK: Regram — hosted SwiftUI screens extend binding to track their layout and appearance.
     open func bind(controller: UIViewController) {
         self.legacyController = controller
         if let controller = controller as? TGViewController {

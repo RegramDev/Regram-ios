@@ -32,7 +32,7 @@ final class RGAuthorMessagesController: ViewController {
         self.author = author
         self.location = .peer(peerId: chatPeerId, fromId: author.id, tags: nil, reactions: nil, threadId: threadId, minDate: nil, maxDate: nil)
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, style: .glass))
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, glassStyle: .default))
         self._hasGlassStyle = true
         self.title = "AuthorMessages.Title".i18n(self.presentationData.strings.baseLanguageCode, args: author.compactDisplayTitle)
         self.emptyNode.maximumNumberOfLines = 0
@@ -42,7 +42,7 @@ final class RGAuthorMessagesController: ViewController {
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.presentationData = data
-            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
+            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationTheme: data.theme, presentationStrings: data.strings, glassStyle: .default), transition: .immediate)
             if self.isNodeLoaded { self.updateTheme() }
         })
     }

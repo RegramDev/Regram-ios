@@ -74,13 +74,13 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     init(context: AccountContext, author: EnginePeer) {
         self.context = context; self.author = author
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, style: .glass))
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, glassStyle: .default))
         self._hasGlassStyle = true
         rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: presentationData.strings.Common_Back)
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }; self.presentationData = data
             self.navigationItem.backBarButtonItem?.title = data.strings.Common_Back
-            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
+            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, glassStyle: .default), transition: .immediate)
             if self.isNodeLoaded { self.updateAppearance() }
         })
         self.backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
@@ -375,14 +375,14 @@ private final class RGCommonGroupPicker: ViewController, UITableViewDataSource, 
         let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         self.context = context; self.data = presentationData
         self.choices = choices; self.selected = selected; self.select = select
-        super.init(navigationBarPresentationData: .init(presentationTheme: presentationData.theme, presentationStrings: presentationData.strings, style: .glass))
+        super.init(navigationBarPresentationData: .init(presentationTheme: presentationData.theme, presentationStrings: presentationData.strings, glassStyle: .default))
         self._hasGlassStyle = true
         rgConfigureCommonGroupTableNavigation(controller: self, table: self.table, backTitle: presentationData.strings.Common_Back)
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.data = data
             self.navigationItem.backBarButtonItem?.title = data.strings.Common_Back
-            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, style: .glass), transition: .immediate)
+            self.navigationBar?.updatePresentationData(.init(presentationTheme: data.theme, presentationStrings: data.strings, glassStyle: .default), transition: .immediate)
             if self.isNodeLoaded { self.updateAppearance() }
         })
         title = "CommonGroups.Filter".i18n(lang)

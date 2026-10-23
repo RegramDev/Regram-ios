@@ -250,9 +250,7 @@ public extension View {
 
 @available(iOS 13.0, *)
 public final class LegacySwiftUIController: LegacyController {
-    // Match Regram's native ItemList pages without introducing another
-    // navigation stack or replacing Telegram's interactive back gesture.
-    override public class var navigationBarStyle: NavigationBar.Style { .glass }
+    // Share the upstream unified glass bar and interactive back gesture with native ItemList pages.
     public var navigationBarHeightModel: ObservedValue<CGFloat>
     public var containerViewLayoutModel: ObservedValue<ContainerViewLayout?>
     public var inputHeightModel: ObservedValue<CGFloat?>
@@ -281,7 +279,7 @@ public final class LegacySwiftUIController: LegacyController {
             self.themeModel.value = data.theme
             self.legacyController?.overrideUserInterfaceStyle = data.theme.overallDarkAppearance ? .dark : .light
             self.languageModel.value = data.strings.rgLanguageCode
-            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data, style: Self.navigationBarStyle), transition: .immediate)
+            self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data, glassStyle: .default), transition: .immediate)
             self.statusBar.statusBarStyle = data.theme.rootController.statusBarStyle.style
         }))
     }

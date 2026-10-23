@@ -152,13 +152,13 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
     private var lang: String { data.strings.rgLanguageCode }
     init(context: AccountContext) {
         self.context = context; list = RGBookmarkList(context: context); data = context.sharedContext.currentPresentationData.with { $0 }
-        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: data, style: .glass))
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: data, glassStyle: .default))
         self._hasGlassStyle = true
         title = "Bookmarks.Title".i18n(lang)
         navigationItem.backBarButtonItem = UIBarButtonItem(title: data.strings.Common_Back, style: .plain, target: nil, action: nil)
         list.didUpdate = { [weak self] in self?.table.reloadData() }
         appearance.set((context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
-            guard let self else { return }; self.data = data; self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data, style: .glass), transition: .immediate); self.applyTheme(); self.table.reloadData()
+            guard let self else { return }; self.data = data; self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: data, glassStyle: .default), transition: .immediate); self.applyTheme(); self.table.reloadData()
         }))
     }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
