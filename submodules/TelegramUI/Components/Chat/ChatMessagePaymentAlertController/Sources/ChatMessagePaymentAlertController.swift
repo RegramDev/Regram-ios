@@ -17,6 +17,7 @@ import TextFormat
 import StarsBalanceOverlayComponent
 import AlertComponent
 import AlertCheckComponent
+import RGLocalGifts // MARK: Regram
 
 public class ChatMessagePaymentAlertController: AlertScreen {
     private let context: AccountContext?
@@ -24,6 +25,7 @@ public class ChatMessagePaymentAlertController: AlertScreen {
     private weak var parentNavigationController: NavigationController?
     private let chatPeerId: EnginePeer.Id
     private let showBalance: Bool
+    private let useLocalGiftBalance: Bool // MARK: Regram
     private let animateBalanceOverlay: Bool
     
     private var didUpdateCurrency = false
@@ -46,6 +48,7 @@ public class ChatMessagePaymentAlertController: AlertScreen {
         navigationController: NavigationController?,
         chatPeerId: EnginePeer.Id,
         showBalance: Bool = true,
+        useLocalGiftBalance: Bool = false, // MARK: Regram — only gift confirmations opt in.
         currencySignal: Signal<CurrencyAmount.Currency, NoError> = .single(.stars),
         animateBalanceOverlay: Bool = true
     ) {
@@ -54,6 +57,7 @@ public class ChatMessagePaymentAlertController: AlertScreen {
         self.parentNavigationController = navigationController
         self.chatPeerId = chatPeerId
         self.showBalance = showBalance
+        self.useLocalGiftBalance = useLocalGiftBalance // MARK: Regram
         self.animateBalanceOverlay = animateBalanceOverlay
         
         var effectiveUpdatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)
@@ -167,7 +171,14 @@ public class ChatMessagePaymentAlertController: AlertScreen {
                         peerId: self.chatPeerId.namespace == Namespaces.Peer.CloudChannel ? self.chatPeerId : context.account.peerId,
                         theme: self.presentationData.theme,
                         currency: currency,
+                        useLocalGiftBalance: self.useLocalGiftBalance, // MARK: Regram
                         action: { [weak self] in
+                            // MARK: Regram — this opt-in never changes other payment confirmation screens.
+                            if let self, self.useLocalGiftBalance, rgLocalGiftsEnabled(context: context), let navigationController = self.parentNavigationController {
+                                navigationController.pushViewController(rgLocalGiftsController(context: context))
+                                self.dismiss(completion: nil)
+                                return
+                            }
                             guard let self, let starsContext = context.starsContext, let navigationController = self.parentNavigationController, let currency = self.currency else {
                                 return
                             }

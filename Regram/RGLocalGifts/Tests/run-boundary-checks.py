@@ -31,6 +31,11 @@ viewer = (root / 'submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/
 assert 'arguments.resellAmounts, !isOwn, !rgLocalGiftsEnabled(context: context)' in viewer
 assert 'self.buyForm != nil || rgLocalGiftsEnabled(context: context)' in viewer
 assert 'giftPurchaseAlertController(' in buy, 'Keep the native collectible confirmation'
+confirmation = (root / 'submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftPurchaseAlertController.swift').read_text()
+assert 'useLocalGiftBalance: true' in confirmation
+payment_alert = (root / 'submodules/TelegramUI/Components/Chat/ChatMessagePaymentAlertController/Sources/ChatMessagePaymentAlertController.swift').read_text()
+assert 'useLocalGiftBalance: Bool = false' in payment_alert, 'Real message payments must not use the local balance'
+assert 'self.useLocalGiftBalance, rgLocalGiftsEnabled(context: context)' in payment_alert
 list_view = (root / 'submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode/Sources/GiftsListView.swift').read_text()
 assert 'rgLocalGiftProfileState' in list_view
 assert list_view.index('let purchaseId = rgLocalGiftPurchaseId') < list_view.index('let controller = GiftViewScreen')
