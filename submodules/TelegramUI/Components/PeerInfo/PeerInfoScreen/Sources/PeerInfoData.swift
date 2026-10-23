@@ -2314,7 +2314,7 @@ func peerInfoScreenData(
             let didRefreshWelcomeMessages = Atomic<Bool>(value: false)
             
             return combineLatest(queue: .mainQueue(),
-                Signal<Message?, NoError>.single(nil) |> then (getFirstMessage(context: context, peerId: peerId)),
+                Signal<EngineRawMessage?, NoError>.single(nil) |> then (getFirstMessage(context: context, peerId: peerId)),
                 context.account.viewTracker.peerView(groupId, updateData: true),
                 peerInfoAvailableMediaPanes(context: context, peerId: groupId, chatLocation: chatLocation, isMyProfile: false, chatLocationContextHolder: chatLocationContextHolder, sharedMediaFromForumTopic: sharedMediaFromForumTopic),
                 context.engine.data.subscribe(TelegramEngine.EngineData.Item.NotificationSettings.Global()),
@@ -2973,12 +2973,12 @@ private func isPremiumRequiredForStoryPosting(context: AccountContext) -> Signal
 
 
 // MARK: Regram
-private func getFirstMessage(context: AccountContext, peerId: PeerId) -> Signal<Message?, NoError> {
-    return context.engine.messages.getMessagesLoadIfNecessary([MessageId(peerId: peerId, namespace: Namespaces.Message.Cloud, id: 1)])
+private func getFirstMessage(context: AccountContext, peerId: EnginePeer.Id) -> Signal<EngineRawMessage?, NoError> {
+    return context.engine.messages.getMessagesLoadIfNecessary([EngineMessage.Id(peerId: peerId, namespace: Namespaces.Message.Cloud, id: 1)])
     |> `catch` { _ in
         return .single(.result([]))
     }
-    |> mapToSignal { result -> Signal<[Message], NoError> in
+    |> mapToSignal { result -> Signal<[EngineRawMessage], NoError> in
         guard case let .result(result) = result else {
             return .complete()
         }

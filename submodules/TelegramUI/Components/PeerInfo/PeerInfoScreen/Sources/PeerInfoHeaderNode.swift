@@ -1742,12 +1742,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             let leftExpandedOffset: CGFloat = nextExpandedIconX + 4.0
             titleHorizontalOffset -= offset
 
-            var collapsedTransitionOffset: CGFloat = 0.0
-            if let navigationTransition = self.navigationTransition {
-                collapsedTransitionOffset = -10.0 * navigationTransition.fraction
-            }
-
-            transition.updateFrame(view: self.titleRGBadgeView, frame: CGRect(origin: CGPoint(x: leftOffset + collapsedTransitionOffset, y: floor((titleSize.height - rgBadgeSize.height) / 2.0)), size: rgBadgeSize))
+            // MARK: Regram — share the title container's transition, as the native credibility icon does.
+            transition.updateFrame(view: self.titleRGBadgeView, frame: CGRect(origin: CGPoint(x: leftOffset, y: floor((titleSize.height - rgBadgeSize.height) / 2.0)), size: rgBadgeSize))
             transition.updateFrame(view: self.titleExpandedRGBadgeView, frame: CGRect(origin: CGPoint(x: leftExpandedOffset, y: floor((titleExpandedSize.height - titleExpandedRGBadgeSize.height) / 2.0) + 1.0), size: titleExpandedRGBadgeSize))
 
             nextIconX += 4.0 + rgBadgeSize.width
