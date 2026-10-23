@@ -968,7 +968,7 @@ func _internal_fetchAndUpdateCachedPeerData(accountPeerId: PeerId, peerId rawPee
                                                     .withUpdatedShareTheme(channelFullData.shareTheme.flatMap(TelegramShareTheme.init(apiShareTheme:)) ?? .default)
                                             })
                                         
-                                            if let minAvailableMessageId = minAvailableMessageId, minAvailableMessageIdUpdated {
+                                            if let minAvailableMessageId = minAvailableMessageId, minAvailableMessageIdUpdated, !rgRetainDeletedMessageRange(transaction: transaction, peerId: peerId, namespace: minAvailableMessageId.namespace, maxId: minAvailableMessageId.id) { // MARK: Regram
                                                 var resourceIds: [MediaResourceId] = []
                                                 transaction.deleteMessagesInRange(peerId: peerId, namespace: minAvailableMessageId.namespace, minId: 1, maxId: minAvailableMessageId.id, forEachMedia: { media in
                                                     addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)

@@ -77,3 +77,15 @@ assert 'rgPresentLocalWalletNotice' in qr and 'return' in qr.split('rgPresentLoc
 assert 'showsWalletInfo || state.isLocal' in native_wallet
 assert 'rgLocalProfileCachedData' in native_wallet and 'localStickers: self.isLocal ?' in native_wallet
 print('Local profile decoration and wallet payment/QR boundary checks passed')
+
+# Local buying must be intercepted before all server availability and auction branches.
+options = (root / 'submodules/TelegramUI/Components/Gifts/GiftOptionsScreen/Sources/GiftOptionsScreen.swift').read_text()
+open_gift = options.split('private func openGift(gift:', 1)[1].split('private var isInAttachmentMenu', 1)[0]
+assert open_gift.index('if rgLocalGiftsEnabled') < open_gift.index('checkCanSendStarGift') < open_gift.index('makeGiftAuctionBidScreen')
+assert 'self.localPurchaseOnly = rgLocalGiftsEnabled(context: context)' in setup
+assert 'component.localPurchaseOnly || rgLocalGiftsEnabled' in method
+auction = (root / 'submodules/TelegramUI/Components/Gifts/GiftViewScreen/Sources/GiftAuctionBidScreen.swift').read_text()
+commit = auction.split('private func commitBid(value:', 1)[1].split('private func ', 1)[0]
+assert commit.index('component.localPurchaseOnly || rgLocalGiftsEnabled') < commit.index('starsTopUpOptions') < commit.index('sendStarsPaymentForm')
+assert 'guard !rgLocalGiftsEnabled(context: component.context)' in commit
+print('Local generic/auction entry, pinned purchase mode and in-flight payment-form boundaries passed.')

@@ -72,9 +72,22 @@ public func rgLocalAppearancePeer(context: AccountContext, peer: EnginePeer, loc
     if let id = state.nameGiftId, let purchase = state.purchases.first(where: { $0.id == id }), case let .unique(gift) = rgLocalGift(context: context, purchase: purchase), let color = gift.peerColor {
         nameColor = .collectible(color)
     }
-    return .user(user.withUpdatedNameColor(nameColor ?? .preset(.blue)).withUpdatedBackgroundEmojiId(appearance.replyFileId)
+    let needsLocalPattern = [appearance.replyFileId, appearance.backgroundFileId].contains { ($0 ?? 0) < 0 }
+    let localMediaIds: Set<Int64> = needsLocalPattern ? Set(rgLocalUniqueGifts(context: context, localState: state).flatMap { gift in
+        gift.attributes.compactMap { attribute -> Int64? in
+            switch attribute {
+            case let .model(_, file, _, _), let .pattern(_, file, _): return file.fileId.id
+            default: return nil
+            }
+        }
+    }) : []
+    func availablePattern(_ id: Int64?) -> Int64? {
+        guard let id else { return nil }
+        return id >= 0 || localMediaIds.contains(id) ? id : nil
+    }
+    return .user(user.withUpdatedNameColor(nameColor ?? user.nameColor ?? .preset(.blue)).withUpdatedBackgroundEmojiId(availablePattern(appearance.replyFileId))
         .withUpdatedProfileColor(appearance.profileColor.map(PeerNameColor.init(rawValue:)))
-        .withUpdatedProfileBackgroundEmojiId(appearance.backgroundFileId).withUpdatedEmojiStatus(emojiStatus))
+        .withUpdatedProfileBackgroundEmojiId(availablePattern(appearance.backgroundFileId)).withUpdatedEmojiStatus(emojiStatus))
 }
 
 public func rgLocalGiftEmojiStatus(_ gift: StarGift.UniqueGift) -> PeerEmojiStatus? {

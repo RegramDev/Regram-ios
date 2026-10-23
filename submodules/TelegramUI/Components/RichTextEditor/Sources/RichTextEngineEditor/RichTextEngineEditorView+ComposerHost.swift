@@ -359,6 +359,18 @@ extension RichTextEngineEditorView {
         set { composerHostState.onHardwareReturn = newValue }
     }
 
+    // MARK: Regram — bind to the actual engine's software-keyboard insertion seam.
+    public var onSoftwareReturn: (() -> Bool)? {
+        get { composerHostState.onSoftwareReturn }
+        set {
+            composerHostState.onSoftwareReturn = newValue
+            engine.tgid_shouldInsertSoftwareReturn = { [weak self] in
+                guard let self, !self.composerHostState.isHandlingHardwareReturn, !self.isIssuingHostEdit else { return true }
+                return self.composerHostState.onSoftwareReturn?() ?? true
+            }
+        }
+    }
+
     /// Fired after the ENGINE takes the responder role — see `+Responder.swift`, where the wrapper
     /// deliberately never calls `super.becomeFirstResponder()`.
     public var onBecameFirstResponder: (() -> Void)? {
@@ -451,6 +463,9 @@ public struct ComposerHostState {
     /// composer sets it `false` explicitly.
     public var tapBelowAddsTrailingParagraph = true
     public var onHardwareReturn: ((UIKeyModifierFlags) -> Bool)?
+    // MARK: Regram
+    public var onSoftwareReturn: (() -> Bool)?
+    public var isHandlingHardwareReturn = false
     public var onBecameFirstResponder: (() -> Void)?
     public var onResignedFirstResponder: (() -> Void)?
     public var theme: RichTextEditorTheme = .default

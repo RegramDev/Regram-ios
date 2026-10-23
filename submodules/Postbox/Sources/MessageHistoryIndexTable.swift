@@ -117,6 +117,17 @@ final class MessageHistoryIndexTable: Table {
         }
     }
     
+    // MARK: Regram — read the existing id-range index without deleting retained history.
+    func rgMessageIdsInRange(peerId: PeerId, namespace: MessageId.Namespace, minId: MessageId.Id, maxId: MessageId.Id) -> [MessageId] {
+        guard minId <= maxId else { return [] }
+        var ids: [MessageId] = []
+        self.valueBox.range(self.table, start: self.key(MessageId(peerId: peerId, namespace: namespace, id: minId)).predecessor, end: self.key(MessageId(peerId: peerId, namespace: namespace, id: maxId)).successor, values: { key, value in
+            ids.append(readHistoryIndexEntry(peerId, namespace: namespace, key: key, value: value).id)
+            return true
+        }, limit: 0)
+        return ids
+    }
+
     func removeMessagesInRange(peerId: PeerId, namespace: MessageId.Namespace, minId: MessageId.Id, maxId: MessageId.Id, operations: inout [MessageHistoryIndexOperation]) {
         if minId > maxId {
             assertionFailure()

@@ -346,9 +346,12 @@ private func rgTranslateSequentially(_ signals: [Signal<String, TranslateFetchEr
         func next(_ index: Int) {
             guard !cancelled.with({ $0 }) else { return }
             guard index < signals.count else { subscriber.putNext(values); subscriber.putCompletion(); return }
-            disposable.set((signals[index] |> take(1) |> timeout(chunkTimeout, queue: queue, alternate: .fail(.network)) |> deliverOn(queue)).start(next: { value in
+            // Install the holder before subscribing: a whitespace chunk may emit synchronously.
+            let current = MetaDisposable()
+            disposable.set(current)
+            current.set((signals[index] |> take(1) |> timeout(chunkTimeout, queue: queue, alternate: .fail(.network)) |> deliverOn(queue)).start(next: { value in
                 values.append(value)
-                next(index + 1)
+                queue.justDispatch { next(index + 1) }
             }, error: { subscriber.putError($0) }))
         }
         queue.async { next(0) }

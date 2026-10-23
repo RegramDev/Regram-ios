@@ -1104,6 +1104,13 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         
         self.viewOnceButton.addTarget(self, action: #selector(self.viewOncePressed), forControlEvents: [.touchUpInside])
+        // MARK: Regram — an existing composer must follow manual changes and restored preferences.
+        let returnKeyObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.inputSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.sendWithReturnKey = RGSimpleSettings.shared.sendWithReturnKey
+            self.richTextInputNode?.returnKeyType = self.sendWithReturnKey ? .send : .default
+        }
+        self.sendWithReturnKeyDisposable = ActionDisposable { NotificationCenter.default.removeObserver(returnKeyObserver) }
         self.recordMoreButton.addTarget(self, action: #selector(self.recordMorePressed), forControlEvents: [.touchUpInside])
         
         self.view.addSubview(self.recordMoreButton.view)
@@ -4902,6 +4909,15 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
     }
     
+    // MARK: Regram — only the software send key consumes this path; hardware modifiers stay upstream.
+    public func chatInputTextNodeShouldInsertSoftwareReturn() -> Bool {
+        guard self.sendWithReturnKey else { return true }
+        guard self.sendActionButtons.sendButton.supernode != nil, !self.sendActionButtons.sendButton.isHidden,
+              !self.sendActionButtons.sendContainerNode.alpha.isZero else { return true }
+        self.sendButtonPressed()
+        return false
+    }
+
     public func chatInputTextNodeShouldReturn(modifierFlags: UIKeyModifierFlags) -> Bool {
         var shouldSendMessage = false
         if self.sendActionButtons.sendButton.supernode != nil && !self.sendActionButtons.sendButton.isHidden && !self.sendActionButtons.sendContainerNode.alpha.isZero {
@@ -5619,8 +5635,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         self.updateActivity()
         
         // MARK: Regram
-        if self.sendWithReturnKey && text == "\n" {
-            self.sendButtonPressed()
+        if text == "\n" && !self.chatInputTextNodeShouldInsertSoftwareReturn() {
             return false
         }
         

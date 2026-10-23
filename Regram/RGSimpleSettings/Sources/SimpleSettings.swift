@@ -881,6 +881,10 @@ public class RGSimpleSettings {
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
         if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
+        if touches("features.enablePanguOnReceiving") { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
+        if touches("sendWithReturnKey") { center.post(name: Self.inputSettingsDidChange, object: nil) }
+        if touches("features.showFoldersInShareSheet") { center.post(name: Self.shareSettingsDidChange, object: nil) }
+        if touches("fixLinkPreviews", "linkPreviewXHost", "linkPreviewInstagramHost") { center.post(name: RGLinkPreviewRules.didChangeNotification, object: nil) }
         if touches("customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost") { center.post(name: RGNetworkPolicy.didChange, object: nil) }
     }
 
@@ -1429,7 +1433,11 @@ public class RGSimpleSettings {
     public var inputToolbar: Bool
 
     @UserDefault(key: Keys.sendWithReturnKey.rawValue)
-    public var sendWithReturnKey: Bool
+    public var sendWithReturnKey: Bool {
+        didSet { NotificationCenter.default.post(name: Self.inputSettingsDidChange, object: nil) }
+    }
+    public static let inputSettingsDidChange = Notification.Name("Regram.InputSettingsDidChange")
+    public static let shareSettingsDidChange = Notification.Name("Regram.ShareSettingsDidChange")
 
     // MARK: Regram — pin chats past the server's limit. The server keeps the first N pins (N is the
     // account's real limit); the rest are local to this device. See RGLocalPinnedChats in TelegramCore.

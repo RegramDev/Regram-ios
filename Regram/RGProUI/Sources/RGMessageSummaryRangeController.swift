@@ -36,10 +36,11 @@ private final class RGSummaryRangeLoader: ObservableObject {
                 |> map(Optional.init) |> timeout(25, queue: .mainQueue(), alternate: .single(nil)) |> deliverOnMainQueue).start(next: { [weak self] result in
                 guard let self, self.generation == token else { return }
                 guard let (result, next) = result else { self.loading = false; self.errorKey = "Summary.RangeFailed"; return }
+                guard !result.rgRequestFailed else { self.loading = false; self.errorKey = "Summary.RangeFailed"; return }
                 pages += 1
                 for message in result.messages where message.timestamp >= lower && message.timestamp <= upper && seen.insert(message.id).inserted {
-                    guard !message.text.isEmpty, !message.containsSecretMedia, !message.isCopyProtected() else { continue }
-                    bytes += message.text.utf8.count + 10
+                    guard !message.rgTextContent.isEmpty, !message.containsSecretMedia, !message.isCopyProtected() else { continue }
+                    bytes += message.rgTextContent.utf8.count + 10
                     accumulated.append(message)
                 }
                 guard bytes <= 64000, accumulated.count <= 5000, pages <= 100 else { self.loading = false; self.errorKey = "Summary.RangeTooLarge"; return }

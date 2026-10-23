@@ -166,7 +166,7 @@ public func rgEditHistoryController(context: AccountContext, message: Message) -
     guard let history = message.rgEditHistory else { return nil }
     let currentDate = (message.attributes.first(where: { $0 is EditedMessageAttribute }) as? EditedMessageAttribute)?.date ?? message.timestamp
     let currentImage = message.media.compactMap { $0 as? TelegramMediaImage }.first
-    var versions = [RGEditHistoryVersion(id: history.entries.count, text: message.text, date: currentDate, isCurrent: true, isOriginal: false, image: currentImage, imageData: currentImage.flatMap { rgEditHistoryCachedImageData(image: $0, mediaBox: context.account.postbox.mediaBox) }, imageHasSpoiler: message.attributes.contains { $0 is MediaSpoilerMessageAttribute })]
+    var versions = [RGEditHistoryVersion(id: history.entries.count, text: message.rgTextContent, date: currentDate, isCurrent: true, isOriginal: false, image: currentImage, imageData: currentImage.flatMap { rgEditHistoryCachedImageData(image: $0, mediaBox: context.account.postbox.mediaBox) }, imageHasSpoiler: message.attributes.contains { $0 is MediaSpoilerMessageAttribute })]
     for (index, entry) in history.entries.enumerated().reversed() {
         versions.append(RGEditHistoryVersion(id: index, text: entry.text, date: entry.date, isCurrent: false, isOriginal: index == 0 && entry.date == message.timestamp, image: entry.image, imageData: entry.imageData, imageHasSpoiler: entry.imageHasSpoiler))
     }

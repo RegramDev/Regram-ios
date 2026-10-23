@@ -151,6 +151,22 @@ import Foundation
         failure(store.setEnabled(account: "corrupt", enabled: true), .storage)
         assert(defaults.data(forKey: "regram.localGifts.v1.corrupt") == corrupt)
         assert(!store.state(account: "corrupt").enabled)
+        let appearanceAccount = "appearance"
+        _ = try store.setEnabled(account: appearanceAccount, enabled: true).get()
+        for _ in 0..<3 { _ = try store.purchase(account: appearanceAccount, title: "gift", price: 1, gift: payload).get() }
+        let ids = store.state(account: appearanceAccount).purchases.map(\.id)
+        let appearance = try JSONSerialization.data(withJSONObject: ["nameCollectible": ["id": -1], "emojiStatus": ["id": -2], "profileColor": 7, "replyFileId": 99, "backgroundFileId": 100])
+        _ = try store.setAppearance(account: appearanceAccount, profileGiftId: ids[0], nameGiftId: ids[1], appearance: appearance).get()
+        let afterNameRemoval = try store.remove(account: appearanceAccount, id: ids[1]).get()
+        let fields = try JSONSerialization.jsonObject(with: afterNameRemoval.appearance!) as! [String: Any]
+        assert(afterNameRemoval.profileGiftId == ids[0] && afterNameRemoval.nameGiftId == nil)
+        assert(fields["nameCollectible"] == nil && fields["emojiStatus"] != nil && fields["profileColor"] as? Int == 7 && fields["replyFileId"] as? Int == 99)
+        _ = try store.setAppearance(account: appearanceAccount, profileGiftId: ids[0], nameGiftId: ids[2], appearance: appearance).get()
+        let afterProfileRemoval = try store.remove(account: appearanceAccount, id: ids[0], mediaIds: [100]).get()
+        let remaining = try JSONSerialization.jsonObject(with: afterProfileRemoval.appearance!) as! [String: Any]
+        assert(afterProfileRemoval.profileGiftId == nil && afterProfileRemoval.nameGiftId == ids[2])
+        assert(remaining["emojiStatus"] == nil && remaining["nameCollectible"] != nil && remaining["backgroundFileId"] == nil && remaining["profileColor"] as? Int == 7 && remaining["replyFileId"] as? Int == 99)
+        assert(RGLocalGiftsStore(defaults: defaults).state(account: appearanceAccount) == afterProfileRemoval)
         print("Local currency, phone, appearance migration/lifecycle and gift ledger: purchase, insufficient balance, validation, persistence, account isolation, disable/restore, removal, concurrent charging and corruption checks passed")
     }
 }

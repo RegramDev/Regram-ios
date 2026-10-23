@@ -235,7 +235,33 @@ extension UserDefaults {
         }
         expect(protectedSegments == ["Telegram"], "Pangu insertion must not alter protected code content or lose its attributes")
         try Self.checkPortableBackups(settings)
+        Self.checkRefreshNotifications(settings)
         print("Settings runtime checks passed: storage/backup regressions, portable layout consistency, deferred/targeted refresh, account-scoped real-menu inventory, and reordering with hidden actions")
+    }
+
+    static func checkRefreshNotifications(_ settings: RGSimpleSettings) {
+        final class Count { var value = 0 }
+        let pangu = Count(), links = Count(), input = Count(), share = Count()
+        let center = NotificationCenter.default
+        let observers = [
+            center.addObserver(forName: RGSimpleSettings.featureMessagePresentationDidChange, object: nil, queue: nil) { _ in pangu.value += 1 },
+            center.addObserver(forName: RGLinkPreviewRules.didChangeNotification, object: nil, queue: nil) { _ in links.value += 1 },
+            center.addObserver(forName: RGSimpleSettings.inputSettingsDidChange, object: nil, queue: nil) { _ in input.value += 1 },
+            center.addObserver(forName: RGSimpleSettings.shareSettingsDidChange, object: nil, queue: nil) { _ in share.value += 1 }
+        ]
+        defer { observers.forEach(center.removeObserver) }
+        settings.sendWithReturnKey = !settings.sendWithReturnKey
+        settings.showFoldersInShareSheet = !settings.showFoldersInShareSheet
+        expect(input.value == 1 && share.value == 1, "Manual input/share changes refresh existing views")
+        input.value = 0; share.value = 0
+        let keys = settings.applyPreferences(["features.enablePanguOnReceiving": .bool(true), "fixLinkPreviews": .bool(true), "linkPreviewXHost": .string("fxtwitter.com"), "sendWithReturnKey": .bool(true), "features.showFoldersInShareSheet": .bool(true)], publishChanges: false)
+        expect(pangu.value == 0 && links.value == 0 && input.value == 0 && share.value == 0, "Deferred imports must not refresh before the account transaction commits")
+        settings.publishPreferenceChanges(keys)
+        expect(pangu.value == 1 && links.value == 1 && input.value == 1 && share.value == 1, "One committed import publishes each affected surface once")
+        settings.applyPreferences([:], resetCategories: [.messages])
+        expect(pangu.value == 2 && links.value == 2 && input.value == 2 && share.value == 1, "Reset refreshes message presentation, previews and input without touching sharing")
+        settings.applyPreferences([:], resetCategories: [.appearance])
+        expect(share.value == 2 && !settings.showFoldersInShareSheet, "Appearance reset immediately removes sharing folders")
     }
 
     static func checkPortableBackups(_ settings: RGSimpleSettings) throws {

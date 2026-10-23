@@ -171,7 +171,8 @@ func chatHistoryEntriesForView(
         }
         
         // MARK: Regram — message filter and hidden senders.
-        if !rgContentFilter.isEmpty, rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+        // MARK: Regram — use the same rich-body projection as background verdict preparation.
+        if !rgContentFilter.isEmpty, rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
             currentState.rgFilteredOutCount += 1
             continue loop
         }

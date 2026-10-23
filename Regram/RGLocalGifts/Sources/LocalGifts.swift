@@ -249,7 +249,20 @@ public func rgLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) 
 }
 
 public func rgRemoveLocalGift(context: AccountContext, purchase: RGLocalGiftPurchase) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
-    let result = RGLocalGiftsStore.shared.remove(account: rgLocalGiftsAccount(context), id: purchase.id)
+    // Also clear a direct name/profile pattern binding if its owned snapshot is being removed.
+    var mediaIds = Set<Int64>()
+    if case let .unique(gift) = rgLocalGift(context: context, purchase: purchase) {
+        for attribute in gift.attributes {
+            switch attribute {
+            case let .model(_, file, _, _), let .pattern(_, file, _):
+                if let resource = file.resource as? LocalFileReferenceMediaResource, URL(fileURLWithPath: resource.localFilePath).lastPathComponent != "empty-pattern.asset" {
+                    mediaIds.insert(file.fileId.id)
+                }
+            default: break
+            }
+        }
+    }
+    let result = RGLocalGiftsStore.shared.remove(account: rgLocalGiftsAccount(context), id: purchase.id, mediaIds: mediaIds)
     if case .success = result, let gift = try? JSONDecoder().decode(StarGift.self, from: purchase.gift), let directory = localAssets(context: context) {
         let files: [TelegramMediaFile]
         switch gift {

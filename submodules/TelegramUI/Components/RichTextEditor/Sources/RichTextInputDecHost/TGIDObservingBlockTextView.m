@@ -1207,6 +1207,10 @@ static BOOL TGIDDirectionIsBackward(UITextDirection direction) {
 }
 
 - (void)insertText:(NSString *)text {
+    // MARK: Regram — a composition commit is never a send action.
+    if ([text isEqualToString:@"\n"] && self.markedTextRange == nil && self.tgid_shouldInsertSoftwareReturn != nil && !self.tgid_shouldInsertSoftwareReturn()) {
+        return;
+    }
     NSString *forwarded = [self tgid_textThroughGate:text replacing:[self id_NSRangeForTextRange:self.selectedTextRange]];
     if (forwarded == nil) {
         return;

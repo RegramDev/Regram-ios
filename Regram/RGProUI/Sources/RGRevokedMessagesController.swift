@@ -83,7 +83,7 @@ private struct RGRevokedMessagesView: View {
     let open: (Message) -> Void
     let clear: (@escaping () -> Void) -> Void
     @State private var query = ""
-    private var visible: [Message] { history.messages.filter { query.isEmpty || $0.text.localizedCaseInsensitiveContains(query) } }
+    private var visible: [Message] { history.messages.filter { query.isEmpty || $0.rgTextContent.localizedCaseInsensitiveContains(query) } }
     var body: some View {
         RGSettingsList {
             RGSettingsSection(footer: Text("Revoked.Notice".i18n(lang))) {
@@ -93,8 +93,11 @@ private struct RGRevokedMessagesView: View {
             ForEach(visible, id: \.id) { message in
                 Button { open(message) } label: {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(message.text.isEmpty ? "Revoked.Media".i18n(lang) : message.text).lineLimit(4).rgPrimaryText()
+                        Text(message.rgPreviewText.isEmpty ? "Revoked.Media".i18n(lang) : message.rgPreviewText).lineLimit(4).rgPrimaryText()
                         Text(Date(timeIntervalSince1970: Double(message.timestamp)), style: .date).font(.caption).rgSecondaryText()
+                        if (message.attributes.first(where: { $0 is RGRevokedMessageAttribute }) as? RGRevokedMessageAttribute)?.reason == .unavailable {
+                            Text("Revoked.Unavailable".i18n(lang)).font(.caption).rgSecondaryText()
+                        }
                     }.padding(.vertical, 5)
                 }
             }

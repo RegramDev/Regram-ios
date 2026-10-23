@@ -1383,7 +1383,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                             if let maxMessage, message.index <= maxMessage {
                                 break
                             }
-                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
                                 if !message.flags.intersection(.IsIncomingMask).isEmpty {
                                     if maxMessage == nil || maxMessage! < message.index {
                                         maxMessage = message.index
@@ -2247,7 +2247,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 if RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty { return .single(update) }
                 let candidates = view.entries.map { entry -> RGContentFilterCandidate in
                     let message = entry.message
-                    return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
+                    return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
                 }
                 return rgPrepareContentFilter(candidates: candidates, accountPeerId: rgFilterAccountPeerId, queue: queue)
                 |> map { _ in update }

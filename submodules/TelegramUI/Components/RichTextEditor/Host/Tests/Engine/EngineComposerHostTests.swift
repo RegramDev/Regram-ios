@@ -165,4 +165,26 @@ final class EngineComposerHostTests: XCTestCase {
         XCTAssertTrue(editor.onHardwareReturn?(.shift) ?? false)
         XCTAssertEqual(seen, .shift)
     }
+
+    // MARK: Regram — exercise the actual engine UITextInput client.
+    func test_softwareReturnIsConsumedBeforeTheEngineEdits() {
+        editor.document = paragraphs(["hello"])
+        var sends = 0
+        editor.onSoftwareReturn = { sends += 1; return false }
+        editor.engine.insertText("\n")
+        XCTAssertEqual(sends, 1)
+        XCTAssertEqual(editor.document, paragraphs(["hello"]))
+        editor.engine.insertText("one\ntwo")
+        XCTAssertEqual(sends, 1, "Multiline text is an insertion, not a send key")
+    }
+
+    func test_markedCommitDoesNotSend() {
+        editor.document = paragraphs([""])
+        var sends = 0
+        editor.onSoftwareReturn = { sends += 1; return false }
+        editor.engine.setMarkedText("拼", selectedRange: NSRange(location: 1, length: 0))
+        XCTAssertNotNil(editor.engine.markedTextRange)
+        editor.engine.insertText("\n")
+        XCTAssertEqual(sends, 0)
+    }
 }

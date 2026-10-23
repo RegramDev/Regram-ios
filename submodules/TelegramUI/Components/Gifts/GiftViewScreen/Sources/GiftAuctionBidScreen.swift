@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import LottieSettings
 import UIKit
 import AsyncDisplayKit
@@ -985,6 +986,8 @@ private final class GiftAuctionBidScreenComponent: Component {
     let entities: [MessageTextEntity]?
     let hideName: Bool
     let gift: StarGift
+    // MARK: Regram — retain the local boundary for an already open auction sheet.
+    let localPurchaseOnly: Bool
     let auctionContext: GiftAuctionContext
     let acquiredGifts: Signal<[GiftAuctionAcquiredGift], NoError>?
     
@@ -1004,6 +1007,7 @@ private final class GiftAuctionBidScreenComponent: Component {
         self.entities = entities
         self.hideName = hideName
         self.gift = gift
+        self.localPurchaseOnly = rgLocalGiftsEnabled(context: context)
         self.auctionContext = auctionContext
         self.acquiredGifts = acquiredGifts
     }
@@ -1514,9 +1518,21 @@ private final class GiftAuctionBidScreenComponent: Component {
         
         private var isLoading = false
         private func commitBid(value: Int64) {
-            guard let component = self.component, let environment = self.environment, let controller = self.environment?.controller(), let balance = self.balance, case let .generic(gift) = component.gift else {
+            guard !self.isLoading, let component = self.component, let environment = self.environment, let controller = self.environment?.controller(), case let .generic(gift) = component.gift else {
                 return
             }
+            // MARK: Regram — simulate a local gift at the chosen price, never a server auction bid.
+            if component.localPurchaseOnly || rgLocalGiftsEnabled(context: component.context) {
+                self.isLoading = true
+                self.state?.updated()
+                rgPresentLocalGiftPurchase(context: component.context, gift: .generic(gift), price: value, controller: controller, completion: { [weak self, weak controller] success in
+                    self?.isLoading = false
+                    self?.state?.updated()
+                    if success { controller?.dismiss() }
+                })
+                return
+            }
+            guard let balance = self.balance else { return }
             
             var isUpdate = false
             var myBidPeerId: EnginePeer.Id?
@@ -1606,6 +1622,8 @@ private final class GiftAuctionBidScreenComponent: Component {
                 return .fail(.generic)
             }
             |> mapToSignal { inputData -> Signal<SendBotPaymentResult, SendBotPaymentFormError> in
+                // MARK: Regram — a mode change while fetching a form must not charge real stars.
+                guard !rgLocalGiftsEnabled(context: component.context) else { return .fail(.generic) }
                 return component.context.engine.payments.sendStarsPaymentForm(formId: inputData.form.id, source: source)
             }
             |> deliverOnMainQueue

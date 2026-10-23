@@ -422,7 +422,7 @@
 "ChatPreferences.Reveal.End" = "立即恢复过滤";
 "ChatPreferences.Reveal.Notice" = "临时在此会话显示关键词过滤及已隐藏发送者的消息。规则会保留并自动恢复，通知过滤不受影响。";
 "Revoked.Title" = "已保留的撤回消息";
-"Revoked.Notice" = "选择会话查找本机已保留的撤回消息，按批读取本地记录。加载更多可继续查找旧记录，日期为原消息日期。";
+"Revoked.Notice" = "选择会话查找本机已保留的消息。明确撤回与曾无法从服务端获取的历史会分别标识。加载更多可继续查找旧记录，日期为原消息日期。";
 "Revoked.Search" = "搜索已加载消息";
 "Revoked.Media" = "媒体或服务消息";
 "Revoked.Scanned" = "条本地消息已检查";
@@ -1314,3 +1314,5 @@
 "LocalWallet.Enabled" = "显示本地 TON 资料卡";
 "LocalWallet.Hint" = "点击自己资料页的余额即可打开 Telegram 资料卡，最多展示六个已置顶的本地收藏礼物。关闭后恢复真实资料卡。";
 "LocalWallet.Notice" = "余额与资料卡仅在本机展示，没有收款地址，其他用户不可见。";
+
+"Revoked.Unavailable" = "曾无法从服务端获取 · 已在本机保留";

@@ -60,6 +60,12 @@ def main():
         flags = ['-DREGRAM_MEDIA_LOADING_EXPERIMENT'] if name == 'media-experiment-default' else []
         if run(name+'-compile', ['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + flags + sources + ['-o', str(binary)]):
             run(name, [str(binary)] + arguments)
+    run('rich-message-tools', ['python3', 'Regram/RGProUI/Tests/run-rich-message-checks.py'])
+    run('rich-edit-history-codec', ['python3', 'Regram/RGProUI/Tests/run-edit-history-checks.py'])
+    run('translation-chunk-sequencing', ['python3', 'Regram/RGGTranslate/Tests/run-chunk-sequencing-checks.py'])
+    run('summary-range-failures', ['python3', 'Regram/RGProUI/Tests/run-summary-range-checks.py'])
+    run('message-retention', ['python3', 'build-system/check-regram-retention.py'])
+    run('story-flag-persistence', ['python3', 'build-system/check-regram-story-flags.py'])
     run('local-gift-boundary', ['python3', 'Regram/RGLocalGifts/Tests/run-boundary-checks.py'])
     run('local-phone-display', ['python3', 'Regram/RGLocalGifts/Tests/run-phone-display-checks.py'])
     run('local-profile-projection', ['python3', 'Regram/RGLocalGifts/Tests/run-profile-projection-checks.py'])

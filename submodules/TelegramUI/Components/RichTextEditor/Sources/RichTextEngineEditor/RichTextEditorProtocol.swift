@@ -85,6 +85,8 @@ public protocol RichTextEditor: UIView {
     var canvasBackgroundColor: UIColor? { get set }
     var tapBelowAddsTrailingParagraph: Bool { get set }
     var onHardwareReturn: ((UIKeyModifierFlags) -> Bool)? { get set }
+    // MARK: Regram — true inserts a newline; false means the chat consumed its software send key.
+    var onSoftwareReturn: (() -> Bool)? { get set }
     var onBecameFirstResponder: (() -> Void)? { get set }
     var onResignedFirstResponder: (() -> Void)? { get set }
 

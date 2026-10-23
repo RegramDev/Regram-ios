@@ -185,10 +185,27 @@ public final class RGLocalGiftsStore {
         }
     }
 
-    public func remove(account: String, id: UUID) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    public func remove(account: String, id: UUID, mediaIds: Set<Int64> = []) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
         update(account: account) { state in
             state.purchases.removeAll { $0.id == id }
-            if state.profileGiftId == id || state.nameGiftId == id { state.profileGiftId = nil; state.nameGiftId = nil; state.appearance = nil }
+            let removesProfile = state.profileGiftId == id
+            let removesName = state.nameGiftId == id
+            if removesProfile { state.profileGiftId = nil }
+            if removesName { state.nameGiftId = nil }
+            if removesProfile || removesName || !mediaIds.isEmpty, let data = state.appearance {
+                // The envelope is JSON; nested Telegram values remain opaque here. Remove only
+                // the deleted gift's binding, retaining the other gift and independent colors.
+                if var fields = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                    if removesProfile { fields.removeValue(forKey: "emojiStatus") }
+                    if removesName { fields.removeValue(forKey: "nameCollectible") }
+                    for key in ["replyFileId", "backgroundFileId"] {
+                        if let value = fields[key] as? NSNumber, mediaIds.contains(value.int64Value) { fields.removeValue(forKey: key) }
+                    }
+                    state.appearance = try JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys])
+                } else {
+                    state.appearance = nil
+                }
+            }
         }
     }
 

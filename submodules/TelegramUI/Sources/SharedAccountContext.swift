@@ -4672,7 +4672,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
     
     public func makeShareScreen(context: AccountContext, params: ShareControllerParams) -> ViewController {
-        if params.immediateExternalShare {
+        // MARK: Regram — the native share screen must honor the system-sharing preference too.
+        if params.immediateExternalShare || RGSimpleSettings.shared.forceSystemSharing {
             return self.makeShareController(context: context, params: params)
         }
         func mapSubject(_ subject: ShareControllerSubject) -> (ShareScreenSubject, ShareControllerSubject.MediaParameters?) {

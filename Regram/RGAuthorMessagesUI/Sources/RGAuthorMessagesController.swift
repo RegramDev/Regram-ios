@@ -81,7 +81,14 @@ final class RGAuthorMessagesController: ViewController {
         if let key = self.emptyTextKey { self.setEmptyText(key) }
     }
 
-    @objc private func retryPressed() { self.loadMessages() }
+    @objc private func retryPressed() {
+        self.emptyNode.isHidden = true
+        self.retryButton.isHidden = true
+        if let resultsNode = self.resultsNode, resultsNode.rgHasLoadFailure {
+            self.activityIndicator.startAnimating()
+            resultsNode.rgRetryLoadMore()
+        } else { self.loadMessages() }
+    }
 
     private func loadMessages() {
         self.emptyTextKey = nil
@@ -95,7 +102,7 @@ final class RGAuthorMessagesController: ViewController {
         self.requestDisposable.set(signal.start(next: { [weak self] value in
             guard let self else { return }
             self.activityIndicator.stopAnimating()
-            guard let (result, state) = value else {
+            guard let (result, state) = value, !result.rgRequestFailed else {
                 self.setEmptyText("AuthorMessages.LoadFailed")
                 self.retryButton.isHidden = false
                 return
@@ -107,8 +114,14 @@ final class RGAuthorMessagesController: ViewController {
                 self?.presentInGlobalOverlay(controller)
             })
             node.resultsUpdated = { [weak self] result, _ in
+                self?.activityIndicator.stopAnimating()
                 self?.currentResult = result
                 self?.updateTitle(result)
+            }
+            node.rgLoadFailed = { [weak self] in
+                self?.activityIndicator.stopAnimating()
+                self?.setEmptyText("AuthorMessages.LoadFailed")
+                self?.retryButton.isHidden = false
             }
             node.resultSelected = { [weak self] index in self?.openMessage(at: index) }
             self.resultsNode?.removeFromSupernode()

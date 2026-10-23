@@ -49,6 +49,8 @@ private final class GiftSetupScreenComponent: Component {
     let context: AccountContext
     let peerId: EnginePeer.Id
     let subject: GiftSetupScreen.Subject
+    // MARK: Regram — a setup opened locally cannot become a real purchase after a settings change.
+    let localPurchaseOnly: Bool
     let auctionAcquiredGifts: Signal<[GiftAuctionAcquiredGift], NoError>?
     let completion: (() -> Void)?
     
@@ -62,6 +64,7 @@ private final class GiftSetupScreenComponent: Component {
         self.context = context
         self.peerId = peerId
         self.subject = subject
+        self.localPurchaseOnly = rgLocalGiftsEnabled(context: context)
         self.auctionAcquiredGifts = auctionAcquiredGifts
         self.completion = completion
     }
@@ -494,7 +497,7 @@ private final class GiftSetupScreenComponent: Component {
         private func proceedWithStarGift() {
             // MARK: Regram — local mode completes without payment forms, top-ups or send RPCs.
             if let component = self.component, case let .starGift(gift, _) = component.subject,
-               rgLocalGiftsEnabled(context: component.context) {
+               component.localPurchaseOnly || rgLocalGiftsEnabled(context: component.context) {
                 guard !self.inProgress, let controller = self.environment?.controller() else { return }
                 self.inProgress = true
                 self.state?.updated()
@@ -585,6 +588,10 @@ private final class GiftSetupScreenComponent: Component {
                     }
                 }
                 |> mapToSignal { inputData -> Signal<SendBotPaymentResult, SendBotPaymentFormError> in
+                    // MARK: Regram — a mode change while fetching the native form cannot charge real stars.
+                    if case .starGift = component.subject, component.localPurchaseOnly || rgLocalGiftsEnabled(context: component.context) {
+                        return .fail(.generic)
+                    }
                     return component.context.engine.payments.sendStarsPaymentForm(formId: inputData.form.id, source: source)
                 }
                 |> deliverOnMainQueue

@@ -49,14 +49,14 @@ private struct RGMessageSummaryView: View {
 
 public func rgMessageSummaryController(context: AccountContext, messages: [Message], permitsTimeRange: Bool = false) -> ViewController? {
     guard RGSimpleSettings.shared.messageSummaryEnabled, !messages.isEmpty, messages.count <= (permitsTimeRange ? 5000 : 100), messages.allSatisfy({ $0.id.peerId.namespace != Namespaces.Peer.SecretChat && !$0.containsSecretMedia && !$0.isCopyProtected() }) else { return nil }
-    let messages = messages.sorted { $0.index < $1.index }.filter { !$0.text.isEmpty }
+    let messages = messages.sorted { $0.index < $1.index }.filter { !$0.rgTextContent.isEmpty }
     guard !messages.isEmpty else { return nil }
     let data = context.sharedContext.currentPresentationData.with { $0 }
     let controller = LegacySwiftUIController(presentation: .navigation, theme: data.theme, strings: data.strings)
     controller.bindAppearance(context.sharedContext.presentationData)
     controller.title = "Summary.Action".i18n(data.strings.rgLanguageCode)
     let view = RGSwiftUIView(legacyController: controller, manageSafeArea: true) {
-        RGMessageSummaryView(text: messages.map(\.text).joined(separator: "\n\n---\n\n"), count: messages.count, configure: { [weak controller] in
+        RGMessageSummaryView(text: messages.map(\.rgTextContent).joined(separator: "\n\n---\n\n"), count: messages.count, configure: { [weak controller] in
             (controller?.navigationController as? NavigationController)?.pushViewController(rgLLMSummarySettingsController(context: context))
         })
     }

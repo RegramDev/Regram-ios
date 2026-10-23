@@ -13,6 +13,17 @@ import RGSimpleSettings
 // of the stale one.
 func rgCarryOverLocalMessageAttributes(previousMessage: Message, updatedText: String, updatedAttributes: [MessageAttribute], updatedMedia: [Media], mediaBox: MediaBox) -> [MessageAttribute] {
     var attributes = updatedAttributes.filter { !($0 is RGRevokedMessageAttribute || $0 is RGEditHistoryMessageAttribute) }
+    // Keep consumed local expiries consumed when unrelated server metadata is refreshed.
+    attributes = attributes.map { attribute in
+        if let ttl = attribute as? AutoremoveTimeoutMessageAttribute,
+           let old = previousMessage.attributes.compactMap({ $0 as? AutoremoveTimeoutMessageAttribute }).first,
+           old.isLocallyPreserved, old.timeout == ttl.timeout, old.countdownBeginTime == ttl.countdownBeginTime { return old }
+        if let ttl = attribute as? AutoclearTimeoutMessageAttribute,
+           let old = previousMessage.attributes.compactMap({ $0 as? AutoclearTimeoutMessageAttribute }).first,
+           old.isLocallyPreserved, old.timeout == ttl.timeout, old.countdownBeginTime == ttl.countdownBeginTime { return old }
+        return attribute
+    }
+
     if let revoked = previousMessage.attributes.first(where: { $0 is RGRevokedMessageAttribute }) {
         attributes.append(revoked)
     }
@@ -32,6 +43,8 @@ func rgCarryOverLocalMessageAttributes(previousMessage: Message, updatedText: St
 private func rgEditHistoryPreviousVersion(previousMessage: Message, updatedText: String, updatedAttributes: [MessageAttribute], updatedMedia: [Media], mediaBox: MediaBox) -> RGEditHistoryEntry? {
     let previousEntities = previousMessage.textEntitiesAttribute?.entities ?? []
     let previousEditDate = (previousMessage.attributes.first(where: { $0 is EditedMessageAttribute }) as? EditedMessageAttribute)?.date
+    let previousRich = previousMessage.attributes.first(where: { $0 is RichTextMessageAttribute }) as? RichTextMessageAttribute
+    let updatedRich = updatedAttributes.first(where: { $0 is RichTextMessageAttribute }) as? RichTextMessageAttribute
     let oldImage = previousMessage.media.compactMap { $0 as? TelegramMediaImage }.first
     let newImage = updatedMedia.compactMap { $0 as? TelegramMediaImage }.first
     let spoilerChanged = previousMessage.attributes.contains { $0 is MediaSpoilerMessageAttribute } != updatedAttributes.contains { $0 is MediaSpoilerMessageAttribute }
@@ -39,13 +52,15 @@ private func rgEditHistoryPreviousVersion(previousMessage: Message, updatedText:
     if previousMessage.text == updatedText && !imageChanged {
         let updatedEntities = (updatedAttributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities ?? []
         let updatedEditDate = (updatedAttributes.first(where: { $0 is EditedMessageAttribute }) as? EditedMessageAttribute)?.date
-        guard previousEntities != updatedEntities, let updatedEditDate, updatedEditDate > (previousEditDate ?? 0) else {
+        // Full-page hydration is a cache update; only a newer edit with changed authored blocks counts.
+        let richChanged = previousRich?.instantPage != updatedRich?.instantPage
+        guard previousEntities != updatedEntities || richChanged, let updatedEditDate, updatedEditDate > (previousEditDate ?? 0) else {
             return nil
         }
     }
     let retainImage = previousMessage.id.peerId.namespace != Namespaces.Peer.SecretChat && !previousMessage.containsSecretMedia && !previousMessage.isCopyProtected()
     let image = retainImage ? oldImage : nil
-    return RGEditHistoryEntry(text: previousMessage.text, entities: previousEntities, date: previousEditDate ?? previousMessage.timestamp, image: image, imageData: image.flatMap { rgEditHistoryCachedImageData(image: $0, mediaBox: mediaBox) }, imageHasSpoiler: previousMessage.attributes.contains { $0 is MediaSpoilerMessageAttribute })
+    return RGEditHistoryEntry(text: previousMessage.rgTextContent, entities: previousEntities, date: previousEditDate ?? previousMessage.timestamp, image: image, imageData: image.flatMap { rgEditHistoryCachedImageData(image: $0, mediaBox: mediaBox) }, imageHasSpoiler: previousMessage.attributes.contains { $0 is MediaSpoilerMessageAttribute }, richText: previousRich)
 }
 
 // MARK: Regram — preserve already downloaded image bytes with the message, outside evictable media cache.

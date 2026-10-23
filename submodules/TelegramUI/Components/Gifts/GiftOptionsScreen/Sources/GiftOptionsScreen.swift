@@ -313,6 +313,11 @@ final class GiftOptionsScreenComponent: Component {
                     mainController = controller
                 }
                 if case let .generic(gift) = gift {
+                    // MARK: Regram — enter the native setup before server eligibility / auction paths.
+                    if rgLocalGiftsEnabled(context: context) {
+                        mainController.push(GiftSetupScreen(context: context, peerId: component.peerId, subject: .starGift(gift, nil), completion: component.completion))
+                        return
+                    }
                     if !skipDateCheck, let lockedUntilDate = gift.lockedUntilDate, currentTime < lockedUntilDate {
                         self.loadingGiftId = gift.id
                         Queue.mainQueue().after(0.25) {

@@ -862,7 +862,11 @@ final class ChatRichTextInputNodeImpl: ASDisplayNode, ChatRichTextInputNode {
     // MARK: Regram
     var returnKeyType: UIReturnKeyType {
         get { return self.textInputNodeImpl.textView.returnKeyType }
-        set { self.textInputNodeImpl.textView.returnKeyType = newValue }
+        set {
+            guard self.textInputNodeImpl.textView.returnKeyType != newValue else { return }
+            self.textInputNodeImpl.textView.returnKeyType = newValue
+            if self.isInputFirstResponder { self.reloadInputViews() }
+        }
     }
     //
 

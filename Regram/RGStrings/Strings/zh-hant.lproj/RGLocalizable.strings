@@ -400,7 +400,7 @@
 "ChatPreferences.Reveal.End" = "立即恢復過濾";
 "ChatPreferences.Reveal.Notice" = "暫時在此對話顯示關鍵字過濾及已隱藏傳送者的訊息。規則會保留並自動恢復，通知過濾不受影響。";
 "Revoked.Title" = "已保留的撤回訊息";
-"Revoked.Notice" = "選擇對話查找本機已保留的撤回訊息，分批讀取本機記錄。載入更多可繼續查找舊記錄，日期為原訊息日期。";
+"Revoked.Notice" = "選擇對話查找本機已保留的訊息。明確撤回與曾無法從伺服器取得的歷史會分別標示。載入更多可繼續查找舊記錄，日期為原訊息日期。";
 "Revoked.Search" = "搜尋已載入訊息";
 "Revoked.Media" = "媒體或服務訊息";
 "Revoked.Scanned" = "則本機訊息已檢查";
@@ -1312,3 +1312,5 @@
 "LocalWallet.Enabled" = "顯示本機 TON 資料卡";
 "LocalWallet.Hint" = "點選自己資料頁的餘額即可開啟 Telegram 資料卡，最多顯示六個已置頂的本機收藏禮物。關閉後恢復真實資料卡。";
 "LocalWallet.Notice" = "餘額與資料卡僅在本機顯示，沒有收款地址，其他使用者無法看見。";
+
+"Revoked.Unavailable" = "曾無法從伺服器取得 · 已在本機保留";
