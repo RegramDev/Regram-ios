@@ -16,7 +16,8 @@ public enum RGTranscriptionState: Equatable {
 
 public final class RGTranscriptionService {
     public static let shared = RGTranscriptionService()
-    public static var isEnabled: Bool { RGSimpleSettings.shared.transcriptionBackendEnum == .openAICompatible }
+    /// Both client providers use the shared download, cancellation and persistence lifecycle.
+    public static var isEnabled: Bool { RGSimpleSettings.shared.transcriptionBackendEnum != .default }
 
     private struct Key: Hashable {
         let accountId: AccountRecordId
@@ -93,8 +94,9 @@ public final class RGTranscriptionService {
     private func start(job: Job, force: Bool) {
         let context = job.context
         let messageId = job.key.messageId
-        let external = Self.isEnabled
-        let local = !external && RGSimpleSettings.shared.transcriptionBackendEnum == .apple
+        let backend = RGSimpleSettings.shared.transcriptionBackendEnum
+        let external = backend == .openAICompatible
+        let local = backend == .apple
         job.source = external ? .external : (local ? .local : .telegram)
         let configuration: RGSTTConfiguration?
         do {
@@ -267,13 +269,13 @@ public final class RGTranscriptionService {
 }
 
 // MARK: Regram — switching providers updates visible voice and video message controls.
-public func rgTranscriptionProviderSignal() -> Signal<Bool, NoError> {
+public func rgTranscriptionProviderSignal() -> Signal<RGSimpleSettings.TranscriptionBackend, NoError> {
     return Signal { subscriber in
-        subscriber.putNext(RGTranscriptionService.isEnabled)
+        subscriber.putNext(RGSimpleSettings.shared.transcriptionBackendEnum)
         let names: [Notification.Name] = [UserDefaults.didChangeNotification, RGSimpleSettings.sttSettingsDidChangeNotification]
         let observers = names.map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
-                subscriber.putNext(RGTranscriptionService.isEnabled)
+                subscriber.putNext(RGSimpleSettings.shared.transcriptionBackendEnum)
             }
         }
         return ActionDisposable { observers.forEach { NotificationCenter.default.removeObserver($0) } }

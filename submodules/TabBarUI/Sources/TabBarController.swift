@@ -105,6 +105,14 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         return self.currentController?.navigationBar
     }
     
+    override public var navigationBarTransitionSource: NavigationBarTransitionSource? {
+        return self.currentController?.navigationBarTransitionSource
+    }
+
+    override public func navigationExpansionSource(above controller: ViewController, operation: NavigationExpansionOperation) -> NavigationExpansionSource? {
+        return self.currentController?.navigationExpansionSource(above: controller, operation: operation)
+    }
+    
     private let pendingControllerDisposable = MetaDisposable()
     
     private var theme: PresentationTheme
@@ -157,6 +165,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         return self.tabBarControllerNode.isPointInsideContentArea(point: point)
     }
     
+    public func verticalTabBarFrame(for layout: ContainerViewLayout) -> CGRect? {
+        return self.tabBarControllerNode.sidePlacement(for: layout)?.frame
+    }
+    
     public func updateIsTabBarEnabled(_ value: Bool, transition: ContainedViewLayoutTransition) {
         self.tabBarControllerNode.updateIsTabBarEnabled(value, transition: transition)
     }
@@ -198,7 +210,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                     
                     // MARK: Regram — use the same measured bottom bar as a full layout pass.
                     let bottomInset = strongSelf.tabBarControllerNode.containerLayoutUpdated(validLayout, toolbar: strongSelf.currentController?.toolbar, transition: .immediate)
-                    if !strongSelf.tabBarControllerNode.tabBarHidden {
+                    if !strongSelf.tabBarControllerNode.tabBarHidden, let bottomInset {
                         updatedLayout.intrinsicInsets.bottom = bottomInset
                     }
 
@@ -454,7 +466,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             if self.rgBackState == nil { currentController.view.frame = CGRect(origin: CGPoint(), size: layout.size) }
             
             var updatedLayout = layout
-            if !self.tabBarControllerNode.tabBarHidden {
+            if !self.tabBarControllerNode.tabBarHidden, let bottomInset {
                 updatedLayout.intrinsicInsets.bottom = bottomInset
             }
             
@@ -475,7 +487,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             
             // MARK: Regram — a child relayout must not replace the measured glass bar with 49/34.
             let bottomInset = self.tabBarControllerNode.containerLayoutUpdated(layout, toolbar: self.currentController?.toolbar, transition: .immediate)
-            if !self.tabBarControllerNode.tabBarHidden {
+            if !self.tabBarControllerNode.tabBarHidden, let bottomInset {
                 updatedLayout.intrinsicInsets.bottom = bottomInset
             }
 

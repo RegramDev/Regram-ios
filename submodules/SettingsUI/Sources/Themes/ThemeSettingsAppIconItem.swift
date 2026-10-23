@@ -258,7 +258,10 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
             let separatorHeight = UIScreenPixel
             
             let nodeSize = CGSize(width: 74.0, height: 102.0)
-            let height: CGFloat = nodeSize.height * ceil(CGFloat(item.icons.count) / 4.0) + 12.0
+            let sideInset: CGFloat = 8.0
+            let availableWidth = params.width - sideInset * 2.0 - params.leftInset - params.rightInset
+            let columnCount = 4 // MARK: Regram — preserve our current four-column icon picker.
+            let height: CGFloat = nodeSize.height * ceil(CGFloat(item.icons.count) / CGFloat(columnCount)) + 12.0
             
             contentSize = CGSize(width: params.width, height: height)
             insets = itemListNeighborsGroupedInsets(neighbors, params)
@@ -340,7 +343,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     
                     strongSelf.backgroundNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
                     strongSelf.highlightNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: params.width, height: contentSize.height + min(insets.top, separatorHeight) + min(insets.bottom, separatorHeight)))
-                    strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.insetBy(dx: params.leftInset, dy: 0.0)
+                    strongSelf.maskNode.frame = strongSelf.backgroundNode.frame.inset(by: UIEdgeInsets(top: 0.0, left: params.leftInset, bottom: 0.0, right: params.rightInset))
                     strongSelf.topStripeNode.frame = CGRect(origin: CGPoint(x: 0.0, y: -min(insets.top, separatorHeight)), size: CGSize(width: layoutSize.width, height: separatorHeight))
                     strongSelf.bottomStripeNode.frame = CGRect(origin: CGPoint(x: bottomStripeInset, y: contentSize.height + bottomStripeOffset), size: CGSize(width: layoutSize.width - bottomStripeInset, height: separatorHeight))
                     
@@ -348,13 +351,12 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     
                     // MARK: Regram — use the current presentation language for the icon titles.
                     let iconLanguage = RGLocalizationManager.shared.preferredLocale(primary: item.strings.primaryComponent.languageCode, secondary: item.strings.secondaryComponent?.languageCode)
-                    let sideInset: CGFloat = 8.0
-                    let spacing: CGFloat = floorToScreenPixels((params.width - sideInset * 2.0 - params.leftInset - params.rightInset - nodeSize.width * 4.0) / 3.0)
+                    let spacing: CGFloat = floorToScreenPixels((availableWidth - nodeSize.width * CGFloat(columnCount)) / CGFloat(columnCount - 1))
                     let verticalSpacing: CGFloat = 0.0
                     
                     // MARK: Regram — center each row, including a partially filled last row.
                     func rowInset(_ start: Int) -> CGFloat {
-                        let count = min(4, item.icons.count - start)
+                        let count = min(columnCount, item.icons.count - start)
                         let usedWidth = nodeSize.width * CGFloat(count) + spacing * CGFloat(max(0, count - 1))
                         return max(sideInset, (layoutSize.width - params.leftInset - params.rightInset - usedWidth) / 2.0)
                     }
@@ -363,7 +365,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                     
                     var i = 0
                     for icon in item.icons {
-                        if i > 0 && i % 4 == 0 {
+                        if i > 0 && i % columnCount == 0 {
                             x = rowInset(i)
                             y += nodeSize.height + verticalSpacing
                         }

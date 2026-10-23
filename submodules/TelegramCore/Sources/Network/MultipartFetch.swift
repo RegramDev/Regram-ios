@@ -1,7 +1,7 @@
 import Foundation
 import Postbox
 import SwiftSignalKit
-import TelegramApi
+internal import TelegramApi
 import MtProtoKit
 import RangeSet
 import RGSimpleSettings // MARK: Regram — user-visible transfer diagnostics.

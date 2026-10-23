@@ -12,7 +12,6 @@ swift_library(
     ],
     deps = [
         "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
-        "//submodules/Postbox:Postbox", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",

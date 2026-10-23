@@ -7,9 +7,9 @@ import PeerInfoUI
 import Foundation
 // MARK: Regram — managed transcription actions share the service used by message nodes.
 import RGTranscription
+import RGChatHistoryProcessing // MARK: Regram
 import UIKit
 import TelegramCore
-import Postbox
 import AsyncDisplayKit
 import Display
 import UIKit
@@ -1043,7 +1043,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         // protected content" clears isCopyProtected on the client, which is what surfaces the forward
         // actions in restricted chats at all, but every forward out of such a chat still fails with
         // CHAT_FORWARDS_RESTRICTED. messageActions reads the raw peer flags, which that switch leaves
-        // alone; the message flag is checked directly because Message.isCopyProtected() is overridden.
+        // alone; the message flag is checked directly because EngineRawMessage.isCopyProtected() is overridden.
         // Only 无引用复读 survives: it re-sends the content rather than forwarding it.
         let rgForwardRestricted = data.messageActions.isCopyProtected || messages.contains(where: { $0.flags.contains(.CopyProtected) })
 
@@ -1340,7 +1340,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                }
                return false
            }) {
-            actions.append(.action(ContextMenuActionItem(text: "Send Money", icon: { theme in
+            actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Wallet_SendMoney, icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Ton"), color: theme.actionSheet.primaryTextColor)
             }, action: { _, f in
                 f(.dismissWithoutContent)
@@ -2359,7 +2359,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             
             if let user = message.author as? TelegramUser {
                 if (user.id != context.account.peerId) && hasRestrictPermission {
-                    let banDisposables = DisposableDict<PeerId>()
+                    let banDisposables = DisposableDict<EnginePeer.Id>()
                     // TODO(regram): Check is user an admin?
                     let action: ContextMenuItem = .action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuBan, icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Restrict"), color: theme.contextMenu.primaryColor)
@@ -2564,40 +2564,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                     |> runOn(Queue.mainQueue())
                     |> delay(0.2, queue: Queue.mainQueue())
                     let progressDisposable = progressSignal.start()
-                    let _ = (context.account.postbox.transaction { transaction -> [MessageId] in
-                        let limit = 500
-                        var result: [MessageId] = []
-                        
-                        let needThreadIdFilter: Bool
-                        let searchThreadId: Int64?
-                        switch chatPresentationInterfaceState.chatLocation {
-                            case let .replyThread(replyThreadMessage):
-                                needThreadIdFilter = true
-                                searchThreadId = replyThreadMessage.threadId
-                            default:
-                                needThreadIdFilter = false
-                                searchThreadId = nil
-                        }
-                        transaction.withAllMessages(peerId: message.id.peerId, reversed: true, { searchMessage in
-                            if result.count >= limit {
-                                return false
-                            }
-                            if searchMessage.author?.id == authorId {
-                                // Only messages from current opened thread
-                                // print("searchMessage.threadId:\(String(describing: searchMessage.threadId)) threadId:\(String(describing: threadId)) message.threadId:\(String(describing:message.threadId)) needThreadIdFilter:\(needThreadIdFilter) searchThreadId:\(String(describing:searchThreadId))")
-                                if needThreadIdFilter && searchMessage.threadId != searchThreadId {
-                                    return true
-                                }
-                                // No service messages
-                                if searchMessage.media.contains(where: { $0 is TelegramMediaAction }) {
-                                    return true
-                                }
-                                result.append(searchMessage.id)
-                            }
-                            return true
-                        })
-                        return result
-                    }
+                    let _ = (rgLocalMessageIdsForAuthor(account: context.account, peerId: message.id.peerId, authorId: authorId, threadId: chatPresentationInterfaceState.chatLocation.threadId)
                     |> deliverOnMainQueue)
                     .start(next: { ids in
                         interfaceInteraction.beginMessageSelection(ids, { transition in

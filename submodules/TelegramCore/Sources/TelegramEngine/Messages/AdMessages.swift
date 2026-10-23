@@ -1,8 +1,8 @@
 import Foundation
 import Postbox
 import SwiftSignalKit
-import TelegramApi
-import RGSimpleSettings
+internal import TelegramApi
+import RGSimpleSettings // MARK: Regram
 
 private class AdMessagesHistoryContextImpl {
     final class CachedMessage: Equatable, Codable {

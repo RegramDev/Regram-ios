@@ -17,6 +17,9 @@ final class PasskeysScreenIntroComponent: Component {
     let theme: PresentationTheme
     let strings: PresentationStrings
     let insets: UIEdgeInsets
+    /// The bottom buttons' side insets. `insets.left`/`insets.right` are the content's band (beside iPhone Duo's side
+    /// strip), which the bottom buttons span: they keep clear only of a corner block at the bottom.
+    let buttonSideInsets: UIEdgeInsets
     let displaySkip: Bool
     let createPasskeyAction: () -> Void
     let skipAction: () -> Void
@@ -26,6 +29,7 @@ final class PasskeysScreenIntroComponent: Component {
         theme: PresentationTheme,
         strings: PresentationStrings,
         insets: UIEdgeInsets,
+        buttonSideInsets: UIEdgeInsets,
         displaySkip: Bool,
         createPasskeyAction: @escaping () -> Void,
         skipAction: @escaping () -> Void
@@ -34,6 +38,7 @@ final class PasskeysScreenIntroComponent: Component {
         self.theme = theme
         self.strings = strings
         self.insets = insets
+        self.buttonSideInsets = buttonSideInsets
         self.displaySkip = displaySkip
         self.createPasskeyAction = createPasskeyAction
         self.skipAction = skipAction
@@ -50,6 +55,9 @@ final class PasskeysScreenIntroComponent: Component {
             return false
         }
         if lhs.insets != rhs.insets {
+            return false
+        }
+        if lhs.buttonSideInsets != rhs.buttonSideInsets {
             return false
         }
         if lhs.displaySkip != rhs.displaySkip {
@@ -125,6 +133,7 @@ final class PasskeysScreenIntroComponent: Component {
             let sideInset: CGFloat = 16.0
             let sideIconInset: CGFloat = 40.0
             let itemsSideInset: CGFloat = sideInset + 20.0
+            let contentWidth: CGFloat = availableSize.width - component.insets.left - component.insets.right
 
             var contentHeight: CGFloat = 0.0
 
@@ -138,7 +147,7 @@ final class PasskeysScreenIntroComponent: Component {
                 environment: {},
                 containerSize: CGSize(width: 124.0, height: 124.0)
             )
-            let iconFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - iconSize.width) * 0.5), y: contentHeight), size: iconSize)
+            let iconFrame = CGRect(origin: CGPoint(x: floor((contentWidth - iconSize.width) * 0.5), y: contentHeight), size: iconSize)
             if let iconView = self.icon.view as? LottieComponent.View {
                 if iconView.superview == nil {
                     self.contentContainer.addSubview(iconView)
@@ -158,9 +167,9 @@ final class PasskeysScreenIntroComponent: Component {
                     maximumNumberOfLines: 0
                 )),
                 environment: {},
-                containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 1000.0)
+                containerSize: CGSize(width: contentWidth - sideInset * 2.0, height: 1000.0)
             )
-            let titleFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - titleSize.width) * 0.5), y: contentHeight), size: titleSize)
+            let titleFrame = CGRect(origin: CGPoint(x: floor((contentWidth - titleSize.width) * 0.5), y: contentHeight), size: titleSize)
             if let titleView = self.title.view {
                 if titleView.superview == nil {
                     self.contentContainer.addSubview(titleView)
@@ -180,9 +189,9 @@ final class PasskeysScreenIntroComponent: Component {
                     lineSpacing: 0.2
                 )),
                 environment: {},
-                containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 1000.0)
+                containerSize: CGSize(width: contentWidth - sideInset * 2.0, height: 1000.0)
             )
-            let subtitleFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - subtitleSize.width) * 0.5), y: contentHeight), size: subtitleSize)
+            let subtitleFrame = CGRect(origin: CGPoint(x: floor((contentWidth - subtitleSize.width) * 0.5), y: contentHeight), size: subtitleSize)
             if let subtitleView = self.subtitle.view {
                 if subtitleView.superview == nil {
                     self.contentContainer.addSubview(subtitleView)
@@ -247,7 +256,7 @@ final class PasskeysScreenIntroComponent: Component {
                         lineSpacing: 0.2
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - itemsSideInset * 2.0 - sideIconInset, height: 1000.0)
+                    containerSize: CGSize(width: contentWidth - itemsSideInset * 2.0 - sideIconInset, height: 1000.0)
                 )
                 let textSize = item.text.update(
                     transition: .immediate,
@@ -257,7 +266,7 @@ final class PasskeysScreenIntroComponent: Component {
                         lineSpacing: 0.18
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - itemsSideInset * 2.0 - sideIconInset, height: 1000.0)
+                    containerSize: CGSize(width: contentWidth - itemsSideInset * 2.0 - sideIconInset, height: 1000.0)
                 )
                 
                 if let iconView = item.icon.view {
@@ -308,7 +317,7 @@ final class PasskeysScreenIntroComponent: Component {
                     }
                 )),
                 environment: {},
-                containerSize: CGSize(width: availableSize.width - buttonInsets.left - buttonInsets.right, height: 52.0)
+                containerSize: CGSize(width: availableSize.width - buttonInsets.left - buttonInsets.right - component.buttonSideInsets.left - component.buttonSideInsets.right, height: 52.0)
             )
             
             var skipButtonSize: CGSize?
@@ -342,14 +351,14 @@ final class PasskeysScreenIntroComponent: Component {
                         }
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - buttonInsets.left - buttonInsets.right, height: 52.0)
+                    containerSize: CGSize(width: availableSize.width - buttonInsets.left - buttonInsets.right - component.buttonSideInsets.left - component.buttonSideInsets.right, height: 52.0)
                 )
             } else if let skipButton = self.skipButton {
                 self.skipButton = nil
                 skipButton.view?.removeFromSuperview()
             }
 
-            var buttonFrame = CGRect(origin: CGPoint(x: buttonInsets.left, y: availableSize.height - buttonInsets.bottom - actionButtonSize.height), size: actionButtonSize)
+            var buttonFrame = CGRect(origin: CGPoint(x: component.buttonSideInsets.left + buttonInsets.left, y: availableSize.height - buttonInsets.bottom - actionButtonSize.height), size: actionButtonSize)
             if let skipButtonSize, let skipButtonView = self.skipButton?.view {
                 let skipButtonFrame = buttonFrame
                 buttonFrame = buttonFrame.offsetBy(dx: 0.0, dy: -8.0 - skipButtonSize.height)
@@ -370,7 +379,7 @@ final class PasskeysScreenIntroComponent: Component {
             let contentTopInset = component.insets.top
             let contentBottomInset = availableSize.height - buttonFrame.minY
 
-            let contentContainerFrame = CGRect(origin: CGPoint(x: 0.0, y: max(contentTopInset, floor((availableSize.height - contentTopInset - contentBottomInset - contentHeight) * 0.5))), size: CGSize(width: availableSize.width, height: contentHeight))
+            let contentContainerFrame = CGRect(origin: CGPoint(x: component.insets.left, y: max(contentTopInset, floor((availableSize.height - contentTopInset - contentBottomInset - contentHeight) * 0.5))), size: CGSize(width: contentWidth, height: contentHeight))
             transition.setFrame(view: self.contentContainer, frame: contentContainerFrame)
 
             self.scrollView.frame = CGRect(origin: CGPoint(), size: availableSize)

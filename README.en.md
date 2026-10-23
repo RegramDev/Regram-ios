@@ -133,7 +133,7 @@ Earlier release and acceptance records remain in the [changelog](docs/changelog.
 
 ## Building
 
-Use macOS, full Xcode 27, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**.
+Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.1.1 upstream integration record](docs/upstream-sync-20261023.md) for compatibility and verification scope.
 
 ```sh
 git clone --recursive https://github.com/RegramDev/Regram-ios.git

@@ -30,6 +30,7 @@ import QuickReactionSetupController
 import AvatarEditorScreen
 import PeerSelectionScreen
 import DeviceModel
+import DebugSettingsUI
 
 enum SettingsSearchableItemIcon {
     case regram // MARK: Regram — use the selected brand artwork, separate from Appearance.
@@ -4383,6 +4384,16 @@ func settingsSearchableItems(
         var allItems: [SettingsSearchableItem] = []
         // MARK: Regram — results open the actual setting through the shared resolver.
         allItems.append(contentsOf: rgSettingsSearchableItems(context: context))
+
+        allItems.append(SettingsSearchableItem(
+            id: "debug/crash_reports",
+            title: "Crash Logs",
+            icon: .support,
+            breadcrumbs: ["Debug Settings"],
+            present: { context, _, present in
+                present(.push, crashReportsController(sharedContext: context.sharedContext, context: context))
+            }
+        ))
         
         let profileItems = profileSearchableItems(context: context, canAddAccount: canAddAccount)
         allItems.append(contentsOf: profileItems)

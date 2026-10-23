@@ -77,12 +77,21 @@ public struct RGLLMRequestError: Error {
 /// An endpoint given as a full http(s) URL is used as is. Otherwise it is appended to the base URL
 /// (or the format's default), dropping a duplicated `/v1` when the base URL already ends with it.
 private func rgLLMURL(baseURLString: String, endpoint: String, defaultBaseURL: String, defaultEndpoint: String) -> URL? {
-    if let url = URL(string: endpoint), let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https", url.host != nil {
+    // URLComponents may re-encode an existing %HH escape when the same string also contains
+    // unescaped Unicode or spaces. Normalize those characters while keeping valid escapes intact.
+    func parse(_ string: String) -> URLComponents? {
+        let escaped = string.replacingOccurrences(of: "%(?![0-9A-Fa-f]{2})", with: "%25", options: .regularExpression)
+        var allowed = CharacterSet.urlFragmentAllowed
+        allowed.insert(charactersIn: "#[]%")
+        guard let encoded = escaped.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
+        return URLComponents(string: encoded)
+    }
+    if let url = parse(endpoint)?.url, let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https", url.host != nil {
         return url
     }
 
     let baseString = baseURLString.isEmpty ? defaultBaseURL : baseURLString
-    guard var components = URLComponents(string: baseString), let scheme = components.scheme?.lowercased(), scheme == "http" || scheme == "https", components.host != nil else {
+    guard var components = parse(baseString), let scheme = components.scheme?.lowercased(), scheme == "http" || scheme == "https", components.host != nil else {
         return nil
     }
 
@@ -91,7 +100,14 @@ private func rgLLMURL(baseURLString: String, endpoint: String, defaultBaseURL: S
         basePath.removeLast()
     }
 
-    var endpointPath = endpoint.isEmpty ? defaultEndpoint : endpoint
+    // Parse the relative endpoint before joining: only validated, encoded components may be
+    // assigned to percentEncodedPath/Query. Assigning user input directly traps on spaces,
+    // Unicode, malformed percent escapes, or a query appended to the path.
+    guard let endpointComponents = parse(endpoint.isEmpty ? defaultEndpoint : endpoint),
+          endpointComponents.scheme == nil, endpointComponents.host == nil else {
+        return nil
+    }
+    var endpointPath = endpointComponents.percentEncodedPath
     if !endpointPath.hasPrefix("/") {
         endpointPath = "/\(endpointPath)"
     }
@@ -100,7 +116,7 @@ private func rgLLMURL(baseURLString: String, endpoint: String, defaultBaseURL: S
     }
 
     components.percentEncodedPath = basePath + endpointPath
-    components.percentEncodedQuery = nil
+    components.percentEncodedQuery = endpointComponents.percentEncodedQuery
     components.fragment = nil
     return components.url
 }

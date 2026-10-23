@@ -133,7 +133,7 @@ b34629 已完成主应用／六扩展的本地 arm64 Release 构建、签名、�
 
 ## 构建
 
-需要 macOS、完整 Xcode 27、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。
+需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。13.1.1 上游同步及兼容检查范围见[同步记录](docs/upstream-sync-20261023.md)。
 
 ```sh
 git clone --recursive https://github.com/RegramDev/Regram-ios.git

@@ -3,7 +3,6 @@ import UIKit
 import SwiftSignalKit
 import AsyncDisplayKit
 import TelegramCore
-import Postbox
 import Display
 import TelegramUIPreferences
 import AccountContext
@@ -205,10 +204,10 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
     
     public let openMessage: (EngineRawMessage, OpenMessageParams) -> Bool
     // MARK: Regram
-    public let rgStartMessageEdit: (Message) -> Void
+    public let rgStartMessageEdit: (EngineRawMessage) -> Void
     // MARK: Regram — double-tap actions that need the chat controller (RGDoubleTapMessageAction).
-    public let rgCanEditMessage: (Message) -> Bool
-    public let rgPerformMessageDoubleTapAction: (Message, String) -> Void
+    public let rgCanEditMessage: (EngineRawMessage) -> Bool
+    public let rgPerformMessageDoubleTapAction: (EngineRawMessage, String) -> Void
     public let rgGetChatPredictedLang: () -> String?
     public let openPeer: (EnginePeer, ChatControllerInteractionNavigateToPeer, MessageReference?, OpenPeerSource) -> Void
     public let openPeerMention: (String, Promise<Bool>?) -> Void
@@ -404,9 +403,9 @@ public final class ChatControllerInteraction: ChatControllerInteractionProtocol 
     public init(
         openMessage: @escaping (EngineRawMessage, OpenMessageParams) -> Bool,
         rgGetChatPredictedLang: @escaping () -> String? = { return nil },
-        rgStartMessageEdit: @escaping (Message) -> Void = { _ in },
-        rgCanEditMessage: @escaping (Message) -> Bool = { _ in false },
-        rgPerformMessageDoubleTapAction: @escaping (Message, String) -> Void = { _, _ in },
+        rgStartMessageEdit: @escaping (EngineRawMessage) -> Void = { _ in },
+        rgCanEditMessage: @escaping (EngineRawMessage) -> Bool = { _ in false },
+        rgPerformMessageDoubleTapAction: @escaping (EngineRawMessage, String) -> Void = { _, _ in },
         openPeer: @escaping (EnginePeer, ChatControllerInteractionNavigateToPeer, MessageReference?, OpenPeerSource) -> Void,
         openPeerMention: @escaping (String, Promise<Bool>?) -> Void,
         openMessageContextMenu: @escaping (EngineRawMessage, Bool, ASDisplayNode, CGRect, UIGestureRecognizer?, CGPoint?) -> Void,
