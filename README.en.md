@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.0 / b34629** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.0-b34629). This release updates app icons and screenshot badges with light and dark palettes, corrects cross-device settings restoration and search artwork, adds a permission-warning badge toggle, and gives message bookmarks a separate icon. See the [build and delivery record](docs/icon-backup-rendering-audit.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34630**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630). This release integrates Telegram iOS 13.1.1 while preserving the current Regram UI. It fixes permission-warning badge hiding, delayed refresh of the in-chat mention button, LLM endpoint URL construction and Apple transcription routing, and restores the Share extension's complete entitlement declarations. See the [integration and delivery record](docs/upstream-sync-20261023.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -127,7 +127,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Verification scope
 
-The b34629 local arm64 Release build passed for the app and six extensions, with signatures, resources and 12 matching dSYMs verified. Installation identities and selected entitlements match b34628. The final package’s 36 app-icon renditions and 35 dark-image renditions match independent resource compilation; light and original artwork sources are unchanged. Latest, the complete public download, checksum attachment and production update parser were verified. An isolated UIKit resource fixture passed 35 simulator checks. Full-app device, real-account and upgrade validation was not performed. See the [delivery record and verification scope](docs/icon-backup-rendering-audit.md).
+The b34630 local arm64 Release build passed for the app and six extensions using Xcode 27.1, with strict signatures, resources and 12 matching dSYMs verified. All seven bundle identities and complete entitlements match b34629. The 57-entry feature regression suite and related targeted checks passed. Full-app device, real-account, upgrade and complete UI validation was not performed. Residual unread badges in bot chats have no stable reproduction and are not confirmed fixed. See the [delivery record and verification scope](docs/upstream-sync-20261023.md).
 
 Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
 
