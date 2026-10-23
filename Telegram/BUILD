@@ -1109,7 +1109,8 @@ plist_fragment(
 
 ios_extension(
     name = "ShareExtension",
-    entitlements = ":ShareExtensionEntitlements.entitlements",
+    # MARK: Regram — retain the profile's existing team, keychain and communication declarations.
+    # An App Group-only override drops them from the re-signable reference package.
     bundle_id = "{telegram_bundle_id}.Share".format(
         telegram_bundle_id = telegram_bundle_id,
     ),
