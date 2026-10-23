@@ -956,8 +956,9 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
             self.previewGifts = nil
             if let profileGifts = self.previewGiftsContext {
                 self.previewGiftsDisposable = rgLocalGiftProfileState(context: self.context, peerId: data?.peer?.id ?? self.peerId, profileGifts: profileGifts, canSelect: false).start(next: { [weak self] state in
-                    guard let self, self.previewGifts != state.gifts.filter({ $0.savedToProfile }) else { return }
-                    self.previewGifts = state.gifts.filter { $0.savedToProfile }
+                    let gifts = state.gifts.filter { rgLocalGiftPurchaseId(gift: $0) == nil || $0.savedToProfile }
+                    guard let self, self.previewGifts != gifts else { return }
+                    self.previewGifts = gifts
                     Queue.mainQueue().async { [weak self] in
                         self?.requestUpdate?(.immediate)
                     }

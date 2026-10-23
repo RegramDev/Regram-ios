@@ -692,7 +692,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                 })
             }
 
-            if subject.localPurchaseId != nil || rgLocalGiftsEnabled(context: context) { // MARK: Regram — no local checkout top-up prefetch.
+            if subject.localPurchaseId != nil { // MARK: Regram — local details need no top-up options.
             } else if case let .unique(gift) = subject.arguments?.gift, gift.resellForTonOnly {
                 
             } else {
