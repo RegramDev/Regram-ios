@@ -1620,7 +1620,7 @@ func peerInfoScreenData(
                     let serverGiftCount = (peerView.cachedData as? CachedUserData)?.starGiftsCount ?? 0
                     let hasLocalGifts = peerId == context.account.peerId && localGifts.enabled && !localGifts.purchases.isEmpty
                     if availablePanes != nil, profileGiftsContext != nil, (serverGiftCount > 0 || hasLocalGifts), availablePanes?.contains(.gifts) != true {
-                        availablePanes?.insert(.gifts, at: min(1, availablePanes?.count ?? 0))
+                        availablePanes?.insert(.gifts, at: 1)
                     }
                     if let hasStoryArchive, hasStoryArchive {
                         availablePanes?.append(.storyArchive)
