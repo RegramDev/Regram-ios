@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.1.1 / b34633**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34633)。本版统一本地装扮在聊天引用和首页顶部的显示，保留普通礼物结算并补齐本地限定礼物升级，将实验性通知恢复移至 Regram Pro 的「通知与提醒」，并合入现有功能排查的修复。详情见[本轮更新](docs/profile-notifications-34633.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
+当前版本 **13.1.1 / b34634**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34634)。本版修复隐藏底栏后设置首页的返回按钮和二维码按钮点击无响应的问题。详情见[本轮更新](docs/hidden-tab-navigation-34634.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -129,7 +129,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34633 使用 Xcode 27.1 构建完整 `//Telegram:Regram` arm64 Release，保留主程序、六个扩展和 12 份匹配调试符号。70 项自动检查、严格签名、架构、资源及与 b34632 的安装身份核对通过。构建源码、交付文件和发布记录见[本轮更新](docs/profile-notifications-34633.md)；历次记录见[更新记录](docs/changelog.md)。
+b34634 使用 Xcode 27.1 构建完整 `//Telegram:Regram` arm64 Release，保留主程序、六个扩展和 12 份匹配调试符号。70 项现有自动检查与 4 项 UIKit 回归、严格签名、架构、资源及与 b34633 的安装身份核对通过。构建源码、交付文件和验证范围见[本轮更新](docs/hidden-tab-navigation-34634.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

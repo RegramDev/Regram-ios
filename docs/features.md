@@ -1,6 +1,6 @@
 # Regram 功能清单
 
-本文按 **13.1.1 / b34633** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。本轮更新见[装扮同步、礼物升级与通知入口](profile-notifications-34633.md)。
+本文按 **13.1.1 / b34634** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。本轮更新见[隐藏底栏导航响应修复](hidden-tab-navigation-34634.md)。
 
 ## 设置与导航
 
@@ -293,7 +293,7 @@ b34633 保留本地购买直接进入普通礼物结算页、绕过转售的方�
 
 ## 构建与维护
 
-b34633 使用 Xcode 27.1 构建完整 `//Telegram:Regram` arm64 Release，保留主程序、六个扩展和 12 份匹配调试符号。70 项自动检查、严格签名、架构、资源及与 b34632 的安装身份核对通过。构建源码、交付文件和发布记录见[本轮更新](profile-notifications-34633.md)；历次记录见[更新记录](changelog.md)。
+b34634 使用 Xcode 27.1 构建完整 `//Telegram:Regram` arm64 Release，保留主程序、六个扩展和 12 份匹配调试符号。70 项现有自动检查与 4 项 UIKit 回归、严格签名、架构、资源及与 b34633 的安装身份核对通过。构建源码、交付文件和验证范围见[本轮更新](hidden-tab-navigation-34634.md)；历次记录见[更新记录](changelog.md)。
 
 维护入口：[本地检查](../build-system/check-regram-features.py)、[更新检查](../Regram/RGAppUpdate/Tests)、[UI 工具](ui-testing.md)及[签名参考包](lcsign-reference-packaging.md)。构建以根 README、[versions.json](../versions.json) 和现行 BUILD 为准；复用缓存跨版本保留，完成后关闭空闲 Bazel 服务。历史交付按[更新记录](changelog.md)及各版专题文档追溯，`docs/superpowers/` 为历史资料。
 

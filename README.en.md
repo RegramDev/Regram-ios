@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34633**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34633). This release synchronizes local appearance with quoted messages and the chat-list title, keeps direct local gift checkout, adds local upgrades for limited gifts, and moves experimental notification recovery to Regram Pro → Notifications. It also includes the fixes from the feature audits. See the [update record](docs/profile-notifications-34633.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34634**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34634). This release fixes the Back and QR buttons on the main Settings page when the bottom bar is hidden. See the [update record](docs/hidden-tab-navigation-34634.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -130,7 +130,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34633 is built with Xcode 27.1 as a complete `//Telegram:Regram` arm64 Release, including the main app, six extensions and 12 matching dSYMs. All 70 automatic checks and package signature, architecture, resource and installation-identity checks passed. See the [current update record](docs/profile-notifications-34633.md) and [changelog](docs/changelog.md).
+b34634 is built with Xcode 27.1 as a complete `//Telegram:Regram` arm64 Release, including the main app, six extensions and 12 matching dSYMs. All 70 existing automatic checks, four UIKit regression cases, and package signature, architecture, resource and installation-identity checks passed. See the [update record and validation scope](docs/hidden-tab-navigation-34634.md) and [changelog](docs/changelog.md).
 
 ## Building
 
