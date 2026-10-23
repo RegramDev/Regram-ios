@@ -50,7 +50,12 @@ public func rgLocalAppearanceState(context: AccountContext) -> Signal<RGLocalGif
                 }
             }
         }
-        return context.engine.stickers.cacheLocalGiftInlineStickers(files: files) |> then(.single(state))
+        return Signal<RGLocalGiftsState, NoError> { subscriber in
+            context.engine.stickers.cacheLocalGiftInlineStickers(files: files).start(completed: {
+                subscriber.putNext(state)
+                subscriber.putCompletion()
+            })
+        }
     } |> deliverOnMainQueue
 }
 
