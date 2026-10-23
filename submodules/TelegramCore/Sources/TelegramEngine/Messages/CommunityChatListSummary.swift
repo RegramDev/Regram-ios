@@ -1,6 +1,6 @@
 import Foundation
 import Postbox
-import TelegramApi // MARK: Regram — restore missing community dialogs from server folder metadata.
+internal import TelegramApi // MARK: Regram — restore missing community dialogs from server folder metadata.
 import SwiftSignalKit
 
 public struct CommunityChatListItemSummary: Equatable {
