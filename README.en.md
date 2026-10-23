@@ -103,9 +103,11 @@ IP policies apply to native Telegram DC and SOCKS5/MTProto proxy connections. We
 - System background downloads and optional Lock Screen/Dynamic Island Live Activities on iOS 16.1+. Tap to return to updates. Signing continues in the foreground; installation requires confirmation.
 - Optional exit after the complete package is handed off. On the new version's first launch, remove downloaded/signed IPAs while retaining certificates.
 
+Local customization is in **Settings → Regram Pro → Show Off**: local Premium display, Stars/TON, gifts and appearance, phone display, signed ratings and the TON profile card. Gift purchases keep direct checkout; limited local gifts can be upgraded in the native details sheet. Quote colors and the chat-list gift status follow the same local appearance. These settings only affect this device.
+
 ## Settings
 
-Feature preferences are under **Settings → Regram Pro**, organized into nine categories:
+Feature preferences are under **Settings → Regram Pro**, organized into nine categories and the Show Off section:
 
 | Category | Contents |
 | --- | --- |
@@ -115,9 +117,10 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 | Privacy & Filters | Rules, hidden senders, anti-revoke, archives, ghost mode, stories |
 | Media & Links | Preview repair, photos, stickers, recording, playback |
 | Appearance & Interface | Fonts, icons, screenshot badges, tab bar, profile display |
-| Notifications & Alerts | Content filtering, pins, mentions and replies |
+| Notifications & Alerts | Experimental notification recovery, content filtering, pins, mentions and replies |
 | Network & Transfers | DNS/IP, transfer parameters, call connections, performance and DC tests |
-| Management & Tools | Local Premium, backups, updates, data cleanup |
+| Show Off | Local Premium, Stars/TON gifts and upgrades, appearance, phone display, ratings and the TON card |
+| Management & Tools | Backups, updates, data cleanup |
 
 Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
 
@@ -125,11 +128,9 @@ Within Pro, global settings search is on the home page, covering categories and 
 
 The outer Settings search and Pro home search share the catalog, aliases and setting destinations. Empty results, clearing and IME composition are handled consistently. See the [follow-up record](docs/groups-settings-search-drag-fixes.md) for search, common-group pagination, drag previews and badge fixes.
 
-## Verification scope
+## Build and package verification
 
-The b34630 local arm64 Release build passed for the app and six extensions using Xcode 27.1, with strict signatures, resources and 12 matching dSYMs verified. All seven bundle identities and complete entitlements match b34629. The 57-entry feature regression suite and related targeted checks passed. Latest, the complete public download, checksum attachment and production update parser were verified. Full-app device, real-account, upgrade and complete UI validation was not performed. Residual unread badges in bot chats have no stable reproduction and are not confirmed fixed. See the [delivery record and verification scope](docs/upstream-sync-20261023.md).
-
-Earlier release and acceptance records remain in the [changelog](docs/changelog.md). Each device result applies to its own package and tested scenarios.
+b34633 is built with Xcode 27.1 as a complete `//Telegram:Regram` arm64 Release, including the main app, six extensions and 12 matching dSYMs. All 70 automatic checks and package signature, architecture, resource and installation-identity checks passed. See the [current update record](docs/profile-notifications-34633.md) and [changelog](docs/changelog.md).
 
 ## Building
 

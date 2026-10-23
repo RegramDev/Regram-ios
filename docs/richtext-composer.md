@@ -4,6 +4,12 @@ The app-side rich-text **input** story: the WYSIWYG editor, the `ChatInputConten
 replaced `NSAttributedString` as the composer currency, and the round-trips through send / edit / drafts /
 cross-device sync.
 
+## Regram integration in b34633
+
+The software Return key follows the live Regram “Send with Return” setting in both native editor backends and the legacy fallback. Input-method confirmation and multiline insertion stay separate from send actions; hardware-keyboard handling remains independent. Rich-text content is also consumed by the Regram filtering, edit-history, summary, repeat-copy, translation and preview tools described in [the feature-fix record](functional-fixes-20261024.md). Local Premium display does not change server-side send authorization.
+
+The editor package retains its iOS 13 compatibility floor; the Regram application requires iOS 15.
+
 **Authority boundaries** — this file is the app-integration reference. For:
 - **editor internals** (TextKit seam, layout, boxes) → `submodules/TelegramUI/Components/RichTextEditor/CLAUDE.md`.
 - **message rendering** (InstantPage V2, rich bubbles) → [`docs/instantpage-richtext.md`](instantpage-richtext.md).
@@ -17,7 +23,7 @@ The editor is gated behind the `debugRichText` flag; the **native** engine is th
 
 A from-scratch WYSIWYG rich-text editor (`submodules/TelegramUI/Components/RichTextEditor`), developed as an
 in-tree **SwiftPM package** and wired into the app: `ChatTextInputPanelNode` depends on `:RichTextEditorUIKit`,
-so it builds under Bazel at the repo's iOS-13 floor. Core (`:RichTextEditorCore`) is pure-Foundation.
+so it builds under Bazel at the package's iOS-13 compatibility floor. Core (`:RichTextEditorCore`) is pure-Foundation.
 
 - **TextKit is quarantined behind `protocol BlockLayoutEngine`:** `BlockLayout` (TextKit 2, `@available(iOS 16)`)
   on iOS 16+, `BlockLayoutTK1` (TextKit 1) on iOS 13–15, chosen by `makeBlockLayout(...)` /

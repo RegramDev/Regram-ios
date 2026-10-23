@@ -23,7 +23,7 @@ NSFW 首屏改为入口列表：推荐、Nv、MissAV、黄果、JAV Ranking。�
 
 网页界面保留 WebKit 的前进／后退右滑手势，并在整个网页视图禁用 Telegram 父级返回手势，包括屏幕边缘。网页右滑不会弹出界面进入设置。顶部网页工具栏提供后退／前进，导航栏返回优先返回网页上一页；没有网页历史时，点击导航栏返回回到网站列表。“返回网站列表”按钮可直接退出当前网页。刷新作用于当前网页，新窗口链接在同一 WebView 内打开。原年龄确认保留，未确认时不加载远程内容。
 
-实现：[入口及浏览器](../submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/RGNSFWController.swift)。
+实现：历史入口及浏览器：`RGNSFWController.swift`（已移除）。
 
 ## 新增字体
 

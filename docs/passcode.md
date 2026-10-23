@@ -1,6 +1,6 @@
 # Passcode credentials and wallet secret storage
 
-This documents the current passcode security implementation: persistent storage,
+This documents the passcode security implementation and its refactor design: persistent storage,
 cryptography, verification, authorization, migration, cleanup, and wallet secrets.
 Screen layout, navigation, presentation, and other UI behavior are outside its
 scope. It describes the implementation in this checkout, including the new
@@ -16,7 +16,7 @@ PasscodeCore and wallet security code, rather than identifying a released versio
 | [AccountManager](../submodules/TelegramCore/Sources/AccountManager/AccountManagerImpl.swift) | Nonsecret lock metadata, reconciliation with the credential store, and removal of legacy plaintext metadata. |
 | [WalletProtection](../submodules/WalletContext/Sources/WalletSecurity.swift) | Wallet protection policy, biometric service name, and full local-secret reset coordination. |
 | [WalletSecretEnvelope / WalletVault](../submodules/WalletContext/Sources/WalletSecurity.swift) | Encrypted secret format and private Keychain access. |
-| [WalletAuthorization](../submodules/WalletContext/Sources/Security/WalletAuthorization.swift), [WalletStorage](../submodules/WalletContext/Sources/WalletStorage.swift), [WalletEngineRuntime](../submodules/WalletContext/Sources/WalletEngineRuntime.swift) | Operation authorization, persistent and temporary secret handling, and propagation into Rust host callbacks. |
+| [WalletAuthorization](../submodules/WalletContext/Sources/WalletSecurity.swift), [WalletStorage](../submodules/WalletContext/Sources/WalletStorage.swift), [WalletEngineRuntime](../submodules/WalletContext/Sources/WalletEngineRuntime.swift) | Operation authorization, persistent and temporary secret handling, and propagation into Rust host callbacks. |
 
 PasscodeCore depends on TelegramCore to supply the AccountManager bridge.
 TelegramCore receives closures and does not import PasscodeCore or WalletContext.
@@ -432,7 +432,7 @@ from silently bypassing protection through backup. Explicit restoration retains
 the existing Telegram account/2FA requirements and installs the recovered phrase
 through the protected local storage path.
 
-For context, the [backup codec](../submodules/WalletContext/Sources/WalletPhraseCodec.swift)
+For context, the [backup codec](../submodules/WalletContext/Sources/WalletBackup.swift)
 normalizes mnemonic words to lowercase, joins them with spaces, and pads the UTF-8
 text with spaces to **215 bytes**. [WalletBackupCrypto](../submodules/WalletBackupCrypto/Sources/WalletBackupCrypto.mm)
 splits that text into three 215-byte XOR shares, all required for recovery:
@@ -491,12 +491,14 @@ rtk proxy swift test --package-path submodules/PasscodeCore
 rtk proxy swift test --package-path submodules/WalletContext
 ```
 
+The suite names below describe the historical refactor harness. Current checked-in tests are under [PasscodeCore/Tests](../submodules/PasscodeCore/Tests) and [WalletContext/Tests](../submodules/WalletContext/Tests); runnable targets follow the current package and BUILD declarations.
+
 | Suite | Relevant coverage |
 | --- | --- |
-| [PasscodeCoreTests](../submodules/PasscodeCore/Tests/PasscodeCoreTests.swift) | Verification, Unicode compatibility, stable derived keys across PIN changes, fresh salts/nonces, cooldown/reboot behavior, corrupt/missing records, scope and authentication-origin checks, expiry/revocation races, cancellation around commit, settings-session retention, biometric journaling/cleanup failures, and reset ordering. |
-| [PasscodeEnvironmentTests](../submodules/PasscodeCore/Tests/PasscodeEnvironmentTests.swift) | Explicit query groups, immutable configuration, deferred private-group resolution, missing service/configuration, and extension restrictions. |
-| [PasscodeInterprocessTests](../submodules/PasscodeCore/Tests/PasscodeInterprocessTests.swift) | Separate processes using production `flock` against injected atomic file storage, preservation of six concurrent wrong attempts and cooldown, reset cleanup holding the lock, and lock-open failures. |
-| [WalletSecurityTests](../submodules/WalletContext/TestsSecurity/WalletSecurityTests.swift), [WalletProtectionTests](../submodules/WalletContext/TestsSecurity/WalletProtectionTests.swift) | Envelope/namespace tampering, session isolation/lifetimes, private cleanup/reset, and fixed pre-refactor credential/envelope compatibility fixtures. |
+| `PasscodeCoreTests` | Verification, Unicode compatibility, stable derived keys across PIN changes, fresh salts/nonces, cooldown/reboot behavior, corrupt/missing records, scope and authentication-origin checks, expiry/revocation races, cancellation around commit, settings-session retention, biometric journaling/cleanup failures, and reset ordering. |
+| `PasscodeEnvironmentTests` | Explicit query groups, immutable configuration, deferred private-group resolution, missing service/configuration, and extension restrictions. |
+| `PasscodeInterprocessTests` | Separate processes using production `flock` against injected atomic file storage, preservation of six concurrent wrong attempts and cooldown, reset cleanup holding the lock, and lock-open failures. |
+| `WalletSecurityTests`, `WalletProtectionTests` | Envelope/namespace tampering, session isolation/lifetimes, private cleanup/reset, and fixed pre-refactor credential/envelope compatibility fixtures. |
 
 PasscodeCore's SwiftPM target excludes `AccountManagerIntegration.swift`.
 WalletContext's standalone package compiles `Sources/Security`, without the full
