@@ -41,9 +41,9 @@ public func rgSaveLocalGiftAppearance(context: AccountContext, nameColor: PeerCo
 public func rgLocalAppearanceState(context: AccountContext) -> Signal<RGLocalGiftsState, NoError> {
     rgLocalGiftsState(context: context) |> mapToSignal { state -> Signal<RGLocalGiftsState, NoError> in
         guard state.enabled else { return .single(state) }
-        let files: [TelegramMediaFile] = state.purchases.flatMap { purchase in
+        let files: [TelegramMediaFile] = state.purchases.flatMap { purchase -> [TelegramMediaFile] in
             guard case let .unique(gift) = rgLocalGift(context: context, purchase: purchase) else { return [] }
-            return gift.attributes.compactMap { attribute in
+            return gift.attributes.compactMap { attribute -> TelegramMediaFile? in
                 switch attribute {
                 case let .model(_, file, _, _), let .pattern(_, file, _): return file
                 default: return nil

@@ -191,7 +191,7 @@ public func rgLocalGiftsController(context: AccountContext, focusSetting: String
             LocalGiftsView(context: context, showMessage: { [weak controller] text in
                 guard let controller else { return }
                 let data = context.sharedContext.currentPresentationData.with { $0 }
-                controller.present(textAlertController(context: context, title: "LocalGifts.Title".i18n(data.strings.rgLanguageCode), text: text,
+                controller.present(textAlertController(context: context, title: "Showroom.Title".i18n(data.strings.rgLanguageCode), text: text,
                     actions: [TextAlertAction(type: .defaultAction, title: data.strings.Common_OK, action: {})]), in: .window(.root))
 
             })
