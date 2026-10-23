@@ -1284,7 +1284,7 @@ Matching is case-insensitive.";
 "LocalGifts.StorageError" = "The local record could not be saved, or the gift preview has not finished loading. No purchase was completed.";
 "LocalGifts.NativeHint" = "Save the balance, then buy ordinary or collectible gifts in Telegram’s existing gift screens. The catalog and previews load online; purchases and balance deductions are simulated locally.";
 
-"Showroom.Title" = "装逼怎么了 装逼犯法吗";
+"Showroom.Title" = "Show Off";
 
 "Showroom.PremiumRefresh" = "Reopen the app to refresh screens that are already open.";
 

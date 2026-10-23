@@ -1270,12 +1270,12 @@
 "LocalGifts.RemoveHint" = "移除這份本機禮物？本機星幣不會退回。";
 "LocalGifts.Disabled" = "請先在 Regram 設定中啟用本機禮物購買。";
 "LocalGifts.InvalidAmount" = "請輸入範圍內有效的非負金額。";
-"LocalGifts.Insufficient" = "本機星幣不足，請在裝逼怎麼了 裝逼犯法嗎專區修改數量。";
+"LocalGifts.Insufficient" = "本機星幣不足，請在顯擺一下專區修改數量。";
 "LocalGifts.Limit" = "本機禮物已達到儲存上限（最多 500 份），請移除部分禮物後再試。";
 "LocalGifts.StorageError" = "本機紀錄無法儲存，或禮物預覽尚未載入完成。本次購買未完成。";
 "LocalGifts.NativeHint" = "儲存後，到 Telegram 原有禮物頁面購買普通或收藏禮物。目錄和預覽正常連線載入，購買和餘額扣除僅在本機模擬。";
 
-"Showroom.Title" = "裝逼怎麼了 裝逼犯法嗎";
+"Showroom.Title" = "顯擺一下";
 
 "Showroom.PremiumRefresh" = "已開啟的會員介面可在重新開啟 App 後重新整理。";
 
@@ -1297,6 +1297,6 @@
 
 "LocalGifts.TonHint" = "僅用於本機收藏禮物購買。最多 9 位小數，上限 9000000 TON，不會進行錢包轉帳或付款。";
 
-"LocalGifts.InsufficientTon" = "本機 TON 不足，請在裝逼怎麼了 裝逼犯法嗎專區修改數量。";
+"LocalGifts.InsufficientTon" = "本機 TON 不足，請在顯擺一下專區修改數量。";
 
 "Showroom.Description" = "本機會員、星幣禮物與手機號顯示";

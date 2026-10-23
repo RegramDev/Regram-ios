@@ -1272,12 +1272,12 @@
 "LocalGifts.RemoveHint" = "移除这份本地礼物？本地星币不会退回。";
 "LocalGifts.Disabled" = "请先在 Regram 设置中启用本地礼物购买。";
 "LocalGifts.InvalidAmount" = "请输入范围内有效的非负金额。";
-"LocalGifts.Insufficient" = "本地星币不足，请在装逼怎么了 装逼犯法吗专区修改数量。";
+"LocalGifts.Insufficient" = "本地星币不足，请在显摆一下专区修改数量。";
 "LocalGifts.Limit" = "本地礼物已达到存储上限（最多 500 份），请移除部分礼物后再试。";
 "LocalGifts.StorageError" = "本地记录无法保存，或礼物预览尚未加载完成。本次购买未完成。";
 "LocalGifts.NativeHint" = "保存后，到 Telegram 原有礼物页面购买普通或收藏礼物。目录和预览正常联网加载，购买和余额扣除仅在本机模拟。";
 
-"Showroom.Title" = "装逼怎么了 装逼犯法吗";
+"Showroom.Title" = "显摆一下";
 
 "Showroom.PremiumRefresh" = "已打开的会员界面可在重新打开 App 后刷新。";
 
@@ -1299,6 +1299,6 @@
 
 "LocalGifts.TonHint" = "仅用于本地收藏礼物购买。最多 9 位小数，上限 9000000 TON，不会进行钱包转账或付款。";
 
-"LocalGifts.InsufficientTon" = "本地 TON 不足，请在装逼怎么了 装逼犯法吗专区修改数量。";
+"LocalGifts.InsufficientTon" = "本地 TON 不足，请在显摆一下专区修改数量。";
 
 "Showroom.Description" = "本地会员、星币礼物与手机号显示";
