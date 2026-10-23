@@ -71,6 +71,7 @@ def main():
     run('root-settings-gesture', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-settings-gesture-checks.py'])
     run('root-tab-transition', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-tab-transition-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
+    run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('settings-storage', ['python3', 'Regram/RGAppGroupIdentifier/Tests/run-storage-checks.py'])
     run('build-configuration', ['python3', 'build-system/ci/test_configuration.py'])
     run('gallery-playback', ['python3', 'Regram/RGGalleryUI/Tests/run-playback-checks.py'])

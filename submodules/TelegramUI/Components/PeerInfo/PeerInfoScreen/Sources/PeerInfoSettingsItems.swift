@@ -320,7 +320,8 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     
     let notificationsWarning: Bool
     if let settings = data.globalSettings {
-        notificationsWarning = shouldDisplayNotificationsPermissionWarning(status: settings.notificationAuthorizationStatus, suppressed:  settings.notificationWarningSuppressed)
+        // MARK: Regram — denied access ignores the upstream temporary suppression flag.
+        notificationsWarning = !settings.hidePermissionWarnings && shouldDisplayNotificationsPermissionWarning(status: settings.notificationAuthorizationStatus, suppressed: settings.notificationWarningSuppressed)
     } else {
         notificationsWarning = false
     }

@@ -1,6 +1,7 @@
 import RGRegDateScheme
 import RGRegDate
 import RGSimpleSettings
+import RGFeatureSignals // MARK: Regram
 import Foundation
 import UIKit
 import Postbox
@@ -290,6 +291,7 @@ final class TelegramGlobalSettings {
     let proxySettings: ProxySettings
     let notificationAuthorizationStatus: AccessType
     let notificationWarningSuppressed: Bool
+    let hidePermissionWarnings: Bool // MARK: Regram
     let notificationExceptions: NotificationExceptionsList?
     let inAppNotificationSettings: InAppNotificationSettings
     let privacySettings: AccountPrivacySettings?
@@ -314,6 +316,7 @@ final class TelegramGlobalSettings {
         proxySettings: ProxySettings,
         notificationAuthorizationStatus: AccessType,
         notificationWarningSuppressed: Bool,
+        hidePermissionWarnings: Bool, // MARK: Regram
         notificationExceptions: NotificationExceptionsList?,
         inAppNotificationSettings: InAppNotificationSettings,
         privacySettings: AccountPrivacySettings?,
@@ -337,6 +340,7 @@ final class TelegramGlobalSettings {
         self.proxySettings = proxySettings
         self.notificationAuthorizationStatus = notificationAuthorizationStatus
         self.notificationWarningSuppressed = notificationWarningSuppressed
+        self.hidePermissionWarnings = hidePermissionWarnings // MARK: Regram
         self.notificationExceptions = notificationExceptions
         self.inAppNotificationSettings = inAppNotificationSettings
         self.privacySettings = privacySettings
@@ -1000,7 +1004,8 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         activeSessionsContextAndCount,
         privacySettings,
         preferences,
-        combineLatest(notificationExceptions, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get()),
+        // MARK: Regram — refresh the notification row when the permission-badge setting changes.
+        combineLatest(notificationExceptions, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)),
         combineLatest(context.account.viewTracker.featuredStickerPacks(), archivedStickerPacks),
         hasPassport,
         context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.appConfiguration)),
@@ -1024,7 +1029,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         walletBalance
     )
     |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalance -> PeerInfoScreenData in
-        let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed) = notifications
+        let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings) = notifications // MARK: Regram
         let (featuredStickerPacks, archivedStickerPacks) = stickerPacks
         
         let proxySettings: ProxySettings = sharedPreferences.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) ?? ProxySettings.defaultSettings
@@ -1062,6 +1067,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
             proxySettings: proxySettings,
             notificationAuthorizationStatus: notificationsAuthorizationStatus,
             notificationWarningSuppressed: notificationsWarningSuppressed,
+            hidePermissionWarnings: hidePermissionWarnings, // MARK: Regram
             notificationExceptions: notificationExceptions,
             inAppNotificationSettings: inAppNotificationSettings,
             privacySettings: privacySettings,
@@ -1692,6 +1698,7 @@ func peerInfoScreenData(
                         proxySettings: ProxySettings(enabled: false, servers: [], activeServer: nil, useForCalls: false),
                         notificationAuthorizationStatus: .notDetermined,
                         notificationWarningSuppressed: false,
+                        hidePermissionWarnings: false, // MARK: Regram
                         notificationExceptions: nil,
                         inAppNotificationSettings: InAppNotificationSettings(playSounds: false, vibrate: false, displayPreviews: false, totalUnreadCountDisplayStyle: .filtered, totalUnreadCountDisplayCategory: .chats, totalUnreadCountIncludeTags: .all, displayNameOnLockscreen: false, displayNotificationsFromAllAccounts: false, customSound: nil),
                         privacySettings: privacySettings,

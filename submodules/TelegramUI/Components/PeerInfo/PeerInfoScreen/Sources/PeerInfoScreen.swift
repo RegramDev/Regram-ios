@@ -7006,11 +7006,8 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 )
             }
             
-            // MARK: Regram
-            let effectiveNotificationsWarningSuppressed = combineLatest(notificationsWarningSuppressed.get(), rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false))
-            |> map { notificationsWarningSuppressed, hidePermissionWarnings in
-                return notificationsWarningSuppressed || hidePermissionWarnings
-            }
+            // MARK: Regram — the user override also hides warnings for denied access.
+            let hidePermissionWarnings = rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)
 
             let icon: UIImage?
             if useSpecialTabBarIcons() {
@@ -7019,9 +7016,9 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
                 icon = UIImage(bundleImageName: "Chat List/Tabs/IconSettings")
             }
             
-            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), effectiveNotificationsWarningSuppressed, context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
-            |> map { presentationData, notificationsAuthorizationStatus, notificationsWarningSuppressed, suggestions, accountTabBarAvatar, accountTabBarAvatarBadge -> (String, UIImage?, UIImage?, String?, Bool, Bool) in
-                let notificationsWarning = shouldDisplayNotificationsPermissionWarning(status: notificationsAuthorizationStatus, suppressed:  notificationsWarningSuppressed)
+            let tabBarItem: Signal<(String, UIImage?, UIImage?, String?, Bool, Bool), NoError> = combineLatest(queue: .mainQueue(), self.context.sharedContext.presentationData, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), hidePermissionWarnings, context.engine.notices.getServerProvidedSuggestions(), accountTabBarAvatar, accountTabBarAvatarBadge)
+            |> map { presentationData, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings, suggestions, accountTabBarAvatar, accountTabBarAvatarBadge -> (String, UIImage?, UIImage?, String?, Bool, Bool) in
+                let notificationsWarning = !hidePermissionWarnings && shouldDisplayNotificationsPermissionWarning(status: notificationsAuthorizationStatus, suppressed: notificationsWarningSuppressed)
                 let phoneNumberWarning = suggestions.contains(.validatePhoneNumber)
                 let passwordWarning = suggestions.contains(.validatePassword)
                 var otherAccountsBadge: String?
