@@ -1,6 +1,6 @@
 # Telegram 13.1.1 上游同步
 
-本轮按「先同步上游、修复兼容问题、保留当前 UI、生成 IPA」执行，随后按用户要求准备 [13.1.1 / b34630 Release](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)。真实账号、真机与覆盖升级仍未验收。
+本轮按「先同步上游、修复兼容问题、保留当前 UI、生成 IPA」执行，随后按用户要求正式发布 [13.1.1 / b34630 Release](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)。真实账号、真机与覆盖升级仍未验收。
 
 ## 固定范围
 
@@ -63,5 +63,14 @@ git diff --name-status f1dd7a2dbd02cbbf513e75d5695d8d36d1cf5838 fb0e62ba8a147f08
 - SHA-256：`7d5a2521fdb12959f54952ea1fc4a68420210a1ae6f4345a709e7ab9ba0d85a1`。
 - 保留对应 dSYM 归档、构建源码摘要与校验 manifest。常规 Release 附件为唯一 IPA 与 `.ipa.sha256`，调试符号及私有配置保留本地；安装仍使用现有重签流程。
 - 此记录的后续文档提交不改变上述构建源码。
+
+## 正式发布核验
+
+- Release：[`v13.1.1-b34630`](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)，数字 ID `421464817`，2026-10-23 04:57:43 UTC 公开；非草稿、非预发布，并已设为 Latest。
+- Release 与 tag 指向完整提交 `edf2e0a5eddeb4b728b3ba2f3edb72064ecb3b2a`，已推送到远端 `master`。与构建源码 `621d791ed5631bb5b64fe085ad6a40bfa722dc4b` 之间仅有文档变化；后续核验记录仍不改变应用代码或安装包。
+- 附件恰为一份 IPA 和对应 `.ipa.sha256`，上传完成状态、GitHub digest、文件字节数与本地 manifest 一致。dSYM 与私有材料未上传。
+- 从公开链接完整下载 IPA 和校验附件，77,790,653 字节及 SHA-256 与上文一致，校验附件与本地文件逐字节一致。
+- 使用生产 `RGUpdateRelease.parseGitHub` 解析实际公开 Release 和 Latest JSON，确认两者是同一安装包，版本、构建号、大小、摘要和 URL 正确，b34629 可识别新版，同版／更高版本不重复提示，缓存元数据往返校验通过。
+- 本次依据已验证的本地构建发布，未将 GitHub Actions 构建记作成功，也未执行真机或真实账号验收。
 
 本地凭据、生成配置、构建日志和产物放在忽略目录。rules_apple 的本地兼容补丁按既有文档应用，不改变其固定 gitlink。可复用构建缓存已保留，本轮空闲 Bazel 服务已关闭。

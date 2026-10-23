@@ -4,7 +4,7 @@
 
 ## b34630：13.1.1 上游同步与兼容修正（2026-10-23）
 
-[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)。
+[v13.1.1-b34630](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630) 已正式发布，Latest、完整公开下载、SHA-256 附件及生产更新解析核对通过。
 
 - 合并 Telegram iOS 13.1.1 上游更新，迁移导航、底栏、输入发送、消息合并及 Postbox 访问接口，保留现有 Regram UI 与功能设置。
 - 修复自定义 LLM 接口路径包含中文、空格、查询参数或无效百分号时的 URL 构造崩溃，并保留已转义字符。

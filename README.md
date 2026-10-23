@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.1.1 / b34630**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)。本版同步 Telegram iOS 13.1.1，保留现有 Regram UI，修复权限提醒角标隐藏、右下角 @ 按钮延迟刷新、LLM URL 构造和 Apple 转写路由，并恢复分享扩展的完整权限声明。构建与交付范围见[同步记录](docs/upstream-sync-20261023.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
+当前版本 **13.1.1 / b34630** 已正式发布：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34630)。本版同步 Telegram iOS 13.1.1，保留现有 Regram UI，修复权限提醒角标隐藏、右下角 @ 按钮延迟刷新、LLM URL 构造和 Apple 转写路由，并恢复分享扩展的完整权限声明。构建与交付范围见[同步记录](docs/upstream-sync-20261023.md)，功能入口与限制见[完整功能清单](docs/features.md)，近期修复见[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -127,7 +127,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 验证范围
 
-b34630 已完成 Xcode 27.1 的主应用／六扩展本地 arm64 Release 构建、严格签名、资源及 12 份匹配调试符号校验。七个 Bundle 的安装身份和全部 entitlements 与 b34629 一致。完整功能回归 57 项及相关专项检查通过；未在真机或真实账号运行完整应用，也未执行覆盖升级或完整 UI 验收。机器人聊天列表未读残留尚未获得稳定复现，暂不认定已修复。源码、交付记录和完整验证边界见[同步记录](docs/upstream-sync-20261023.md)。
+b34630 已完成 Xcode 27.1 的主应用／六扩展本地 arm64 Release 构建、严格签名、资源及 12 份匹配调试符号校验。七个 Bundle 的安装身份和全部 entitlements 与 b34629 一致。完整功能回归 57 项及相关专项检查通过，Latest、完整公开下载、校验附件及生产更新解析核对通过；未在真机或真实账号运行完整应用，也未执行覆盖升级或完整 UI 验收。机器人聊天列表未读残留尚未获得稳定复现，暂不认定已修复。源码、交付记录和完整验证边界见[同步记录](docs/upstream-sync-20261023.md)。
 
 旧版本的发布与验收记录见[更新记录](docs/changelog.md)；各版设备结果仅对应当时的安装包与测试场景。
 
