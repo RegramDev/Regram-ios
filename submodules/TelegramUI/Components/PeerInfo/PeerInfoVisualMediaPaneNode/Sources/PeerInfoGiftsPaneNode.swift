@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram
 import AsyncDisplayKit
 import UIKit
 import Display
@@ -960,6 +961,12 @@ public final class PeerInfoGiftsPaneNode: ASDisplayNode, PeerInfoPaneNode, UIScr
     }
     
     private func contextAction(gift: ProfileGiftsContext.State.StarGift, view: UIView, gesture: ContextGesture) {
+        // MARK: Regram — local gifts have no transfer, sale, conversion or collection RPCs.
+        if self.peerId == self.context.account.peerId, let purchase = rgLocalPurchase(context: self.context, gift: gift) {
+            gesture.cancel()
+            self.parentController?.push(rgLocalGiftsController(context: self.context, purchaseId: purchase.id))
+            return
+        }
         guard let currentParams = self.currentParams else {
             return
         }

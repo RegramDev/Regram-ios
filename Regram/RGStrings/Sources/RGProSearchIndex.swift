@@ -19,6 +19,7 @@ public enum RGProSearchIndex {
         "photoSettings": ["Settings.Category.photos", "photo quality image 照片 画质 图片"],
         "stickerSettings": ["Settings.Category.stickers", "sticker emoji size recent 贴纸 表情 最近 大小"],
         "recordingSettings": ["Settings.Category.recording", "recording microphone round camera 录制 麦克风 圆视频"],
+        "localGifts": ["LocalGifts.Title", "local stars gifts purchase 本地 星币 礼物 购买"],
         "appUpdate": ["AppUpdate.Title", "update github certificate p12 ipa install 更新 证书 签名 安装"],
 
         "messageFilter": ["MessageFilter.Title", "MessageFilter.Regex", "MessageFilter.Test.Title", "filter regex whitelist 过滤 正则 白名单"],

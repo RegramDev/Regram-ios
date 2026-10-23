@@ -1,6 +1,7 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
+    "//Regram/RGLocalGifts", # MARK: Regram
         "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
         "//Regram/RGJoinedChatFolderPicker", # MARK: Regram
         "//submodules/ContactListUI", # MARK: Regram

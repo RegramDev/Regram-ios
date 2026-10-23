@@ -38,6 +38,7 @@ def main():
     content_source = output / 'ProductionContentFilter.swift'
     content_source.write_text(content_filter)
     suites = [
+        ('local-gifts', [simple+'Sources/LocalGifts.swift', simple+'Tests/LocalGiftsTests.swift'], []),
         ('filter', [simple+'Sources/MessageFilter.swift', simple+'Tests/MessageFilterTests.swift'], []),
         ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
         ('content-filter-cache', [simple+'Sources/MessageFilter.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
@@ -59,6 +60,7 @@ def main():
         flags = ['-DREGRAM_MEDIA_LOADING_EXPERIMENT'] if name == 'media-experiment-default' else []
         if run(name+'-compile', ['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + flags + sources + ['-o', str(binary)]):
             run(name, [str(binary)] + arguments)
+    run('local-gift-boundary', ['python3', 'Regram/RGLocalGifts/Tests/run-boundary-checks.py'])
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('settings-search-transitions', ['python3', 'Regram/RGProUI/Tests/run-settings-search-checks.py'])
     run('common-group-pagination', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-search-failure-checks.py'])

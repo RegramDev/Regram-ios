@@ -17,7 +17,7 @@ public struct RGSettingsCatalogEntry: Hashable {
             if let category = categories[String(page.dropFirst(9))] { return "Settings.ProCategory." + category }
             return "Settings.Category." + page.dropFirst(9)
         }
-        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "localGifts": "LocalGifts.Title", "updates": "AppUpdate.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -195,6 +195,11 @@ public enum RGSettingsCatalog {
         .init("pro.appearance", "profileSettings", "Settings.Category.profiles"),
         .init("pro.privacy", "storiesSettings", "Settings.Category.stories"),
         .init("pro.privacy", "privacySettings", "Settings.Category.privacy"),
+        .init("pro.tools", "localGifts", "LocalGifts.Title", keywords: "local stars gifts purchase 本地 星币 礼物 购买"),
+        .init("localGifts", "enabled", "LocalGifts.Enabled"),
+        .init("localGifts", "balance", "LocalGifts.Balance"),
+        .init("localGifts", "catalog", "LocalGifts.Catalog"),
+        .init("localGifts", "owned", "LocalGifts.Owned"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),

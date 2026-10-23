@@ -1,3 +1,5 @@
+import RGLocalGifts // MARK: Regram
+import RGStrings // MARK: Regram
 import Foundation
 import UIKit
 import Display
@@ -490,6 +492,19 @@ private final class GiftSetupScreenComponent: Component {
         }
         
         private func proceedWithStarGift() {
+            // MARK: Regram — local mode completes without payment forms, top-ups or send RPCs.
+            if let component = self.component, case let .starGift(gift, _) = component.subject,
+               rgLocalGiftsEnabled(context: component.context) {
+                guard !self.inProgress, let controller = self.environment?.controller() else { return }
+                self.inProgress = true
+                self.state?.updated()
+                rgPresentLocalGiftPurchase(context: component.context, gift: gift, controller: controller, completion: { [weak self, weak controller] success in
+                    self?.inProgress = false
+                    self?.state?.updated()
+                    if success { controller?.dismiss() }
+                })
+                return
+            }
             guard !self.inProgress, let component = self.component, let environment = self.environment, let starsContext = component.context.starsContext, let starsState = starsContext.currentState else {
                 return
             }
@@ -925,6 +940,10 @@ private final class GiftSetupScreenComponent: Component {
             let themeUpdated = self.environment?.theme !== environment.theme
             
             let theme = environment.theme.withModalBlocksBackground()
+            // MARK: Regram — local purchases always use the base gift price.
+            if case .starGift = component.subject, rgLocalGiftsEnabled(context: component.context) {
+                self.includeUpgrade = false
+            }
             
             let resetScrolling = self.scrollView.bounds.width != availableSize.width
             
@@ -975,7 +994,7 @@ private final class GiftSetupScreenComponent: Component {
                 }
                                 
                 var releasedBy: EnginePeer.Id?
-                if case let .starGift(gift, true) = component.subject, gift.upgradeStars != nil {
+                if case let .starGift(gift, true) = component.subject, gift.upgradeStars != nil, !rgLocalGiftsEnabled(context: component.context) {
                     self.includeUpgrade = true
                 }
                 if case let .starGift(gift, _) = component.subject {
@@ -1659,7 +1678,7 @@ private final class GiftSetupScreenComponent: Component {
                     contentHeight += sectionSpacing
                 }
             case let .starGift(gift, forceUnique):
-                if let upgradeStars = gift.upgradeStars, component.peerId != component.context.account.peerId {
+                if let upgradeStars = gift.upgradeStars, component.peerId != component.context.account.peerId, !rgLocalGiftsEnabled(context: component.context) {
                     let upgradeFooterRawString: String
                     if isChannelGift {
                         upgradeFooterRawString = environment.strings.Gift_SendChannel_Upgrade_Info(peerName).string
@@ -1941,15 +1960,16 @@ private final class GiftSetupScreenComponent: Component {
                     finalPrice += upgradePrice
                 }
                 let amountString = presentationStringsFormattedNumber(Int32(finalPrice), presentationData.dateTimeFormat.groupingSeparator)
-                let buttonTitle = isSelfGift ? environment.strings.Gift_Send_Buy : environment.strings.Gift_Send_Send
+                // MARK: Regram — make the local action explicit while keeping Telegram's button design.
+                let buttonTitle = rgLocalGiftsEnabled(context: component.context) ? "LocalGifts.Buy".i18n(presentationData.strings.rgLanguageCode) : (isSelfGift ? environment.strings.Gift_Send_Buy : environment.strings.Gift_Send_Send)
                 buttonString = "\(buttonTitle)  # \(amountString)"
-                if let availability = starGift.availability, availability.remains == 0 {
+                if let availability = starGift.availability, availability.remains == 0, !rgLocalGiftsEnabled(context: component.context) {
                     buttonIsEnabled = false
                 }
             }
             
             var buttonTitleItems: [AnyComponentWithIdentity<Empty>] = []
-            if let _ = self.giftAuction {
+            if let _ = self.giftAuction, !rgLocalGiftsEnabled(context: component.context) {
                 var isUpcoming = false
                 if let giftAuctionState = self.giftAuctionState {
                     switch giftAuctionState.auctionState {

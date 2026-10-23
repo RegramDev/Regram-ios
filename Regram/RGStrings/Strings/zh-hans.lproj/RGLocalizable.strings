@@ -1252,3 +1252,28 @@
 "AppBadge.Name.zhiqiu" = "知秋";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隐藏因系统通知或通讯录权限关闭而显示的感叹号。未读数量及其他账号提醒保留。";
+
+// MARK: Regram — local Stars and gift simulation.
+"LocalGifts.Title" = "本地星币与礼物";
+"LocalGifts.Enabled" = "启用本地礼物购买";
+"LocalGifts.Notice" = "购买使用独立的本地星币余额，礼物仅在本机自己的个人资料页展示。关闭后隐藏本地礼物，保留记录。";
+"LocalGifts.Balance" = "本地星币数量";
+"LocalGifts.BalanceHint" = "输入 0 至 9000000000000000 的整数后保存。";
+"LocalGifts.SaveBalance" = "保存数量";
+"LocalGifts.CurrentBalance" = "可用本地星币";
+"LocalGifts.Catalog" = "购买本地礼物";
+"LocalGifts.CatalogHint" = "点击礼物即可在本地购买。列表使用已缓存的 Telegram 礼物和应用内置礼物。";
+"LocalGifts.Owned" = "我的本地礼物";
+"LocalGifts.OwnedHint" = "本地购买不会发送付款或赠送请求，无法在 Telegram 转赠、出售、升级或兑换。";
+"LocalGifts.Empty" = "还没有本地礼物";
+"LocalGifts.Gift" = "礼物盒";
+"LocalGifts.Buy" = "本地购买";
+"LocalGifts.Success" = "购买成功";
+"LocalGifts.SuccessHint" = "扣除本地星币，并将礼物加入本机自己的个人资料页。";
+"LocalGifts.Remove" = "移除本地礼物";
+"LocalGifts.RemoveHint" = "移除这份本地礼物？本地星币不会退回。";
+"LocalGifts.Disabled" = "请先在 Regram 设置中启用本地礼物购买。";
+"LocalGifts.InvalidAmount" = "请输入范围内有效的非负整数。";
+"LocalGifts.Insufficient" = "本地星币不足。请前往 Regram Pro → 管理与工具 → 本地星币与礼物修改数量。";
+"LocalGifts.Limit" = "本地礼物已达到存储上限（最多 500 份），请移除部分礼物后再试。";
+"LocalGifts.StorageError" = "无法保存本地礼物记录，本次购买未完成。";

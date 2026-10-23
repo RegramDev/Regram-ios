@@ -256,6 +256,10 @@ Apple 翻译需要 iOS 18 或更新版本。网页表单、可编辑内容、代
 
 实现参考：[策略模型](../Regram/RGSimpleSettings/Sources/RGNetworkPolicy.swift)、[DC 测试](../Regram/RGProUI/Sources/RGDatacenterDiagnostics.swift)、[DNS 测试页](../Regram/RGSettingsUI/Sources/RGDNSDiagnosticsController.swift)。
 
+## 本地星币与礼物
+
+Regram Pro → 管理与工具 → 本地星币与礼物，默认关闭。可修改独立的本地星币余额，在本地商店购买普通礼物并显示在自己的资料页；购买成功、扣款、图片快照与记录均在本机完成。关闭后隐藏并保留记录，按账号隔离，不改变真实余额和礼物。范围、限制与验证见[功能说明](local-gifts-and-link-sharing.md)。
+
 ## 登录、备份、应用管理与更新
 
 - 手机号登录页右上角提供彩色二维码，支持令牌刷新、跨 DC、两步验证、超时与重试；需要另一台已登录设备扫描，令牌请求仍依赖 Telegram 网络连通。

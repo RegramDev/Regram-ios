@@ -8,7 +8,7 @@ public struct RGSettingsDestination: Hashable {
         "pro.home", "pro.messages", "pro.input", "pro.privacy", "pro.translation", "pro.media", "pro.appearance", "pro.notifications", "pro.network", "pro.tools",
         "settings.appearance", "settings.folders", "settings.chatList", "settings.profiles", "settings.stories", "settings.translation", "settings.messageActions", "settings.media", "settings.photos", "settings.stickers", "settings.recording", "settings.app",
         "settings.input", "settings.transfer", "settings.privacy",
-        "inlineBots", "groupProfile", "startupFolder", "textStyleMenu", "summary", "networkPolicy", "bottomBar", "llm", "stt", "updates", "linkPreview", "antiFeatures", "revokedMarker", "ghostMode", "fonts", "backup", "diagnostics", "datacenters", "bookmarks", "chatPreferences", "messageFilter", "hiddenUsers", "antiRevokeChats", "revokedMessages", "appIcons", "appBadges", "contextMenu"
+        "inlineBots", "groupProfile", "startupFolder", "textStyleMenu", "summary", "networkPolicy", "bottomBar", "llm", "stt", "localGifts", "updates", "linkPreview", "antiFeatures", "revokedMarker", "ghostMode", "fonts", "backup", "diagnostics", "datacenters", "bookmarks", "chatPreferences", "messageFilter", "hiddenUsers", "antiRevokeChats", "revokedMessages", "appIcons", "appBadges", "contextMenu"
     ]
     public init?(page: String, item: String? = nil) {
         guard Self.pages.contains(page), item.map(Self.validItem) ?? true else { return nil }

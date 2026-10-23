@@ -10,6 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGLocalGifts", # MARK: Regram
+        "//Regram/RGStrings", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/CheckNode",
         "//submodules/Display",

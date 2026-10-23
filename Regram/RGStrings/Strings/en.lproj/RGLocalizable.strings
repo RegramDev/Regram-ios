@@ -1259,3 +1259,28 @@ Matching is case-insensitive.";
 "AppBadge.Name.zhiqiu" = "Zhiqiu";
 
 "features.HideTabBarPermissionWarnings.Notice" = "Hide exclamation badges caused by disabled notification or contacts access. Unread counts and other account reminders remain visible.";
+
+// MARK: Regram — local Stars and gift simulation.
+"LocalGifts.Title" = "Local Stars & Gifts";
+"LocalGifts.Enabled" = "Enable local gift purchases";
+"LocalGifts.Notice" = "Purchases use a separate local Stars balance. Gifts appear only on your own device and account profile. Turning this off hides local gifts and keeps your records.";
+"LocalGifts.Balance" = "Local Stars balance";
+"LocalGifts.BalanceHint" = "Enter a whole number from 0 to 9000000000000000, then save.";
+"LocalGifts.SaveBalance" = "Save balance";
+"LocalGifts.CurrentBalance" = "Available local Stars";
+"LocalGifts.Catalog" = "Buy a local gift";
+"LocalGifts.CatalogHint" = "Tap a gift to buy it locally. This catalog uses cached Telegram gifts and a bundled gift.";
+"LocalGifts.Owned" = "My local gifts";
+"LocalGifts.OwnedHint" = "Local purchases never send a payment or gift request. They cannot be transferred, sold, upgraded or exchanged with Telegram.";
+"LocalGifts.Empty" = "No local gifts yet";
+"LocalGifts.Gift" = "Gift Box";
+"LocalGifts.Buy" = "Buy locally";
+"LocalGifts.Success" = "Purchase successful";
+"LocalGifts.SuccessHint" = "Local Stars are deducted and this gift is added to your own profile on this device.";
+"LocalGifts.Remove" = "Remove local gift";
+"LocalGifts.RemoveHint" = "Remove this local gift? Local Stars will not be refunded.";
+"LocalGifts.Disabled" = "Enable local gift purchases in Regram settings first.";
+"LocalGifts.InvalidAmount" = "Enter a valid nonnegative whole number within the allowed range.";
+"LocalGifts.Insufficient" = "Not enough local Stars. Edit your local balance in Regram → Management & Tools → Local Stars & Gifts.";
+"LocalGifts.Limit" = "Local gifts have reached the storage limit (up to 500 gifts). Remove some gifts and try again.";
+"LocalGifts.StorageError" = "The local gift record could not be saved. No purchase was completed.";

@@ -1250,3 +1250,28 @@
 "AppBadge.Name.zhiqiu" = "知秋";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隱藏因系統通知或通訊錄權限關閉而顯示的驚嘆號。未讀數量及其他帳號提醒保留。";
+
+// MARK: Regram — local Stars and gift simulation.
+"LocalGifts.Title" = "本機星幣與禮物";
+"LocalGifts.Enabled" = "啟用本機禮物購買";
+"LocalGifts.Notice" = "購買使用獨立的本機星幣餘額，禮物僅在本機自己的個人資料頁展示。關閉後隱藏本機禮物，保留紀錄。";
+"LocalGifts.Balance" = "本機星幣數量";
+"LocalGifts.BalanceHint" = "輸入 0 至 9000000000000000 的整數後儲存。";
+"LocalGifts.SaveBalance" = "儲存數量";
+"LocalGifts.CurrentBalance" = "可用本機星幣";
+"LocalGifts.Catalog" = "購買本機禮物";
+"LocalGifts.CatalogHint" = "點選禮物即可在本機購買。列表使用已快取的 Telegram 禮物和應用程式內建禮物。";
+"LocalGifts.Owned" = "我的本機禮物";
+"LocalGifts.OwnedHint" = "本機購買不會傳送付款或贈送請求，無法在 Telegram 轉贈、出售、升級或兌換。";
+"LocalGifts.Empty" = "還沒有本機禮物";
+"LocalGifts.Gift" = "禮物盒";
+"LocalGifts.Buy" = "本機購買";
+"LocalGifts.Success" = "購買成功";
+"LocalGifts.SuccessHint" = "扣除本機星幣，並將禮物加入本機自己的個人資料頁。";
+"LocalGifts.Remove" = "移除本機禮物";
+"LocalGifts.RemoveHint" = "移除這份本機禮物？本機星幣不會退回。";
+"LocalGifts.Disabled" = "請先在 Regram 設定中啟用本機禮物購買。";
+"LocalGifts.InvalidAmount" = "請輸入範圍內有效的非負整數。";
+"LocalGifts.Insufficient" = "本機星幣不足。請前往 Regram Pro → 管理與工具 → 本機星幣與禮物修改數量。";
+"LocalGifts.Limit" = "本機禮物已達到儲存上限（最多 500 份），請移除部分禮物後再試。";
+"LocalGifts.StorageError" = "無法儲存本機禮物紀錄，本次購買未完成。";
