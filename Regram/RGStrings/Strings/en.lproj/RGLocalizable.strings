@@ -1307,3 +1307,5 @@ Matching is case-insensitive.";
 "LocalGifts.TonHint" = "For local collectible purchases only. Up to 9 decimal places, maximum 9000000 TON. No wallet or payment transfer is made.";
 
 "LocalGifts.InsufficientTon" = "Not enough local TON. Edit the balance in the local customization section.";
+
+"Showroom.Description" = "Local Premium, gift balances and phone display";

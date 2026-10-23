@@ -1300,3 +1300,5 @@
 "LocalGifts.TonHint" = "仅用于本地收藏礼物购买。最多 9 位小数，上限 9000000 TON，不会进行钱包转账或付款。";
 
 "LocalGifts.InsufficientTon" = "本地 TON 不足，请在装逼怎么了 装逼犯法吗专区修改数量。";
+
+"Showroom.Description" = "本地会员、星币礼物与手机号显示";

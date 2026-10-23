@@ -1298,3 +1298,5 @@
 "LocalGifts.TonHint" = "僅用於本機收藏禮物購買。最多 9 位小數，上限 9000000 TON，不會進行錢包轉帳或付款。";
 
 "LocalGifts.InsufficientTon" = "本機 TON 不足，請在裝逼怎麼了 裝逼犯法嗎專區修改數量。";
+
+"Showroom.Description" = "本機會員、星幣禮物與手機號顯示";

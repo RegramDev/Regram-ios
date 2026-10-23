@@ -61,14 +61,6 @@ import RGSwiftUI
 
     var body: some View {
         RGSettingsForm {
-            RGSettingsSection {
-                VStack(spacing: 12) {
-                    if let image = UIImage(named: "RegramLocalShowroom") {
-                        Image(uiImage: image).resizable().scaledToFit().accessibilityHidden(true)
-                    }
-                    Text("Showroom.Title".i18n(lang)).font(.headline).multilineTextAlignment(.center)
-                }.padding(.vertical, 8)
-            }
             RGSettingsSection(footer: Text("LocalPremium.Notice".i18n(lang) + "\n" + "Showroom.PremiumRefresh".i18n(lang)).foregroundColor(secondary)) {
                 Toggle("LocalPremium.Title".i18n(lang), isOn: Binding(get: { model.localPremium }, set: {
                     model.localPremium = $0; RGSimpleSettings.shared.localPremium = $0

@@ -131,12 +131,12 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
                 (.appearance, [(.privacyPage, .privacy), (.mediaPage, .media), (.appearancePage, .appearance), (.notificationsPage, .notifications)]),
                 (.network, [(.networkPage, .network), (.toolsPage, .tools)])
             ]
-            entries.append(.disclosure(id: id.count, section: .footer, link: .localGifts, text: "Showroom.Title".i18n(lang)))
             for (section, destinations) in groups {
                 for (link, destination) in destinations {
                     entries.append(.disclosure(id: id.count, section: section, link: link, text: destination.titleKey.i18n(lang)))
                 }
             }
+            entries.append(.disclosure(id: id.count, section: .footer, link: .localGifts, text: "Showroom.Title".i18n(lang)))
         } else {
             let matches = Set(RGSettingsCatalog.results(query: query, language: lang).map(\.id))
             for (index, entry) in RGSettingsCatalog.entries.enumerated() where matches.contains(entry.id) {
@@ -482,6 +482,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
         if let category { return (category.titleKey + ".Description").i18n(lang) }
         switch link {
+        case .localGifts: return "Showroom.Description".i18n(lang)
         case .fonts, .appBages, .transcriptionSettings, .summarySettings, .linkPreviewSettings, .messageFilter, .networkPolicy, .diagnostics:
             return ("Settings.Editor." + link.rawValue + ".Description").i18n(lang)
         default: return nil
