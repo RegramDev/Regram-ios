@@ -1541,7 +1541,6 @@ private final class GiftViewSheetContent: CombinedComponent {
                     shareStory(gift)
                 }
             }
-            guard case let .unique(gift) = arguments.gift else { return }
             let link = "https://t.me/nft/\(gift.slug)"
             let shareController = self.context.sharedContext.makeShareScreen(
                 context: self.context,
@@ -2195,6 +2194,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                 return
             }
             
+            guard case let .unique(gift) = arguments.gift else { return }
             let link = "https://t.me/nft/\(gift.slug)"
             
             let _ = (self.context.engine.data.get(
