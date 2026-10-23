@@ -980,7 +980,7 @@ public final class PeerInfoGiftsPaneNode: ASDisplayNode, PeerInfoPaneNode, UIScr
                     })
                 })))
             }
-            items.append(.action(ContextMenuActionItem(text: "LocalGifts.Details".i18n(strings.primaryComponent.languageCode), icon: nil, action: { [weak self] c, _ in
+            items.append(.action(ContextMenuActionItem(text: "LocalGifts.Details".i18n(strings.primaryComponent.languageCode), icon: { _ in nil }, action: { [weak self] c, _ in
                 c?.dismiss(completion: { [weak self] in
                     guard let self else { return }
                     self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, gift), profileGiftsContext: self.profileGifts), in: .window(.root))
