@@ -5785,6 +5785,15 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         let theme = peerInfoNavigationBarTheme(glass: glass, base: base.theme)
         navigationBar.updatePresentationData(NavigationBarPresentationData(theme: theme, strings: base.strings), transition: transition)
         self.navigationButtonColor = theme.buttonColor
+        // MARK: Regram — custom node items retain explicit image colors; refresh them with the glass.
+        if let leading = self.rgSettingsLeadingButtons {
+            let presentationTheme = self.presentationData.theme
+            leading.node.update(backImage: PresentationResourcesRootController.navigationBackIcon(presentationTheme), qrImage: PresentationResourcesRootController.navigationQrCodeIcon(presentationTheme), color: theme.buttonColor, backTitle: self.presentationData.strings.Common_Back, qrTitle: self.presentationData.strings.PeerInfo_QRCode_Title)
+        }
+        if self.navigationItems.appliedSlotKey != nil && self.navigationIconButtonColor != theme.buttonColor {
+            self.navigationIconButtonColor = theme.buttonColor
+            self.navigationIconButton.updateContentsColor(theme.buttonColor, transition: transition)
+        }
     }
 
     /// A bar button's view, for a tooltip or a transition's source.

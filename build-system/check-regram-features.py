@@ -75,6 +75,7 @@ def main():
     run('root-settings-gesture', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-settings-gesture-checks.py'])
     run('root-tab-transition', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-tab-transition-checks.py'])
     run('navigation-capsules', ['python3', 'Regram/RGSimpleSettings/Tests/run-navigation-capsule-checks.py'])
+    run('profile-navigation-colors', ['python3', 'Regram/RGSettingsUI/Tests/run-profile-navigation-color-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
     run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('llm-endpoint-urls', ['python3', 'Regram/RGGTranslate/Tests/run-url-checks.py'])
