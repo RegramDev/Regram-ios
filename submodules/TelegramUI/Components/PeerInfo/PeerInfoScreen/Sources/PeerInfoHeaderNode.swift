@@ -1308,7 +1308,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             
             if self.isSettings, case let .user(user) = peer {
                 // MARK: Regram
-                var formattedPhone = formatPhoneNumber(context: self.context, number: rgLocalDisplayedPhone(context: self.context, peerId: user.id, phone: user.phone) ?? "")
+                var formattedPhone = rgFormattedDisplayedPhone(context: self.context, peerId: user.id, phone: user.phone) ?? ""
                 if !formattedPhone.isEmpty && self.hidePhoneInSettings {
                     formattedPhone = ""
                 }

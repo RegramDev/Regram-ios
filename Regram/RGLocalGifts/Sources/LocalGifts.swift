@@ -5,6 +5,7 @@ import AccountContext
 import SwiftSignalKit
 import RGSimpleSettings
 import RGStrings
+import PhoneNumberFormat
 
 public func rgLocalGiftsAccount(_ context: AccountContext) -> String {
     return (context.account.testingEnvironment ? "test:" : "live:") + String(context.account.peerId.toInt64())
@@ -355,8 +356,12 @@ public func rgDeleteLocalGift(context: AccountContext, id: UUID) {
     _ = rgRemoveLocalGift(context: context, purchase: purchase)
 }
 
-public func rgLocalDisplayedPhone(context: AccountContext, peerId: EnginePeer.Id, phone: String?) -> String? {
-    guard peerId == context.account.peerId else { return phone }
-    let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
-    return state.phoneEnabled ? state.phoneNumber : phone
+public func rgFormattedDisplayedPhone(context: AccountContext, peerId: EnginePeer.Id, phone: String?) -> String? {
+    if peerId == context.account.peerId {
+        let state = RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
+        if state.phoneEnabled {
+            return rgFormatLocalPhoneNumber(state.phoneNumber) { formatPhoneNumber(context: context, number: $0) }
+        }
+    }
+    return phone.map { formatPhoneNumber(context: context, number: $0) }
 }

@@ -15,6 +15,7 @@ swift_library(
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/Display",
         "//submodules/PresentationDataUtils",
+        "//submodules/PhoneNumberFormat",
     ],
     visibility = ["//visibility:public"],
 )
