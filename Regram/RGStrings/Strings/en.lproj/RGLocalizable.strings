@@ -1290,22 +1290,34 @@ Matching is case-insensitive.";
 
 "LocalPhone.Title" = "Local phone display";
 
-"LocalPhone.Number" = "Phone number with country code";
-
+"LocalPhone.Number" = "Phone number";
 "LocalPhone.Enabled" = "Use local phone display";
 
 "LocalPhone.Save" = "Save and enable";
 
 "LocalPhone.Hint" = "Changes the number shown on your own profile and Settings on this device. Your login number and Telegram account stay unchanged. Each account has its own setting.";
 
-"LocalPhone.Invalid" = "Enter 5–20 digits including the country code.";
-
+"LocalPhone.Invalid" = "Enter a 1–3 digit country code and a phone number, with 5–20 digits in total.";
 "LocalGifts.TonBalance" = "Local TON balance";
 
 "LocalGifts.SaveTonBalance" = "Save TON balance";
 
-"LocalGifts.TonHint" = "For local collectible purchases only. Up to 9 decimal places, maximum 9000000 TON. No wallet or payment transfer is made.";
-
+"LocalGifts.TonHint" = "Used for local collectible purchases and the local profile card. Up to 9 decimal places, maximum 9000000 TON. No wallet or payment transfer is made.";
 "LocalGifts.InsufficientTon" = "Not enough local TON. Edit the balance in the local customization section.";
 
-"Showroom.Description" = "Local Premium, gift balances and phone display";
+"Showroom.Description" = "Local Premium, gifts, rating, TON card and phone display";
+
+// Local profile customization
+"LocalGifts.PinnedLimit" = "The pinned gift limit has been reached. Unpin another gift first.";
+"LocalGifts.Details" = "View gift";
+"LocalRating.Title" = "Local profile rating";
+"LocalRating.Level" = "Rating (−999 to 999)";
+"LocalRating.Enabled" = "Use local rating";
+"LocalRating.Save" = "Save and enable";
+"LocalRating.Hint" = "Changes the rating on your own profile on this device. Negative values use Telegram’s low-credit style. Your real rating stays unchanged.";
+"LocalRating.Invalid" = "Enter a whole number from −999 to 999.";
+"LocalPhone.CountryCode" = "Code";
+"LocalWallet.Title" = "Local TON profile card";
+"LocalWallet.Enabled" = "Show local TON profile card";
+"LocalWallet.Hint" = "Tap the balance on your profile to open Telegram’s card. Up to six pinned local collectible gifts decorate it. Turning this off restores the real profile card.";
+"LocalWallet.Notice" = "This balance and card are displayed only on this device. They have no receiving address and are invisible to other users.";

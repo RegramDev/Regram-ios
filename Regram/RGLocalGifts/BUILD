@@ -16,6 +16,7 @@ swift_library(
         "//submodules/Display",
         "//submodules/PresentationDataUtils",
         "//submodules/PhoneNumberFormat",
+        "//submodules/WalletContext",
     ],
     visibility = ["//visibility:public"],
 )

@@ -1089,7 +1089,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
             peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
             chatPeer: peer.flatMap(EnginePeer.init),
             savedMessagesPeer: nil,
-            cachedData: peerView.cachedData,
+            cachedData: rgLocalProfileCachedData(context: context, peerId: peerId, cachedData: peerView.cachedData, localState: localGifts), // MARK: Regram
             firstWelcomeMessageText: nil,
             status: nil,
             peerNotificationSettings: nil,
@@ -1771,7 +1771,7 @@ func peerInfoScreenData(
                         peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
                         chatPeer: peerView.peers[peerId].flatMap(EnginePeer.init),
                         savedMessagesPeer: savedMessagesPeer,
-                        cachedData: peerView.cachedData,
+                        cachedData: rgLocalProfileCachedData(context: context, peerId: peerId, cachedData: peerView.cachedData, localState: localGifts), // MARK: Regram
                         firstWelcomeMessageText: nil,
                         status: status,
                         peerNotificationSettings: peerView.notificationSettings as? TelegramPeerNotificationSettings,

@@ -559,7 +559,7 @@ final class GiftsListView: UIView {
                                 }
                                 // MARK: Regram — local gifts use the native viewer with local-only actions.
                                 if self.peerId == self.context.account.peerId, rgLocalGiftPurchaseId(gift: product) != nil {
-                                    self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, product)), in: .window(.root))
+                                    self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, product), profileGiftsContext: self.profileGifts), in: .window(.root))
                                     return
                                 }
                                 if self.canSelect {

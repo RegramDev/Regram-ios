@@ -36,18 +36,20 @@ public struct RGLocalGiftPurchase: Codable, Equatable {
     public let gift: Data
     public let currency: RGLocalGiftCurrency
     public var savedToProfile: Bool
+    public var pinnedToTop: Bool
 
-    private enum CodingKeys: String, CodingKey { case id, date, title, price, gift, currency, savedToProfile }
-    public init(id: UUID, date: Int32, title: String, price: Int64, gift: Data, currency: RGLocalGiftCurrency = .stars, savedToProfile: Bool = true) {
+    private enum CodingKeys: String, CodingKey { case id, date, title, price, gift, currency, savedToProfile, pinnedToTop }
+    public init(id: UUID, date: Int32, title: String, price: Int64, gift: Data, currency: RGLocalGiftCurrency = .stars, savedToProfile: Bool = true, pinnedToTop: Bool = false) {
         self.id = id; self.date = date; self.title = title; self.price = price; self.gift = gift
-        self.currency = currency; self.savedToProfile = savedToProfile
+        self.currency = currency; self.savedToProfile = savedToProfile; self.pinnedToTop = pinnedToTop
     }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         self.init(id: try value.decode(UUID.self, forKey: .id), date: try value.decode(Int32.self, forKey: .date),
             title: try value.decode(String.self, forKey: .title), price: try value.decode(Int64.self, forKey: .price), gift: try value.decode(Data.self, forKey: .gift),
             currency: try value.decodeIfPresent(RGLocalGiftCurrency.self, forKey: .currency) ?? .stars,
-            savedToProfile: try value.decodeIfPresent(Bool.self, forKey: .savedToProfile) ?? true)
+            savedToProfile: try value.decodeIfPresent(Bool.self, forKey: .savedToProfile) ?? true,
+            pinnedToTop: try value.decodeIfPresent(Bool.self, forKey: .pinnedToTop) ?? false)
     }
 }
 
@@ -61,8 +63,11 @@ public struct RGLocalGiftsState: Codable, Equatable {
     public var appearance: Data?
     public var phoneEnabled = false
     public var phoneNumber = ""
+    public var ratingEnabled = false
+    public var ratingLevel: Int32 = 0
+    public var walletCardEnabled = false
     public init() {}
-    private enum CodingKeys: String, CodingKey { case enabled, balance, tonBalance, purchases, profileGiftId, nameGiftId, appearance, phoneEnabled, phoneNumber }
+    private enum CodingKeys: String, CodingKey { case enabled, balance, tonBalance, purchases, profileGiftId, nameGiftId, appearance, phoneEnabled, phoneNumber, ratingEnabled, ratingLevel, walletCardEnabled }
     public init(from decoder: Decoder) throws {
         let value = try decoder.container(keyedBy: CodingKeys.self)
         enabled = try value.decode(Bool.self, forKey: .enabled)
@@ -74,11 +79,14 @@ public struct RGLocalGiftsState: Codable, Equatable {
         appearance = try value.decodeIfPresent(Data.self, forKey: .appearance)
         phoneEnabled = try value.decodeIfPresent(Bool.self, forKey: .phoneEnabled) ?? false
         phoneNumber = try value.decodeIfPresent(String.self, forKey: .phoneNumber) ?? ""
+        ratingEnabled = try value.decodeIfPresent(Bool.self, forKey: .ratingEnabled) ?? false
+        ratingLevel = try value.decodeIfPresent(Int32.self, forKey: .ratingLevel) ?? 0
+        walletCardEnabled = try value.decodeIfPresent(Bool.self, forKey: .walletCardEnabled) ?? false
     }
 }
 
 public enum RGLocalGiftsError: Error {
-    case disabled, invalidAmount, insufficientStars, insufficientTon, limitReached, storage
+    case disabled, invalidAmount, insufficientStars, insufficientTon, limitReached, pinnedLimitReached, storage
 }
 
 /// One lock covers reading, charging and persisting a purchase. No optimistic server state.
@@ -87,6 +95,8 @@ public final class RGLocalGiftsStore {
     public static let didChange = Notification.Name("Regram.LocalGifts.DidChange")
     public static let maximumBalance: Int64 = 9_000_000_000_000_000
     public static let maximumGifts = 500
+    public static let maximumPinnedGifts = 12
+    public static let maximumRatingLevel: Int32 = 999
     private let defaults: UserDefaults
     private let notifications: NotificationCenter
     private let lock = NSLock()
@@ -111,6 +121,9 @@ public final class RGLocalGiftsStore {
               Set(state.purchases.map(\.id)).count == state.purchases.count,
               (state.appearance?.count ?? 0) <= 64 * 1024,
               (!state.phoneEnabled || Self.normalizedPhone(state.phoneNumber) == state.phoneNumber),
+              (-Self.maximumRatingLevel...Self.maximumRatingLevel).contains(state.ratingLevel),
+              state.purchases.filter(\.pinnedToTop).count <= Self.maximumPinnedGifts,
+              state.purchases.allSatisfy({ !$0.pinnedToTop || $0.savedToProfile }),
               state.purchases.allSatisfy({ $0.price > 0 && $0.price <= Self.maximumBalance && !$0.gift.isEmpty && $0.gift.count <= 1024 * 1024 }) else {
             throw RGLocalGiftsError.storage
         }
@@ -198,6 +211,14 @@ public final class RGLocalGiftsStore {
         return digits
     }
 
+    public static func normalizedPhone(countryCode: String, number: String) -> String? {
+        let code = countryCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digits = code.hasPrefix("+") ? String(code.dropFirst()) : code
+        guard (1...3).contains(digits.count), digits.first != "0", digits.utf8.allSatisfy({ (48...57).contains($0) }),
+              !number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !number.contains("+") else { return nil }
+        return normalizedPhone(digits + number)
+    }
+
     public func setPhone(account: String, enabled: Bool, number: String) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
         update(account: account) { state in
             guard let phone = Self.normalizedPhone(number) ?? (enabled ? nil : "") else { throw RGLocalGiftsError.invalidAmount }
@@ -209,6 +230,30 @@ public final class RGLocalGiftsStore {
         update(account: account) { state in
             guard let index = state.purchases.firstIndex(where: { $0.id == id }) else { throw RGLocalGiftsError.storage }
             state.purchases[index].savedToProfile = saved
+            if !saved { state.purchases[index].pinnedToTop = false }
         }
+    }
+
+    public func setPinned(account: String, id: UUID, pinned: Bool, maximumCount: Int = RGLocalGiftsStore.maximumPinnedGifts) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+        update(account: account) { state in
+            guard state.enabled else { throw RGLocalGiftsError.disabled }
+            guard let index = state.purchases.firstIndex(where: { $0.id == id }) else { throw RGLocalGiftsError.storage }
+            if pinned && !state.purchases[index].pinnedToTop {
+                guard state.purchases.filter(\.pinnedToTop).count < min(Self.maximumPinnedGifts, max(0, maximumCount)) else { throw RGLocalGiftsError.pinnedLimitReached }
+            }
+            state.purchases[index].pinnedToTop = pinned
+            if pinned { state.purchases[index].savedToProfile = true }
+        }
+    }
+
+    public func setRating(account: String, enabled: Bool, level: Int32) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+        update(account: account) { state in
+            guard (-Self.maximumRatingLevel...Self.maximumRatingLevel).contains(level) else { throw RGLocalGiftsError.invalidAmount }
+            state.ratingEnabled = enabled; state.ratingLevel = level
+        }
+    }
+
+    public func setWalletCardEnabled(account: String, enabled: Bool) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+        update(account: account) { state in state.walletCardEnabled = enabled }
     }
 }

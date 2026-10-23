@@ -241,6 +241,7 @@ final class PeerInfoHeaderNode: ASDisplayNode {
     var displayStatusPremiumIntro: (() -> Void)?
     var displayUniqueGiftInfo: ((UIView, String) -> Void)?
     var openUniqueGift: ((UIView, String) -> Void)?
+    var openLocalProfileGift: ((ProfileGiftsContext.State.StarGift) -> Void)? // MARK: Regram
     
     var navigateToForum: (() -> Void)?
     
@@ -669,7 +670,8 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         
         let currentSavedMusic = self.profileMusic(peer: peer, screenData: screenData)
         let currentWalletBalance: Int64?
-        if !self.isSettings, let balance = (screenData?.cachedData as? CachedUserData)?.walletCard?.balance, balance >= 100_000_000 {
+        // MARK: Regram — explicitly enabled local cards also support a zero balance.
+        if !self.isSettings, let peer, let balance = (screenData?.cachedData as? CachedUserData)?.walletCard?.balance, balance >= 100_000_000 || rgLocalWalletEnabled(context: self.context, peerId: peer.id) {
             currentWalletBalance = balance
         } else {
             currentWalletBalance = nil
@@ -889,6 +891,14 @@ final class PeerInfoHeaderNode: ASDisplayNode {
             self.avatarClippingNode.clipsToBounds = true
         }
         
+        // MARK: Regram — resolve the current rating before selecting the native negative-rating colors.
+        if let cachedData = cachedData as? CachedUserData, let starRating = cachedData.starRating {
+            self.currentStarRating = starRating
+            self.currentPendingStarRating = cachedData.pendingStarRating
+        } else {
+            self.currentStarRating = nil
+            self.currentPendingStarRating = nil
+        }
         let accentRatingBackgroundColor: UIColor
         if let currentStarRating = self.currentStarRating, currentStarRating.level < 0 {
             accentRatingBackgroundColor = UIColor(rgb: 0xFF3B30)
@@ -1455,14 +1465,6 @@ final class PeerInfoHeaderNode: ASDisplayNode {
         ], mainState: TitleNodeStateRegular)
         
         var subtitleRatingSize: CGSize?
-
-        if let cachedData = cachedData as? CachedUserData, let starRating = cachedData.starRating {
-            self.currentStarRating = starRating
-            self.currentPendingStarRating = cachedData.pendingStarRating
-        } else {
-            self.currentStarRating = nil
-            self.currentPendingStarRating = nil
-        }
 
         #if DEBUG && false
         if "".isEmpty {
@@ -2537,7 +2539,12 @@ final class PeerInfoHeaderNode: ASDisplayNode {
                     sideInsets: sideInsets,
                     bottomHeight: !buttonKeys.isEmpty ? 81.0 : 30.0,
                     action: { [weak self] gift in
-                        guard let self, case let .unique(gift) = gift.gift else {
+                        guard let self else { return }
+                        if peer.id == self.context.account.peerId, rgLocalGiftPurchaseId(gift: gift) != nil { // MARK: Regram
+                            self.openLocalProfileGift?(gift)
+                            return
+                        }
+                        guard case let .unique(gift) = gift.gift else {
                             return
                         }
                         self.openUniqueGift?(self.view, gift.slug)

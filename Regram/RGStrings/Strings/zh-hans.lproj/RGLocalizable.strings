@@ -1283,22 +1283,34 @@
 
 "LocalPhone.Title" = "修改手机号显示";
 
-"LocalPhone.Number" = "含国家区号的手机号";
-
+"LocalPhone.Number" = "手机号码";
 "LocalPhone.Enabled" = "启用本地手机号显示";
 
 "LocalPhone.Save" = "保存并启用";
 
 "LocalPhone.Hint" = "仅修改本机自己个人资料页和设置中的号码显示，不改变登录手机号和 Telegram 账号。各账号独立保存。";
 
-"LocalPhone.Invalid" = "请输入含国家区号的 5 至 20 位数字。";
-
+"LocalPhone.Invalid" = "请填写 1–3 位区号和手机号码，合计 5–20 位数字。";
 "LocalGifts.TonBalance" = "本地 TON 数量";
 
 "LocalGifts.SaveTonBalance" = "保存 TON 数量";
 
-"LocalGifts.TonHint" = "仅用于本地收藏礼物购买。最多 9 位小数，上限 9000000 TON，不会进行钱包转账或付款。";
-
+"LocalGifts.TonHint" = "用于本地收藏礼物购买及本地资料卡。最多 9 位小数，最高 9000000 TON，不连接钱包，也不发起转账。";
 "LocalGifts.InsufficientTon" = "本地 TON 不足，请在显摆一下专区修改数量。";
 
-"Showroom.Description" = "本地会员、星币礼物与手机号显示";
+"Showroom.Description" = "本地会员、礼物、评级、TON 资料卡与号码显示";
+
+// Local profile customization
+"LocalGifts.PinnedLimit" = "置顶礼物已达上限，请先取消其他礼物的置顶。";
+"LocalGifts.Details" = "查看礼物";
+"LocalRating.Title" = "本地个人资料评级";
+"LocalRating.Level" = "评级（−999 至 999）";
+"LocalRating.Enabled" = "启用本地评级";
+"LocalRating.Save" = "保存并启用";
+"LocalRating.Hint" = "仅修改本机自己个人资料页的评级。负数使用 Telegram 的低信用度样式，不改变真实评级。";
+"LocalRating.Invalid" = "请输入 −999 至 999 之间的整数。";
+"LocalPhone.CountryCode" = "区号";
+"LocalWallet.Title" = "本地 TON 资料卡";
+"LocalWallet.Enabled" = "显示本地 TON 资料卡";
+"LocalWallet.Hint" = "点击自己资料页的余额即可打开 Telegram 资料卡，最多展示六个已置顶的本地收藏礼物。关闭后恢复真实资料卡。";
+"LocalWallet.Notice" = "余额与资料卡仅在本机展示，没有收款地址，其他用户不可见。";

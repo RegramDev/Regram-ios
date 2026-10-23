@@ -2604,6 +2604,11 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
         }
         
+        // MARK: Regram — local cover icons open the native viewer without resolving a public slug.
+        self.headerNode.openLocalProfileGift = { [weak self] gift in
+            guard let self, self.peerId == self.context.account.peerId else { return }
+            self.controller?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, gift), profileGiftsContext: self.data?.profileGiftsContext), in: .window(.root))
+        }
         self.headerNode.openUniqueGift = { [weak self] _, slug in
             guard let self, let profileGifts = self.data?.profileGiftsContext else {
                 return

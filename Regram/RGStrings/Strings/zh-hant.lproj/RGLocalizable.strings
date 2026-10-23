@@ -1281,22 +1281,34 @@
 
 "LocalPhone.Title" = "修改手機號顯示";
 
-"LocalPhone.Number" = "含國家區碼的手機號";
-
+"LocalPhone.Number" = "手機號碼";
 "LocalPhone.Enabled" = "啟用本機手機號顯示";
 
 "LocalPhone.Save" = "儲存並啟用";
 
 "LocalPhone.Hint" = "僅修改本機自己個人資料頁和設定中的號碼顯示，不改變登入手機號和 Telegram 帳號。各帳號獨立儲存。";
 
-"LocalPhone.Invalid" = "請輸入含國家區碼的 5 至 20 位數字。";
-
+"LocalPhone.Invalid" = "請填寫 1–3 位區號和手機號碼，合計 5–20 位數字。";
 "LocalGifts.TonBalance" = "本機 TON 數量";
 
 "LocalGifts.SaveTonBalance" = "儲存 TON 數量";
 
-"LocalGifts.TonHint" = "僅用於本機收藏禮物購買。最多 9 位小數，上限 9000000 TON，不會進行錢包轉帳或付款。";
-
+"LocalGifts.TonHint" = "用於本機收藏禮物購買及本機資料卡。最多 9 位小數，最高 9000000 TON，不連接錢包，也不發起轉帳。";
 "LocalGifts.InsufficientTon" = "本機 TON 不足，請在顯擺一下專區修改數量。";
 
-"Showroom.Description" = "本機會員、星幣禮物與手機號顯示";
+"Showroom.Description" = "本機會員、禮物、評級、TON 資料卡與號碼顯示";
+
+// Local profile customization
+"LocalGifts.PinnedLimit" = "置頂禮物已達上限，請先取消其他禮物的置頂。";
+"LocalGifts.Details" = "查看禮物";
+"LocalRating.Title" = "本機個人資料評級";
+"LocalRating.Level" = "評級（−999 至 999）";
+"LocalRating.Enabled" = "啟用本機評級";
+"LocalRating.Save" = "儲存並啟用";
+"LocalRating.Hint" = "僅修改本機自己個人資料頁的評級。負數使用 Telegram 的低信用度樣式，不改變真實評級。";
+"LocalRating.Invalid" = "請輸入 −999 至 999 之間的整數。";
+"LocalPhone.CountryCode" = "區號";
+"LocalWallet.Title" = "本機 TON 資料卡";
+"LocalWallet.Enabled" = "顯示本機 TON 資料卡";
+"LocalWallet.Hint" = "點選自己資料頁的餘額即可開啟 Telegram 資料卡，最多顯示六個已置頂的本機收藏禮物。關閉後恢復真實資料卡。";
+"LocalWallet.Notice" = "餘額與資料卡僅在本機顯示，沒有收款地址，其他使用者無法看見。";

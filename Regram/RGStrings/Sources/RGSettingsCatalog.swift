@@ -200,6 +200,8 @@ public enum RGSettingsCatalog {
         .init("localGifts", "balance", "LocalGifts.Balance"),
         .init("localGifts", "tonBalance", "LocalGifts.TonBalance"),
         .init("localGifts", "phone", "LocalPhone.Title", keywords: "local phone number 手机号 号码 本地 手機號"),
+        .init("localGifts", "rating", "LocalRating.Title", keywords: "local rating level credit negative reputation 本地评级 本機評級 本地 评级 評級 等级 信用度 低信用度 负数 負數"),
+        .init("localGifts", "walletCard", "LocalWallet.Title", keywords: "local wallet card TON Gram balance 本地 钱包 錢包 卡片 余额 餘額"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),

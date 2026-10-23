@@ -38,15 +38,17 @@ import Foundation
         assert(reopened.state(account: account).purchases.isEmpty && reopened.state(account: account).balance == 150)
         // Existing b34631 ledgers gain independent TON, visibility, appearance and phone defaults.
         var old = try JSONSerialization.jsonObject(with: JSONEncoder().encode(purchased)) as! [String: Any]
-        for key in ["tonBalance", "appearance", "profileGiftId", "nameGiftId", "phoneEnabled", "phoneNumber"] { old.removeValue(forKey: key) }
+        for key in ["tonBalance", "appearance", "profileGiftId", "nameGiftId", "phoneEnabled", "phoneNumber", "ratingEnabled", "ratingLevel", "walletCardEnabled"] { old.removeValue(forKey: key) }
         var oldPurchases = old["purchases"] as! [[String: Any]]
         oldPurchases[0].removeValue(forKey: "currency"); oldPurchases[0].removeValue(forKey: "savedToProfile")
+        oldPurchases[0].removeValue(forKey: "pinnedToTop")
         old["purchases"] = oldPurchases
         defaults.set(try JSONSerialization.data(withJSONObject: old), forKey: "regram.localGifts.v1.legacy")
         let legacy = store.state(account: "legacy")
         assert(legacy.balance == 150 && legacy.tonBalance == 1_000_000_000_000)
         assert(legacy.purchases[0].currency == .stars && legacy.purchases[0].savedToProfile)
         assert(!legacy.phoneEnabled && legacy.appearance == nil)
+        assert(!legacy.ratingEnabled && legacy.ratingLevel == 0 && !legacy.walletCardEnabled && !legacy.purchases[0].pinnedToTop)
         for (text, expected) in [("0", Int64(0)), ("1.000000001", 1_000_000_001), ("0,5", 500_000_000), ("9000000", RGLocalGiftsStore.maximumBalance)] {
             assert(RGLocalGiftCurrency.ton.amount(from: text) == expected)
             assert(RGLocalGiftCurrency.ton.amount(from: RGLocalGiftCurrency.ton.text(for: expected)) == expected)
@@ -69,6 +71,12 @@ import Foundation
         let deleted = try store.remove(account: account, id: tonId).get()
         assert(deleted.appearance == nil && deleted.profileGiftId == nil && deleted.nameGiftId == nil && deleted.tonBalance == 1)
         assert(RGLocalGiftsStore.normalizedPhone(" +1 (234) 567-8900 ") == "12345678900")
+        for (code, number, expected) in [("888", "1234 5678", "88812345678"), ("+1", "(234) 567-8900", "12345678900"), ("86", "13812345678", "8613812345678")] {
+            assert(RGLocalGiftsStore.normalizedPhone(countryCode: code, number: number) == expected)
+        }
+        for (code, number) in [("", "12345678"), ("0", "12345678"), ("8888", "12345678"), ("888", ""), ("888", "+12345678"), ("a", "12345678")] {
+            assert(RGLocalGiftsStore.normalizedPhone(countryCode: code, number: number) == nil)
+        }
         let phoneState = try store.setPhone(account: account, enabled: true, number: "+888 1234 5678").get()
         assert(phoneState.phoneNumber == "88812345678" && phoneState.phoneEnabled)
         assert(!store.state(account: "live:456").phoneEnabled)
@@ -87,6 +95,47 @@ import Foundation
         }
         let raced = store.state(account: account)
         assert(raced.balance == 0 && raced.purchases.count == 25 && Set(raced.purchases.map(\.id)).count == 25)
+        // Pins persist, make hidden gifts visible, respect real+local capacity, and survive disabling.
+        let first = raced.purchases[0].id, second = raced.purchases[1].id
+        _ = try store.setVisibility(account: account, id: first, saved: false).get()
+        let pinned = try store.setPinned(account: account, id: first, pinned: true, maximumCount: 1).get()
+        assert(pinned.purchases[0].pinnedToTop && pinned.purchases[0].savedToProfile)
+        assert(RGLocalGiftsStore(defaults: defaults).state(account: account) == pinned)
+        _ = try store.setPinned(account: account, id: first, pinned: true, maximumCount: 0).get()
+        failure(store.setPinned(account: account, id: second, pinned: true, maximumCount: 1), .pinnedLimitReached)
+        assert(store.state(account: account) == pinned)
+        _ = try store.setEnabled(account: account, enabled: false).get()
+        failure(store.setPinned(account: account, id: first, pinned: false), .disabled)
+        assert(store.state(account: account).purchases[0].pinnedToTop)
+        _ = try store.setEnabled(account: account, enabled: true).get()
+        let unpinned = try store.setVisibility(account: account, id: first, saved: false).get()
+        assert(!unpinned.purchases[0].pinnedToTop)
+        for purchase in raced.purchases.prefix(RGLocalGiftsStore.maximumPinnedGifts) {
+            _ = try store.setPinned(account: account, id: purchase.id, pinned: true, maximumCount: 100).get()
+        }
+        failure(store.setPinned(account: account, id: raced.purchases[12].id, pinned: true, maximumCount: 100), .pinnedLimitReached)
+        failure(store.setPinned(account: "live:456", id: first, pinned: true), .disabled)
+        let removedPin = try store.remove(account: account, id: first).get()
+        assert(!removedPin.purchases.contains { $0.id == first })
+        // Rating is independent of gift mode, signed, account-scoped and reversible.
+        _ = try store.setEnabled(account: account, enabled: false).get()
+        for level: Int32 in [-999, -1, 0, 88, 999] {
+            let rating = try store.setRating(account: account, enabled: true, level: level).get()
+            assert(rating.ratingEnabled && rating.ratingLevel == level && !rating.enabled)
+            assert(RGLocalGiftsStore(defaults: defaults).state(account: account) == rating)
+        }
+        let beforeInvalidRating = store.state(account: account)
+        for level: Int32 in [-1000, 1000, .min, .max] { failure(store.setRating(account: account, enabled: true, level: level), .invalidAmount) }
+        assert(store.state(account: account) == beforeInvalidRating)
+        let ratingOff = try store.setRating(account: account, enabled: false, level: -1).get()
+        assert(!ratingOff.ratingEnabled && ratingOff.ratingLevel == -1)
+        let wallet = try store.setWalletCardEnabled(account: account, enabled: true).get()
+        assert(wallet.walletCardEnabled && !wallet.enabled && !wallet.ratingEnabled)
+        assert(RGLocalGiftsStore(defaults: defaults).state(account: account).walletCardEnabled)
+        assert(!store.state(account: "live:456").walletCardEnabled && !store.state(account: "test:123").ratingEnabled)
+        _ = try store.setEnabled(account: account, enabled: true).get()
+        assert(store.state(account: account).walletCardEnabled)
+        _ = try store.setWalletCardEnabled(account: account, enabled: false).get()
         _ = try store.setBalance(account: account, balance: RGLocalGiftsStore.maximumBalance).get()
         let large = try store.purchase(account: account, title: "large", price: RGLocalGiftsStore.maximumBalance, gift: payload).get()
         assert(large.balance == 0)

@@ -62,6 +62,7 @@ def main():
             run(name, [str(binary)] + arguments)
     run('local-gift-boundary', ['python3', 'Regram/RGLocalGifts/Tests/run-boundary-checks.py'])
     run('local-phone-display', ['python3', 'Regram/RGLocalGifts/Tests/run-phone-display-checks.py'])
+    run('local-profile-projection', ['python3', 'Regram/RGLocalGifts/Tests/run-profile-projection-checks.py'])
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('settings-search-transitions', ['python3', 'Regram/RGProUI/Tests/run-settings-search-checks.py'])
     run('common-group-pagination', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-search-failure-checks.py'])

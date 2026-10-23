@@ -312,11 +312,13 @@ public func rgLocalGiftProfileState(context: AccountContext, peerId: EnginePeer.
         func merged(_ serverItems: [ProfileGiftsContext.State.StarGift], _ additions: [ProfileGiftsContext.State.StarGift]) -> [ProfileGiftsContext.State.StarGift] {
             var result = serverItems
             let sorted = additions.sorted { lhs, rhs in
+                if lhs.pinnedToTop != rhs.pinnedToTop { return lhs.pinnedToTop }
                 if remote.sorting == .value, let a = price(lhs), let b = price(rhs), a != b { return a > b }
                 return lhs.date > rhs.date
             }
             for item in sorted {
                 let index = result.firstIndex { other in
+                    if item.pinnedToTop { return !other.pinnedToTop }
                     guard !other.pinnedToTop else { return false }
                     if remote.sorting == .value, let a = price(item), let b = price(other) { return a > b }
                     if remote.sorting == .value { return false }
@@ -336,7 +338,7 @@ public func rgLocalGiftProfileState(context: AccountContext, peerId: EnginePeer.
 public func rgLocalProfileGift(gift: StarGift, purchase: RGLocalGiftPurchase) -> ProfileGiftsContext.State.StarGift {
     return ProfileGiftsContext.State.StarGift(gift: gift, reference: nil, fromPeer: nil,
         date: purchase.date, text: "Regram.LocalGift:" + purchase.id.uuidString, entities: nil,
-        nameHidden: false, savedToProfile: purchase.savedToProfile, pinnedToTop: false, convertStars: nil,
+        nameHidden: false, savedToProfile: purchase.savedToProfile, pinnedToTop: purchase.pinnedToTop, convertStars: nil,
         canUpgrade: false, canExportDate: nil, upgradeStars: nil, transferStars: nil,
         canTransferDate: nil, canResaleDate: nil, collectionIds: nil, prepaidUpgradeHash: nil,
         upgradeSeparate: false, dropOriginalDetailsStars: nil, number: nil, isRefunded: false, canCraftAt: nil)
@@ -354,6 +356,19 @@ public func rgSetLocalGiftVisibility(context: AccountContext, id: UUID, saved: B
 public func rgDeleteLocalGift(context: AccountContext, id: UUID) {
     guard let purchase = rgLocalGiftPurchase(context: context, id: id) else { return }
     _ = rgRemoveLocalGift(context: context, purchase: purchase)
+}
+
+public func rgSetLocalGiftPinned(context: AccountContext, id: UUID, pinned: Bool, profileGifts: ProfileGiftsContext? = nil) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    guard let purchase = rgLocalGiftPurchase(context: context, id: id), case .unique = rgLocalGift(context: context, purchase: purchase) else { return .failure(.storage) }
+    let configuredLimit = context.currentAppConfiguration.with { $0 }.data?["stargifts_pinned_to_top_limit"] as? Double
+    let limit: Int
+    if let configuredLimit, configuredLimit.isFinite, configuredLimit >= 0 {
+        limit = Int(min(Double(RGLocalGiftsStore.maximumPinnedGifts), configuredLimit))
+    } else {
+        limit = 6
+    }
+    let serverPins = profileGifts?.currentState?.gifts.filter { $0.pinnedToTop }.count ?? 0
+    return RGLocalGiftsStore.shared.setPinned(account: rgLocalGiftsAccount(context), id: id, pinned: pinned, maximumCount: max(0, limit - serverPins))
 }
 
 public func rgFormattedDisplayedPhone(context: AccountContext, peerId: EnginePeer.Id, phone: String?) -> String? {

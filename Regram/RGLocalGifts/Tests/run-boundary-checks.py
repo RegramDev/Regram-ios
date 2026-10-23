@@ -62,3 +62,18 @@ assert 'rgDeleteLocalGift' in viewer and 'rgSetLocalGiftVisibility' in viewer
 assert 'rgLocalGiftPurchaseId(gift: gift) == nil ? gift.text : nil' in viewer
 assert 'model.localPremium = $0; RGSimpleSettings.shared.localPremium = $0' in ui
 assert 'setPhone(account: model.account' in ui
+
+cover = (root / 'submodules/TelegramUI/Components/PeerInfo/PeerInfoCoverComponent/Sources/PeerInfoGiftsCoverComponent.swift').read_text()
+assert 'rgLocalGiftProfileState' in cover and 'rgLocalAppearancePeer' in cover
+assert 'rgLocalGiftPurchaseId(gift: gift)' in cover and 'id = localId' in cover
+assert 'rgSetLocalGiftPinned' in viewer and 'rgSetLocalGiftPinned' in pane
+wallet = (module / 'LocalWallet.swift').read_text()
+assert 'state.enabled && state.walletCardEnabled' in wallet and '$0.savedToProfile && $0.pinnedToTop' in wallet
+assert 'WalletNftItem(' not in wallet and 'giftSlug:' not in wallet, 'Local artwork must not impersonate a transferable NFT'
+native_wallet = (root / 'submodules/TelegramUI/Components/Wallet/PeerWalletScreen/Sources/PeerWalletScreen.swift').read_text()
+qr = native_wallet.split('let openQr: () -> Void =', 1)[1].split('let contentWidth', 1)[0]
+assert qr.index('state?.isLocal == true') < qr.index('makeWalletReceiveScreen')
+assert 'rgPresentLocalWalletNotice' in qr and 'return' in qr.split('rgPresentLocalWalletNotice', 1)[1]
+assert 'showsWalletInfo || state.isLocal' in native_wallet
+assert 'rgLocalProfileCachedData' in native_wallet and 'localStickers: self.isLocal ?' in native_wallet
+print('Local profile decoration and wallet payment/QR boundary checks passed')

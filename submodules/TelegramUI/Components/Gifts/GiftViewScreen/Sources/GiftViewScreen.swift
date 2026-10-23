@@ -2178,16 +2178,33 @@ private final class GiftViewSheetContent: CombinedComponent {
             let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
             
             if self.subject.localPurchaseId != nil || { if case .generic = arguments.gift { return true }; return false }() { // MARK: Regram
+                var items: [ContextMenuItem] = []
+                if let id = self.subject.localPurchaseId, case .unique = arguments.gift, let purchase = rgLocalGiftPurchase(context: self.context, id: id) {
+                    let pinned = purchase.pinnedToTop
+                    items.append(.action(ContextMenuActionItem(text: pinned ? presentationData.strings.PeerInfo_Gifts_Context_Unpin : presentationData.strings.PeerInfo_Gifts_Context_Pin, icon: { theme in
+                        generateTintedImage(image: UIImage(bundleImageName: pinned ? "Chat/Context Menu/Unpin" : "Chat/Context Menu/Pin"), color: theme.contextMenu.primaryColor)
+                    }, action: { [weak self, weak controller] c, _ in
+                        c?.dismiss(completion: { [weak self, weak controller] in
+                            guard let self, let controller else { return }
+                            switch rgSetLocalGiftPinned(context: self.context, id: id, pinned: !pinned, profileGifts: controller.profileGiftsContext) {
+                            case .success:
+                                controller.dismissAnimated()
+                            case let .failure(error):
+                                controller.present(textAlertController(context: self.context, title: nil, text: rgLocalGiftError(error, language: presentationData.strings.primaryComponent.languageCode), actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                            }
+                        })
+                    })))
+                }
                 if self.canDeleteGift {
-                    let items: [ContextMenuItem] = [
-                        .action(ContextMenuActionItem(text: presentationData.strings.Gift_View_Context_Delete, textColor: .destructive, icon: { theme in
+                    items.append(.action(ContextMenuActionItem(text: presentationData.strings.Gift_View_Context_Delete, textColor: .destructive, icon: { theme in
                             return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
                         }, action: { [weak self] c, _ in
                             c?.dismiss(completion: nil)
                             
                             self?.deleteGift()
-                        }))
-                    ]
+                        })))
+                }
+                if !items.isEmpty {
                     let contextController = makeContextController(presentationData: presentationData, source: .reference(GiftViewContextReferenceContentSource(controller: controller, sourceView: sourceView)), items: .single(ContextController.Items(content: .list(items))), gesture: nil)
                     controller.presentInGlobalOverlay(contextController)
                 }

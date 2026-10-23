@@ -10,7 +10,7 @@ module = ROOT / 'Regram/RGLocalGifts/Sources'
 projection = (module / 'LocalGifts.swift').read_text()
 account_key = projection.split('public func rgLocalGiftsAccount(', 1)[1].split('\n}\n', 1)[0]
 display = projection.split('public func rgFormattedDisplayedPhone(', 1)[1].split('\n}\n', 1)[0]
-local_format = (module / 'LocalPhoneNumber.swift').read_text().replace('import PhoneNumberFormat\n', '')
+local_format = (module / 'LocalPhoneNumber.swift').read_text().replace('import PhoneNumberFormat\n', '').replace('import AccountContext\n', '')
 native = (ROOT / 'submodules/PhoneNumberFormat/Sources/PhoneNumbers.swift').read_text()
 mask = native.split('public func formatPhoneNumberToMask(', 1)[1].split('\n}\n', 1)[0]
 countries = (ROOT / 'submodules/TelegramUI/Resources/PhoneCountries.txt').read_text()
@@ -21,7 +21,20 @@ import Foundation
 struct EnginePeer { typealias Id = Int64 }
 extension Int64 { func toInt64() -> Int64 { self } }
 struct Account { let peerId: EnginePeer.Id; let testingEnvironment: Bool }
-struct AccountContext { let account: Account }
+struct FixtureCountries {
+    func with<T>(_ f: (Int) -> T) -> T { f(0) }
+}
+struct AccountContext {
+    let account: Account
+    var currentCountriesConfiguration: FixtureCountries { FixtureCountries() }
+}
+struct CountryCode { let code: String }
+// Country lookup is an unchanged Telegram dependency; fixtures exercise how the
+// production editor splits its result, including Fragment and an unknown prefix.
+func lookupCountryIdByNumber(_ number: String, configuration: Int) -> (String, CountryCode)? {
+    for code in ["1", "44", "86"] where number.hasPrefix(code) { return ("fixture", CountryCode(code: code)) }
+    return nil
+}
 let suite = "Regram.PhoneDisplay.Tests." + UUID().uuidString
 let testDefaults = UserDefaults(suiteName: suite)!
 let testStore = RGLocalGiftsStore(defaults: testDefaults, notifications: NotificationCenter())
@@ -43,6 +56,11 @@ DISPLAY
         let real = "12025550123"
         defer { testDefaults.removePersistentDomain(forName: suite) }
         let store = testStore
+        for (number, code, national) in [("88812345678", "888", "12345678"), ("12025550123", "1", "2025550123"), ("442079460123", "44", "2079460123"), ("8613812345678", "86", "13812345678"), ("99912345", "", "99912345"), ("", "", "")] {
+            let parts = rgLocalPhoneParts(context: live, number: number)
+            precondition(parts.code == code && parts.number == national)
+            precondition(parts.code + parts.number == number, "Editing an old number must preserve every digit")
+        }
         precondition(rgFormattedDisplayedPhone(context: live, peerId: 101, phone: real) == "native:" + real)
         precondition(rgFormattedDisplayedPhone(context: live, peerId: 101, phone: nil) == nil)
         // Production normalization, persistence and mask insertion, including partial
