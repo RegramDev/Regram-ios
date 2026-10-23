@@ -82,10 +82,10 @@ private func localArtwork(_ file: TelegramMediaFile, path: String, id: Int64) ->
 }
 
 private func localCopy(_ gift: StarGift.Gift, file: TelegramMediaFile) -> StarGift.Gift {
-    // Keep the artwork and price; server-only auction, upgrade and availability actions do not apply.
+    // Keep upgrade metadata for the local simulation; server-only sale/auction actions stay absent.
     StarGift.Gift(id: gift.id, title: gift.title, file: file, price: gift.price, convertStars: 0,
         availability: gift.availability, soldOut: nil, flags: gift.flags.subtracting([.isAuction, .requiresPremium]),
-        upgradeStars: nil, releasedBy: nil, perUserLimit: nil, lockedUntilDate: nil,
+        upgradeStars: gift.upgradeStars, releasedBy: nil, perUserLimit: nil, lockedUntilDate: nil,
         auctionSlug: nil, auctionGiftsPerRound: nil, auctionStartDate: nil, upgradeVariantsCount: nil, background: gift.background)
 }
 
@@ -150,8 +150,40 @@ private func completeLocalAttributes(context: AccountContext, attributes: [StarG
 }
 
 public func rgBuyLocalGift(context: AccountContext, gift: StarGift, price: Int64, currency: RGLocalGiftCurrency = .stars) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    rgStoreLocalGift(context: context, gift: gift, price: price, currency: currency, upgrading: nil)
+}
+
+/// Native catalog prices and preview artwork are read-only inputs to a local upgrade.
+public func rgLocalGiftUpgradePrice(gift: StarGift.Gift, preview: StarGiftUpgradePreview, at timestamp: Int32) -> Int64? {
+    let current = (preview.prices + preview.nextPrices).filter { $0.date <= timestamp }.max { $0.date < $1.date }
+    return current?.stars ?? gift.upgradeStars
+}
+
+public func rgUpgradeLocalGift(context: AccountContext, id: UUID, preview: StarGiftUpgradePreview, price: Int64) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
     guard rgLocalGiftsEnabled(context: context) else { return .failure(.disabled) }
-    guard price > 0 else { return .failure(.invalidAmount) }
+    guard let purchase = rgLocalGiftPurchase(context: context, id: id), case let .generic(gift) = rgLocalGift(context: context, purchase: purchase) else { return .failure(.storage) }
+    func cached(_ file: TelegramMediaFile) -> Bool {
+        if let local = file.resource as? LocalFileReferenceMediaResource { return FileManager.default.fileExists(atPath: local.localFilePath) }
+        return context.engine.resources.completedResourcePath(id: EngineMediaResource(file.resource).id) != nil
+    }
+    let models = preview.attributes.filter { if case let .model(_, file, _, _) = $0 { return cached(file) }; return false }
+    let patterns = preview.attributes.filter { if case let .pattern(_, file, _) = $0 { return cached(file) }; return false }
+    let backdrops = preview.attributes.filter { if case .backdrop = $0 { return true }; return false }
+    guard let model = models.randomElement(), let backdrop = backdrops.randomElement() else { return .failure(.storage) }
+    var attributes = [model, backdrop]
+    if let pattern = patterns.randomElement() { attributes.append(pattern) }
+    let total = max(1, gift.availability?.total ?? 1)
+    let unique = StarGift.UniqueGift(id: -1, giftId: gift.id, title: gift.title ?? rgLocalGiftTitle(gift, language: context.sharedContext.currentPresentationData.with { $0 }.strings.rgLanguageCode),
+        number: Int32.random(in: 1...total), slug: "", owner: .peerId(context.account.peerId), attributes: attributes,
+        availability: .init(issued: total, total: total), giftAddress: nil, resellAmounts: nil, resellForTonOnly: false,
+        releasedBy: nil, valueAmount: nil, valueCurrency: nil, valueUsdAmount: nil, flags: [], themePeerId: nil,
+        peerColor: nil, hostPeerId: nil, minOfferStars: nil, craftChancePermille: nil)
+    return rgStoreLocalGift(context: context, gift: .unique(unique), price: price, currency: .stars, upgrading: purchase)
+}
+
+private func rgStoreLocalGift(context: AccountContext, gift: StarGift, price: Int64, currency: RGLocalGiftCurrency, upgrading: RGLocalGiftPurchase?) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+    guard rgLocalGiftsEnabled(context: context) else { return .failure(.disabled) }
+    guard price > 0 || (upgrading != nil && price == 0) else { return .failure(.invalidAmount) }
     guard let directory = localAssets(context: context) else { return .failure(.storage) }
     var snapshots: [URL] = []
     var committed = false
@@ -208,7 +240,12 @@ public func rgBuyLocalGift(context: AccountContext, gift: StarGift, price: Int64
             title = unique.title + " #\(unique.number)"
         }
         let data = try JSONEncoder().encode(stored)
-        let result = RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: title, price: price, gift: data, currency: currency)
+        let result: Result<RGLocalGiftsState, RGLocalGiftsError>
+        if let upgrading {
+            result = RGLocalGiftsStore.shared.upgrade(account: rgLocalGiftsAccount(context), id: upgrading.id, expectedGift: upgrading.gift, title: title, gift: data, stars: price)
+        } else {
+            result = RGLocalGiftsStore.shared.purchase(account: rgLocalGiftsAccount(context), title: title, price: price, gift: data, currency: currency)
+        }
         if case .success = result { committed = true }
         return result
     } catch { return .failure(.storage) }
@@ -349,10 +386,12 @@ public func rgLocalGiftProfileState(context: AccountContext, peerId: EnginePeer.
 }
 
 public func rgLocalProfileGift(gift: StarGift, purchase: RGLocalGiftPurchase) -> ProfileGiftsContext.State.StarGift {
+    let canUpgrade: Bool
+    if case let .generic(gift) = gift { canUpgrade = gift.upgradeStars != nil } else { canUpgrade = false }
     return ProfileGiftsContext.State.StarGift(gift: gift, reference: nil, fromPeer: nil,
         date: purchase.date, text: "Regram.LocalGift:" + purchase.id.uuidString, entities: nil,
         nameHidden: false, savedToProfile: purchase.savedToProfile, pinnedToTop: purchase.pinnedToTop, convertStars: nil,
-        canUpgrade: false, canExportDate: nil, upgradeStars: nil, transferStars: nil,
+        canUpgrade: canUpgrade, canExportDate: nil, upgradeStars: nil, transferStars: nil,
         canTransferDate: nil, canResaleDate: nil, collectionIds: nil, prepaidUpgradeHash: nil,
         upgradeSeparate: false, dropOriginalDetailsStars: nil, number: nil, isRefunded: false, canCraftAt: nil)
 }

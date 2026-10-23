@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34632** is published: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34632). This release preserves the current Regram UI and extends Show Off with local collectible gift pinning and avatar decorations, positive and negative ratings, a TON profile card and separate country-code and phone-number fields. It also fixes keyboard obstruction and the Back/QR icon colors on a white background when the tab bar is hidden. See the [local profile customization record](docs/local-profile-customization-34632.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34633**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34633). This release synchronizes local appearance with quoted messages and the chat-list title, restores native gift resale browsing, adds local upgrades for limited gifts, and moves experimental notification recovery to Regram Pro → Notifications. It also includes the fixes from the feature audits. See the [update record](docs/profile-notifications-34633.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -33,7 +33,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
 - Notification content filtering, pin/mention/reply policies, empty-notification recovery and entitlement diagnostics.
-- Experimental notification recovery at `tg://rg/rgdebug`, off for new installations and replacing the old compatibility switch. The same page can clear current-account media and web/network caches after confirmation, keeping accounts, databases, settings, certificates and update packages.
+- Experimental notification recovery in Regram Pro → Notifications, off by default and retaining existing preferences, with search, settings links and notification-category backup support. `tg://rg/rgdebug` retains the cache cleanup tool, keeping accounts, databases, settings, certificates and update packages.
 
 Anti-revoke and edit history retain content already received or observed on this device. Ghost mode does not suppress ordinary chat read receipts. Client preferences cannot grant permissions enforced by Telegram or iOS.
 

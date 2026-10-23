@@ -59,9 +59,9 @@ public func rgLocalAppearanceState(context: AccountContext) -> Signal<RGLocalGif
     } |> deliverOnMainQueue
 }
 
-public func rgLocalAppearancePeer(context: AccountContext, peer: EnginePeer, localState: RGLocalGiftsState) -> EnginePeer {
+public func rgLocalAppearancePeer(context: AccountContext, peer: EnginePeer, localState: RGLocalGiftsState? = nil) -> EnginePeer {
     guard peer.id == context.account.peerId, case let .user(user) = peer else { return peer }
-    let state = localState
+    let state = localState ?? RGLocalGiftsStore.shared.state(account: rgLocalGiftsAccount(context))
     guard state.enabled, let data = state.appearance, let appearance = try? JSONDecoder().decode(LocalAppearance.self, from: data) else { return peer }
     // Rebind negative model/pattern IDs when reading purchases made by older app builds.
     var emojiStatus = appearance.emojiStatus

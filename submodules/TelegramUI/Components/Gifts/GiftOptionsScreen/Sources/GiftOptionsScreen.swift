@@ -313,9 +313,14 @@ final class GiftOptionsScreenComponent: Component {
                     mainController = controller
                 }
                 if case let .generic(gift) = gift {
-                    // MARK: Regram — enter the native setup before server eligibility / auction paths.
+                    // MARK: Regram — preserve native resale browsing before the local checkout shortcut.
                     if rgLocalGiftsEnabled(context: context) {
-                        mainController.push(GiftSetupScreen(context: context, peerId: component.peerId, subject: .starGift(gift, nil), completion: component.completion))
+                        if let availability = gift.availability, availability.resale > 0,
+                           self.starsFilter == .resale || availability.remains == 0 || gift.perUserLimit?.remains == 0 || component.peerId.namespace == Namespaces.Peer.CloudChannel {
+                            mainController.push(context.sharedContext.makeGiftStoreController(context: context, peerId: component.peerId, gift: gift))
+                        } else {
+                            mainController.push(GiftSetupScreen(context: context, peerId: component.peerId, subject: .starGift(gift, nil), completion: component.completion))
+                        }
                         return
                     }
                     if !skipDateCheck, let lockedUntilDate = gift.lockedUntilDate, currentTime < lockedUntilDate {

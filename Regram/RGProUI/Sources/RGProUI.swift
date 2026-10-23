@@ -2,6 +2,7 @@ import RGSwiftUI
 // MARK: Regram — local enhancement settings, organized into focused pages.
 import RGSettingsUI
 import RGLocalGifts
+import RGAppGroupIdentifier
 import Foundation
 import UIKit
 import UniformTypeIdentifiers
@@ -100,6 +101,7 @@ private enum RGProToggles: String {
     case enablePanguOnReceiving
     case enablePanguOnEditing
     case filterNotifications
+    case notificationRecoveryExperiment
     case hideTabBarPermissionWarnings
 }
 
@@ -171,6 +173,8 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
 
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .notificationRecoveryExperiment, value: RGNotificationExperiment.isEnabled, text: "Debug.NotificationExperiment".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
+    entries.append(.notice(id: id.count, section: .notifications, text: "Debug.NotificationExperiment.Info".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .notifications, text: "features.HideTabBarPermissionWarnings.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
@@ -262,6 +266,13 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
     let searchPromise = ValuePromise(initialSearchQuery ?? "", ignoreRepeated: true)
     var searchGeneration = 0
+    let notificationExperiment = Signal<Bool, NoError> { subscriber in
+        let observer = NotificationCenter.default.addObserver(forName: RGNotificationExperiment.changed, object: nil, queue: nil) { _ in
+            subscriber.putNext(RGNotificationExperiment.isEnabled)
+        }
+        subscriber.putNext(RGNotificationExperiment.isEnabled)
+        return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+    } |> distinctUntilChanged |> deliverOnMainQueue
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -287,6 +298,9 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .filterNotifications:
                 RGSimpleSettings.shared.filterNotifications = value
                 RGSimpleSettings.shared.synchronizeShared()
+            case .notificationRecoveryExperiment:
+                RGNotificationExperiment.setEnabled(value)
+                simplePromise.set(true)
             case .hideTabBarPermissionWarnings:
                 RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
         }
@@ -489,8 +503,8 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
     })
     
-    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
-    |> map { presentationData, _, query ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get(), notificationExperiment)
+    |> map { presentationData, _, query, _ ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
         let entries = RGProControllerEntries(presentationData: presentationData, page: page, searchQuery: query)
         

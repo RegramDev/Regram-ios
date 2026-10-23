@@ -595,7 +595,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                     if let releasedBy = gift.releasedBy {
                         peerIds.append(releasedBy)
                     }
-                    if arguments.canUpgrade || arguments.upgradeStars != nil || arguments.prepaidUpgradeHash != nil {
+                    if arguments.canUpgrade || arguments.upgradeStars != nil || arguments.prepaidUpgradeHash != nil || subject.localPurchaseId != nil { // MARK: Regram — hydrate upgrade previews for older local gifts too.
                         self.upgradePreviewDisposable.add((context.engine.payments.starGiftUpgradePreview(giftId: gift.id)
                         |> deliverOnMainQueue).start(next: { [weak self] upgradePreview in
                             guard let self, let upgradePreview else {
@@ -2409,6 +2409,7 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         private func fetchUpgradeForm() {
+            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
             guard let reference = self.subject.arguments?.reference else {
                 return
             }
@@ -2430,6 +2431,12 @@ private final class GiftViewSheetContent: CombinedComponent {
         
         private(set) var effectiveUpgradePrice: StarGiftUpgradePreview.Price?
         private(set) var nextUpgradePrice: StarGiftUpgradePreview.Price?
+
+        // MARK: Regram — quote and debit the same catalog upgrade price without a payment form.
+        var localUpgradeStars: Int64? {
+            guard self.subject.localPurchaseId != nil, case let .generic(gift) = self.subject.arguments?.gift, let preview = self.upgradePreview else { return nil }
+            return rgLocalGiftUpgradePrice(gift: self.starGiftsMap[gift.id] ?? gift, preview: preview, at: Int32(Date().timeIntervalSince1970))
+        }
         
         func upgradePreviewTimerTick() {
             guard let upgradePreview = self.upgradePreview, let gift = self.subject.arguments?.gift, case let .generic(gift) = gift else {
@@ -2481,7 +2488,7 @@ private final class GiftViewSheetContent: CombinedComponent {
                 self.inUpgradePreview = true
                 self.updated(transition: .spring(duration: 0.4))
                 
-                if let controller = self.getController() as? GiftViewScreen, self.upgradeForm != nil {
+                if let controller = self.getController() as? GiftViewScreen, self.upgradeForm != nil || self.subject.localPurchaseId != nil { // MARK: Regram
                     controller.showBalance = true
                 }
             } else {
@@ -2646,7 +2653,31 @@ private final class GiftViewSheetContent: CombinedComponent {
         }
         
         func commitUpgrade() {
-            guard self.subject.localPurchaseId == nil else { return } // MARK: Regram
+            // MARK: Regram — local identity is immutable even if its setting changes while open.
+            if let id = self.subject.localPurchaseId {
+                guard !self.inProgress, let preview = self.upgradePreview, let price = self.localUpgradeStars,
+                      let controller = self.getController() as? GiftViewScreen else { return }
+                let result = rgUpgradeLocalGift(context: self.context, id: id, preview: preview, price: price)
+                switch result {
+                case let .success(local):
+                    guard let purchase = local.purchases.first(where: { $0.id == id }), let gift = rgLocalGift(context: self.context, purchase: purchase), case let .unique(unique) = gift else { return }
+                    self.subject = .profileGift(self.context.account.peerId, rgLocalProfileGift(gift: gift, purchase: purchase))
+                    self.inUpgradePreview = false
+                    self.scheduledUpgradeCommit = false
+                    self.justUpgraded = true
+                    self.revealedNumberDigits = "\(unique.number)".count
+                    self.revealedAttributes = [.model, .pattern, .backdrop]
+                    controller.showBalance = false
+                    self.updated(transition: .spring(duration: 0.4))
+                    controller.animateSuccess()
+                case let .failure(error):
+                    let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+                    controller.present(textAlertController(context: self.context, title: nil,
+                        text: rgLocalGiftError(error, language: presentationData.strings.rgLanguageCode),
+                        actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), in: .window(.root))
+                }
+                return
+            }
             let duration = Double.random(in: 0.85 ..< 2.25)
             let firstFraction = Double.random(in: 0.2 ..< 0.4)
             let secondFraction = Double.random(in: 0.2 ..< 0.4)
@@ -3504,6 +3535,10 @@ private final class GiftViewSheetContent: CombinedComponent {
             
             if subject.localPurchaseId == nil, !canUpgrade, let gift = state.starGiftsMap[giftId], let _ = gift.upgradeStars {
                 canUpgrade = true
+            }
+            // MARK: Regram — a completed native preview also enables upgrades of legacy local records.
+            if subject.localPurchaseId != nil, genericGift != nil {
+                canUpgrade = state.upgradePreview != nil && state.localUpgradeStars != nil
             }
                                     
             var originY: CGFloat = 0.0
@@ -5879,6 +5914,9 @@ private final class GiftViewSheetContent: CombinedComponent {
                 } else if let upgradeStars = state.effectiveUpgradePrice?.stars {
                     let priceString = presentationStringsFormattedNumber(Int32(clamping: upgradeStars), environment.dateTimeFormat.groupingSeparator)
                     upgradeString = strings.Gift_Upgrade_GiftUpgrade(" # \(priceString)").string
+                } else if let upgradeStars = state.localUpgradeStars { // MARK: Regram
+                    let priceString = presentationStringsFormattedNumber(Int32(clamping: upgradeStars), environment.dateTimeFormat.groupingSeparator)
+                    upgradeString = strings.Gift_Upgrade_UpgradeFor(" # \(priceString)").string
                 } else if let upgradeForm = state.upgradeForm, let upgradeStars = upgradeForm.invoice.prices.first?.amount {
                     let priceString = presentationStringsFormattedNumber(Int32(clamping: upgradeStars), environment.dateTimeFormat.groupingSeparator)
                     upgradeString = strings.Gift_Upgrade_UpgradeFor(" # \(priceString)").string

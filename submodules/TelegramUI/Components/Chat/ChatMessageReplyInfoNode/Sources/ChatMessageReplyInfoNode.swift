@@ -18,6 +18,7 @@ import ChatMessageItemCommon
 import MessageInlineBlockBackgroundView
 import CheckNode
 import EmojiTextAttachmentView
+import RGLocalGifts // MARK: Regram
 
 public enum ChatMessageReplyInfoType {
     case bubble(incoming: Bool)
@@ -225,6 +226,11 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                 }
             }
             
+            // MARK: Regram — use the same owner-only display overlay as the profile.
+            if let peer = author.flatMap(EnginePeer.init) {
+                author = rgLocalAppearancePeer(context: arguments.context, peer: peer)._asPeer()
+            }
+
             var giftEmojiFileId: Int64?
             switch author?.nameColor {
             case let .preset(nameColor):

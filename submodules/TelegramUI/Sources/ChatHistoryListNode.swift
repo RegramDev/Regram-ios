@@ -1,6 +1,7 @@
 // MARK: Regram
 import RGTranscription
 import RGSimpleSettings
+import RGLocalGifts // MARK: Regram
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -2255,9 +2256,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             |> runOn(queue)
         }
 
-        // MARK: Regram — refresh source-specific transcription controls when the provider changes.
-        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, rgTranscriptionProviderSignal())
-        |> map { update, _ in update }
+        // MARK: Regram — prime local gift media and refresh quotes when the display overlay changes.
+        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, rgTranscriptionProviderSignal(), rgLocalAppearanceState(context: context))
+        |> map { update, _, _ in update }
 
         let startTime = CFAbsoluteTimeGetCurrent()
         var measure_isFirstTime = true

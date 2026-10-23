@@ -1,4 +1,5 @@
 import Foundation
+import RGAppGroupIdentifier
 
 extension UserDefaults {
     public static let rgTestStandard = UserDefaults(suiteName: ProcessInfo.processInfo.environment["RG_TEST_SUITE"]! + "-standard")!
@@ -16,6 +17,24 @@ extension UserDefaults {
             UserDefaults(suiteName: suite + "-group")!.removePersistentDomain(forName: suite + "-group")
         }
         UserDefaults.rgTestStandard.set("synthetic", forKey: "api_hash")
+        // The relocated notification setting keeps its shared-store value and legacy fallback.
+        let experimentDefaults = rgSharedUserDefaults()!
+        experimentDefaults.set(true, forKey: "legacyNotificationsFix")
+        expect(RGNotificationExperiment.isEnabled, "Keep the debug switch's existing legacy state")
+        expect(settings.exportPreferences(categories: [.notifications]).values[RGNotificationExperiment.key] == .bool(true), "Export the effective shared experiment state")
+        final class RecoveryChanges: @unchecked Sendable { var value = 0; func increment() { value += 1 } }
+        let recoveryChanges = RecoveryChanges()
+        let recoveryObserver = NotificationCenter.default.addObserver(forName: RGNotificationExperiment.changed, object: nil, queue: nil) { _ in recoveryChanges.increment() }
+        let recoveryKeys = settings.applyPreferences([RGNotificationExperiment.key: .bool(false)], publishChanges: false)
+        expect(!RGNotificationExperiment.isEnabled && experimentDefaults.object(forKey: "legacyNotificationsFix") == nil, "Imported false must supersede the legacy true fallback")
+        expect(recoveryChanges.value == 0, "Do not publish before the restore transaction finishes")
+        settings.publishPreferenceChanges(recoveryKeys)
+        expect(recoveryChanges.value == 1, "Publish the restored experiment after committing")
+        RGNotificationExperiment.setEnabled(true)
+        expect(settings.exportPreferences(categories: [.notifications]).values[RGNotificationExperiment.key] == .bool(true), "The moved native toggle still uses the original shared key")
+        settings.applyPreferences([:], resetCategories: [.notifications])
+        expect(!RGNotificationExperiment.isEnabled, "Notification category reset restores the opt-in default")
+        NotificationCenter.default.removeObserver(recoveryObserver)
         expect(RGSimpleSettings.ChatListLines.allCases.map(\.rawValue).sorted() == ["1", "2"], "Only one- and two-line modes are offered")
         expect(settings.chatListLines == "2" && UserDefaults.rgTestStandard.string(forKey: "chatListLines") == "2", "Persistently migrate a removed three-line value")
         settings.chatListLines = "1"

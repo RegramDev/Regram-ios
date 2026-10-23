@@ -803,6 +803,7 @@ public class RGSimpleSettings {
                 var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
                 if key == RGBottomBarSettings.storageKey { raw = self.bottomBarSettings.storedValues }
                 if key == Keys.chatListLines.rawValue { raw = self.chatListLines } // MARK: Regram
+                if key == RGNotificationExperiment.key { raw = RGNotificationExperiment.isEnabled }
                 if raw == nil && key == "forceBuiltInMic" { raw = false }
                 if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
             }
@@ -847,6 +848,10 @@ public class RGSimpleSettings {
             }
             else { storage.set(value.propertyList, forKey: key) }
         }
+        // An explicit restore/reset must supersede the legacy experiment fallback too.
+        if changedKeys.contains(RGNotificationExperiment.key) {
+            self.backupStorage(key: RGNotificationExperiment.key, wrappers: wrappers).removeObject(forKey: "legacyNotificationsFix")
+        }
         if changedKeys.contains(where: { $0.hasPrefix("font") }) {
             // Update the stored revision before clearing wrappers, without an early font notification.
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: Keys.fontAssetsRevision.rawValue) + 1, forKey: Keys.fontAssetsRevision.rawValue)
@@ -881,6 +886,7 @@ public class RGSimpleSettings {
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
         if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
+        if touches(RGNotificationExperiment.key) { center.post(name: RGNotificationExperiment.changed, object: nil) }
         if touches("features.enablePanguOnReceiving") { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
         if touches("sendWithReturnKey") { center.post(name: Self.inputSettingsDidChange, object: nil) }
         if touches("features.showFoldersInShareSheet") { center.post(name: Self.shareSettingsDidChange, object: nil) }
@@ -890,6 +896,7 @@ public class RGSimpleSettings {
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
         if let storage = wrappers.first(where: { $0.preferenceKey == key })?.preferenceStorage { return storage }
+        if key == RGNotificationExperiment.key { return APP_GROUP_USER_DEFAULTS ?? .standard }
         if key == "pinnedMessageNotificationsExceptions" || key == "mentionsAndRepliesNotificationsExceptions" { return APP_GROUP_USER_DEFAULTS ?? .standard }
         return .standard
     }

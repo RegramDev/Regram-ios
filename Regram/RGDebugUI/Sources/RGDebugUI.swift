@@ -26,7 +26,6 @@ import FLEX
 
 private enum RGDebugControllerSection: Int32, RGItemListSection {
     case base
-    case notifications
 }
 
 private enum RGDebugDisclosureLink: String {
@@ -47,7 +46,6 @@ private enum RGDebugActions: String {
 
 private enum RGDebugToggles: String {
     case forceImmediateShareSheet
-    case notificationRecoveryExperiment
     case inputToolbar
 }
 
@@ -77,8 +75,6 @@ private func RGDebugControllerEntries(presentationData: PresentationData) -> [RG
     #if DEBUG
     #endif
 
-    entries.append(.toggle(id: id.count, section: .notifications, settingName: .notificationRecoveryExperiment, value: RGNotificationExperiment.isEnabled, text: "Debug.NotificationExperiment".i18n(language), enabled: true))
-    entries.append(.notice(id: id.count, section: .notifications, text: "Debug.NotificationExperiment.Info".i18n(language)))
     return entries
 }
 
@@ -131,9 +127,6 @@ public func rgDebugController(context: AccountContext) -> ViewController {
         switch toggleName {
             case .forceImmediateShareSheet:
                 RGSimpleSettings.shared.forceSystemSharing = value
-            case .notificationRecoveryExperiment:
-                RGNotificationExperiment.setEnabled(value)
-                simplePromise.set(true)
             case .inputToolbar:
                 RGSimpleSettings.shared.inputToolbar = value
         }

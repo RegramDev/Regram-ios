@@ -185,6 +185,22 @@ public final class RGLocalGiftsStore {
         }
     }
 
+    /// Replace the same local purchase atomically; stale confirmations cannot charge twice.
+    public func upgrade(account: String, id: UUID, expectedGift: Data, title: String, gift: Data, stars: Int64) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
+        update(account: account) { state in
+            guard state.enabled else { throw RGLocalGiftsError.disabled }
+            guard let index = state.purchases.firstIndex(where: { $0.id == id }), state.purchases[index].gift == expectedGift else { throw RGLocalGiftsError.storage }
+            let original = state.purchases[index]
+            guard original.currency == .stars, stars >= 0, stars <= Self.maximumBalance - original.price,
+                  !gift.isEmpty, gift.count <= 1024 * 1024, gift != expectedGift else { throw RGLocalGiftsError.invalidAmount }
+            guard state.balance >= stars else { throw RGLocalGiftsError.insufficientStars }
+            state.balance -= stars
+            state.purchases[index] = RGLocalGiftPurchase(id: original.id, date: original.date, title: String(title.prefix(256)),
+                price: original.price + stars, gift: gift, currency: original.currency,
+                savedToProfile: original.savedToProfile, pinnedToTop: original.pinnedToTop)
+        }
+    }
+
     public func remove(account: String, id: UUID, mediaIds: Set<Int64> = []) -> Result<RGLocalGiftsState, RGLocalGiftsError> {
         update(account: account) { state in
             state.purchases.removeAll { $0.id == id }

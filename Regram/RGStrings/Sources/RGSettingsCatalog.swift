@@ -172,6 +172,7 @@ public enum RGSettingsCatalog {
         .init("pro.notifications", "pinnedMessageNotifications", "Notifications.PinnedMessages.Title"),
         .init("pro.notifications", "mentionsAndRepliesNotifications", "Notifications.MentionsAndReplies.Title"),
         .init("pro.notifications", "filterNotifications", "Notifications.ContentFilter"),
+        .init("pro.notifications", "notificationRecoveryExperiment", "Debug.NotificationExperiment", keywords: "experimental notification recovery encrypted placeholder 实验性 通知 恢复 加密 占位 實驗性 通知 復原 加密 佔位"),
         .init("pro.notifications", "hideTabBarPermissionWarnings", "features.HideTabBarPermissionWarnings", keywords: "notifications permissions exclamation warning badge 通知 权限 感叹号 角标 通知 權限 驚嘆號"),
         .init("pro.appearance", "fonts", "Fonts.Title"),
         .init("pro.appearance", "appIcons", "Catalog.AppIcons"),

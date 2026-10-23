@@ -10,7 +10,8 @@ for forbidden in [r'\.network\b', r'\.request\s*\(', r'\bURLSession\b', r'\bfetc
     assert not re.search(forbidden, source), forbidden
 projection = (module / 'LocalGifts.swift').read_text()
 assert 'peerId == context.account.peerId, profileGifts.collectionId == nil, !canSelect' in projection
-assert 'reference: nil' in projection and 'canUpgrade: false' in projection
+assert 'reference: nil' in projection and 'canUpgrade: canUpgrade' in projection
+assert 'rgUpgradeLocalGift' in projection and 'expectedGift: upgrading.gift' in projection
 assert 'completedResourcePath' in projection and 'LocalFileReferenceMediaResource' in projection
 ui = (module / 'LocalGiftsController.swift').read_text()
 assert 'cachedStarGifts()' not in ui and 'LazyVGrid' not in ui, 'Purchases belong in the native Telegram screens'
@@ -58,6 +59,9 @@ apply = native_appearance.split('private func applySettings()', 1)[1]
 assert apply.index('rgSaveLocalGiftAppearance') < apply.index('updateNameColorAndEmoji')
 assert apply.index('rgIsLocalGiftAppearance') < apply.index('setStarGiftStatus')
 assert 'localPurchaseId == nil else { return }' in viewer
+upgrade = viewer.split('func commitUpgrade()', 1)[1].split('func openUpgradePricePreview()', 1)[0]
+assert upgrade.index('rgUpgradeLocalGift') < upgrade.index('upgradeStarGift('), 'Local upgrades must return before the server mutation'
+assert 'self.subject.localPurchaseId == nil else { return }' in viewer.split('private func fetchUpgradeForm()', 1)[1].split('private(set) var effectiveUpgradePrice', 1)[0]
 assert 'rgDeleteLocalGift' in viewer and 'rgSetLocalGiftVisibility' in viewer
 assert 'rgLocalGiftPurchaseId(gift: gift) == nil ? gift.text : nil' in viewer
 assert 'model.localPremium = $0; RGSimpleSettings.shared.localPremium = $0' in ui

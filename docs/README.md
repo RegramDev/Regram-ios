@@ -1,8 +1,10 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34632** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34633** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
+
+- [b34633 装扮同步、礼物升级与通知入口](profile-notifications-34633.md)：引用名称颜色与顶部礼物状态联动、原生转售入口、本地限定礼物升级，以及实验性通知恢复迁移。
 
 - [现有功能修复（2026-10-24）](functional-fixes-20261024.md)：三轮排查中富文本工具、本地礼物、消息保留、翻译、分享、回车发送及状态刷新的 18 项修正。
 - [b34632 本地个人资料扩展](local-profile-customization-34632.md)：礼物置顶与头像装饰、正负评级、TON 资料卡、手机号双输入框、键盘避让及隐藏底栏时的导航图标颜色，包含正式发布记录。
@@ -36,7 +38,7 @@
 
 ## 通知实验与诊断
 
-- [实验性通知恢复](notification-recovery.md)：调试开关、通知专用读取与资源预算、缓存清理及一／二行预览修正，包含验证边界。
+- [实验性通知恢复](notification-recovery.md)：通知设置入口、通知专用读取与资源预算、缓存清理及一／二行预览修正，包含验证边界。
 
 ## 历史分析与设计资料
 
