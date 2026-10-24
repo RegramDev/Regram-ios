@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34634**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34634). This release fixes the Back and QR buttons on the main Settings page when the bottom bar is hidden. See the [update record](docs/hidden-tab-navigation-34634.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34636**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34636). This release adds sender-message search and fixes its clear button, preserves local folder tags, and improves archive placement and settings search. Daily first-launch tasks are separate from Premium server-side repetition. See the [update record](docs/search-archive-daily-34636.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -16,11 +16,12 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 - Message bookmarks and tags: add from a message menu, manage below Saved Messages on the outer Settings page, filter and edit tags, and return to the original message.
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.
-- A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu.
+- A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with keyword search, clear-to-restore and navigation to the original message.
 - Messages in common groups: open from a person’s profile More menu, browse their searchable messages across shared groups, filter by group, load more, and return to the original message.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
-- Folder selection after joining groups/channels, remembered folders, and folder/list display options.
+- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
+- Independent daily first-launch tasks in the scheduled-send repeat menu: configure once, then silently send on the first launch each day from the chosen date. Tasks stay on this device per account, support editing/deletion/Send Now, and skip missed days. Premium daily/weekly server schedules retain their existing behavior.
 
 The [implementation checklist](docs/chat-and-interface-tools.md) lists share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
 
@@ -130,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34634 is built with Xcode 27.1 as a complete `//Telegram:Regram` arm64 Release, including the main app, six extensions and 12 matching dSYMs. All 70 existing automatic checks, four UIKit regression cases, and package signature, architecture, resource and installation-identity checks passed. See the [update record and validation scope](docs/hidden-tab-navigation-34634.md) and [changelog](docs/changelog.md).
+See the [update record](docs/search-archive-daily-34636.md) for the complete build, automatic checks, package verification, source correspondence and device-validation scope, and the [changelog](docs/changelog.md) for earlier releases.
 
 ## Building
 

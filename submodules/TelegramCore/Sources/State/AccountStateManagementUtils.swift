@@ -4689,8 +4689,10 @@ func replayFinalState(
                 if !resourceIds.isEmpty {
                     let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
                 }
-            case let .UpdatePeerChatInclusion(peerId, groupId, changedGroup):
+            case let .UpdatePeerChatInclusion(peerId, serverGroupId, changedGroup):
+                let groupId = rgResolveChatListGroup(transaction: transaction, peerId: peerId, serverGroup: serverGroupId) // MARK: Regram
                 if shouldExcludePeerFromChatList(transaction: transaction, peerId: peerId) {
+                    rgRememberChatListPlacement(transaction: transaction, peerId: peerId, group: groupId) // MARK: Regram — retain server placement even while a community hides the peer.
                     transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
                 } else {
                     let currentInclusion = transaction.getPeerChatListInclusion(peerId)
@@ -5194,6 +5196,8 @@ func replayFinalState(
                     case let .pin(itemId):
                         switch itemId {
                             case let .peer(peerId):
+                                // MARK: Regram — an old live pin update cannot undo a pending archive.
+                                if rgResolveChatListGroup(transaction: transaction, peerId: peerId, serverGroup: groupId) != groupId { break }
                                 if transaction.getPeer(peerId) == nil || transaction.getPeerChatListInclusion(peerId) == .notIncluded {
                                     addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
                                 } else {

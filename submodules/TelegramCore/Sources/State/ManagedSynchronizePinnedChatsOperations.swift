@@ -118,6 +118,8 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
     // as one the server removed.
     let serverPinnedLimit = rgServerPinnedChatLimit(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId)
     let fullLocalItemIds = transaction.getPinnedItemIds(groupId: groupId)
+    let placementRevision = rgChatListPlacementRevision(transaction: transaction) // MARK: Regram
+    let pendingPlacements = rgPendingChatListPlacements(transaction: transaction) // MARK: Regram
     let localSplit = rgSplitPinnedItemIds(fullLocalItemIds, limit: serverPinnedLimit)
     let initialRemoteItemIds = rgSplitPinnedItemIds(operation.previousItemIds, limit: serverPinnedLimit).server
     let initialRemoteItemIdsWithoutSecretChats = initialRemoteItemIds.filter { item in
@@ -234,6 +236,15 @@ private func synchronizePinnedChats(transaction: Transaction, postbox: Postbox, 
                 // MARK: Regram — merge with the latest local order on the Postbox queue. A new
                 // local pin may have been made while the remote pinned list was being fetched.
                 let latestLocalOrder = transaction.getPinnedItemIds(groupId: groupId)
+                // MARK: Regram — a stale pin response must not undo an archive/unarchive made in flight.
+                resultingItemIds.removeAll { item in
+                    guard case let .peer(peerId) = item else { return false }
+                    guard pendingPlacements.contains(peerId) || rgChatListPlacementChanged(transaction: transaction, peerId: peerId, after: placementRevision) || rgPendingChatListPlacements(transaction: transaction).contains(peerId) else { return false }
+                    if let currentGroup = transaction.getPeerChatListInclusion(peerId).groupId {
+                        return currentGroup != groupId
+                    }
+                    return false
+                }
                 let localOverflow = rgLocalOverflowPinnedItemIds(transaction: transaction, accountPeerId: accountPeerId, groupId: groupId).intersection(latestLocalOrder).subtracting(resultingItemIds)
                 let mergedItemIds = rgMergeLocalPinnedItemIds(resultingItemIds, previousOrder: latestLocalOrder, keep: localOverflow)
                 let resultingSplit = rgSplitPinnedItemIds(mergedItemIds, limit: serverPinnedLimit)

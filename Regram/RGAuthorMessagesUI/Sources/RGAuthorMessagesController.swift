@@ -10,6 +10,7 @@ import TelegramPresentationData
 import AccountContext
 import LocalizedPeerData
 import RGStrings
+import SearchBarNode
 
 /// A separate, paginated page of one sender's messages in the originating chat/topic.
 final class RGAuthorMessagesController: ViewController {
@@ -26,12 +27,16 @@ final class RGAuthorMessagesController: ViewController {
     private var emptyTextKey: String?
     private let activityIndicator = UIActivityIndicatorView(style: .medium)
     private let retryButton = UIButton(type: .system)
+    private let searchBar: SearchBarNode
+    private var query = ""
+    private var requestGeneration = 0
 
     init(context: AccountContext, chatPeerId: EnginePeer.Id, threadId: Int64?, author: EnginePeer) {
         self.context = context
         self.author = author
         self.location = .peer(peerId: chatPeerId, fromId: author.id, tags: nil, reactions: nil, threadId: threadId, minDate: nil, maxDate: nil)
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        self.searchBar = SearchBarNode(theme: SearchBarNodeTheme(theme: self.presentationData.theme, hasSeparator: false), presentationTheme: self.presentationData.theme, strings: self.presentationData.strings, fieldStyle: .glass)
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationTheme: self.presentationData.theme, presentationStrings: self.presentationData.strings, glassStyle: .default))
         self._hasGlassStyle = true
         self.title = "AuthorMessages.Title".i18n(self.presentationData.strings.baseLanguageCode, args: author.compactDisplayTitle)
@@ -39,6 +44,21 @@ final class RGAuthorMessagesController: ViewController {
         self.emptyNode.textAlignment = .center
         self.emptyNode.displaysAsynchronously = false
         self.retryButton.addTarget(self, action: #selector(self.retryPressed), for: .touchUpInside)
+        self.searchBar.hasCancelButton = false
+        self.searchBar.autocapitalization = .none
+        self.searchBar.textUpdated = { [weak self] text, _ in
+            guard let self else { return }
+            let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard query != self.query else { return }
+            self.query = query
+            self.loadMessages(debounce: !query.isEmpty)
+        }
+        // The glass search field's outside close button forwards to cancel, not textUpdated.
+        self.searchBar.cancel = { [weak self] in
+            self?.searchBar.text = ""
+            self?.searchBar.deactivate(clear: false)
+        }
+        self.searchBar.textReturned = { [weak self] _ in self?.searchBar.deactivate(clear: false) }
         self.presentationDisposable = (context.sharedContext.presentationData |> deliverOnMainQueue).start(next: { [weak self] data in
             guard let self else { return }
             self.presentationData = data
@@ -57,6 +77,7 @@ final class RGAuthorMessagesController: ViewController {
     override func loadDisplayNode() {
         self.displayNode = ASDisplayNode()
         self.displayNode.addSubnode(self.emptyNode)
+        self.displayNode.addSubnode(self.searchBar)
         self.displayNode.view.addSubview(self.activityIndicator)
         self.displayNode.view.addSubview(self.retryButton)
         self.retryButton.isHidden = true
@@ -73,6 +94,8 @@ final class RGAuthorMessagesController: ViewController {
         self.retryButton.tintColor = self.presentationData.theme.list.itemAccentColor
         self.retryButton.titleLabel?.font = Font.regular(self.presentationData.listsFontSize.baseDisplaySize)
         self.retryButton.setTitle("AuthorMessages.Retry".i18n(self.presentationData.strings.baseLanguageCode), for: .normal)
+        self.searchBar.updateThemeAndStrings(theme: SearchBarNodeTheme(theme: self.presentationData.theme, hasSeparator: false), presentationTheme: self.presentationData.theme, strings: self.presentationData.strings)
+        self.searchBar.placeholderString = NSAttributedString(string: "AuthorMessages.Search".i18n(self.presentationData.strings.baseLanguageCode), font: Font.regular(17.0), textColor: self.presentationData.theme.rootController.navigationSearchBar.inputPlaceholderTextColor)
         if let result = self.currentResult {
             self.updateTitle(result)
         } else {
@@ -90,17 +113,28 @@ final class RGAuthorMessagesController: ViewController {
         } else { self.loadMessages() }
     }
 
-    private func loadMessages() {
+    private func loadMessages(debounce: Bool = false) {
+        self.requestGeneration += 1
+        let generation = self.requestGeneration
+        let query = self.query
+        self.requestDisposable.set(nil)
+        self.resultsNode?.removeFromSupernode()
+        self.resultsNode = nil
+        self.currentResult = nil
+        self.title = "AuthorMessages.Title".i18n(self.presentationData.strings.baseLanguageCode, args: self.author.compactDisplayTitle)
         self.emptyTextKey = nil
         self.emptyNode.isHidden = true
         self.retryButton.isHidden = true
         self.activityIndicator.startAnimating()
-        let signal = self.context.engine.messages.searchMessages(location: self.location, query: "", state: nil, limit: 50)
+        let signal = (Signal<String, NoError>.single(query) |> delay(debounce ? 0.3 : 0.0, queue: .mainQueue()))
+        |> mapToSignal { [context = self.context, location = self.location] query in
+            context.engine.messages.searchMessages(location: location, query: query, state: nil, limit: 50)
+        }
         |> map { result, state -> (SearchMessagesResult, SearchMessagesState)? in (result, state) }
         |> timeout(25.0, queue: .mainQueue(), alternate: .single(nil))
         |> deliverOnMainQueue
         self.requestDisposable.set(signal.start(next: { [weak self] value in
-            guard let self else { return }
+            guard let self, self.requestGeneration == generation else { return }
             self.activityIndicator.stopAnimating()
             guard let (result, state) = value, !result.rgRequestFailed else {
                 self.setEmptyText("AuthorMessages.LoadFailed")
@@ -109,16 +143,18 @@ final class RGAuthorMessagesController: ViewController {
             }
             self.currentResult = result
             self.updateTitle(result)
-            guard !result.messages.isEmpty else { self.setEmptyText("AuthorMessages.Empty"); return }
-            let node = ChatSearchResultsControllerNode(context: self.context, location: self.location, searchQuery: "", searchResult: result, searchState: state, presentInGlobalOverlay: { [weak self] controller in
+            guard !result.messages.isEmpty else { self.setEmptyText(query.isEmpty ? "AuthorMessages.Empty" : "AuthorMessages.NoResults"); return }
+            let node = ChatSearchResultsControllerNode(context: self.context, location: self.location, searchQuery: query, searchResult: result, searchState: state, presentInGlobalOverlay: { [weak self] controller in
                 self?.presentInGlobalOverlay(controller)
             })
             node.resultsUpdated = { [weak self] result, _ in
+                guard self?.requestGeneration == generation else { return }
                 self?.activityIndicator.stopAnimating()
                 self?.currentResult = result
                 self?.updateTitle(result)
             }
             node.rgLoadFailed = { [weak self] in
+                guard self?.requestGeneration == generation else { return }
                 self?.activityIndicator.stopAnimating()
                 self?.setEmptyText("AuthorMessages.LoadFailed")
                 self?.retryButton.isHidden = false
@@ -144,6 +180,7 @@ final class RGAuthorMessagesController: ViewController {
     }
 
     private func openMessage(at selectedIndex: Int) {
+        self.searchBar.deactivate(clear: false)
         guard let result = self.currentResult, let navigation = self.navigationController as? NavigationController else { return }
         let index: Int
         if case let .peer(peerId, _, _, _, _, _, _) = self.location, peerId.namespace == Namespaces.Peer.SecretChat {
@@ -169,9 +206,12 @@ final class RGAuthorMessagesController: ViewController {
 
     private func applyLayout() {
         guard let (layout, navigationHeight) = self.validLayout else { return }
+        let searchHeight: CGFloat = 54.0
+        self.searchBar.frame = CGRect(x: 0, y: navigationHeight, width: layout.size.width, height: searchHeight)
+        self.searchBar.updateLayout(boundingSize: self.searchBar.bounds.size, leftInset: layout.safeInsets.left + 8.0, rightInset: layout.safeInsets.right + 8.0, transition: .immediate)
         self.resultsNode?.frame = CGRect(origin: .zero, size: layout.size)
-        self.resultsNode?.containerLayoutUpdated(layout, navigationBarHeight: navigationHeight, transition: .immediate)
-        let centerY = navigationHeight + (layout.size.height - navigationHeight - layout.intrinsicInsets.bottom) * 0.5
+        self.resultsNode?.containerLayoutUpdated(layout, navigationBarHeight: navigationHeight + searchHeight, transition: .immediate)
+        let centerY = navigationHeight + searchHeight + (layout.size.height - navigationHeight - searchHeight - layout.insets(options: [.input]).bottom) * 0.5
         let textSize = self.emptyNode.updateLayout(CGSize(width: max(1.0, layout.size.width - 48.0), height: .greatestFiniteMagnitude))
         self.emptyNode.frame = CGRect(x: (layout.size.width - textSize.width) * 0.5, y: centerY - textSize.height * 0.5, width: textSize.width, height: textSize.height)
         let indicatorSize = self.activityIndicator.intrinsicContentSize

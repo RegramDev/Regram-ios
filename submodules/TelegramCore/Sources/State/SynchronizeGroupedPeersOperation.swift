@@ -19,6 +19,8 @@ func _internal_updatePeerGroupIdInteractively(transaction: Transaction, peerId: 
             updatedInclusion = .ifHasMessagesOrOneOf(groupId: groupId, pinningIndex: nil, minTimestamp: minTimestamp)
     }
     if initialInclusion != updatedInclusion {
+        // MARK: Regram — record explicit archive/unarchive before asynchronous pin sync can respond.
+        rgRememberChatListPlacement(transaction: transaction, peerId: peerId, group: groupId, interactive: true)
         transaction.updatePeerChatListInclusion(peerId, inclusion: updatedInclusion)
         if peerId.namespace != Namespaces.Peer.SecretChat {
             addSynchronizeGroupedPeersOperation(transaction: transaction, peerId: peerId, groupId: groupId)

@@ -1323,3 +1323,12 @@ Matching is case-insensitive.";
 "LocalWallet.Notice" = "This balance and card are displayed only on this device. They have no receiving address and are invisible to other users.";
 
 "Revoked.Unavailable" = "Previously unavailable on the server · retained locally";
+
+// MARK: Regram — sender-scoped message search.
+"AuthorMessages.Search" = "Search this person's messages";
+"AuthorMessages.NoResults" = "No matching messages";
+
+"RecurringMessages.Info" = "Starting on the selected date, silently send once on the first Regram launch each day. Later launches that day do not repeat it. Tasks stay on this device and skip missed days; the selected time does not apply. Edit or delete the task in Scheduled Messages.";
+
+"RecurringMessages.DailyStartup" = "Daily on first launch";
+"RecurringMessages.Create" = "Save daily launch task";

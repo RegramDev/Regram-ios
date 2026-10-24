@@ -108,6 +108,8 @@ func deleteMessagesInteractively(transaction: Transaction, stateManager: Account
         }
     }
     
+    // MARK: Regram — deleting an occurrence also stops its local repeating task.
+    rgRemoveStartupDailyMessages(transaction: transaction, ids: messageIds.map { $0.messageId })
     var uniqueIds: [Int64: PeerId] = [:]
     
     for (peerAndThreadId, peerMessageIds) in messagesIdsGroupedByPeerId(messageIds) {

@@ -1314,3 +1314,12 @@
 "LocalWallet.Notice" = "餘額與資料卡僅在本機顯示，沒有收款地址，其他使用者無法看見。";
 
 "Revoked.Unavailable" = "曾無法從伺服器取得 · 已在本機保留";
+
+// MARK: Regram — sender-scoped message search.
+"AuthorMessages.Search" = "搜尋此人的訊息";
+"AuthorMessages.NoResults" = "沒有符合的訊息";
+
+"RecurringMessages.Info" = "從所選日期開始，每天首次開啟 Regram 時靜默傳送一次，當天再次開啟不重複。任務儲存在本機，錯過的日期不補發；所選時刻不用於每日任務。可在排程訊息列表中編輯或刪除任務。";
+
+"RecurringMessages.DailyStartup" = "每日首次啟動";
+"RecurringMessages.Create" = "儲存每日啟動任務";

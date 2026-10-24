@@ -19,6 +19,7 @@ import GlassBarButtonComponent
 import DatePickerNode
 import UndoUI
 import TooltipUI
+import RGStrings // MARK: Regram — local recurring tasks.
 
 private let calendar = Calendar(identifier: .gregorian)
 
@@ -94,6 +95,7 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
         private let bottomSeparator = SimpleLayer()
         
         private let repeatTitle = ComponentView<Empty>()
+        private let repeatInfo = UILabel() // MARK: Regram
         private let repeatValue = ComponentView<Empty>()
         
         private var timePicker = ComponentView<Empty>()
@@ -473,6 +475,8 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
                 let repeatString: String
                 if let repeatPeriod = self.repeatPeriod {
                     switch repeatPeriod {
+                    case rgStartupDailyRepeatPeriod: // MARK: Regram — independent local task.
+                        repeatString = "RecurringMessages.DailyStartup".i18n(strings.baseLanguageCode)
                     case 86400:
                         repeatString = strings.ScheduleMessage_RepeatPeriod_Daily
                     case 7 * 86400:
@@ -503,7 +507,7 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
                                     theme: environment.theme,
                                     text: repeatString,
                                     isActive: self.isPickingRepeatPeriod,
-                                    isLocked: !component.context.isPremium
+                                    isLocked: false // MARK: Regram — the menu includes an independent local task.
                                 )
                             ),
                             action: { [weak self] in
@@ -531,10 +535,22 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
                     transition.setFrame(view: repeatValueView, frame: repeatValueFrame)
                 }
                 contentHeight += 70.0
+                // MARK: Regram — explain the local scheduling lifetime at the point of use.
+                self.repeatInfo.isHidden = self.repeatPeriod != rgStartupDailyRepeatPeriod
+                if self.repeatPeriod == rgStartupDailyRepeatPeriod {
+                    self.repeatInfo.numberOfLines = 0
+                    self.repeatInfo.font = Font.regular(13.0)
+                    self.repeatInfo.textColor = environment.theme.actionSheet.secondaryTextColor
+                    self.repeatInfo.text = "RecurringMessages.Info".i18n(strings.baseLanguageCode)
+                    if self.repeatInfo.superview == nil { self.addSubview(self.repeatInfo) }
+                    let infoSize = self.repeatInfo.sizeThatFits(CGSize(width: availableSize.width - sideInset * 2.0, height: .greatestFiniteMagnitude))
+                    transition.setFrame(view: self.repeatInfo, frame: CGRect(x: sideInset, y: contentHeight - 6.0, width: availableSize.width - sideInset * 2.0, height: infoSize.height))
+                    contentHeight += infoSize.height + 8.0
+                }
             }
             
             let time = stringForMessageTimestamp(timestamp: Int32(date.timeIntervalSince1970), dateTimeFormat: environment.dateTimeFormat)
-            let buttonTitle: String
+            var buttonTitle: String
             switch component.mode {
             case .scheduledMessages:
                 if calendar.isDateInToday(date) {
@@ -560,6 +576,12 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
                 buttonTitle = strings.Conversation_CalendarSearch_Done
             }
                 
+            if self.repeatPeriod == rgStartupDailyRepeatPeriod {
+                switch component.mode {
+                case .scheduledMessages, .reminders: buttonTitle = "RecurringMessages.Create".i18n(strings.baseLanguageCode)
+                default: break
+                }
+            }
             let buttonInsets = ContainerViewLayout.concentricInsets(bottomInset: environment.safeInsets.bottom, innerDiameter: 52.0, sideInset: 30.0)
             let buttonSize = self.button.update(
                 transition: transition,
@@ -775,11 +797,9 @@ private final class ChatScheduleTimeSheetContentComponent: Component {
                                 strings: strings,
                                 value: self.repeatPeriod,
                                 valueUpdated: { [weak self] value in
-                                    guard let self, let component = self.component, let environment = self.environment else {
-                                        return
-                                    }
+                                    guard let self, let component = self.component, let environment = self.environment else { return }
                                     self.isPickingRepeatPeriod = false
-                                    if component.context.isPremium {
+                                    if value == nil || value == rgStartupDailyRepeatPeriod || component.context.isPremium { // MARK: Regram — daily startup tasks are available without Premium.
                                         self.repeatPeriod = value
                                     } else {
                                         var text = strings.ScheduleMessage_PremiumRequired_Text
@@ -1648,6 +1668,7 @@ private final class RepeatMenuComponent: Component {
         private var component: RepeatMenuComponent?
         
         private let values: [Int32] = [
+            rgStartupDailyRepeatPeriod, // MARK: Regram — no server Premium entitlement required.
             86400,
             7 * 86400,
             14 * 86400,
@@ -1718,6 +1739,8 @@ private final class RepeatMenuComponent: Component {
                 
                 let repeatString: String
                 switch value {
+                case rgStartupDailyRepeatPeriod: // MARK: Regram
+                    repeatString = "RecurringMessages.DailyStartup".i18n(component.strings.baseLanguageCode)
                 case 86400:
                     repeatString = component.strings.ScheduleMessage_RepeatPeriod_Daily
                 case 7 * 86400:

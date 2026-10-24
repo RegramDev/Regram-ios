@@ -14,6 +14,8 @@ rgdeps = [
 ]
 
 rgsrc = [
+    "//Regram/RGChatListPlacement:RGChatListPlacement", # MARK: Regram
+    "//Regram/RGRecurringMessages:RGRecurringMessages", # MARK: Regram
     "//Regram/RGIQTP:RGIQTP",
 ]
 

@@ -1,9 +1,10 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34634** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34636** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
+- [b34636 消息搜索、归档与每日任务](search-archive-daily-34636.md)：发送者搜索清除、分组标签持久化、归档归属保护，以及独立的每日首次启动任务与会员原生定时保留。
 - [b34634 隐藏底栏后的返回与二维码响应](hidden-tab-navigation-34634.md)：组合按钮触摸修正、真实 UIKit 回归、构建及发布校验记录。
 - [b34633 装扮同步、礼物升级与通知入口](profile-notifications-34633.md)：引用名称颜色与顶部礼物状态联动、保留普通结算、本地限定礼物升级，以及实验性通知恢复迁移。
 

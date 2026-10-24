@@ -142,15 +142,15 @@ private func synchronizeGroupedPeers(transaction: Transaction, postbox: Postbox,
     }
     
     return network.request(Api.functions.folders.editPeerFolders(folderPeers: folderPeers))
-    |> map(Optional.init)
-    |> `catch` { _ -> Signal<Api.Updates?, NoError> in
-        return .single(nil)
-    }
+    |> retryRequest // MARK: Regram — keep local archive operations queued across transient failures.
     |> mapToSignal { updates -> Signal<Void, NoError> in
-        if let updates = updates {
-            stateManager.addUpdates(updates)
+        stateManager.addUpdates(updates)
+        // MARK: Regram — stale requests stay subordinate until the server acknowledges this placement.
+        return postbox.transaction { transaction -> Void in
+            for operation in operations {
+                rgConfirmChatListPlacement(transaction: transaction, peerId: operation.peerId, group: operation.groupId)
+            }
         }
-        return .complete()
     }
 }
 

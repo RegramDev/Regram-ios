@@ -3069,12 +3069,13 @@ private func privacySearchableItems(context: AccountContext, privacySettings: Ac
     items.append(
         SettingsSearchableItem(
             id: "privacy/archive-and-mute",
-            title: strings.PrivacySettings_AutoArchive,
-            alternate: [],
+            // MARK: Regram — archive search opens the same page as the chat-list archive menu.
+            title: strings.ArchiveSettings_Title,
+            alternate: [strings.PrivacySettings_AutoArchive, strings.ArchiveSettings_KeepArchived, strings.ArchiveSettings_AutomaticallyArchive],
             icon: icon,
             breadcrumbs: [strings.Settings_PrivacySettings],
             present: { context, _, present in
-                presentPrivacySettings(context, present, .autoArchive)
+                present(.push, archiveSettingsController(context: context))
             }
         )
     )

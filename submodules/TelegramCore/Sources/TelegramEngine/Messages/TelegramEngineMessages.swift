@@ -119,7 +119,7 @@ public extension TelegramEngine {
         }
 
         public func sendScheduledMessageNowInteractively(messageId: MessageId) -> Signal<Never, NoError> {
-            return _internal_sendScheduledMessageNowInteractively(postbox: self.account.postbox, messageId: messageId)
+            return rgSendStartupDailyMessageNow(account: self.account, messageId: messageId) // MARK: Regram — local daily tasks support Send Now.
         }
 
         public func requestMessageActionCallbackPasswordCheck(messageId: MessageId, isGame: Bool, data: MemoryBuffer?) -> Signal<Never, MessageActionCallbackError> {
