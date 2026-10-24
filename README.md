@@ -130,7 +130,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-本轮完整构建、自动检查、包校验、源码与设备验证范围见[本轮更新](docs/search-archive-daily-34636.md)；历次记录见[更新记录](docs/changelog.md)。
+b34636 已完成 Xcode 27.1 的完整 arm64 Release、70 项现有检查、70 项专项检查，以及主程序／六扩展和 12 份匹配 dSYM 的包校验。正式发布的 Latest、公开完整下载、SHA-256 附件与生产更新解析核对通过。构建源码、包摘要与设备验证范围见[本轮更新](docs/search-archive-daily-34636.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

@@ -131,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-See the [update record](docs/search-archive-daily-34636.md) for the complete build, automatic checks, package verification, source correspondence and device-validation scope, and the [changelog](docs/changelog.md) for earlier releases.
+b34636 passed the full Xcode 27.1 arm64 Release build, 70 existing checks, 70 focused checks, and package validation for the main app, six extensions and 12 matching dSYMs. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [update record](docs/search-archive-daily-34636.md) for the source commit, package digest and device-validation scope, and the [changelog](docs/changelog.md) for earlier releases.
 
 ## Building
 
