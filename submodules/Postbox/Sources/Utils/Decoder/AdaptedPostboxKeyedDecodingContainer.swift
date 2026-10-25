@@ -22,7 +22,8 @@ private func decodingErrorBreakpoint() {
 
 extension _AdaptedPostboxDecoder.KeyedContainer: KeyedDecodingContainerProtocol {
     var allKeys: [Key] {
-        preconditionFailure()
+        // MARK: Regram — restore String/Int-keyed Codable dictionaries without trapping.
+        return self.decoder.decodeKeyNames().compactMap { Key(stringValue: $0) }
     }
     
     func contains(_ key: Key) -> Bool {

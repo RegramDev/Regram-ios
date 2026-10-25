@@ -29,6 +29,7 @@
 
 ## 构建与维护
 
+- [b34636 网络与启动崩溃修复](crash-fixes-20261025.md)：三份崩溃日志的符号化结果、CFStream 观察流清理及 Postbox 字典解码修正，包含回归和编译范围。
 - [Telegram 13.1.1 上游同步](upstream-sync-20261023.md)：同步范围、现有 UI 保留、功能兼容修正及 b34630 构建与交付记录。
 - [图标与截图标记](../Regram/RGBranding/README.md)：絮语、合流及各配色从同一源派生明确的深浅资源，原默认图标改为备用；截图标记跟随应用主题，保留 Regram、知秋原图。
 - [GitHub Actions](github-actions-build.md)：读取版本、构建一份 IPA、校验报告与确认发布流程。
