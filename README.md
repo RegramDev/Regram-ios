@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.1.1 / b34637**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34637)。本版修复读取本地归档状态时的启动崩溃，以及网络连接清理时的递归锁崩溃，兼容已有归档数据。详情见[修复与交付记录](docs/crash-fixes-20261025.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
+当前版本 **13.1.1 / b34638**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34638)。本版修复选中文字引用时的闪退，新增频道备注、删除消息自动一键三连及隐藏消息转发按钮。详情见[本轮记录](docs/quote-channel-tools-34638.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
 
 ## 功能
 
@@ -130,7 +130,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34637 已完成 Xcode 27.1 的完整 arm64 Release、70 项现有检查、归档二进制存储和网络流专项回归，以及主程序／六扩展和 12 份匹配 dSYM 的包校验。安装身份与 b34636 一致；正式发布的 Latest、公开完整下载、SHA-256 附件和生产更新解析核对通过。构建源码、包摘要与设备验证范围见[本轮记录](docs/crash-fixes-20261025.md)；历次记录见[更新记录](docs/changelog.md)。
+b34638 已完成 Xcode 27.1 的完整 arm64 Release、74 项自动检查，以及主程序／六扩展和 12 份匹配 dSYM 的包校验。安装身份与 b34637 一致；正式发布的 Latest、公开完整下载、SHA-256 附件和生产更新解析核对通过。构建源码、包摘要与验证范围见[本轮记录](docs/quote-channel-tools-34638.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

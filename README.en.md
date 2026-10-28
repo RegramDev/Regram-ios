@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34637**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34637). This release fixes a startup crash when decoding saved archive placement and a recursive-lock crash during network connection cleanup, while retaining existing archive data. See the [fix and delivery record](docs/crash-fixes-20261025.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34638**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34638). This release fixes crashes when quoting selected text and adds channel remarks, optional moderation presets when deleting messages, and a setting to hide message forward buttons. See the [delivery record](docs/quote-channel-tools-34638.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -131,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34637 passed the full Xcode 27.1 arm64 Release build, 70 existing checks, focused archive binary-codec and network-stream checks, and package validation for the main app, six extensions and 12 matching dSYMs. Installation identity matches b34636. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [delivery record](docs/crash-fixes-20261025.md) for source, package and device-validation details.
+b34638 passed the full Xcode 27.1 arm64 Release build, 74 automated checks, and package validation for the main app, six extensions and 12 matching dSYMs. Installation identity matches b34637. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [delivery record](docs/quote-channel-tools-34638.md) for source, package and validation details.
 
 ## Building
 
