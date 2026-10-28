@@ -391,7 +391,7 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
             }
             
             // MARK: Regram
-            if rgShouldHideMessageForwardButton(item: item, isEnabled: RGSimpleSettings.shared.hideMessageForwardButton, commentsEnabled: false) {
+            if rgShouldHideMessageForwardButton(item: item, isEnabled: RGSimpleSettings.shared.hideMessageForwardButton, commentsEnabled: true) {
                 needsShareButton = false
             }
 
