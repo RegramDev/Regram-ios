@@ -4,10 +4,10 @@ import Foundation
 public enum RGAppIconNames {
     public static let primaryName = "RGConversation"
     public static let alternateName = "RGGathering"
-    public static let alternateNames = ["RGAzure", "RGIris", "RGMint", alternateName, "RGAmber", "RGNebula", "RGJade", "RGClassic"]
+    public static let alternateNames = ["RGAzure", "RGIris", "RGMint", alternateName, "RGAmber", "RGNebula", "RGJade", "RGClassic", "RGSilver"]
     public static let allNames = [primaryName] + alternateNames
 
-    private static let titleNames = [primaryName: "conversation", "RGAzure": "azure", "RGIris": "iris", "RGMint": "mint", alternateName: "gathering", "RGAmber": "amber", "RGNebula": "nebula", "RGJade": "jade", "RGClassic": "classic"]
+    private static let titleNames = [primaryName: "conversation", "RGAzure": "azure", "RGIris": "iris", "RGMint": "mint", alternateName: "gathering", "RGAmber": "amber", "RGNebula": "nebula", "RGJade": "jade", "RGClassic": "classic", "RGSilver": "silver"]
     public static func titleKey(_ name: String) -> String { "AppIcon.Name." + (titleNames[name] ?? "conversation") }
 
     /// UIKit represents the primary icon with nil. Retired artwork falls back to it.

@@ -6,6 +6,7 @@ load(
 )
 
 rgdeps = [
+    "//Regram/RGLocalGifts", # MARK: Regram
     "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
     "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",

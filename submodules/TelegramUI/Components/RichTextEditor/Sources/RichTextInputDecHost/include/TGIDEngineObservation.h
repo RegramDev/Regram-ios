@@ -316,6 +316,8 @@ API_AVAILABLE(ios(18.4))
 /// A selection deletion (`deleteBackward` with a selection, `cut:`) is issued as `replaceRange:withText:`
 /// with empty text, so it reaches the gate too: a range across blocks is structural.
 @property(nonatomic, copy, nullable) NSString *_Nullable (^tgid_textInputGate)(NSRange canonicalRange, NSString *text);
+// MARK: Regram — only the UIKeyInput lone Return calls this, before a content mutation.
+@property(nonatomic, copy, nullable) BOOL (^tgid_shouldInsertSoftwareReturn)(void);
 
 /// YES only while the gate is being asked to resolve the selection a COMPOSITION is about to start
 /// over (an empty replacement, see `setMarkedText:selectedRange:`). A host that decides the deletion

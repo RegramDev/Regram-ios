@@ -239,8 +239,10 @@ func managedCommunityChatListItemSummaries(postbox: Postbox, network: Network, a
                     for linkedPeer in cachedData.linkedPeers {
                         // MARK: Regram — never replace an existing archive, pin or timestamp from a summary.
                         if state.collapsedInDialogs {
+                            rgRememberChatListPlacement(transaction: transaction, peerId: linkedPeer.peerId) // MARK: Regram
                             transaction.updatePeerChatListInclusion(linkedPeer.peerId, inclusion: .notIncluded)
                         } else if isPeerHiddenByCollapsedCommunity(transaction: transaction, peerId: linkedPeer.peerId) {
+                            rgRememberChatListPlacement(transaction: transaction, peerId: linkedPeer.peerId) // MARK: Regram
                             transaction.updatePeerChatListInclusion(linkedPeer.peerId, inclusion: .notIncluded)
                         } else if case .notIncluded = transaction.getPeerChatListInclusion(linkedPeer.peerId),
                                   !shouldExcludePeerFromChatList(transaction: transaction, peerId: linkedPeer.peerId),

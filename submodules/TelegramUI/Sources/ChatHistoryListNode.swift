@@ -1,6 +1,7 @@
 // MARK: Regram
 import RGTranscription
 import RGSimpleSettings
+import RGLocalGifts // MARK: Regram
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -1383,7 +1384,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                             if let maxMessage, message.index <= maxMessage {
                                 break
                             }
-                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
+                            if rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
                                 if !message.flags.intersection(.IsIncomingMask).isEmpty {
                                     if maxMessage == nil || maxMessage! < message.index {
                                         maxMessage = message.index
@@ -2247,7 +2248,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 if RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty { return .single(update) }
                 let candidates = view.entries.map { entry -> RGContentFilterCandidate in
                     let message = entry.message
-                    return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
+                    return RGContentFilterCandidate(id: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(rgFilterAccountPeerId))
                 }
                 return rgPrepareContentFilter(candidates: candidates, accountPeerId: rgFilterAccountPeerId, queue: queue)
                 |> map { _ in update }
@@ -2255,9 +2256,9 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             |> runOn(queue)
         }
 
-        // MARK: Regram — refresh source-specific transcription controls when the provider changes.
-        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, rgTranscriptionProviderSignal())
-        |> map { update, _ in update }
+        // MARK: Regram — prime local gift media and refresh quotes when the display overlay changes.
+        historyViewUpdate = combineLatest(queue: .mainQueue(), historyViewUpdate, rgTranscriptionProviderSignal(), rgLocalAppearanceState(context: context))
+        |> map { update, _, _ in update }
 
         let startTime = CFAbsoluteTimeGetCurrent()
         var measure_isFirstTime = true

@@ -274,29 +274,31 @@ for design in Design.allCases {
     }
 }
 
-// Preserve the old Regram primary as an optional icon, with a derived gray-paper dark rendition.
-let classicSource = branding.appendingPathComponent("Artwork/RGClassic-original.png")
-let classicImage = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithURL(classicSource as CFURL, nil)!, 0, nil)!
-for (catalog, size) in [("AppIcons.xcassets/RGClassic.appiconset", 1024), ("Images.xcassets/RGClassicPreview.imageset", 256)] {
-    var images: [[String: Any]] = []
-    for appearance in Appearance.allCases {
-        let name = "RGClassic-\(appearance.rawValue).png"
-        var entry: [String: Any] = ["filename": name, "idiom": "universal"]
-        if size == 1024 { entry["platform"] = "ios"; entry["size"] = "1024x1024" }
-        if appearance == .dark { entry["appearances"] = appearance.catalogAppearances }
-        images.append(entry)
-        try raster(to: branding.appendingPathComponent(catalog + "/" + name), size: CGSize(width: size, height: size)) { context in
-            context.translateBy(x: 0, y: CGFloat(size)); context.scaleBy(x: 1, y: -1)
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
-            context.setFillColor(color("FFFFFF")); context.fill(rect)
-            context.draw(classicImage, in: rect)
-            if appearance == .dark {
-                context.setBlendMode(.multiply)
-                context.setFillColor(color("E5E5EA")); context.fill(rect)
+// Raster alternatives retain their original artwork. Only Classic derives a gray-paper dark rendition.
+for iconName in ["RGClassic", "RGSilver"] {
+    let source = branding.appendingPathComponent("Artwork/\(iconName)-original.png")
+    let image = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithURL(source as CFURL, nil)!, 0, nil)!
+    for (catalog, size) in [("AppIcons.xcassets/\(iconName).appiconset", 1024), ("Images.xcassets/\(iconName)Preview.imageset", 256)] {
+        var images: [[String: Any]] = []
+        for appearance in Appearance.allCases {
+            let name = "\(iconName)-\(appearance.rawValue).png"
+            var entry: [String: Any] = ["filename": name, "idiom": "universal"]
+            if size == 1024 { entry["platform"] = "ios"; entry["size"] = "1024x1024" }
+            if appearance == .dark { entry["appearances"] = appearance.catalogAppearances }
+            images.append(entry)
+            try raster(to: branding.appendingPathComponent(catalog + "/" + name), size: CGSize(width: size, height: size)) { context in
+                context.translateBy(x: 0, y: CGFloat(size)); context.scaleBy(x: 1, y: -1)
+                let rect = CGRect(x: 0, y: 0, width: size, height: size)
+                context.setFillColor(color("FFFFFF")); context.fill(rect)
+                context.draw(image, in: rect)
+                if iconName == "RGClassic" && appearance == .dark {
+                    context.setBlendMode(.multiply)
+                    context.setFillColor(color("E5E5EA")); context.fill(rect)
+                }
             }
         }
+        try writeJSON(["images": images, "info": info], to: branding.appendingPathComponent(catalog + "/Contents.json"))
     }
-    try writeJSON(["images": images, "info": info], to: branding.appendingPathComponent(catalog + "/Contents.json"))
 }
 
 // Shared product surfaces use the primary B1 identity too.

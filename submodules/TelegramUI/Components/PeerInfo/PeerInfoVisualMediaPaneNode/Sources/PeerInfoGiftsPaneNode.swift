@@ -1,3 +1,5 @@
+import RGLocalGifts // MARK: Regram
+import RGStrings // MARK: Regram
 import AsyncDisplayKit
 import UIKit
 import Display
@@ -960,6 +962,35 @@ public final class PeerInfoGiftsPaneNode: ASDisplayNode, PeerInfoPaneNode, UIScr
     }
     
     private func contextAction(gift: ProfileGiftsContext.State.StarGift, view: UIView, gesture: ContextGesture) {
+        // MARK: Regram — local gifts have no transfer, sale, conversion or collection RPCs.
+        if self.peerId == self.context.account.peerId, let localId = rgLocalGiftPurchaseId(gift: gift) {
+            guard let currentParams = self.currentParams else { return }
+            let presentationData = currentParams.presentationData
+            let strings = presentationData.strings
+            var items: [ContextMenuItem] = []
+            if case .unique = gift.gift {
+                items.append(.action(ContextMenuActionItem(text: gift.pinnedToTop ? strings.PeerInfo_Gifts_Context_Unpin : strings.PeerInfo_Gifts_Context_Pin, icon: { theme in
+                    generateTintedImage(image: UIImage(bundleImageName: gift.pinnedToTop ? "Chat/Context Menu/Unpin" : "Chat/Context Menu/Pin"), color: theme.contextMenu.primaryColor)
+                }, action: { [weak self] c, _ in
+                    c?.dismiss(completion: { [weak self] in
+                        guard let self else { return }
+                        if case let .failure(error) = rgSetLocalGiftPinned(context: self.context, id: localId, pinned: !gift.pinnedToTop, profileGifts: self.profileGifts) {
+                            self.parentController?.present(textAlertController(context: self.context, title: nil, text: rgLocalGiftError(error, language: strings.primaryComponent.languageCode), actions: [TextAlertAction(type: .defaultAction, title: strings.Common_OK, action: {})]), in: .window(.root))
+                        }
+                    })
+                })))
+            }
+            items.append(.action(ContextMenuActionItem(text: "LocalGifts.Details".i18n(strings.primaryComponent.languageCode), icon: { _ in nil }, action: { [weak self] c, _ in
+                c?.dismiss(completion: { [weak self] in
+                    guard let self else { return }
+                    self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, gift), profileGiftsContext: self.profileGifts), in: .window(.root))
+                })
+            })))
+            let previewController = GiftContextPreviewController(context: self.context, gift: gift)
+            let contextController = makeContextController(context: self.context, presentationData: presentationData, source: .controller(ContextControllerContentSourceImpl(controller: previewController, sourceView: view)), items: .single(ContextController.Items(content: .list(items))), gesture: gesture)
+            self.parentController?.presentInGlobalOverlay(contextController)
+            return
+        }
         guard let currentParams = self.currentParams else {
             return
         }

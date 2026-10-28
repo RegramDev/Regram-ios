@@ -93,7 +93,11 @@ public extension RichTextEditorView {
     /// The return-key appearance exposed by the canvas's `UITextInputTraits` conformance.
     var composerReturnKeyType: UIReturnKeyType {
         get { self.canvas.returnKeyType }
-        set { self.canvas.returnKeyType = newValue }
+        set {
+            guard self.canvas.returnKeyType != newValue else { return }
+            self.canvas.returnKeyType = newValue
+            if self.canvas.isFirstResponder { self.canvas.reloadInputViews() }
+        }
     }
     //
 

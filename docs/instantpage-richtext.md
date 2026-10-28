@@ -2,6 +2,10 @@
 
 This file documents the **rich-text message** pipeline and the **InstantPage V2** renderer that backs it.
 
+## Regram consumers in b34633
+
+Regram tools read the complete `InstantPage` through the production `RGMessageText` projection, preferring `fullInstantPage` when available. This covers keyword filtering, readable edit-history snapshots, summaries, translation, bookmarks, revoked-message search and common-group previews; spoiler content remains concealed in previews. Repeat-copy keeps structured attributes, embedded media and grouping, and reports a failed full-page load instead of sending incomplete content. See [the integration record](functional-fixes-20261024.md). Quoted messages additionally use the owner-only local appearance overlay, keeping native light/dark colors and gift patterns consistent with the profile.
+
 A rich message is a `RichTextMessageAttribute` carrying an `InstantPage` (sent with `text: ""`), produced when typed markdown contains structure the regular message-entity set can't represent (headings, lists, tables, formulas, nested blockquotes) and drawn by `ChatMessageRichDataBubbleContentNode` via the InstantPage V2 layout/renderer — including AI-streaming progressive reveal, inline custom emoji, and entity (mention / hashtag / …) cases. It also covers the send / edit / copy / paste round-trips between markdown and `InstantPage`.
 
 These are detailed, non-obvious invariants — read the relevant section before touching the corresponding code. (Moved out of `CLAUDE.md` to keep that file focused; `CLAUDE.md` retains a brief pointer back to here.)
@@ -308,7 +312,7 @@ Every V2 block-media kind lays out **flush** with the bubble interior (0 inset, 
 
 `InstantPageBlock.audio` renders in V2 as a control **styled exactly like the standard music message bubble** (`ChatMessageInteractiveFileNode`'s music layout) — a dedicated `InstantPageV2AudioContentNode`, NOT the V1 `InstantPageAudioNode` (which V2 used in the first iteration and which still backs V1's full-page Instant View). It replaces the earlier inert grey `.mediaPlaceholder(kind: .audio)`. Playback stays on `InstantPageMediaPlaylist`, with two deliberate behavior changes for the rich-message context: the shared playlist identity is **message-scoped** so concurrent rich-message audio bubbles don't collide, and rich-message audio files are fetched via a **message reference** (not the synthesized webpage) so a stale file reference can revalidate.
 
-Specs: [`2026-06-02-instantpage-v2-audio-design.md`](docs/superpowers/specs/2026-06-02-instantpage-v2-audio-design.md) (initial port) + [`2026-06-02-instantpage-v2-audio-file-style-design.md`](docs/superpowers/specs/2026-06-02-instantpage-v2-audio-file-style-design.md) (file-bubble styling). Plans: [`2026-06-02-instantpage-v2-audio.md`](docs/superpowers/plans/2026-06-02-instantpage-v2-audio.md) + [`2026-06-02-instantpage-v2-audio-file-style.md`](docs/superpowers/plans/2026-06-02-instantpage-v2-audio-file-style.md).
+Specs: `2026-06-02-instantpage-v2-audio-design.md` (historical path: `docs/superpowers/specs/2026-06-02-instantpage-v2-audio-design.md`) (initial port) + `2026-06-02-instantpage-v2-audio-file-style-design.md` (historical path: `docs/superpowers/specs/2026-06-02-instantpage-v2-audio-file-style-design.md`) (file-bubble styling). Plans: `2026-06-02-instantpage-v2-audio.md` (historical path: `docs/superpowers/plans/2026-06-02-instantpage-v2-audio.md`) + `2026-06-02-instantpage-v2-audio-file-style.md` (historical path: `docs/superpowers/plans/2026-06-02-instantpage-v2-audio-file-style.md`).
 
 ### Where things live
 
@@ -433,8 +437,8 @@ downloaded/played on tap-to-gallery, and image auto-download ignored per-message
 low-level module also used by web Instant View / `BrowserUI`). HLS inline-range preloading and
 live-photo are deliberately **out of scope** (they fall back to tap-to-gallery).
 
-Spec: [`docs/superpowers/specs/2026-07-09-instantpage-v2-video-autodownload-autoplay-design.md`](docs/superpowers/specs/2026-07-09-instantpage-v2-video-autodownload-autoplay-design.md).
-Plan: [`docs/superpowers/plans/2026-07-09-instantpage-v2-video-autodownload-autoplay.md`](docs/superpowers/plans/2026-07-09-instantpage-v2-video-autodownload-autoplay.md).
+Spec: `docs/superpowers/specs/2026-07-09-instantpage-v2-video-autodownload-autoplay-design.md` (historical path: `docs/superpowers/specs/2026-07-09-instantpage-v2-video-autodownload-autoplay-design.md`).
+Plan: `docs/superpowers/plans/2026-07-09-instantpage-v2-video-autodownload-autoplay.md` (historical path: `docs/superpowers/plans/2026-07-09-instantpage-v2-video-autodownload-autoplay.md`).
 
 ### Where things live
 
@@ -761,7 +765,7 @@ markdown-send gate above.
 
 `InstantPageListItem` carries a first-class `checked: Bool?` — the **third** associated value of `.text(RichText, String?, Bool?)` / `.blocks([InstantPageBlock], String?, Bool?)`, orthogonal to the ordered-list `num` — representing a GitHub-style task-list checkbox. `nil` = not a checkbox item, `false` = unchecked, `true` = checked. Covers markdown parse, Postbox + FlatBuffers serialization, Telegram API transmission, display (V1 + V2), the edit round-trip, and previews.
 
-Spec: [`docs/superpowers/specs/2026-05-27-instantpage-list-checkbox-design.md`](docs/superpowers/specs/2026-05-27-instantpage-list-checkbox-design.md). Plan: [`docs/superpowers/plans/2026-05-27-instantpage-list-checkbox.md`](docs/superpowers/plans/2026-05-27-instantpage-list-checkbox.md).
+Spec: `docs/superpowers/specs/2026-05-27-instantpage-list-checkbox-design.md` (historical path: `docs/superpowers/specs/2026-05-27-instantpage-list-checkbox-design.md`). Plan: `docs/superpowers/plans/2026-05-27-instantpage-list-checkbox.md` (historical path: `docs/superpowers/plans/2026-05-27-instantpage-list-checkbox.md`).
 
 ### Where things live
 
@@ -814,7 +818,7 @@ Non-obvious invariants:
 
 `InstantPageBlock.blockQuote` carries `(blocks: [InstantPageBlock], caption: RichText)` — a sequence of nested page blocks (paragraphs, headings, lists, code, even nested quotes), not the legacy text-only payload. `.pullQuote` is unchanged (still `(text: RichText, caption: RichText)`; the TL API has no `pullQuoteBlocks` constructor).
 
-Spec: [`docs/superpowers/specs/2026-05-29-instantpage-blockquote-blocks-design.md`](docs/superpowers/specs/2026-05-29-instantpage-blockquote-blocks-design.md).
+Spec: `docs/superpowers/specs/2026-05-29-instantpage-blockquote-blocks-design.md` (historical path: `docs/superpowers/specs/2026-05-29-instantpage-blockquote-blocks-design.md`).
 
 ### Where things live
 

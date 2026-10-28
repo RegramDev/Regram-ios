@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, and appearance customization.
 
-This branch is **regram-beta / 13.1.1 / b34630**. See [Actions builds](https://github.com/RegramDev/Regram-ios/actions/workflows/build.yml?query=branch%3Aregram-beta) for Beta packages. This release integrates Telegram iOS 13.1.1 while preserving the current Regram UI. It fixes permission-warning badge hiding, delayed refresh of the in-chat mention button, LLM endpoint URL construction and Apple transcription routing, and restores the Share extension's complete entitlement declarations. See the [integration and delivery record](docs/upstream-sync-20261023.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+This branch is **regram-beta / 13.1.1 / b34638**. See [Actions builds](https://github.com/RegramDev/Regram-ios/actions/workflows/build.yml?query=branch%3Aregram-beta) for Beta packages. This sync brings the applicable b34631–b34638 mainline changes, including local gift and profile customization, message search, first-launch daily tasks, startup and network crash fixes, quote selection and channel remarks, plus the XChat alternate app icon. See the [Beta integration record](docs/beta-sync-20261028.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -12,15 +12,16 @@ This branch is **regram-beta / 13.1.1 / b34630**. See [Actions builds](https://g
 
 - Unlimited locally pinned chats and ordering in the main list and archive. Pins beyond the Telegram account limit remain local.
 - The last 50 opened chats per account, with quick navigation and history clearing.
-- Local group remarks: set a display name from the group profile, saved per account and used in lists, titles and local search. Clear it to restore the original name.
+- Local group and channel remarks: set a display name from the group or channel profile, saved per account and used in lists, titles and local search. Clear it to restore the original name.
 - Message bookmarks and tags: add from a message menu, manage below Saved Messages on the outer Settings page, filter and edit tags, and return to the original message.
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.
-- A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu.
+- A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with keyword search, clear-to-restore and navigation to the original message.
 - Messages in common groups: open from a person’s profile More menu, browse their searchable messages across shared groups, filter by group, load more, and return to the original message.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
-- Folder selection after joining groups/channels, remembered folders, and folder/list display options.
+- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
+- Independent daily first-launch tasks in the scheduled-send repeat menu: configure once, then silently send on the first launch each day from the chosen date. Tasks stay on this device per account, support editing/deletion/Send Now, and skip missed days. Premium daily/weekly server schedules retain their existing behavior.
 
 The [implementation checklist](docs/chat-and-interface-tools.md) lists share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
 
@@ -33,7 +34,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
 - Notification content filtering, pin/mention/reply policies, empty-notification recovery and entitlement diagnostics.
-- Experimental notification recovery at `tg://rg/rgdebug`, off for new installations and replacing the old compatibility switch. The same page can clear current-account media and web/network caches after confirmation, keeping accounts, databases and settings.
+- Experimental notification recovery in Regram Pro → Notifications, off by default and retaining existing preferences, with search, settings links and notification-category backup support. `tg://rg/rgdebug` retains the cache cleanup tool, keeping accounts, databases, settings.
 
 Anti-revoke and edit history retain content already received or observed on this device. Ghost mode does not suppress ordinary chat read receipts. Client preferences cannot grant permissions enforced by Telegram or iOS.
 
@@ -96,9 +97,11 @@ IP policies apply to native Telegram DC and SOCKS5/MTProto proxy connections. We
 - Category-based JSON settings backup/restore with an import preview, excluding sessions, chat databases, certificates, API keys and font files.
 - Local Premium display, cache management, five-second auto-lock after leaving, and confirmed local-data erasure, with startup handling to avoid blank screens and disappearing prompts.
 
+Local customization is in **Settings → Regram Pro → Show Off**: local Premium display, Stars/TON, gifts and appearance, phone display, signed ratings and the TON profile card. Gift purchases keep direct checkout; limited local gifts can be upgraded in the native details sheet. Quote colors and the chat-list gift status follow the same local appearance. These settings only affect this device.
+
 ## Settings
 
-Feature preferences are under **Settings → Regram Pro**, organized into nine categories:
+Feature preferences are under **Settings → Regram Pro**, organized into nine categories and the Show Off section:
 
 | Category | Contents |
 | --- | --- |
@@ -108,9 +111,10 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 | Privacy & Filters | Rules, hidden senders, anti-revoke, archives, ghost mode, stories |
 | Media & Links | Preview repair, photos, stickers, recording, playback |
 | Appearance & Interface | Fonts, icons, screenshot badges, tab bar, profile display |
-| Notifications & Alerts | Content filtering, pins, mentions and replies |
+| Notifications & Alerts | Experimental notification recovery, content filtering, pins, mentions and replies |
 | Network & Transfers | DNS/IP, transfer parameters, call connections, performance and DC tests |
-| Management & Tools | Local Premium, backups, data cleanup |
+| Show Off | Local Premium, Stars/TON gifts and upgrades, appearance, phone display, ratings and the TON card |
+| Management & Tools | Backups, data cleanup |
 
 Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
 
@@ -118,9 +122,9 @@ Within Pro, global settings search is on the home page, covering categories and 
 
 The outer Settings search and Pro home search share the catalog, aliases and setting destinations. Empty results, clearing and IME composition are handled consistently. See the [follow-up record](docs/groups-settings-search-drag-fixes.md) for search, common-group pagination, drag previews and badge fixes.
 
-## Verification scope
+## Build and package verification
 
-This branch integrates the applicable **13.1.1 / b34630** mainline changes while retaining `com.regram.app`, `group.com.regram.app` and the absence of in-app update installation. All 57 local regression entries and the branch identity/update-exclusion audit passed; 12 Swift files differing from mainline passed syntax parsing. Mainline full-app build, publication and device records do not validate the Beta package. A full local Beta build and device validation were not performed; CI results require separate confirmation. See the [Beta integration record](docs/beta-sync-20261023.md) for checks and limitations. Residual unread badges in bot chats are not confirmed fixed.
+This branch integrates the applicable **13.1.1 / b34638** mainline changes while retaining `com.regram.app`, `group.com.regram.app` and the absence of in-app update installation. This sync includes source changes and related checks, with no Beta package build, device validation or CI build triggered. Mainline package validation and release records do not validate the Beta package. See the [Beta integration record](docs/beta-sync-20261028.md).
 
 ## Building
 

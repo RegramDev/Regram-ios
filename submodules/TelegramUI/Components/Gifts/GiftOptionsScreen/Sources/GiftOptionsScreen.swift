@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -234,6 +235,7 @@ final class GiftOptionsScreenComponent: Component {
         
         private var starsStateDisposable: Disposable?
         private var starsState: StarsContext.State?
+        private var displayedStarsBalance: StarsAmount = .zero // MARK: Regram
         
         private let optionsPromise = Promise<[StarsTopUpOption]?>(nil)
         
@@ -311,6 +313,11 @@ final class GiftOptionsScreenComponent: Component {
                     mainController = controller
                 }
                 if case let .generic(gift) = gift {
+                    // MARK: Regram — enter the native setup before server eligibility / auction paths.
+                    if rgLocalGiftsEnabled(context: context) {
+                        mainController.push(GiftSetupScreen(context: context, peerId: component.peerId, subject: .starGift(gift, nil), completion: component.completion))
+                        return
+                    }
                     if !skipDateCheck, let lockedUntilDate = gift.lockedUntilDate, currentTime < lockedUntilDate {
                         self.loadingGiftId = gift.id
                         Queue.mainQueue().after(0.25) {
@@ -1028,18 +1035,20 @@ final class GiftOptionsScreenComponent: Component {
             self.appliedStarsFilter = self.starsFilter
             
             if self.component == nil {
-                self.starsStateDisposable = (component.starsContext.state
-                |> deliverOnMainQueue).start(next: { [weak self] state in
+                // MARK: Regram — local Stars affect only this gift screen's displayed balance.
+                self.starsStateDisposable = (combineLatest(component.starsContext.state, rgLocalGiftsState(context: component.context))
+                |> deliverOnMainQueue).start(next: { [weak self] state, local in
                     guard let self else {
                         return
                     }
                     self.starsState = state
+                    self.displayedStarsBalance = local.enabled ? StarsAmount(value: local.balance, nanos: 0) : (state?.balance ?? .zero)
                     if !self.isUpdating {
                         self.state?.updated()
                     }
                 })
                 
-                if let state = component.starsContext.currentState, state.balance < StarsAmount(value: 100, nanos: 0) {
+                if let state = component.starsContext.currentState, state.balance < StarsAmount(value: 100, nanos: 0), !rgLocalGiftsEnabled(context: component.context) { // MARK: Regram
                     self.optionsPromise.set(component.context.engine.payments.starsTopUpOptions()
                     |> map(Optional.init))
                 }
@@ -1254,7 +1263,7 @@ final class GiftOptionsScreenComponent: Component {
                 containerSize: availableSize
             )
             
-            let formattedBalance = formatStarsAmountText(self.starsState?.balance ?? StarsAmount.zero, dateTimeFormat: environment.dateTimeFormat)
+            let formattedBalance = formatStarsAmountText(self.displayedStarsBalance, dateTimeFormat: environment.dateTimeFormat) // MARK: Regram
             let smallLabelFont = Font.regular(11.0)
             let labelFont = Font.semibold(14.0)
             let balanceText = tonAmountAttributedString(formattedBalance, integralFont: labelFont, fractionalFont: smallLabelFont, color: theme.actionSheet.primaryTextColor, decimalSeparator: environment.dateTimeFormat.decimalSeparator)

@@ -216,6 +216,8 @@ public final class RichTextEditorView: UIView, UIScrollViewDelegate {
     /// a newline (the default when unset); `false` when the host consumed the Return (e.g. sent the message).
     /// The software keyboard's Return is unaffected (it always inserts a newline).
     public var onHardwareReturn: ((UIKeyModifierFlags) -> Bool)? { didSet { canvas.onHardwareReturn = onHardwareReturn } }
+    // MARK: Regram — a lone software Return, excluding IME commits and hardware commands.
+    public var onSoftwareReturn: (() -> Bool)? { didSet { canvas.onSoftwareReturn = onSoftwareReturn } }
 
     /// Configure each selection-handle ("knob") view. The closure is invoked once per handle view (start and
     /// end), passing it as a bare `UIView`. Use it to set host-framework properties the editor package can't

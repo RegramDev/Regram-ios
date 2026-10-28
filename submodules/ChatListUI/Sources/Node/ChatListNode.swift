@@ -4472,9 +4472,7 @@ func hideChatListContacts(context: AccountContext) {
 }
 
 func chatListItemTags(location: ChatListControllerLocation, accountPeerId: EnginePeer.Id, isPremium: Bool, peer: EnginePeer?, isUnread: Bool, isMuted: Bool, isContact: Bool, hasUnseenMentions: Bool, chatListFilters: [ChatListFilter]?) -> [ChatListItemContent.Tag] {
-    if !isPremium {
-        return []
-    }
+    // MARK: Regram — local folder tags do not require a server Premium entitlement.
     if case .chatList = location {
     } else {
         return []
@@ -4488,13 +4486,13 @@ func chatListItemTags(location: ChatListControllerLocation, accountPeerId: Engin
     
     var result: [ChatListItemContent.Tag] = []
     for case let .filter(id, title, _, data) in chatListFilters {
-        if data.color != nil {
+        do { // MARK: Regram — remote non-Premium filters may omit their tag color.
             let predicate = chatListFilterPredicate(filter: data, accountPeerId: accountPeerId)
             if predicate.pinnedPeerIds.contains(peer.id) || predicate.includes(peer: peer._asPeer(), groupId: .root, isRemovedFromTotalUnreadCount: isMuted, isUnread: isUnread, isContact: isContact, messageTagSummaryResult: hasUnseenMentions) {
                 result.append(ChatListItemContent.Tag(
                     id: id,
                     title: title,
-                    colorId: data.color?.rawValue ?? PeerNameColor.blue.rawValue
+                    colorId: data.color?.rawValue ?? abs(id % 8)
                 ))
             }
         }

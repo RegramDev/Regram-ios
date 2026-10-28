@@ -29,6 +29,11 @@ reducer = block(search_ui, '.start(next: { [weak self] queryAndFoundItems, prese
 reducer = reducer[reducer.index(' in\n') + 4:-1]
 fixture = r'''
 import Foundation
+enum ExperimentDefaults {
+    static let suite = "regram.tests.search.recovery." + UUID().uuidString
+    static let values = UserDefaults(suiteName: suite)!
+}
+func rgSharedUserDefaults() -> UserDefaults? { ExperimentDefaults.values }
 protocol RGItemListSection { var rawValue: Int32 { get } }
 PAGES
 SECTIONS
@@ -176,9 +181,15 @@ final class Queue {
 final class Promise { var values: [String] = []; func set(_ value: String) { values.append(value) } }
 @main enum Checks {
     static func main() {
+        defer { ExperimentDefaults.values.removePersistentDomain(forName: ExperimentDefaults.suite) }
         var transitionCount = 0, routeCount = 0
         for language in ["en", "zh-hans", "zh-hant"] {
             let data = PresentationData(strings: Strings(rgLanguageCode: language))
+            for enabled in [true, false] {
+                RGNotificationExperiment.setEnabled(enabled)
+                let notifications = RGProControllerEntries(presentationData: data, page: .notifications, searchQuery: "")
+                precondition(notifications.contains { if case let .toggle(_, _, .notificationRecoveryExperiment, value, _, _) = $0 { return value == enabled }; return false }, "The relocated native switch must display the shared experiment value")
+            }
             for page in [RGProSettingsPage.messages, .input, .privacy, .translation, .media, .appearance, .notifications, .network, .tools] {
                 let rows = RGProControllerEntries(presentationData: data, page: page, searchQuery: "")
                 precondition(Set(rows.map(\.stableId)).count == rows.count, "Category header identities must not collide with controls: \(page)")
@@ -195,7 +206,7 @@ final class Promise { var values: [String] = []; func set(_ value: String) { val
                 transitionCount += 1
             } }
             for index in [0, 2, 6, 12] {
-                precondition(states[index].filter { $0.kind == 1 }.count == 9, "Clearing and whitespace restore all nine categories")
+                precondition(states[index].filter { $0.kind == 1 }.count == 10, "Clearing and whitespace restore nine categories and the local customization section")
             }
             let context = AccountContext(language)
             let items = rgSettingsSearchableItems(context: context)
@@ -270,5 +281,6 @@ with tempfile.TemporaryDirectory(prefix='regram-settings-search-') as directory:
     (work / 'Checks.swift').write_text(fixture)
     sources = ['Regram/RGStrings/Sources/' + name + '.swift' for name in ['RGSettingsLink', 'RGSettingsCatalog', 'RGProSearchIndex']]
     sources += ['submodules/MergeLists/Sources/Identifiable.swift', 'submodules/MergeLists/Sources/MergeLists.swift']
+    sources += ['Regram/RGAppGroupIdentifier/Sources/RGNotificationExperiment.swift']
     subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + sources + [str(work / 'Checks.swift'), '-o', str(work / 'checks')], cwd=root, check=True)
     subprocess.run([str(work / 'checks'), str(root / 'Regram/RGStrings/Strings')], check=True)

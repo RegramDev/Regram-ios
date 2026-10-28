@@ -90,6 +90,66 @@ final class DoubleReturnExitTests: XCTestCase {
 
     // MARK: Return in a heading → next paragraph is body
 
+    // MARK: Regram — software send, hardware fallback and IME boundaries.
+    func test_softwareReturn_canBeConsumedWithoutEditing() {
+        let c = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("p"), runs: [TextRun(text: "hi")]))])
+        c.setCaret(global: c.boxes[0].leafRegions().first!.globalStart + 2)
+        var sends = 0
+        c.onSoftwareReturn = { sends += 1; return false }
+        c.insertText("\n")
+        XCTAssertEqual(sends, 1)
+        XCTAssertEqual(c.boxes.count, 1)
+        guard case let .paragraph(p) = c.boxes[0].currentBlock() else { return XCTFail() }
+        XCTAssertEqual(p.text, "hi")
+    }
+
+    func test_multilineInsert_doesNotTriggerSoftwareSend() {
+        let c = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("p"), runs: []))])
+        c.setCaret(global: c.boxes[0].textStart)
+        var sends = 0
+        c.onSoftwareReturn = { sends += 1; return false }
+        c.insertText("one\ntwo")
+        XCTAssertEqual(sends, 0)
+        let text = c.boxes.compactMap { box -> String? in
+            if case let .paragraph(p) = box.currentBlock() { return p.text }; return nil
+        }.joined(separator: "\n")
+        XCTAssertEqual(text, "one\ntwo")
+    }
+
+    func test_hardwareNewline_bypassesSoftwareSend() {
+        let c = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("p"), runs: [TextRun(text: "hi")]))])
+        c.setCaret(global: c.boxes[0].leafRegions().first!.globalStart + 2)
+        var sends = 0
+        c.onSoftwareReturn = { sends += 1; return false }
+        c.onHardwareReturn = { _ in true }
+        c.performHardwareReturn(.shift)
+        XCTAssertEqual(sends, 0)
+        XCTAssertEqual(c.boxes.count, 2)
+    }
+
+    func test_markedCommit_doesNotTriggerSoftwareSend() {
+        let c = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("p"), runs: []))])
+        c.setCaret(global: c.boxes[0].textStart)
+        var sends = 0
+        c.onSoftwareReturn = { sends += 1; return false }
+        c.setMarkedText("拼", selectedRange: NSRange(location: 1, length: 0))
+        XCTAssertNotNil(c.markedTextRange)
+        c.insertText("\n")
+        XCTAssertEqual(sends, 0)
+    }
+
+    func test_hardwareReturn_commitsCompositionWithoutSending() {
+        let c = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("p"), runs: []))])
+        c.setCaret(global: c.boxes[0].textStart)
+        c.setMarkedText("拼", selectedRange: NSRange(location: 1, length: 0))
+        XCTAssertNotNil(c.markedTextRange)
+        var sends = 0
+        c.onHardwareReturn = { _ in sends += 1; return false }
+        c.performHardwareReturn([])
+        XCTAssertEqual(sends, 0)
+        XCTAssertNil(c.markedTextRange)
+    }
+
     func test_return_atEndOfHeading_nextParagraphIsBody() {
         let canvas = makeCanvas([.paragraph(ParagraphBlock(id: BlockID("h"), style: .heading1, runs: [TextRun(text: "Title")]))])
         canvas.setCaret(global: canvas.boxes[0].leafRegions().first!.globalStart + 5)   // end of "Title"

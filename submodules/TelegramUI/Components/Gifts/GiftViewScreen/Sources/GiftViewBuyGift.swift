@@ -8,6 +8,9 @@ import PresentationDataUtils
 import TelegramStringFormatting
 import BalanceNeededScreen
 import GiftSetupScreen
+import ConfettiEffect // MARK: Regram
+import RGLocalGifts // MARK: Regram
+import RGStrings // MARK: Regram
 
 public func buyStarGiftImpl(
     context: AccountContext,
@@ -22,9 +25,12 @@ public func buyStarGiftImpl(
     getController: @escaping () -> ViewController?,
     updateProgress: @escaping (Bool) -> Void,
     updateIsBalanceVisible: @escaping (Bool) -> Void,
+    localCompletion: ((StarGift.UniqueGift) -> Void)? = nil, // MARK: Regram
     completion: @escaping () -> Void
 ) {
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+    // MARK: Regram — pin local mode for an open confirmation; disabling it must not charge the server.
+    let beganLocally = rgLocalGiftsEnabled(context: context)
                     
     let action: (CurrencyAmount.Currency, GiftMessageScreen.Result, @escaping () -> Void) -> Void = { currency, message, beforeCompletion in
         guard let resellAmount = uniqueGift.resellAmounts?.first(where: { $0.currency == currency }) else {
@@ -49,6 +55,28 @@ public func buyStarGiftImpl(
             finalPrice = acceptedPrice
         } else {
             finalPrice = resellAmount
+        }
+
+        // MARK: Regram — retain native confirmation, bypass all wallet/payment and server ownership callbacks.
+        if beganLocally || rgLocalGiftsEnabled(context: context) {
+            guard let controller = getController() else { beforeCompletion(); return }
+            guard finalPrice.amount.nanos == 0 else { beforeCompletion(); return }
+            var purchasedGift: StarGift.UniqueGift?
+            updateProgress(true)
+            rgPresentLocalGiftPurchase(context: context, gift: .unique(uniqueGift), price: finalPrice.amount.value, currency: currency, controller: controller, purchased: { gift in
+                if case let .unique(unique) = gift { purchasedGift = unique }
+            }, completion: { success in
+                beforeCompletion()
+                updateProgress(false)
+                if success {
+                    if let navigationController = controller.navigationController {
+                        navigationController.view.addSubview(ConfettiView(frame: navigationController.view.bounds))
+                    }
+                    if let localCompletion, let purchasedGift { localCompletion(purchasedGift) }
+                    else { controller.dismiss() }
+                }
+            })
+            return
         }
         
         let proceed: () -> Void = {

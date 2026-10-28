@@ -301,7 +301,7 @@ extension ChatControllerImpl {
                 guard let self else {
                     return
                 }
-                self.present(ShareController(context: self.context, subject: .url(url), immediateExternalShareOverridingRGBehaviour: false), in: .window(.root))
+                self.present(self.context.sharedContext.makeShareScreen(context: self.context, params: ShareControllerParams(subject: .url(url), externalShare: true, immediateExternalShare: false)), in: .window(.root))
             }))
             items.append(ActionSheetButtonItem(title: self.presentationData.strings.Conversation_ContextMenuShare, color: .accent, action: { [weak actionSheet, weak self] in
                 actionSheet?.dismissAnimated()
@@ -424,7 +424,7 @@ extension ChatControllerImpl {
                     return
                 }
 
-                self.present(ShareController(context: self.context, subject: .url(url), immediateExternalShareOverridingRGBehaviour: false), in: .window(.root))
+                self.present(self.context.sharedContext.makeShareScreen(context: self.context, params: ShareControllerParams(subject: .url(url), externalShare: true, immediateExternalShare: false)), in: .window(.root))
             }))
         )
         items.append(

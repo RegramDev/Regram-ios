@@ -321,6 +321,7 @@ public final class AccountContextImpl: AccountContext {
     }
 
     private var isFrozenDisposable: Disposable?
+    private var rgStartupDailyMessagesDisposable: Disposable? // MARK: Regram
     public private(set) var isFrozen: Bool
     
     public let imageCache: AnyObject?
@@ -705,9 +706,18 @@ public final class AccountContextImpl: AccountContext {
                 return try await requestPasscodeAuthentication(context: self, scope: .resource(namespace: request.namespace), lifetime: request.lifetime, biometricReason: self.sharedContext.currentPresentationData.with { $0 }.strings.Wallet_AuthenticationReason, authenticateBiometrics: authenticateBiometrics)
             }
         }
+        // MARK: Regram — main-app foreground launches only; the transaction enforces one send per day.
+        if !temp {
+            self.rgStartupDailyMessagesDisposable = (sharedContext.applicationBindings.applicationInForeground
+            |> distinctUntilChanged
+            |> filter { $0 }
+            |> mapToSignal { _ in rgRunStartupDailyMessages(account: account) }).start()
+        }
+
     }
 
     deinit {
+        self.rgStartupDailyMessagesDisposable?.dispose() // MARK: Regram
         if self.walletContext != nil {
             self.account.walletTransferTasksRunning.set(.single(false))
         }

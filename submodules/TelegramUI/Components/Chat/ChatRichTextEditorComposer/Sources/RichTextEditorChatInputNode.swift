@@ -303,6 +303,10 @@ public final class RichTextEditorChatInputNode: ASDisplayNode, ChatRichTextInput
         self.editorView.onHardwareReturn = { [weak self] modifierFlags in
             return self?.storedDelegate?.chatInputTextNodeShouldReturn(modifierFlags: modifierFlags) ?? true
         }
+        // MARK: Regram — the native UITextInput backend does not call the legacy replacement delegate.
+        self.editorView.onSoftwareReturn = { [weak self] in
+            self?.storedDelegate?.chatInputTextNodeShouldInsertSoftwareReturn() ?? true
+        }
 
         // The caret's own signal, answered by re-applying the field's CURRENT geometry with the
         // reveal attached. `.immediate` on purpose: when the panel is growing the field it is already

@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram — local gifts are projected only into the owner’s profile.
 import LottieSettings
 import AsyncDisplayKit
 import UIKit
@@ -146,7 +147,7 @@ final class GiftsListView: UIView {
                                         
         self.dataDisposable = combineLatest(
             queue: Queue.mainQueue(),
-            profileGifts.state,
+            rgLocalGiftProfileState(context: context, peerId: peerId, profileGifts: profileGifts, canSelect: canSelect),
             self.reorderedReferencesPromise.get()
         ).startStrict(next: { [weak self] state, reorderedReferences in
             guard let self else {
@@ -556,6 +557,11 @@ final class GiftsListView: UIView {
                                 guard let self, !isAdded, let presentationData = self.currentParams?.presentationData else {
                                     return
                                 }
+                                // MARK: Regram — local gifts use the native viewer with local-only actions.
+                                if self.peerId == self.context.account.peerId, rgLocalGiftPurchaseId(gift: product) != nil {
+                                    self.parentController?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, product), profileGiftsContext: self.profileGifts), in: .window(.root))
+                                    return
+                                }
                                 if self.canSelect {
                                     if self.selectedItemIds.contains(itemReferenceId) {
                                         self.selectedItemIds.remove(itemReferenceId)
@@ -597,8 +603,10 @@ final class GiftsListView: UIView {
                                         }
                                     }
                                 } else {
-                                    let allSubjects: [GiftViewScreen.Subject] = (self.starsProducts ?? []).map { .profileGift(self.peerId, $0) }
-                                    let index = self.starsProducts?.firstIndex(where: { $0 == product }) ?? 0
+                                    // MARK: Regram — swiping between real gifts also excludes local purchases.
+                                    let serverProducts = (self.starsProducts ?? []).filter { rgLocalGiftPurchaseId(gift: $0) == nil }
+                                    let allSubjects: [GiftViewScreen.Subject] = serverProducts.map { .profileGift(self.peerId, $0) }
+                                    let index = serverProducts.firstIndex(where: { $0 == product }) ?? 0
                                     
                                     var dismissImpl: (() -> Void)?
                                     let controller = GiftViewScreen(

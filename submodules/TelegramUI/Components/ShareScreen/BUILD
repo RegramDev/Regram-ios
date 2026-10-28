@@ -12,6 +12,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGSimpleSettings", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/ContextUI",
         "//submodules/TelegramUI/Components/AuthConfirmationScreen",

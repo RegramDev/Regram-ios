@@ -4,6 +4,7 @@ import TelegramCore
 import SwiftSignalKit
 import AccountContext
 import ChatListUI
+import RGSimpleSettings // MARK: Regram
 
 // One selection shared by the grid, recommendations, folders and search results.
 struct ShareScreenSelection {
@@ -218,9 +219,33 @@ final class ShareScreenState {
     private let recommendationsDisposable = MetaDisposable()
     private let accountPeerDisposable = MetaDisposable()
     private var searchDataStarted = false
+    // MARK: Regram — keep native sharing folders in sync with the existing preference.
+    private var availableFilters: [ChatListFilter] = []
+    private var showsFolders = RGSimpleSettings.shared.showFoldersInShareSheet
+    private var foldersObserver: NSObjectProtocol?
+
+    private func applyAvailableFilters() {
+        self.filters = self.showsFolders ? self.availableFilters : []
+        let filterIds = Set(self.filters.map(\.id)).union([0])
+        self.emptyQueryPeers = self.emptyQueryPeers.filter { filterIds.contains($0.key) }
+        self.reloadFolderPages()
+        if self.filterId != 0 && !self.filters.contains(where: { $0.id == self.filterId }) {
+            self.filterId = 0
+            self.reload()
+        } else {
+            self.scheduleChange()
+        }
+    }
 
     init(context: AccountContext) {
         self.context = context
+        self.foldersObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.shareSettingsDidChange, object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            let value = RGSimpleSettings.shared.showFoldersInShareSheet
+            guard value != self.showsFolders else { return }
+            self.showsFolders = value
+            self.applyAvailableFilters()
+        }
         self.accountPeerDisposable.set((context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
         |> deliverOnMainQueue).start(next: { [weak self] accountPeer in
             guard let self else { return }
@@ -239,14 +264,8 @@ final class ShareScreenState {
         self.filtersDisposable.set((context.engine.peers.updatedChatListFilters()
         |> deliverOnMainQueue).start(next: { [weak self] filters in
             guard let self else { return }
-            self.filters = filters
-            self.reloadFolderPages()
-            if self.filterId != 0 && !filters.contains(where: { $0.id == self.filterId }) {
-                self.filterId = 0
-                self.reload()
-            } else {
-                self.scheduleChange()
-            }
+            self.availableFilters = filters
+            self.applyAvailableFilters()
         }))
         self.recommendationsDisposable.set((context.engine.peers.recentPeers()
         |> deliverOnMainQueue).start(next: { [weak self] recent in
@@ -262,6 +281,7 @@ final class ShareScreenState {
     }
 
     deinit {
+        if let observer = self.foldersObserver { NotificationCenter.default.removeObserver(observer) }
         for disposable in self.folderDisposables.values { disposable.dispose() }
         for disposable in self.folderDetailsDisposables.values { disposable.dispose() }
         self.requirementsDisposable.dispose()

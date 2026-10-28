@@ -300,6 +300,19 @@ public extension TelegramEngine {
         public func resolveInlineStickersLocal(fileIds: [Int64]) -> Signal<[Int64: TelegramMediaFile], NoError> {
             return _internal_resolveInlineStickersLocal(postbox: self.account.postbox, fileIds: fileIds)
         }
+
+        // MARK: Regram — register local artwork so status/cover renderers never request synthetic emoji IDs.
+        public func cacheLocalGiftInlineStickers(files: [TelegramMediaFile]) -> Signal<Never, NoError> {
+            return self.account.postbox.transaction { transaction in
+                for file in files where file.fileId.id < 0 && file.fileId.namespace == Namespaces.Media.CloudFile && file.resource is LocalFileReferenceMediaResource {
+                    if let previous = transaction.getMedia(file.fileId) {
+                        if !previous.isEqual(to: file) { _ = transaction.updateMedia(file.fileId, update: file) }
+                    } else {
+                        transaction.storeMediaIfNotPresent(media: file)
+                    }
+                }
+            } |> ignoreValues
+        }
         
         public func searchEmoji(query: String?, emoticon: [String], inputLanguageCode: String = "") -> Signal<(items: [TelegramMediaFile], isFinalResult: Bool), NoError> {
             return _internal_searchEmoji(account: self.account, query: query, emoticon: emoticon, inputLanguageCode: inputLanguageCode)

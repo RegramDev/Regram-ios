@@ -6,20 +6,6 @@ import MtProtoKit
 import EncryptionProvider
 import RGSimpleSettings
 
-// MARK: Regram — anti-revoke marker. Adds RGRevokedMessageAttribute to a kept message in place of
-// deleting it, so the chat can render a "deleted" indicator. No-op if it is already marked.
-private func rgMarkMessageRevoked(transaction: Transaction, id: MessageId) {
-    transaction.updateMessage(id, update: { currentMessage in
-        if currentMessage.attributes.contains(where: { $0 is RGRevokedMessageAttribute }) {
-            return .skip
-        }
-        var attributes = currentMessage.attributes
-        attributes.append(RGRevokedMessageAttribute(date: currentMessage.timestamp))
-        let storeForwardInfo = currentMessage.forwardInfo.flatMap(StoreMessageForwardInfo.init)
-        return .update(StoreMessage(id: currentMessage.id, customStableId: nil, globallyUniqueId: currentMessage.globallyUniqueId, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: currentMessage.timestamp, flags: StoreMessageFlags(currentMessage.flags), tags: currentMessage.tags, globalTags: currentMessage.globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: currentMessage.text, attributes: attributes, media: currentMessage.media))
-    })
-}
-
 private func reactionGeneratedEvent(_ previousReactions: ReactionsMessageAttribute?, _ updatedReactions: ReactionsMessageAttribute?, message: Message, transaction: Transaction) -> (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)? {
     if let updatedReactions = updatedReactions, !message.flags.contains(.Incoming), message.id.peerId.namespace == Namespaces.Peer.CloudUser {
         let prev = previousReactions?.reactions ?? []
@@ -4691,6 +4677,8 @@ func replayFinalState(
                 })
                 deletedMessageIds.append(contentsOf: ids.map { .messageId($0) })
             case let .UpdateMinAvailableMessage(id):
+                // MARK: Regram — bulk channel deletion must preserve the same messages as individual deletes.
+                if rgRetainDeletedMessageRange(transaction: transaction, peerId: id.peerId, namespace: id.namespace, maxId: id.id) { break }
                 if let message = transaction.getMessage(id) {
                     updatePeerChatInclusionWithMinTimestamp(transaction: transaction, id: id.peerId, minTimestamp: message.timestamp, forceRootGroupIfNotExists: false)
                 }
@@ -4701,8 +4689,10 @@ func replayFinalState(
                 if !resourceIds.isEmpty {
                     let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
                 }
-            case let .UpdatePeerChatInclusion(peerId, groupId, changedGroup):
+            case let .UpdatePeerChatInclusion(peerId, serverGroupId, changedGroup):
+                let groupId = rgResolveChatListGroup(transaction: transaction, peerId: peerId, serverGroup: serverGroupId) // MARK: Regram
                 if shouldExcludePeerFromChatList(transaction: transaction, peerId: peerId) {
+                    rgRememberChatListPlacement(transaction: transaction, peerId: peerId, group: groupId) // MARK: Regram — retain server placement even while a community hides the peer.
                     transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
                 } else {
                     let currentInclusion = transaction.getPeerChatListInclusion(peerId)
@@ -5206,6 +5196,8 @@ func replayFinalState(
                     case let .pin(itemId):
                         switch itemId {
                             case let .peer(peerId):
+                                // MARK: Regram — an old live pin update cannot undo a pending archive.
+                                if rgResolveChatListGroup(transaction: transaction, peerId: peerId, serverGroup: groupId) != groupId { break }
                                 if transaction.getPeer(peerId) == nil || transaction.getPeerChatListInclusion(peerId) == .notIncluded {
                                     addSynchronizePinnedChatsOperation(transaction: transaction, groupId: groupId)
                                 } else {

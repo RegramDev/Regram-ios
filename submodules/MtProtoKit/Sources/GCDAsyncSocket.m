@@ -286,6 +286,8 @@ enum GCDAsyncSocketConfig
 - (BOOL)addStreamsToRunLoop;
 - (BOOL)openStreams;
 - (void)removeStreamsFromRunLoop;
+// MARK: Regram — keep a stream pair alive until both sides have closed.
+- (void)rg_closeReadAndWriteStreams;
 #endif
 
 // Class Methods
@@ -2521,6 +2523,12 @@ enum GCDAsyncSocketConfig
 	
 	dispatch_block_t SetupStreamsPart1 = ^{
 		#if TARGET_OS_IPHONE
+		// MARK: Regram — dispatch sources handle plain TCP I/O, EOF and errors.
+		// Automatic CFStreams only served legacy VoIP backgrounding (deprecated
+		// in iOS 9) and can re-enter CFSocketInvalidate during mass teardown.
+		// Explicit stream access and CFStream TLS still create their own pair.
+		if (@available(iOS 9.0, *))
+			return;
 		
 		if (![self createReadAndWriteStream])
 		{
@@ -2538,6 +2546,9 @@ enum GCDAsyncSocketConfig
 	};
 	dispatch_block_t SetupStreamsPart2 = ^{
 		#if TARGET_OS_IPHONE
+		// MARK: Regram — no automatic observer streams on supported iOS versions.
+		if (@available(iOS 9.0, *))
+			return;
 		
 		if (aConnectIndex != connectIndex)
 		{
@@ -2718,21 +2729,8 @@ enum GCDAsyncSocketConfig
 		if (readStream || writeStream)
 		{
 			[self removeStreamsFromRunLoop];
-			
-			if (readStream)
-			{
-				CFReadStreamSetClient(readStream, kCFStreamEventNone, NULL, NULL);
-				CFReadStreamClose(readStream);
-				CFRelease(readStream);
-				readStream = NULL;
-			}
-			if (writeStream)
-			{
-				CFWriteStreamSetClient(writeStream, kCFStreamEventNone, NULL, NULL);
-				CFWriteStreamClose(writeStream);
-				CFRelease(writeStream);
-				writeStream = NULL;
-			}
+			// MARK: Regram — close the pair before releasing either stream.
+			[self rg_closeReadAndWriteStreams];
 		}
 	}
 	#endif
@@ -6997,24 +6995,42 @@ static void CFWriteStreamCallback (CFWriteStreamRef stream, CFStreamEventType ty
 	if ((readStream == NULL) || (writeStream == NULL))
 	{
 		LogWarn(@"Unable to create read and write stream...");
-		
-		if (readStream)
-		{
-			CFReadStreamClose(readStream);
-			CFRelease(readStream);
-			readStream = NULL;
-		}
-		if (writeStream)
-		{
-			CFWriteStreamClose(writeStream);
-			CFRelease(writeStream);
-			writeStream = NULL;
-		}
+		// MARK: Regram — use the same teardown for a partially created pair.
+		[self rg_closeReadAndWriteStreams];
 		
 		return NO;
 	}
 	
 	return YES;
+}
+
+// MARK: Regram — avoid releasing the shared CFNetwork SocketStream core during
+// CFSocketInvalidate, whose global lock cannot be acquired recursively (#2306).
+- (void)rg_closeReadAndWriteStreams
+{
+	NSAssert(dispatch_get_current_queue() == socketQueue, @"Must be dispatched on socketQueue");
+
+	CFReadStreamRef closingReadStream = readStream;
+	CFWriteStreamRef closingWriteStream = writeStream;
+	readStream = NULL;
+	writeStream = NULL;
+
+	if (closingReadStream)
+		CFReadStreamSetClient(closingReadStream, kCFStreamEventNone, NULL, NULL);
+	if (closingWriteStream)
+		CFWriteStreamSetClient(closingWriteStream, kCFStreamEventNone, NULL, NULL);
+
+	// Both Create-rule references must survive both Close calls. Releasing the
+	// first stream earlier can destroy the shared core inside CFSocketInvalidate.
+	if (closingReadStream)
+		CFReadStreamClose(closingReadStream);
+	if (closingWriteStream)
+		CFWriteStreamClose(closingWriteStream);
+
+	if (closingReadStream)
+		CFRelease(closingReadStream);
+	if (closingWriteStream)
+		CFRelease(closingWriteStream);
 }
 
 - (BOOL)registerForStreamCallbacksIncludingReadWrite:(BOOL)includeReadWrite

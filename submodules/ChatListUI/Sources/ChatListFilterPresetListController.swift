@@ -279,10 +279,8 @@ private func chatListFilterPresetListControllerEntries(presentationData: Present
     
     entries.append(.addItem(text: presentationData.strings.ChatListFilterList_CreateFolder, isEditing: state.isEditing))
     
-    var effectiveDisplayTags: Bool?
-    if isPremium {
-        effectiveDisplayTags = displayTags
-    }
+    // MARK: Regram — folder tag display is a persistent local feature.
+    let effectiveDisplayTags: Bool? = displayTags
     
     if !filters.isEmpty || suggestedFilters.isEmpty {
         var folderCount = 0

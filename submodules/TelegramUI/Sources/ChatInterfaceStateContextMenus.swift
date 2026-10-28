@@ -1708,7 +1708,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         // MARK: Regram — text selection is explicit and inspected on a consent page before uploading.
         let summaryIds = chatPresentationInterfaceState.interfaceState.selectionState?.selectedIds
-        if RGSimpleSettings.shared.messageSummaryEnabled, !message.isCopyProtected(), !message.containsSecretMedia, message.id.peerId.namespace != Namespaces.Peer.SecretChat, !message.text.isEmpty || summaryIds?.isEmpty == false {
+        if RGSimpleSettings.shared.messageSummaryEnabled, !message.isCopyProtected(), !message.containsSecretMedia, message.id.peerId.namespace != Namespaces.Peer.SecretChat, !message.rgTextContent.isEmpty || summaryIds?.isEmpty == false {
             rgCollect(.summarize, .action(ContextMenuActionItem(text: "Summary.Action".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
                 generateTintedImage(image: UIImage(systemName: "text.badge.star"), color: theme.contextMenu.primaryColor)
             }, action: { _, f in
@@ -1797,8 +1797,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         // MARK: Regram — send the referenced message's text to the message filter. The filter
         // screen opens with the text prefilled rather than committing it blind: a whole message
         // body is rarely the keyword you want, so the user trims it and taps add.
-        } else if !message.text.isEmpty, message.effectivelyIncoming(context.account.peerId) {
-            let prefill = String(message.text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+        } else if !message.rgTextContent.isEmpty, message.effectivelyIncoming(context.account.peerId) {
+            let prefill = String(message.rgTextContent.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
             rgCollect(.addFilter, .action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.contextMenu.primaryColor)
             }, action: { _, f in
@@ -1827,7 +1827,9 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             let rgCanRepeat = rgRepeatItems != nil
             let rgSendCopy: () -> Void = {
                 if let rgRepeatItems {
-                    rgSendRepeatCopy(context: context, peerId: message.id.peerId, threadId: rgThreadId, items: rgRepeatItems)
+                    rgSendRepeatCopy(context: context, peerId: message.id.peerId, threadId: rgThreadId, items: rgRepeatItems, failed: {
+                        controllerInteraction.displayUndo(.info(title: nil, text: chatPresentationInterfaceState.strings.Login_UnknownError, timeout: nil, customUndoText: nil))
+                    })
                 }
             }
 

@@ -99,6 +99,8 @@ private enum RGBoolSetting: String {
     case disableDeleteChatSwipeOption
     case quickTranslateButton
     case hideReactions
+    case hideMessageForwardButton // MARK: Regram
+    case autoSelectDeleteModerationActions // MARK: Regram
     case showRepostToStory
     case contextShowSelectFromUser
     case contextShowSaveToCloud
@@ -354,6 +356,11 @@ private func RGControllerEntries(presentationData: PresentationData, callListSet
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .automaticallyRevealSpoilers, value: RGSimpleSettings.shared.automaticallyRevealSpoilers, text: "Settings.AutomaticallyRevealSpoilers".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .messageActions, text: "Settings.AutomaticallyRevealSpoilers.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .messageActions, settingName: .showForwardedMessageDate, value: RGSimpleSettings.shared.showForwardedMessageDate, text: "Settings.ShowForwardedMessageDate".i18n(lang), enabled: true))
+    // MARK: Regram
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .hideMessageForwardButton, value: RGSimpleSettings.shared.hideMessageForwardButton, text: "Settings.HideMessageForwardButton".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .messageActions, text: "Settings.HideMessageForwardButton.Notice".i18n(lang)))
+    entries.append(.toggle(id: id.count, section: .messageActions, settingName: .autoSelectDeleteModerationActions, value: RGSimpleSettings.shared.autoSelectDeleteModerationActions, text: "Settings.AutoSelectDeleteModerationActions".i18n(lang), enabled: true))
+    entries.append(.notice(id: id.count, section: .messageActions, text: "Settings.AutoSelectDeleteModerationActions.Notice".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .input, settingName: .hideRecordingButton, value: !RGSimpleSettings.shared.hideRecordingButton, text: i18n("Settings.RecordingButton", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .tabs, settingName: .disableSnapDeletionEffect, value: !RGSimpleSettings.shared.disableSnapDeletionEffect, text: i18n("Settings.SnapDeletionEffect", lang), enabled: true))
     entries.append(.toggle(id: id.count, section: .input, settingName: .disableSendAsButton, value: !RGSimpleSettings.shared.disableSendAsButton, text: i18n("Settings.SendAsButton", lang, strings.Conversation_SendMesageAs), enabled: true))
@@ -543,6 +550,10 @@ public func rgSettingsController(context: AccountContext, page: RGSettingsPage =
             RGSimpleSettings.shared.showMediaMetadata = value
         case .hideReactions:
             RGSimpleSettings.shared.hideReactions = value
+        case .hideMessageForwardButton:
+            RGSimpleSettings.shared.hideMessageForwardButton = value
+        case .autoSelectDeleteModerationActions:
+            RGSimpleSettings.shared.autoSelectDeleteModerationActions = value
         case .showRepostToStory:
             RGSimpleSettings.shared.showRepostToStoryV2 = value
         case .contextShowSelectFromUser:

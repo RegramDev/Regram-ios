@@ -997,6 +997,8 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                     // longer returns, which would silently undo the kept messages.
                                     if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
                                         _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                                    } else {
+                                        rgMarkMessageRevoked(transaction: transaction, id: id, reason: .unavailable)
                                     }
                                     Logger.shared.log("HistoryValidation", "deleting message \(id) in \(id.peerId)")
                                 }
@@ -1184,6 +1186,8 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                             // longer returns, which would silently undo the kept messages.
                             if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
                                 _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
+                            } else {
+                                rgMarkMessageRevoked(transaction: transaction, id: id, reason: .unavailable)
                             }
                             Logger.shared.log("HistoryValidation", "deleting thread message \(id) in \(id.peerId)")
                         }

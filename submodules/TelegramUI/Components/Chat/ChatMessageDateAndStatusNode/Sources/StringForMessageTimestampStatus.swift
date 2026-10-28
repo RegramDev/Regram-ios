@@ -7,6 +7,7 @@ import TextFormat
 import LocalizedPeerData
 import AccountContext
 import RGSimpleSettings
+import RGStrings // MARK: Regram — a local daily task has its own repeat label.
 
 public enum MessageTimestampStatusFormat {
     case full
@@ -116,6 +117,8 @@ public func stringForMessageTimestampStatus(
     if let repeatPeriod = message.scheduleRepeatPeriod {
         let repeatString: String
         switch repeatPeriod {
+        case rgStartupDailyRepeatPeriod: // MARK: Regram — keep native server repeat labels unchanged.
+            repeatString = "RecurringMessages.DailyStartup".i18n(strings.baseLanguageCode)
         case 60:
             repeatString = "1 min"
         case 300:

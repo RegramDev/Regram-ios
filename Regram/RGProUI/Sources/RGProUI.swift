@@ -1,6 +1,8 @@
 import RGSwiftUI
 // MARK: Regram — local enhancement settings, organized into focused pages.
 import RGSettingsUI
+import RGLocalGifts
+import RGAppGroupIdentifier
 import Foundation
 import UIKit
 import UniformTypeIdentifiers
@@ -65,6 +67,7 @@ private enum RGProDisclosureLink: String {
     case photoSettings
     case stickerSettings
     case recordingSettings
+    case localGifts
     case appSettings
     case inputSettings
     case transferSettings
@@ -97,6 +100,7 @@ private enum RGProToggles: String {
     case enablePanguOnReceiving
     case enablePanguOnEditing
     case filterNotifications
+    case notificationRecoveryExperiment
     case hideTabBarPermissionWarnings
 }
 
@@ -133,6 +137,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
                     entries.append(.disclosure(id: id.count, section: section, link: link, text: destination.titleKey.i18n(lang)))
                 }
             }
+            entries.append(.disclosure(id: id.count, section: .footer, link: .localGifts, text: "Showroom.Title".i18n(lang)))
         } else {
             let matches = Set(RGSettingsCatalog.results(query: query, language: lang).map(\.id))
             for (index, entry) in RGSettingsCatalog.entries.enumerated() where matches.contains(entry.id) {
@@ -151,9 +156,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     // MARK: Regram
     entries.append(.toggle(id: id.count, section: .input, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .input, text: "Mention.UserIdLink.Notice".i18n(lang)))
-    // MARK: Regram — local Premium switch.
-    entries.append(.toggle(id: id.count, section: .footer, settingName: .localPremium, value: RGSimpleSettings.shared.localPremium, text: "LocalPremium.Title".i18n(lang), enabled: true))
-    entries.append(.notice(id: id.count, section: .footer, text: "LocalPremium.Notice".i18n(lang)))
     // MARK: Regram — link previews off.
     entries.append(.toggle(id: id.count, section: .media, settingName: .disableLinkPreview, value: RGSimpleSettings.shared.disableLinkPreview, text: "LinkPreview.Disable".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .media, text: "LinkPreview.Disable.Notice".i18n(lang)))
@@ -170,6 +172,8 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
 
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
+    entries.append(.toggle(id: id.count, section: .notifications, settingName: .notificationRecoveryExperiment, value: RGNotificationExperiment.isEnabled, text: "Debug.NotificationExperiment".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
+    entries.append(.notice(id: id.count, section: .notifications, text: "Debug.NotificationExperiment.Info".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
     entries.append(.notice(id: id.count, section: .notifications, text: "features.HideTabBarPermissionWarnings.Notice".i18n(lang)))
     entries.append(.oneFromManySelector(id: id.count, section: .notifications, settingName: .pinnedMessageNotifications, text: "Notifications.PinnedMessages.Title".i18n(lang), value: "Notifications.PinnedMessages.value.\(RGSimpleSettings.shared.pinnedMessageNotifications)".i18n(lang), enabled: true))
@@ -260,6 +264,13 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
     let simplePromise = ValuePromise(true, ignoreRepeated: false)
     let searchPromise = ValuePromise(initialSearchQuery ?? "", ignoreRepeated: true)
     var searchGeneration = 0
+    let notificationExperiment = Signal<Bool, NoError> { subscriber in
+        let observer = NotificationCenter.default.addObserver(forName: RGNotificationExperiment.changed, object: nil, queue: nil) { _ in
+            subscriber.putNext(RGNotificationExperiment.isEnabled)
+        }
+        subscriber.putNext(RGNotificationExperiment.isEnabled)
+        return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+    } |> distinctUntilChanged |> deliverOnMainQueue
 
     let arguments = RGItemListArguments<RGProToggles, AnyHashable, RGProOneFromManySetting, RGProDisclosureLink, RGProAction>(context: context, setBoolValue: { toggleName, value in
         switch toggleName {
@@ -285,6 +296,9 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .filterNotifications:
                 RGSimpleSettings.shared.filterNotifications = value
                 RGSimpleSettings.shared.synchronizeShared()
+            case .notificationRecoveryExperiment:
+                RGNotificationExperiment.setEnabled(value)
+                simplePromise.set(true)
             case .hideTabBarPermissionWarnings:
                 RGSimpleSettings.shared.hideTabBarPermissionWarnings = value
         }
@@ -368,6 +382,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
             case .stickerSettings: pushControllerImpl?(rgSettingsController(context: context, page: .stickers))
             case .recordingSettings: pushControllerImpl?(rgSettingsController(context: context, page: .recording))
             case .linkPreviewSettings: pushControllerImpl?(rgLinkPreviewSettingsController(context: context))
+            case .localGifts: pushControllerImpl?(rgLocalGiftsController(context: context))
             case .appSettings: pushControllerImpl?(rgSettingsController(context: context, page: .app))
 
             case .antiFeatures:
@@ -457,6 +472,7 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         case .networkPolicy: return RGSettingsIcons.network
         case .diagnostics: return RGSettingsIcons.diagnostics
         case .backup: return RGSettingsIcons.backup
+        case .localGifts: return RGSettingsIcons.localGifts
         default: return nil
         }
     }, disclosureSubtitle: { link in
@@ -476,14 +492,15 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
         }
         if let category { return (category.titleKey + ".Description").i18n(lang) }
         switch link {
+        case .localGifts: return "Showroom.Description".i18n(lang)
         case .fonts, .appBages, .transcriptionSettings, .summarySettings, .linkPreviewSettings, .messageFilter, .networkPolicy, .diagnostics:
             return ("Settings.Editor." + link.rawValue + ".Description").i18n(lang)
         default: return nil
         }
     })
     
-    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get())
-    |> map { presentationData, _, query ->  (ItemListControllerState, (ItemListNodeState, Any)) in
+    let signal = combineLatest(context.sharedContext.presentationData, simplePromise.get(), searchPromise.get(), notificationExperiment)
+    |> map { presentationData, _, query, _ ->  (ItemListControllerState, (ItemListNodeState, Any)) in
         
         let entries = RGProControllerEntries(presentationData: presentationData, page: page, searchQuery: query)
         

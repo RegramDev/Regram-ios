@@ -10,6 +10,8 @@ public struct EngineMessage {
     public let id: Id
     public let stableVersion: UInt32
     public let text: String
+    // This suite exercises caching; rich-page projection has its own production-model fixtures.
+    public var rgTextContent: String { self.text }
     public let author: EnginePeer?
     public func effectivelyIncoming(_ id: EnginePeer.Id) -> Bool { self.author?.id != id }
 }

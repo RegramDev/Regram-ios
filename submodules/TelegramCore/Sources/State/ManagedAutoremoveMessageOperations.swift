@@ -88,6 +88,20 @@ func managedAutoremoveMessageOperations(network: Network, postbox: Postbox, isRe
                         // messages are the self-destruct case; the rest are TTL auto-delete.
                         let rgIsSecretChat = message.id.peerId.namespace == Namespaces.Peer.SecretChat
                         if rgIsSecretChat ? RGSimpleSettings.shared.antiSelfDestruct : RGSimpleSettings.shared.antiAutoDelete {
+                            // Consume this queue entry without erasing TTL/privacy metadata or media.
+                            transaction.updateMessage(message.id, update: { current in
+                                let attributes: [MessageAttribute] = current.attributes.map { attribute in
+                                    if tag == 0, let ttl = attribute as? AutoremoveTimeoutMessageAttribute {
+                                        return AutoremoveTimeoutMessageAttribute(timeout: ttl.timeout, countdownBeginTime: ttl.countdownBeginTime, isLocallyPreserved: true)
+                                    }
+                                    if tag == 1, let ttl = attribute as? AutoclearTimeoutMessageAttribute {
+                                        return AutoclearTimeoutMessageAttribute(timeout: ttl.timeout, countdownBeginTime: ttl.countdownBeginTime, isLocallyPreserved: true)
+                                    }
+                                    return attribute
+                                }
+                                return .update(StoreMessage(id: current.id, customStableId: nil, globallyUniqueId: current.globallyUniqueId, groupingKey: current.groupingKey, threadId: current.threadId, timestamp: current.timestamp, flags: StoreMessageFlags(current.flags), tags: current.tags, globalTags: current.globalTags, localTags: current.localTags, forwardInfo: current.forwardInfo.flatMap(StoreMessageForwardInfo.init), authorId: current.author?.id, text: current.text, attributes: attributes, media: current.media))
+                            })
+                            transaction.clearTimestampBasedAttribute(id: entry.messageId, tag: tag)
                             return
                         }
                         if rgIsSecretChat || isRemove {

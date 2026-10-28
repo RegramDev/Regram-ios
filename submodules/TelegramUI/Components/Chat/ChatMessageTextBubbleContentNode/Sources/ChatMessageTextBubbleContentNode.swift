@@ -1695,6 +1695,8 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     knobColor = item.presentationData.theme.theme.chat.message.outgoing.textSelectionKnobColor
                 }
                 
+                // MARK: Regram — keep the original text behind this selection for edit validation.
+                let quoteSourceText = item.message.text
                 let textSelectionNode = TextSelectionNode(theme: TextSelectionTheme(selection: selectionColor, knob: knobColor, isDark: item.presentationData.theme.theme.overallDarkAppearance), strings: item.presentationData.strings, textNodeOrView: .node(self.textNode.textNode), updateIsActive: { [weak self] value in
                     self?.updateIsTextSelectionActive?(value)
                 }, present: { [weak self] c, a in
@@ -1713,7 +1715,19 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     guard let strongSelf = self, let item = strongSelf.item else {
                         return
                     }
-                    item.controllerInteraction.performTextSelectionAction(item.message, true, text, nil, action)
+                    // MARK: Regram — the selection menu bypasses getCurrentTextSelection.
+                    // Map pangu offsets here too, and fall back to a plain reply if the source changed.
+                    if case let .quote(range) = action {
+                        var selection: RGMessageQuoteSelection?
+                        if item.message.text == quoteSourceText,
+                           strongSelf.rgFeaturePanguSourceText == nil || strongSelf.rgFeaturePanguSourceText == quoteSourceText {
+                            selection = RGMessageQuoteSelection.resolve(NSRange(location: range.lowerBound, length: range.count), in: quoteSourceText, insertedUtf16Offsets: strongSelf.rgFeaturePanguInsertedUtf16Offsets, expectedSelectionText: text.string)
+                        }
+                        let mappedRange = selection?.range ?? NSRange(location: 0, length: 0)
+                        item.controllerInteraction.performTextSelectionAction(item.message, true, NSAttributedString(string: selection?.text ?? ""), nil, .quote(range: mappedRange.lowerBound ..< mappedRange.upperBound))
+                    } else {
+                        item.controllerInteraction.performTextSelectionAction(item.message, true, text, nil, action)
+                    }
                 })
                 textSelectionNode.updateRange = { [weak self] selectionRange in
                     guard let strongSelf = self else {

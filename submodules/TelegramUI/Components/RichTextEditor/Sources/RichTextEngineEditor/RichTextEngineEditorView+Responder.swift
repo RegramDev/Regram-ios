@@ -70,7 +70,11 @@ extension RichTextEngineEditorView {
     // MARK: Regram — forward the shared composer trait to the real text-input client.
     public var composerReturnKeyType: UIReturnKeyType {
         get { engine.returnKeyType }
-        set { engine.returnKeyType = newValue }
+        set {
+            guard engine.returnKeyType != newValue else { return }
+            engine.returnKeyType = newValue
+            if engine.isFirstResponder { engine.reloadInputViews() }
+        }
     }
 
     /// The engine's `inputView` is `UIResponder`'s plain `readonly` property — `IDBlockTextView`

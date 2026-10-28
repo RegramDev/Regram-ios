@@ -49,6 +49,7 @@ let testDefaults = UserDefaults(suiteName: suite)!
 final class RGSimpleSettings {
     enum Keys: String, CaseIterable { case unrelated }
     static let featureMessagePresentationDidChange = Notification.Name("unused")
+    static let shareSettingsDidChange = Notification.Name("share-settings")
     HIDE_SETTING
 }
 struct UIImage {}

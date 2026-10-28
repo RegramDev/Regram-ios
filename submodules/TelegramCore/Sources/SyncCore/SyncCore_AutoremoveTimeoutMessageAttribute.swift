@@ -11,16 +11,19 @@ public func autoremoveExpiryTimestamp(countdownBeginTime: Int32, timeout: Int32)
 public class AutoremoveTimeoutMessageAttribute: MessageAttribute {
     public let timeout: Int32
     public let countdownBeginTime: Int32?
+    // MARK: Regram — keep TTL/privacy metadata while consuming a protected local expiry.
+    public let isLocallyPreserved: Bool
     
     public var associatedMessageIds: [MessageId] = []
     
     public let automaticTimestampBasedAttribute: (UInt16, Int32)?
     
-    public init(timeout: Int32, countdownBeginTime: Int32?) {
+    public init(timeout: Int32, countdownBeginTime: Int32?, isLocallyPreserved: Bool = false) {
         self.timeout = timeout
         self.countdownBeginTime = countdownBeginTime
+        self.isLocallyPreserved = isLocallyPreserved
         
-        if let countdownBeginTime = countdownBeginTime {
+        if !self.isLocallyPreserved, let countdownBeginTime = countdownBeginTime {
             self.automaticTimestampBasedAttribute = (0, autoremoveExpiryTimestamp(countdownBeginTime: countdownBeginTime, timeout: timeout))
         } else {
             self.automaticTimestampBasedAttribute = nil
@@ -30,8 +33,9 @@ public class AutoremoveTimeoutMessageAttribute: MessageAttribute {
     required public init(decoder: PostboxDecoder) {
         self.timeout = decoder.decodeInt32ForKey("t", orElse: 0)
         self.countdownBeginTime = decoder.decodeOptionalInt32ForKey("c")
+        self.isLocallyPreserved = decoder.decodeInt32ForKey("lp", orElse: 0) != 0
         
-        if let countdownBeginTime = self.countdownBeginTime {
+        if !self.isLocallyPreserved, let countdownBeginTime = self.countdownBeginTime {
             self.automaticTimestampBasedAttribute = (0, autoremoveExpiryTimestamp(countdownBeginTime: countdownBeginTime, timeout: self.timeout))
         } else {
             self.automaticTimestampBasedAttribute = nil
@@ -40,6 +44,7 @@ public class AutoremoveTimeoutMessageAttribute: MessageAttribute {
     
     public func encode(_ encoder: PostboxEncoder) {
         encoder.encodeInt32(self.timeout, forKey: "t")
+        encoder.encodeInt32(self.isLocallyPreserved ? 1 : 0, forKey: "lp")
         if let countdownBeginTime = self.countdownBeginTime {
             encoder.encodeInt32(countdownBeginTime, forKey: "c")
         } else {
@@ -51,16 +56,19 @@ public class AutoremoveTimeoutMessageAttribute: MessageAttribute {
 public class AutoclearTimeoutMessageAttribute: MessageAttribute {
     public let timeout: Int32
     public let countdownBeginTime: Int32?
+    // MARK: Regram — keep TTL/privacy metadata while consuming a protected local expiry.
+    public let isLocallyPreserved: Bool
     
     public var associatedMessageIds: [MessageId] = []
     
     public let automaticTimestampBasedAttribute: (UInt16, Int32)?
     
-    public init(timeout: Int32, countdownBeginTime: Int32?) {
+    public init(timeout: Int32, countdownBeginTime: Int32?, isLocallyPreserved: Bool = false) {
         self.timeout = timeout
         self.countdownBeginTime = countdownBeginTime
+        self.isLocallyPreserved = isLocallyPreserved
         
-        if let countdownBeginTime = countdownBeginTime {
+        if !self.isLocallyPreserved, let countdownBeginTime = countdownBeginTime {
             if self.timeout == viewOnceTimeout {
                 self.automaticTimestampBasedAttribute = (1, countdownBeginTime)
             } else {
@@ -74,8 +82,9 @@ public class AutoclearTimeoutMessageAttribute: MessageAttribute {
     required public init(decoder: PostboxDecoder) {
         self.timeout = decoder.decodeInt32ForKey("t", orElse: 0)
         self.countdownBeginTime = decoder.decodeOptionalInt32ForKey("c")
+        self.isLocallyPreserved = decoder.decodeInt32ForKey("lp", orElse: 0) != 0
         
-        if let countdownBeginTime = self.countdownBeginTime {
+        if !self.isLocallyPreserved, let countdownBeginTime = self.countdownBeginTime {
             if self.timeout == viewOnceTimeout {
                 self.automaticTimestampBasedAttribute = (1, countdownBeginTime)
             } else {
@@ -88,6 +97,7 @@ public class AutoclearTimeoutMessageAttribute: MessageAttribute {
     
     public func encode(_ encoder: PostboxEncoder) {
         encoder.encodeInt32(self.timeout, forKey: "t")
+        encoder.encodeInt32(self.isLocallyPreserved ? 1 : 0, forKey: "lp")
         if let countdownBeginTime = self.countdownBeginTime {
             encoder.encodeInt32(countdownBeginTime, forKey: "c")
         } else {

@@ -3,6 +3,7 @@ load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 rgdeps = [
+    "//Regram/RGLocalGifts", # MARK: Regram
     "//Regram/RGSearchLink:RGSearchLink", # MARK: Regram
     "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings",

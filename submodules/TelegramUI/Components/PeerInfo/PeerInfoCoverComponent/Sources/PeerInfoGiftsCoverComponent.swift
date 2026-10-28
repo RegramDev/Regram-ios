@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -280,10 +281,15 @@ public final class PeerInfoGiftsCoverComponent: Component {
             if self.giftsDisposable == nil {
                 self.giftsDisposable = combineLatest(
                     queue: Queue.mainQueue(),
-                    component.giftsContext.state,
-                    component.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: component.peerId))
-                    |> map { peer -> Int64? in
-                        if case let .user(user) = peer, case let .starGift(id, _, _, _, _, _, _, _, _) = user.emojiStatus?.content {
+                    // MARK: Regram — use the same local overlay as the native profile grid.
+                    rgLocalGiftProfileState(context: component.context, peerId: component.peerId, profileGifts: component.giftsContext, canSelect: false),
+                    combineLatest(
+                        component.context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: component.peerId)),
+                        rgLocalAppearanceState(context: component.context)
+                    )
+                    |> map { peer, local -> Int64? in
+                        let displayedPeer = peer.map { rgLocalAppearancePeer(context: component.context, peer: $0, localState: local) }
+                        if case let .user(user) = displayedPeer, case let .starGift(id, _, _, _, _, _, _, _, _) = user.emojiStatus?.content {
                             return id
                         }
                         return nil
@@ -317,7 +323,9 @@ public final class PeerInfoGiftsCoverComponent: Component {
                     break
                 }
                 let id: AnyHashable
-                if case let .unique(uniqueGift) = gift.gift {
+                if let localId = rgLocalGiftPurchaseId(gift: gift) { // MARK: Regram — local gifts intentionally have no public slug.
+                    id = localId
+                } else if case let .unique(uniqueGift) = gift.gift {
                     id = uniqueGift.slug
                 } else {
                     id = index

@@ -24,6 +24,7 @@ import HorizontalTabsComponent
 import GlassBackgroundComponent
 import EdgeEffect
 import RGSimpleSettings
+import RGLocalGifts // MARK: Regram
 
 final class PeerInfoPaneWrapper {
     let key: PeerInfoPaneKey
@@ -118,6 +119,8 @@ private final class GiftsTabItemComponent: Component {
                     let id: AnyHashable
                     if let reference = icon.reference {
                         id = reference
+                    } else if let purchaseId = rgLocalGiftPurchaseId(gift: icon) { // MARK: Regram — a new local gift must replace the old preview layer.
+                        id = purchaseId
                     } else {
                         id = index
                     }
@@ -260,6 +263,8 @@ final class PeerInfoPaneTabsContainerPaneNode: ASDisplayNode {
                 let id: AnyHashable
                 if let reference = icon.reference {
                     id = reference
+                } else if let purchaseId = rgLocalGiftPurchaseId(gift: icon) { // MARK: Regram
+                    id = purchaseId
                 } else {
                     id = index
                 }
@@ -628,6 +633,10 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     private var shouldFadeIn = false
     private var initialStoryFolderId: Int64?
     private var initialGiftCollectionId: Int64?
+    // MARK: Regram — the tab icons use the same owner-only projection as the gift grid.
+    private var previewGiftsContext: ProfileGiftsContext?
+    private var previewGiftsDisposable: Disposable?
+    private var previewGifts: [ProfileGiftsContext.State.StarGift]?
     private var switchToMediaTarget: PeerInfoSwitchToMediaTarget?
     
     private var isDraggingTabs: Bool = false
@@ -655,6 +664,10 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     private let updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?
     
     private let initialPaneKey: PeerInfoPaneKey?
+
+    deinit {
+        self.previewGiftsDisposable?.dispose()
+    }
     
     init(context: AccountContext, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?, peerId: EnginePeer.Id, chatLocation: ChatLocation, sharedMediaFromForumTopic: (EnginePeer.Id, Int64)?, chatLocationContextHolder: Atomic<ChatLocationContextHolder?>, isMediaOnly: Bool, initialPaneKey: PeerInfoPaneKey?, initialStoryFolderId: Int64?, initialGiftCollectionId: Int64?, switchToMediaTarget: PeerInfoSwitchToMediaTarget?) {
         self.context = context
@@ -935,6 +948,23 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
     }
 
     func update(size: CGSize, sideInset: CGFloat, topInset: CGFloat, bottomInset: CGFloat, deviceMetrics: DeviceMetrics, visibleHeight: CGFloat, expansionFraction: CGFloat, presentationData: PresentationData, data: PeerInfoScreenData?, areTabsHidden: Bool, disableTabSwitching: Bool, navigationHeight: CGFloat, transition: ContainedViewLayoutTransition) {
+        // MARK: Regram — update on local purchase, deletion and enable/disable, without mutating the server context.
+        if self.previewGiftsContext !== data?.profileGiftsContext {
+            self.previewGiftsDisposable?.dispose()
+            self.previewGiftsDisposable = nil
+            self.previewGiftsContext = data?.profileGiftsContext
+            self.previewGifts = nil
+            if let profileGifts = self.previewGiftsContext {
+                self.previewGiftsDisposable = rgLocalGiftProfileState(context: self.context, peerId: data?.peer?.id ?? self.peerId, profileGifts: profileGifts, canSelect: false).start(next: { [weak self] state in
+                    let gifts = state.gifts.filter { rgLocalGiftPurchaseId(gift: $0) == nil || $0.savedToProfile }
+                    guard let self, self.previewGifts != gifts else { return }
+                    self.previewGifts = gifts
+                    Queue.mainQueue().async { [weak self] in
+                        self?.requestUpdate?(.immediate)
+                    }
+                })
+            }
+        }
         let previousAvailablePanes = self.currentAvailablePanes
         let availablePanes = data?.availablePanes ?? []
         self.currentAvailablePanes = data?.availablePanes
@@ -1337,8 +1367,8 @@ final class PeerInfoPaneContainerNode: ASDisplayNode, ASGestureRecognizerDelegat
                         content = .title(HorizontalTabsComponent.Tab.Title(text: presentationData.strings.PeerInfo_SavedMessagesTabTitle, entities: [], enableAnimations: false))
                     case .gifts:
                         var icons: [ProfileGiftsContext.State.StarGift] = []
-                        if let gifts = data?.profileGiftsContext?.currentState?.gifts.prefix(3) {
-                            icons = Array(gifts)
+                        if let gifts = self.previewGifts ?? data?.profileGiftsContext?.currentState?.gifts { // MARK: Regram
+                            icons = Array(gifts.prefix(3))
                         }
                         content = .custom(AnyComponent(
                             GiftsTabItemComponent(context: self.context, icons: icons, title: presentationData.strings.PeerInfo_PaneGifts, theme: presentationData.theme)

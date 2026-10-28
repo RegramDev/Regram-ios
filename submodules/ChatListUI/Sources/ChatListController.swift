@@ -37,6 +37,7 @@ import ComponentFlow
 import LottieAnimationComponent
 import ProgressIndicatorComponent
 import PremiumUI
+import RGLocalGifts // MARK: Regram
 import ConfettiEffect
 import AnimationCache
 import MultiAnimationRenderer
@@ -379,7 +380,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     
                     self.primaryContext?.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        tint: .accent,
+                        tint: .generic, // MARK: Regram — use the same neutral glass as Edit.
+                        requiresOwnSection: true,
                         action: { [weak self] _ in
                             self?.composePressed()
                         }
@@ -7062,8 +7064,13 @@ private final class ChatListLocationContext {
         let peerStatus: Signal<NetworkStatusTitle.Status?, NoError>
         switch self.location {
         case .chatList(.root):
-            peerStatus = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
-            |> map { peer -> NetworkStatusTitle.Status? in
+            // MARK: Regram — the title follows local gift status changes after its media is cached.
+            peerStatus = combineLatest(
+                context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId)),
+                rgLocalAppearanceState(context: context)
+            )
+            |> map { remotePeer, localState -> NetworkStatusTitle.Status? in
+                let peer = remotePeer.map { rgLocalAppearancePeer(context: context, peer: $0, localState: localState) }
                 guard case let .user(user) = peer else {
                     return nil
                 }
@@ -7457,7 +7464,8 @@ private final class ChatListLocationContext {
                 } else {
                     self.rightButton = NavigationBarComponent.Button(id: "compose",
                         content: .icon(imageName: "Chat List/ComposeIcon"),
-                        tint: .accent,
+                        tint: .generic, // MARK: Regram — use the same neutral glass as Edit.
+                        requiresOwnSection: true,
                         action: { [weak self] _ in
                             self?.parentController?.composePressed()
                         }

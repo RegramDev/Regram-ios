@@ -20,7 +20,22 @@ extension String {
         func contains(_ query: String, _ page: String, _ item: String) -> Bool {
             RGSettingsCatalog.results(query: query, language: "zh-hans").contains { $0.destination.page == page && $0.destination.item == item }
         }
-        assert(contains("本地会员", "pro.tools", "localPremium"))
+        assert(contains("本地星币", "localGifts", "balance"))
+        assert(contains("本地礼物", "localGifts", "enabled"))
+        for retired in ["catalog", "owned"] {
+            assert(RGSettingsDestination(page: "localGifts", item: retired) == RGSettingsDestination(page: "localGifts", item: "balance"))
+            assert(!RGSettingsCatalog.entries.contains { $0.destination.page == "localGifts" && $0.destination.item == retired })
+        }
+        assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=localGifts&item=enabled")!, appSpecificScheme: "fixture-app") == RGSettingsDestination(page: "localGifts", item: "enabled"))
+        assert(contains("本地会员", "localGifts", "localPremium"))
+        assert(contains("修改手机号", "localGifts", "phone"))
+        assert(contains("TON", "localGifts", "tonBalance"))
+        assert(contains("本地评级", "localGifts", "rating"))
+        assert(contains("低信用度", "localGifts", "rating"))
+        assert(contains("TON 资料卡", "localGifts", "walletCard"))
+        assert(RGSettingsDestination(page: "pro.tools", item: "localPremium") == RGSettingsDestination(page: "localGifts", item: "localPremium"))
+        assert(RGSettingsDestination(page: "pro.privacy", item: "localPremium") == RGSettingsDestination(page: "localGifts", item: "localPremium"))
+        assert(RGSettingsDestination(page: "pro.tools", item: "localGifts") == RGSettingsDestination(page: "localGifts"))
         assert(contains("温度", "llm", "temperature"))
         assert(contains("OpenAI 模型", "llm", "model"))
         assert(RGSettingsCatalog.results(query: "温度", language: "zh-hans").allSatisfy { $0.destination.item == "temperature" })
@@ -31,6 +46,10 @@ extension String {
         assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=updates")!, appSpecificScheme: "fixture-app") == nil)
         assert(contains("感叹号", "pro.notifications", "hideTabBarPermissionWarnings"))
         assert(contains("权限", "pro.notifications", "hideTabBarPermissionWarnings"))
+        assert(contains("实验性通知恢复", "pro.notifications", "notificationRecoveryExperiment"))
+        assert(contains("encrypted notification", "pro.notifications", "notificationRecoveryExperiment"))
+        assert(RGSettingsDestination.parse(URL(string: "tg://rg/settings?page=pro.notifications&item=notificationRecoveryExperiment")!, appSpecificScheme: "fixture-app") == RGSettingsDestination(page: "pro.notifications", item: "notificationRecoveryExperiment"))
+        assert(RGSettingsCatalog.entries.filter { $0.destination.item == "notificationRecoveryExperiment" }.count == 1)
         assert(RGSettingsDestination(page: "settings.privacy", item: "hideTabBarPermissionWarnings") == RGSettingsDestination(page: "pro.notifications", item: "hideTabBarPermissionWarnings"))
         assert(RGSettingsCatalog.entries.filter { $0.destination.item == "hideTabBarPermissionWarnings" }.count == 1)
         assert(contains("DC1", "datacenters", "start"))
@@ -55,6 +74,8 @@ extension String {
         assert(contains("DNS", "networkPolicy", "test"))
         assert(contains("总结", "summary", "enabled"))
         assert(contains("盘古", "pro.input", "panguSpacing"))
+        assert(contains("一键三连", "settings.messageActions", "autoSelectDeleteModerationActions"))
+        assert(contains("隐藏消息转发按钮", "settings.messageActions", "hideMessageForwardButton"))
         assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnEditing") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnEditing"))
         assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnReceiving") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnReceiving"))
         assert(RGSettingsDestination(page: "settings.messageActions", item: "autoInlineBotEnabled") == RGSettingsDestination(page: "inlineBots", item: "enabled"))

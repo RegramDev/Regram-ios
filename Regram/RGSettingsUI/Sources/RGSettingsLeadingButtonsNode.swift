@@ -11,6 +11,8 @@ public final class RGSettingsLeadingButtonsNode: HighlightableButtonNode {
 
     public override init(pointerStyle: PointerStyle? = nil) {
         super.init(pointerStyle: pointerStyle)
+        // ASControlNode starts noninteractive without its own targets; this container's targets are on its children.
+        self.isUserInteractionEnabled = true
         self.isAccessibilityElement = false
         self.addSubnode(self.backButton)
         self.addSubnode(self.qrButton)
@@ -25,8 +27,9 @@ public final class RGSettingsLeadingButtonsNode: HighlightableButtonNode {
     }
 
     public func update(backImage: UIImage?, qrImage: UIImage?, color: UIColor, backTitle: String, qrTitle: String) {
-        self.backButton.setImage(backImage?.withTintColor(color, renderingMode: .alwaysOriginal), for: .normal)
-        self.qrButton.setImage(qrImage?.withTintColor(color, renderingMode: .alwaysOriginal), for: .normal)
+        // ASImageNode displays CGImage pixels directly, so UIKit's UIImage tint metadata is not applied.
+        self.backButton.setImage(generateTintedImage(image: backImage, color: color), for: .normal)
+        self.qrButton.setImage(generateTintedImage(image: qrImage, color: color), for: .normal)
         self.backButton.accessibilityLabel = backTitle
         self.qrButton.accessibilityLabel = qrTitle
     }

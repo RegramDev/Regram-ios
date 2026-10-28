@@ -194,6 +194,8 @@ public class RGSimpleSettings {
         case quickTranslateButton
         case outgoingLanguageTranslation
         case hideReactions
+        case hideMessageForwardButton // MARK: Regram
+        case autoSelectDeleteModerationActions // MARK: Regram
         case showRepostToStory
         case showRepostToStoryV2
         case contextShowSelectFromUser
@@ -446,6 +448,8 @@ public class RGSimpleSettings {
         Keys.quickTranslateButton.rawValue: false,
         Keys.outgoingLanguageTranslation.rawValue: [:],
         Keys.hideReactions.rawValue: false,
+        Keys.hideMessageForwardButton.rawValue: false,
+        Keys.autoSelectDeleteModerationActions.rawValue: false,
         Keys.showRepostToStory.rawValue: true,
         Keys.contextShowSelectFromUser.rawValue: true,
         Keys.contextShowSaveToCloud.rawValue: true,
@@ -803,6 +807,7 @@ public class RGSimpleSettings {
                 var raw: Any? = storage.object(forKey: key) ?? Self.defaultValues[key] ?? Self.groupDefaultValues[key]
                 if key == RGBottomBarSettings.storageKey { raw = self.bottomBarSettings.storedValues }
                 if key == Keys.chatListLines.rawValue { raw = self.chatListLines } // MARK: Regram
+                if key == RGNotificationExperiment.key { raw = RGNotificationExperiment.isEnabled }
                 if raw == nil && key == "forceBuiltInMic" { raw = false }
                 if let raw, let value = RGBackupValue(propertyList: raw) { values[key] = value }
             }
@@ -847,6 +852,10 @@ public class RGSimpleSettings {
             }
             else { storage.set(value.propertyList, forKey: key) }
         }
+        // An explicit restore/reset must supersede the legacy experiment fallback too.
+        if changedKeys.contains(RGNotificationExperiment.key) {
+            self.backupStorage(key: RGNotificationExperiment.key, wrappers: wrappers).removeObject(forKey: "legacyNotificationsFix")
+        }
         if changedKeys.contains(where: { $0.hasPrefix("font") }) {
             // Update the stored revision before clearing wrappers, without an early font notification.
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: Keys.fontAssetsRevision.rawValue) + 1, forKey: Keys.fontAssetsRevision.rawValue)
@@ -881,11 +890,17 @@ public class RGSimpleSettings {
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
         if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
+        if touches(RGNotificationExperiment.key) { center.post(name: RGNotificationExperiment.changed, object: nil) }
+        if touches("features.enablePanguOnReceiving") || touches(Keys.hideMessageForwardButton.rawValue) { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
+        if touches("sendWithReturnKey") { center.post(name: Self.inputSettingsDidChange, object: nil) }
+        if touches("features.showFoldersInShareSheet") { center.post(name: Self.shareSettingsDidChange, object: nil) }
+        if touches("fixLinkPreviews", "linkPreviewXHost", "linkPreviewInstagramHost") { center.post(name: RGLinkPreviewRules.didChangeNotification, object: nil) }
         if touches("customDoHEnabled", "customDoHEndpoint", "ipVersionPolicy", "disableBackupAddresses", "localDNSForProxyHost") { center.post(name: RGNetworkPolicy.didChange, object: nil) }
     }
 
     private func backupStorage(key: String, wrappers: [RGPreferenceCache]) -> UserDefaults {
         if let storage = wrappers.first(where: { $0.preferenceKey == key })?.preferenceStorage { return storage }
+        if key == RGNotificationExperiment.key { return APP_GROUP_USER_DEFAULTS ?? .standard }
         if key == "pinnedMessageNotificationsExceptions" || key == "mentionsAndRepliesNotificationsExceptions" { return APP_GROUP_USER_DEFAULTS ?? .standard }
         return .standard
     }
@@ -924,6 +939,19 @@ public class RGSimpleSettings {
     
     @UserDefault(key: Keys.hideReactions.rawValue)
     public var hideReactions: Bool
+
+    // MARK: Regram — redraw visible messages when the side forward button preference changes.
+    @UserDefault(key: Keys.hideMessageForwardButton.rawValue)
+    public var hideMessageForwardButton: Bool {
+        didSet {
+            if hideMessageForwardButton != oldValue {
+                NotificationCenter.default.post(name: Self.featureMessagePresentationDidChange, object: nil)
+            }
+        }
+    }
+
+    @UserDefault(key: Keys.autoSelectDeleteModerationActions.rawValue)
+    public var autoSelectDeleteModerationActions: Bool
 
     // @available(*, deprecated, message: "Use showRepostToStoryV2 instead")
     @UserDefault(key: Keys.showRepostToStory.rawValue)
@@ -1429,7 +1457,11 @@ public class RGSimpleSettings {
     public var inputToolbar: Bool
 
     @UserDefault(key: Keys.sendWithReturnKey.rawValue)
-    public var sendWithReturnKey: Bool
+    public var sendWithReturnKey: Bool {
+        didSet { NotificationCenter.default.post(name: Self.inputSettingsDidChange, object: nil) }
+    }
+    public static let inputSettingsDidChange = Notification.Name("Regram.InputSettingsDidChange")
+    public static let shareSettingsDidChange = Notification.Name("Regram.ShareSettingsDidChange")
 
     // MARK: Regram — pin chats past the server's limit. The server keeps the first N pins (N is the
     // account's real limit); the rest are local to this device. See RGLocalPinnedChats in TelegramCore.

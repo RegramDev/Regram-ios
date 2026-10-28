@@ -167,6 +167,14 @@ class ChatSearchResultsControllerNode: ViewControllerTracingNode, ASScrollViewDe
     private var validLayout: (ContainerViewLayout, CGFloat)?
     
     var resultsUpdated: ((SearchMessagesResult, SearchMessagesState) -> Void)?
+    // MARK: Regram — author-message paging keeps its cursor/results and offers an explicit retry.
+    var rgLoadFailed: (() -> Void)?
+    private(set) var rgHasLoadFailure = false
+    func rgRetryLoadMore() {
+        guard self.rgHasLoadFailure, !self.isLoadingMore else { return }
+        self.rgHasLoadFailure = false
+        self.loadMore()
+    }
     var resultSelected: ((Int) -> Void)?
     
     private let presentationDataPromise: Promise<ChatListPresentationData>
@@ -323,7 +331,7 @@ class ChatSearchResultsControllerNode: ViewControllerTracingNode, ASScrollViewDe
             if strongSelf.searchResult.completed {
                 return
             }
-            if strongSelf.isLoadingMore {
+            if strongSelf.isLoadingMore || strongSelf.rgHasLoadFailure {
                 return
             }
             strongSelf.loadMore()
@@ -348,6 +356,12 @@ class ChatSearchResultsControllerNode: ViewControllerTracingNode, ASScrollViewDe
             }
             
             strongSelf.isLoadingMore = false
+            // MARK: Regram — an RPC failure is neither an empty page nor the end of history.
+            if updatedResult.rgRequestFailed {
+                strongSelf.rgHasLoadFailure = strongSelf.rgLoadFailed != nil
+                strongSelf.rgLoadFailed?()
+                return
+            }
             strongSelf.searchResult = updatedResult
             strongSelf.searchState = updatedState
             strongSelf.resultsUpdated?(updatedResult, updatedState)

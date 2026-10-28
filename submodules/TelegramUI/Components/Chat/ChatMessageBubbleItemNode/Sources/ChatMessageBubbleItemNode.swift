@@ -2077,6 +2077,11 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             allowFullWidth = true
         }
 
+        // MARK: Regram — remove the forward control and reclaim its layout inset.
+        if rgShouldHideMessageForwardButton(item: item, isEnabled: RGSimpleSettings.shared.hideMessageForwardButton, commentsEnabled: mayHaveSeparateCommentsButton) {
+            needsShareButton = false
+        }
+
         var tmpWidth: CGFloat
         if allowFullWidth {
             tmpWidth = baseWidth

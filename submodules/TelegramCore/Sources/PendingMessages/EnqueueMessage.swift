@@ -277,7 +277,7 @@ private func convertForwardedMediaForSecretChat(_ media: Media) -> Media {
     }
 }
 
-private func filterMessageAttributesForOutgoingMessage(_ attributes: [MessageAttribute]) -> [MessageAttribute] {
+func filterMessageAttributesForOutgoingMessage(_ attributes: [MessageAttribute]) -> [MessageAttribute] { // MARK: Regram — shared by persistent recurring sends.
     return attributes.filter { attribute in
         switch attribute {
         case _ as TextEntitiesMessageAttribute:
@@ -1518,6 +1518,8 @@ func enqueueMessages(transaction: Transaction, account: Account, peerId: PeerId,
             for globallyUniqueId in globallyUniqueIds {
                 messageIds.append(globallyUniqueIdToMessageId[globallyUniqueId])
             }
+            // MARK: Regram — explicit daily startup tasks stay as editable local tasks until a foreground launch.
+            rgCaptureStartupDailyMessages(transaction: transaction, ids: messageIds.compactMap { $0 })
             
             if peerId.namespace == Namespaces.Peer.CloudUser {
                 if case .notIncluded = transaction.getPeerChatListInclusion(peerId) {

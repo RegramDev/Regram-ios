@@ -755,6 +755,35 @@ public final class PostboxDecoder {
     public init(buffer: MemoryBuffer) {
         self.buffer = buffer
     }
+
+    // MARK: Regram — Codable dictionaries enumerate keys, including persisted
+    // chat placement entries. Scan independently so enumeration never consumes a value.
+    func decodeKeyNames() -> [String] {
+        let bytes = self.buffer.memory.assumingMemoryBound(to: Int8.self)
+        let length = self.buffer.length
+        var scanOffset = 0
+        var result: [String] = []
+        while scanOffset < length {
+            let keyLength = Int(bytes[scanOffset])
+            scanOffset += 1
+            guard keyLength >= 0, keyLength < length - scanOffset else {
+                return []
+            }
+            guard let key = String(data: Data(bytes: bytes + scanOffset, count: keyLength), encoding: .utf8) else {
+                return []
+            }
+            scanOffset += keyLength
+            guard let valueType = ValueType(rawValue: bytes[scanOffset]) else {
+                return []
+            }
+            scanOffset += 1
+            guard PostboxDecoder.skipValue(bytes, offset: &scanOffset, length: length, valueType: valueType) else {
+                return []
+            }
+            result.append(key)
+        }
+        return result
+    }
     
     private class func skipValue(_ bytes: UnsafePointer<Int8>, offset: inout Int, length: Int, valueType: ValueType) -> Bool {
         switch valueType {

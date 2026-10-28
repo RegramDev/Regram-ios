@@ -13,9 +13,9 @@ import Combine
 import SwiftSignalKit
 typealias PeerId=Int64
 typealias MessageId=Int
-struct Message { let id:Int; let timestamp:Int32; let text:String; var containsSecretMedia=false; var protected=false; var index:Int {id}; func isCopyProtected()->Bool{protected} }
+struct Message { let id:Int; let timestamp:Int32; let text:String; var containsSecretMedia=false; var protected=false; var index:Int {id}; var rgTextContent:String{text}; func isCopyProtected()->Bool{protected} }
 struct SearchMessagesState:Equatable {let cursor:Int}
-struct SearchMessagesResult {let messages:[Message];let completed:Bool}
+struct SearchMessagesResult {let messages:[Message];let completed:Bool;var rgRequestFailed=false}
 enum SearchMessagesLocation {case peer(peerId:PeerId,fromId:PeerId?,tags:Int?,reactions:Int?,threadId:Int64?,minDate:Int32?,maxDate:Int32?)}
 final class API {
  var output:[(SearchMessagesResult,SearchMessagesState)]=[];var calls=0;var cancelled=0
@@ -44,6 +44,12 @@ final class RGSimpleSettings {static let shared=RGSimpleSettings();var messageSu
   load();wait{!loader!.loading};precondition(loader!.messages.map(\\.id)==[1,2] && loader!.errorKey==nil && context.engine.messages.calls==2)
   context.engine.messages.output=[(.init(messages:[Message(id:7,timestamp:110,text:String(repeating:"中",count:22000))],completed:true),.init(cursor:1))]
   load();wait{!loader!.loading};precondition(loader!.messages.isEmpty && loader!.errorKey=="Summary.RangeTooLarge")
+  for messages in [[],[one]] {
+   context.engine.messages.output=[(.init(messages:messages,completed:true,rgRequestFailed:true),.init(cursor:1))]
+   load();wait{!loader!.loading};precondition(loader!.messages.isEmpty && loader!.errorKey=="Summary.RangeFailed", "Failed or partial RPC data must never become a summary")
+  }
+  context.engine.messages.output=[(.init(messages:[one],completed:false),.init(cursor:1)),(.init(messages:[],completed:true,rgRequestFailed:true),.init(cursor:2))]
+  load();wait{!loader!.loading};precondition(loader!.messages.isEmpty && loader!.errorKey=="Summary.RangeFailed", "Later-page failures must not publish accumulated partial text")
   context.engine.messages.output=[(.init(messages:[],completed:false),.init(cursor:8)),(.init(messages:[],completed:false),.init(cursor:8))]
   load();wait{!loader!.loading};precondition(loader!.errorKey=="Summary.RangeFailed")
   load();wait{context.engine.messages.pending != nil};loader!.cancel();context.engine.messages.pending?.putNext((.init(messages:[one],completed:true),.init(cursor:1)));precondition(loader!.messages.isEmpty && !loader!.loading && context.engine.messages.cancelled>0)

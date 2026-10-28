@@ -13,6 +13,9 @@ public final class RGFeaturePreferences {
         let storage = UserDefaults.standard
         let oldValue = storage.object(forKey: resolvedKey) as? Bool
         storage.set(value, forKey: resolvedKey)
+        if resolvedKey == "features.showFoldersInShareSheet" {
+            NotificationCenter.default.post(name: RGSimpleSettings.shareSettingsDidChange, object: nil)
+        }
         if resolvedKey == "features.enablePanguOnReceiving", oldValue != value as? Bool {
             NotificationCenter.default.post(name: RGSimpleSettings.featureMessagePresentationDidChange, object: nil)
         }
@@ -20,6 +23,9 @@ public final class RGFeaturePreferences {
     }
     public func removeObject(forKey key: String) {
         UserDefaults.standard.removeObject(forKey: Self.key(key))
+        if Self.key(key) == "features.showFoldersInShareSheet" {
+            NotificationCenter.default.post(name: RGSimpleSettings.shareSettingsDidChange, object: nil)
+        }
         NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: UserDefaults.standard)
     }
     public static func bool(_ key: String, default defaultValue: Bool = false) -> Bool {

@@ -1043,7 +1043,7 @@ func loadAndStorePeerChatInfos(accountPeerId: PeerId, postbox: Postbox, network:
                         let currentInclusion = transaction.getPeerChatListInclusion(peerId)
                         if !isExcludedFromChatList && (!onlyRestoreMissing || currentInclusion == .notIncluded) {
                             // MARK: Regram — a manual archive/unarchive during the request takes precedence.
-                            let groupId = PeerGroupId(rawValue: folderId ?? 0)
+                            let groupId = rgResolveChatListGroup(transaction: transaction, peerId: peerId, serverGroup: PeerGroupId(rawValue: folderId ?? 0)) // MARK: Regram
                             var currentPinningIndex: UInt16?
                             var currentMinTimestamp: Int32?
                             switch currentInclusion {
@@ -1164,6 +1164,8 @@ struct ChatListFiltersState: Codable, Equatable {
     
     var remoteDisplayTags: Bool?
     var displayTags: Bool
+    // MARK: Regram — a device choice must survive servers that do not store Premium tag settings.
+    var localDisplayTags: Bool? = nil
     
     static var `default` = ChatListFiltersState(filters: [], remoteFilters: nil, updates: [], remoteDisplayTags: nil, displayTags: false)
     
@@ -1183,6 +1185,8 @@ struct ChatListFiltersState: Codable, Equatable {
         self.updates = try container.decodeIfPresent([ChatListFilterUpdates].self, forKey: "updates") ?? []
         self.remoteDisplayTags = try container.decodeIfPresent(Bool.self, forKey: "remoteDisplayTags")
         self.displayTags = try container.decodeIfPresent(Bool.self, forKey: "displayTags") ?? false
+        self.localDisplayTags = try container.decodeIfPresent(Bool.self, forKey: "regramDisplayTags")
+        self.displayTags = self.localDisplayTags ?? self.displayTags
     }
     
     func encode(to encoder: Encoder) throws {
@@ -1193,6 +1197,7 @@ struct ChatListFiltersState: Codable, Equatable {
         try container.encode(self.updates, forKey: "updates")
         try container.encodeIfPresent(self.remoteDisplayTags, forKey: "remoteDisplayTags")
         try container.encode(self.displayTags, forKey: "displayTags")
+        try container.encodeIfPresent(self.localDisplayTags, forKey: "regramDisplayTags")
     }
     
     mutating func normalize() {
@@ -1241,6 +1246,8 @@ func _internal_updateChatListFiltersDisplayTagsInteractively(postbox: Postbox, d
         var hasUpdates = false
         transaction.updatePreferencesEntry(key: PreferencesKeys.chatListFilters, { entry in
             var state = entry?.get(ChatListFiltersState.self) ?? ChatListFiltersState.default
+            // MARK: Regram — persist explicit on and off choices independently of remote sync.
+            state.localDisplayTags = displayTags
             if displayTags != state.displayTags {
                 state.displayTags = displayTags
                 
@@ -1707,8 +1714,9 @@ private func synchronizeChatListFilters(transaction: Transaction, accountPeerId:
                             return remoteFilter.withLocalOnlyPeers(from: currentFilters.first(where: { $0.id == remoteFilter.id }))
                         }
                         state.remoteFilters = state.filters
-                        state.displayTags = remoteTagsEnabled
-                        state.remoteDisplayTags = state.displayTags
+                        // MARK: Regram — keep the user's local tag display choice on restart.
+                        state.displayTags = state.localDisplayTags ?? remoteTagsEnabled
+                        state.remoteDisplayTags = remoteTagsEnabled
                         return state
                     })
                 }

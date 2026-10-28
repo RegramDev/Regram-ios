@@ -14,6 +14,7 @@ import TelegramStringFormatting
 import StorageUsageScreen
 import SettingsUI
 import OverlayStatusController
+import RGSimpleSettings // MARK: Regram
 
 fileprivate struct InitialBannedRights {
     var value: TelegramChatBannedRights?
@@ -258,7 +259,8 @@ extension ChatControllerImpl {
                             }
                             self.applyAdminUserActionsResult(messageIds: messageIds, result: result, initialUserBannedRights: initialUserBannedRights)
                         }
-                    )
+                    ),
+                    preselectModerationActions: RGSimpleSettings.shared.autoSelectDeleteModerationActions // MARK: Regram
                 ))
             })
         }))
@@ -412,7 +414,8 @@ extension ChatControllerImpl {
                         participant: participant,
                         peer: authorPeer
                     )],
-                    mode: mode
+                    mode: mode,
+                    preselectModerationActions: RGSimpleSettings.shared.autoSelectDeleteModerationActions // MARK: Regram
                 ))
             })
         }))

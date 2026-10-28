@@ -1,4 +1,5 @@
 import Foundation
+import RGAppGroupIdentifier
 
 extension UserDefaults {
     public static let rgTestStandard = UserDefaults(suiteName: ProcessInfo.processInfo.environment["RG_TEST_SUITE"]! + "-standard")!
@@ -10,12 +11,46 @@ extension UserDefaults {
         // An installed three-line value must migrate before the singleton caches its wrappers.
         UserDefaults.rgTestStandard.set("3", forKey: "chatListLines")
         let settings = RGSimpleSettings.shared
+        expect(!settings.hideMessageForwardButton && !settings.autoSelectDeleteModerationActions, "New chat action settings are opt-in")
+        final class MessageChanges: @unchecked Sendable { var count = 0 }
+        let messageChanges = MessageChanges()
+        let messageObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.featureMessagePresentationDidChange, object: nil, queue: nil) { _ in messageChanges.count += 1 }
+        settings.hideMessageForwardButton = true
+        settings.autoSelectDeleteModerationActions = true
+        expect(messageChanges.count == 1, "Hiding forward buttons refreshes existing messages immediately")
+        let actionBackup = settings.exportPreferences(categories: [.appearance, .messages])
+        expect(actionBackup.values["hideMessageForwardButton"] == .bool(true) && actionBackup.values["autoSelectDeleteModerationActions"] == .bool(true), "Both switches are portable")
+        settings.hideMessageForwardButton = false
+        settings.autoSelectDeleteModerationActions = false
+        settings.applyPreferences(actionBackup.values)
+        expect(settings.hideMessageForwardButton && settings.autoSelectDeleteModerationActions, "Restore invalidates both cached switch values")
+        settings.applyPreferences([:], resetCategories: [.appearance, .messages])
+        expect(!settings.hideMessageForwardButton && !settings.autoSelectDeleteModerationActions, "Category reset restores the opt-in defaults")
+        NotificationCenter.default.removeObserver(messageObserver)
         let suite = ProcessInfo.processInfo.environment["RG_TEST_SUITE"]!
         defer {
             UserDefaults.rgTestStandard.removePersistentDomain(forName: suite + "-standard")
             UserDefaults(suiteName: suite + "-group")!.removePersistentDomain(forName: suite + "-group")
         }
         UserDefaults.rgTestStandard.set("synthetic", forKey: "api_hash")
+        // The relocated notification setting keeps its shared-store value and legacy fallback.
+        let experimentDefaults = rgSharedUserDefaults()!
+        experimentDefaults.set(true, forKey: "legacyNotificationsFix")
+        expect(RGNotificationExperiment.isEnabled, "Keep the debug switch's existing legacy state")
+        expect(settings.exportPreferences(categories: [.notifications]).values[RGNotificationExperiment.key] == .bool(true), "Export the effective shared experiment state")
+        final class RecoveryChanges: @unchecked Sendable { var value = 0; func increment() { value += 1 } }
+        let recoveryChanges = RecoveryChanges()
+        let recoveryObserver = NotificationCenter.default.addObserver(forName: RGNotificationExperiment.changed, object: nil, queue: nil) { _ in recoveryChanges.increment() }
+        let recoveryKeys = settings.applyPreferences([RGNotificationExperiment.key: .bool(false)], publishChanges: false)
+        expect(!RGNotificationExperiment.isEnabled && experimentDefaults.object(forKey: "legacyNotificationsFix") == nil, "Imported false must supersede the legacy true fallback")
+        expect(recoveryChanges.value == 0, "Do not publish before the restore transaction finishes")
+        settings.publishPreferenceChanges(recoveryKeys)
+        expect(recoveryChanges.value == 1, "Publish the restored experiment after committing")
+        RGNotificationExperiment.setEnabled(true)
+        expect(settings.exportPreferences(categories: [.notifications]).values[RGNotificationExperiment.key] == .bool(true), "The moved native toggle still uses the original shared key")
+        settings.applyPreferences([:], resetCategories: [.notifications])
+        expect(!RGNotificationExperiment.isEnabled, "Notification category reset restores the opt-in default")
+        NotificationCenter.default.removeObserver(recoveryObserver)
         expect(RGSimpleSettings.ChatListLines.allCases.map(\.rawValue).sorted() == ["1", "2"], "Only one- and two-line modes are offered")
         expect(settings.chatListLines == "2" && UserDefaults.rgTestStandard.string(forKey: "chatListLines") == "2", "Persistently migrate a removed three-line value")
         settings.chatListLines = "1"
@@ -235,7 +270,33 @@ extension UserDefaults {
         }
         expect(protectedSegments == ["Telegram"], "Pangu insertion must not alter protected code content or lose its attributes")
         try Self.checkPortableBackups(settings)
+        Self.checkRefreshNotifications(settings)
         print("Settings runtime checks passed: storage/backup regressions, portable layout consistency, deferred/targeted refresh, account-scoped real-menu inventory, and reordering with hidden actions")
+    }
+
+    static func checkRefreshNotifications(_ settings: RGSimpleSettings) {
+        final class Count { var value = 0 }
+        let pangu = Count(), links = Count(), input = Count(), share = Count()
+        let center = NotificationCenter.default
+        let observers = [
+            center.addObserver(forName: RGSimpleSettings.featureMessagePresentationDidChange, object: nil, queue: nil) { _ in pangu.value += 1 },
+            center.addObserver(forName: RGLinkPreviewRules.didChangeNotification, object: nil, queue: nil) { _ in links.value += 1 },
+            center.addObserver(forName: RGSimpleSettings.inputSettingsDidChange, object: nil, queue: nil) { _ in input.value += 1 },
+            center.addObserver(forName: RGSimpleSettings.shareSettingsDidChange, object: nil, queue: nil) { _ in share.value += 1 }
+        ]
+        defer { observers.forEach(center.removeObserver) }
+        settings.sendWithReturnKey = !settings.sendWithReturnKey
+        settings.showFoldersInShareSheet = !settings.showFoldersInShareSheet
+        expect(input.value == 1 && share.value == 1, "Manual input/share changes refresh existing views")
+        input.value = 0; share.value = 0
+        let keys = settings.applyPreferences(["features.enablePanguOnReceiving": .bool(true), "fixLinkPreviews": .bool(true), "linkPreviewXHost": .string("fxtwitter.com"), "sendWithReturnKey": .bool(true), "features.showFoldersInShareSheet": .bool(true)], publishChanges: false)
+        expect(pangu.value == 0 && links.value == 0 && input.value == 0 && share.value == 0, "Deferred imports must not refresh before the account transaction commits")
+        settings.publishPreferenceChanges(keys)
+        expect(pangu.value == 1 && links.value == 1 && input.value == 1 && share.value == 1, "One committed import publishes each affected surface once")
+        settings.applyPreferences([:], resetCategories: [.messages])
+        expect(pangu.value == 2 && links.value == 2 && input.value == 2 && share.value == 1, "Reset refreshes message presentation, previews and input without touching sharing")
+        settings.applyPreferences([:], resetCategories: [.appearance])
+        expect(share.value == 2 && !settings.showFoldersInShareSheet, "Appearance reset immediately removes sharing folders")
     }
 
     static func checkPortableBackups(_ settings: RGSimpleSettings) throws {

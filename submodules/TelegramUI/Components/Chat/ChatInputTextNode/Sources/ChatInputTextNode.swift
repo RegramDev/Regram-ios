@@ -12,6 +12,8 @@ import TextNodeWithEntities
 public protocol ChatInputTextNodeDelegate: AnyObject {
     func chatInputTextNodeDidUpdateText()
     func chatInputTextNodeShouldReturn(modifierFlags: UIKeyModifierFlags) -> Bool
+    // MARK: Regram — software Return is independent of the hardware-keyboard send policy.
+    func chatInputTextNodeShouldInsertSoftwareReturn() -> Bool
     func chatInputTextNodeDidChangeSelection(dueToEditing: Bool)
     func chatInputTextNodeDidBeginEditing()
     func chatInputTextNodeDidFinishEditing()
@@ -26,6 +28,11 @@ public protocol ChatInputTextNodeDelegate: AnyObject {
     
     func chatInputTextNodeShouldRespondToAction(action: Selector) -> Bool
     func chatInputTextNodeTargetForAction(action: Selector) -> ChatInputTextNode.TargetForAction?
+}
+
+// MARK: Regram — standalone editors and existing hosts keep normal newline behavior.
+public extension ChatInputTextNodeDelegate {
+    func chatInputTextNodeShouldInsertSoftwareReturn() -> Bool { return true }
 }
 
 @available(iOS 15.0, *)

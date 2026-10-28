@@ -11,6 +11,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGAppGroupIdentifier",
+        "//Regram/RGLocalGifts", # MARK: Regram
         "//Regram/RGItemListUI:RGItemListUI",
         "//Regram/RGLogging:RGLogging",
         "//Regram/RGSimpleSettings:RGSimpleSettings",

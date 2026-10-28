@@ -400,7 +400,7 @@
 "ChatPreferences.Reveal.End" = "立即恢復過濾";
 "ChatPreferences.Reveal.Notice" = "暫時在此對話顯示關鍵字過濾及已隱藏傳送者的訊息。規則會保留並自動恢復，通知過濾不受影響。";
 "Revoked.Title" = "已保留的撤回訊息";
-"Revoked.Notice" = "選擇對話查找本機已保留的撤回訊息，分批讀取本機記錄。載入更多可繼續查找舊記錄，日期為原訊息日期。";
+"Revoked.Notice" = "選擇對話查找本機已保留的訊息。明確撤回與曾無法從伺服器取得的歷史會分別標示。載入更多可繼續查找舊記錄，日期為原訊息日期。";
 "Revoked.Search" = "搜尋已載入訊息";
 "Revoked.Media" = "媒體或服務訊息";
 "Revoked.Scanned" = "則本機訊息已檢查";
@@ -1147,6 +1147,7 @@
 "AppBadge.Name.amber" = "琥珀";
 
 "AppIcon.Name.nebula" = "星河";
+"AppIcon.Name.silver" = "XChat";
 
 "AppBadge.Name.nebula" = "星河";
 
@@ -1161,3 +1162,85 @@
 "AppBadge.Name.zhiqiu" = "知秋";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隱藏因系統通知或通訊錄權限關閉而顯示的驚嘆號。未讀數量及其他帳號提醒保留。";
+
+// MARK: Regram — local Stars and gift simulation.
+"LocalGifts.Title" = "本機星幣與禮物";
+"LocalGifts.Enabled" = "啟用本機禮物購買";
+"LocalGifts.Notice" = "購買使用獨立的本機星幣和 TON 餘額。禮物及裝扮僅在本機自己的個人資料頁展示。關閉後隱藏本機禮物和裝扮，保留紀錄。";
+"LocalGifts.Balance" = "本機星幣數量";
+"LocalGifts.BalanceHint" = "輸入 0 至 9000000000000000 的整數後儲存。";
+"LocalGifts.SaveBalance" = "儲存數量";
+"LocalGifts.CurrentBalance" = "可用本機星幣";
+"LocalGifts.Owned" = "我的本機禮物";
+"LocalGifts.OwnedHint" = "本機購買不會傳送付款或贈送請求，無法在 Telegram 轉贈、出售、升級或兌換。";
+"LocalGifts.Empty" = "還沒有本機禮物";
+"LocalGifts.Gift" = "禮物";
+"LocalGifts.Buy" = "本機購買";
+"LocalGifts.Success" = "購買成功";
+"LocalGifts.SuccessHint" = "已扣除對應的本機餘額，並將禮物加入本機自己的個人資料頁。";
+"LocalGifts.Remove" = "移除本機禮物";
+"LocalGifts.RemoveHint" = "移除這份本機禮物？本機星幣不會退回。";
+"LocalGifts.Disabled" = "請先在 Regram 設定中啟用本機禮物購買。";
+"LocalGifts.InvalidAmount" = "請輸入範圍內有效的非負金額。";
+"LocalGifts.Insufficient" = "本機星幣不足，請在顯擺一下專區修改數量。";
+"LocalGifts.Limit" = "本機禮物已達到儲存上限（最多 500 份），請移除部分禮物後再試。";
+"LocalGifts.StorageError" = "本機紀錄無法儲存，或禮物預覽尚未載入完成。本次購買未完成。";
+"LocalGifts.NativeHint" = "儲存後，到 Telegram 原有禮物頁面購買普通或收藏禮物。目錄和預覽正常連線載入，購買和餘額扣除僅在本機模擬。";
+
+"Showroom.Title" = "顯擺一下";
+
+"Showroom.PremiumRefresh" = "已開啟的會員介面可在重新開啟 App 後重新整理。";
+
+"LocalPhone.Title" = "修改手機號顯示";
+
+"LocalPhone.Number" = "手機號碼";
+"LocalPhone.Enabled" = "啟用本機手機號顯示";
+
+"LocalPhone.Save" = "儲存並啟用";
+
+"LocalPhone.Hint" = "僅修改本機自己個人資料頁和設定中的號碼顯示，不改變登入手機號和 Telegram 帳號。各帳號獨立儲存。";
+
+"LocalPhone.Invalid" = "請填寫 1–3 位區號和手機號碼，合計 5–20 位數字。";
+"LocalGifts.TonBalance" = "本機 TON 數量";
+
+"LocalGifts.SaveTonBalance" = "儲存 TON 數量";
+
+"LocalGifts.TonHint" = "用於本機收藏禮物購買及本機資料卡。最多 9 位小數，最高 9000000 TON，不連接錢包，也不發起轉帳。";
+"LocalGifts.InsufficientTon" = "本機 TON 不足，請在顯擺一下專區修改數量。";
+
+"Showroom.Description" = "本機會員、禮物、評級、TON 資料卡與號碼顯示";
+
+// Local profile customization
+"LocalGifts.PinnedLimit" = "置頂禮物已達上限，請先取消其他禮物的置頂。";
+"LocalGifts.Details" = "查看禮物";
+"LocalRating.Title" = "本機個人資料評級";
+"LocalRating.Level" = "評級（−999 至 999）";
+"LocalRating.Enabled" = "啟用本機評級";
+"LocalRating.Save" = "儲存並啟用";
+"LocalRating.Hint" = "僅修改本機自己個人資料頁的評級。負數使用 Telegram 的低信用度樣式，不改變真實評級。";
+"LocalRating.Invalid" = "請輸入 −999 至 999 之間的整數。";
+"LocalPhone.CountryCode" = "區號";
+"LocalWallet.Title" = "本機 TON 資料卡";
+"LocalWallet.Enabled" = "顯示本機 TON 資料卡";
+"LocalWallet.Hint" = "點選自己資料頁的餘額即可開啟 Telegram 資料卡，最多顯示六個已置頂的本機收藏禮物。關閉後恢復真實資料卡。";
+"LocalWallet.Notice" = "餘額與資料卡僅在本機顯示，沒有收款地址，其他使用者無法看見。";
+
+"Revoked.Unavailable" = "曾無法從伺服器取得 · 已在本機保留";
+
+// MARK: Regram — sender-scoped message search.
+"AuthorMessages.Search" = "搜尋此人的訊息";
+"AuthorMessages.NoResults" = "沒有符合的訊息";
+
+"RecurringMessages.Info" = "從所選日期開始，每天首次開啟 Regram 時靜默傳送一次，當天再次開啟不重複。任務儲存在本機，錯過的日期不補發；所選時刻不用於每日任務。可在排程訊息列表中編輯或刪除任務。";
+
+"RecurringMessages.DailyStartup" = "每日首次啟動";
+"RecurringMessages.Create" = "儲存每日啟動任務";
+
+"ChannelRemark.Title" = "頻道備註";
+"ChannelRemark.OriginalName" = "原頻道名稱：%@";
+"ChannelRemark.Notice" = "僅目前帳號在本機可見，顯示於聊天列表、聊天標題及本機搜尋。留空並儲存即可恢復原頻道名稱。";
+"ChannelRemark.UseOriginalName" = "使用原頻道名稱";
+"Settings.HideMessageForwardButton" = "隱藏訊息轉發按鈕";
+"Settings.HideMessageForwardButton.Notice" = "隱藏訊息旁的轉發箭頭，適用於文字、媒體和貼圖。仍可從訊息選單轉發。";
+"Settings.AutoSelectDeleteModerationActions" = "刪除訊息自動一鍵三連";
+"Settings.AutoSelectDeleteModerationActions.Notice" = "管理員刪除群組訊息時，自動勾選檢舉垃圾訊息、刪除傳送者全部訊息與回應、封鎖。僅勾選有權限的操作，繼續前可檢視或取消勾選。";

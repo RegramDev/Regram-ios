@@ -12,6 +12,7 @@ public enum RGSettingsIcons {
     public static let diagnostics = make("waveform.path.ecg", color: 0x007aff)
     public static let backup = make("externaldrive.fill", color: 0x00a6a6)
     public static let update = make("arrow.triangle.2.circlepath", color: 0x007aff)
+    public static let localGifts = make("star.fill", color: 0xff9500)
     public static let bottomBar = make("rectangle.bottomthird.inset.filled", color: 0x5856d6)
     public static let messageMenu = make("list.bullet.rectangle", color: 0xff9500)
 

@@ -8,6 +8,9 @@ with tempfile.TemporaryDirectory(prefix='regram-photo-history-tests-') as tempor
  subprocess.run(['xcrun','clang','-dynamiclib','-fobjc-arc','-framework','Foundation','-I',str(root/'submodules/MurMurHash32/PublicHeaders'),str(root/'submodules/MurMurHash32/Sources/MurMurHash32.m'),'-o',str(work/'libMurMurHash32.dylib')],check=True)
  production=(root/'submodules/TelegramCore/Sources/SyncCore/SyncCore_RGEditHistoryMessageAttribute.swift').read_text().replace('import Postbox\n','')
  (work/'History.swift').write_text(production)
+ rich=(root/'submodules/TelegramCore/Sources/SyncCore/SyncCore_RichTextMessageAttribute.swift').read_text().split('\nextension RichTextMessageAttribute {')[0]
+ rich='\n'.join(line for line in rich.splitlines() if not line.startswith(('import ', 'internal import ')))
+ (work/'RichAttribute.swift').write_text(rich)
  adapters='''
 import Foundation
 func postboxLog(_ value:String) {}
@@ -15,6 +18,8 @@ func mdb_cmp_memn(_ a:UnsafeRawPointer,_ al:Int,_ b:UnsafeRawPointer,_ bl:Int)->
  let result=memcmp(a,b,min(al,bl));return result != 0 ? result : (al==bl ? 0 : (al<bl ? -1 : 1))
 }
 public protocol MessageAttribute:PostboxCoding {}
+public typealias PeerId=Int64
+public typealias MediaId=Int64
 public struct MessageTextEntity:PostboxCoding,Equatable {
  let value:String
  init(_ value:String){self.value=value}
@@ -28,6 +33,12 @@ public class TelegramMediaImage:PostboxCoding {
  public func encode(_ encoder:PostboxEncoder){encoder.encodeInt64(imageId,forKey:"id")}
 }
 public struct Message {let attributes:[MessageAttribute]}
+public struct InstantPage:PostboxCoding,Equatable {
+ let blocks:String
+ init(_ blocks:String){self.blocks=blocks}
+ public init(decoder:PostboxDecoder){blocks=decoder.decodeStringForKey("b",orElse:"")}
+ public func encode(_ encoder:PostboxEncoder){encoder.encodeString(blocks,forKey:"b")}
+}
 '''
  (work/'Adapters.swift').write_text(adapters)
  (work/'Tests.swift').write_text('''
@@ -40,6 +51,14 @@ import Foundation
   let legacy=PostboxEncoder();legacy.encodeString("old caption",forKey:"t");legacy.encodeInt32(7,forKey:"d");legacy.encodeObjectArray([MessageTextEntity("bold")],forKey:"e")
   let old=RGEditHistoryEntry(decoder:PostboxDecoder(buffer:MemoryBuffer(data:legacy.makeData())))
   precondition(old.image == nil && old.imageData == nil && old.text == "old caption" && old.entities.count==1)
+  precondition(old.richText == nil)
+  let rich = RichTextMessageAttribute(instantPage:InstantPage("heading | cell"),fullInstantPage:InstantPage("full heading | full cell"))
+  let richRow = RGEditHistoryEntry(text:"heading | cell",entities:[],date:9,richText:rich)
+  let richEncoder=PostboxEncoder();richRow.encode(richEncoder)
+  let restoredRich=RGEditHistoryEntry(decoder:PostboxDecoder(buffer:MemoryBuffer(data:richEncoder.makeData())))
+  precondition(restoredRich==richRow && restoredRich.richText?.fullInstantPage==rich.fullInstantPage)
+  rich.fullInstantPage=InstantPage("later cache change")
+  precondition(restoredRich.richText?.fullInstantPage==InstantPage("full heading | full cell") && richRow.richText?.fullInstantPage==restoredRich.richText?.fullInstantPage)
   let bytes=Data([1,2,3,4]);let row=RGEditHistoryEntry(text:"photo caption",entities:[MessageTextEntity("italic")],date:10,image:TelegramMediaImage(11),imageData:bytes,imageHasSpoiler:true)
   let encoder=PostboxEncoder();row.encode(encoder)
   let decoded=RGEditHistoryEntry(decoder:PostboxDecoder(buffer:MemoryBuffer(data:encoder.makeData())))
@@ -63,5 +82,5 @@ import Foundation
  }
 }
 ''')
- subprocess.run(['xcrun','swiftc','-swift-version','5','-I',str(work),'-L',str(work),'-lMurMurHash32','-Xlinker','-rpath','-Xlinker',str(work),str(root/'submodules/Postbox/Sources/Coding.swift'),*[str(f) for f in sorted((root/'submodules/Postbox/Sources/Utils').rglob('*.swift'))],str(work/'Adapters.swift'),str(work/'History.swift'),str(work/'Tests.swift'),'-o',str(work/'tests')],check=True)
+ subprocess.run(['xcrun','swiftc','-swift-version','5','-I',str(work),'-L',str(work),'-lMurMurHash32','-Xlinker','-rpath','-Xlinker',str(work),str(root/'submodules/Postbox/Sources/Coding.swift'),*[str(f) for f in sorted((root/'submodules/Postbox/Sources/Utils').rglob('*.swift'))],str(work/'Adapters.swift'),str(work/'RichAttribute.swift'),str(work/'History.swift'),str(work/'Tests.swift'),'-o',str(work/'tests')],check=True)
  subprocess.run([str(work/'tests')],check=True)

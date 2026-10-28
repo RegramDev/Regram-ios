@@ -17,7 +17,7 @@ public struct RGSettingsCatalogEntry: Hashable {
             if let category = categories[String(page.dropFirst(9))] { return "Settings.ProCategory." + category }
             return "Settings.Category." + page.dropFirst(9)
         }
-        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
+        return ["inlineBots": "features.InlineBots.Title", "groupProfile": "features.GroupProfileSettings", "startupFolder": "features.ChatListStartupFolder", "textStyleMenu": "features.TextStyleMenu", "summary": "Summary.Title", "networkPolicy": "NetworkPolicy.Title", "bottomBar": "RG.BottomBarLayout", "llm": "LLMTranslation.Title", "stt": "RG.STTSettings", "localGifts": "Showroom.Title", "linkPreview": "LinkPreview.Repair", "antiFeatures": "AntiFeatures.Header", "revokedMarker": "RevokedMarker.Title", "ghostMode": "Ghost.Header", "fonts": "Fonts.Title", "backup": "Backup.Title", "diagnostics": "Diagnostics.Title", "datacenters": "Diagnostics.DC.Title", "bookmarks": "Bookmarks.Title", "chatPreferences": "ChatPreferences.Title"][page] ?? "Settings.Pro.Title"
     }
     public var id: String { destination.page + ":" + (destination.item ?? "") }
 }
@@ -140,6 +140,8 @@ public enum RGSettingsCatalog {
         .init("settings.messageActions", "showMessageId", "Settings.ShowMessageId"),
         .init("settings.messageActions", "automaticallyRevealSpoilers", "Settings.AutomaticallyRevealSpoilers", keywords: "spoiler 剧透 劇透 reveal"),
         .init("settings.messageActions", "showForwardedMessageDate", "Settings.ShowForwardedMessageDate"),
+        .init("settings.messageActions", "hideMessageForwardButton", "Settings.HideMessageForwardButton", keywords: "forward share arrow 转发 分享 箭头 轉發 隱藏"),
+        .init("settings.messageActions", "autoSelectDeleteModerationActions", "Settings.AutoSelectDeleteModerationActions", keywords: "delete report spam ban moderation 删除 举报 垃圾消息 封禁 一键三连 刪除 舉報 封鎖"),
         .init("settings.messageActions", "hideRecordingButton", "Settings.RecordingButton"),
         .init("settings.appearance", "disableSnapDeletionEffect", "Settings.SnapDeletionEffect"),
         .init("settings.messageActions", "disableSendAsButton", "Settings.SendAsButton"),
@@ -160,7 +162,7 @@ public enum RGSettingsCatalog {
         .init("pro.privacy", "messageFilter", "MessageFilter.Title"),
         .init("pro.privacy", "hiddenUsers", "HiddenUsers.Title"),
         .init("pro.messages", "mentionAsUserIdLink", "Mention.UserIdLink"),
-        .init("pro.privacy", "localPremium", "LocalPremium.Title"),
+        .init("localGifts", "localPremium", "LocalPremium.Title"),
         .init("pro.media", "disableLinkPreview", "LinkPreview.Disable"),
         .init("pro.input", "panguSpacing", "features.PanguOnSending", keywords: "pangu 盘古之白 盤古之白"),
         .init("pro.messages", "defaultOutgoingFormatting", "OutgoingFormatting.Title"),
@@ -172,6 +174,7 @@ public enum RGSettingsCatalog {
         .init("pro.notifications", "pinnedMessageNotifications", "Notifications.PinnedMessages.Title"),
         .init("pro.notifications", "mentionsAndRepliesNotifications", "Notifications.MentionsAndReplies.Title"),
         .init("pro.notifications", "filterNotifications", "Notifications.ContentFilter"),
+        .init("pro.notifications", "notificationRecoveryExperiment", "Debug.NotificationExperiment", keywords: "experimental notification recovery encrypted placeholder 实验性 通知 恢复 加密 占位 實驗性 通知 復原 加密 佔位"),
         .init("pro.notifications", "hideTabBarPermissionWarnings", "features.HideTabBarPermissionWarnings", keywords: "notifications permissions exclamation warning badge 通知 权限 感叹号 角标 通知 權限 驚嘆號"),
         .init("pro.appearance", "fonts", "Fonts.Title"),
         .init("pro.appearance", "appIcons", "Catalog.AppIcons"),
@@ -195,6 +198,13 @@ public enum RGSettingsCatalog {
         .init("pro.appearance", "profileSettings", "Settings.Category.profiles"),
         .init("pro.privacy", "storiesSettings", "Settings.Category.stories"),
         .init("pro.privacy", "privacySettings", "Settings.Category.privacy"),
+        .init("pro.home", "localGifts", "Showroom.Title", keywords: "local stars gifts purchase 本地 星币 礼物 购买"),
+        .init("localGifts", "enabled", "LocalGifts.Enabled"),
+        .init("localGifts", "balance", "LocalGifts.Balance"),
+        .init("localGifts", "tonBalance", "LocalGifts.TonBalance"),
+        .init("localGifts", "phone", "LocalPhone.Title", keywords: "local phone number 手机号 号码 本地 手機號"),
+        .init("localGifts", "rating", "LocalRating.Title", keywords: "local rating level credit negative reputation 本地评级 本機評級 本地 评级 評級 等级 信用度 低信用度 负数 負數"),
+        .init("localGifts", "walletCard", "LocalWallet.Title", keywords: "local wallet card TON Gram balance 本地 钱包 錢包 卡片 余额 餘額"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
         .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),
         .init("revokedMarker", "style", "RevokedMarker.Style"),

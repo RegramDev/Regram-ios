@@ -8,11 +8,14 @@ public extension EnginePeer {
     var rgCanSetGroupRemark: Bool {
         switch self {
         case .legacyGroup: return true
-        case let .channel(channel):
-            if case .group = channel.info { return true }
-            return false
+        case .channel: return true
         default: return false
         }
+    }
+
+    var rgRemarkLocalizationPrefix: String {
+        if case let .channel(channel) = self, case .broadcast = channel.info { return "ChannelRemark" }
+        return "GroupRemark"
     }
 
     func rgGroupDisplayTitle(accountId: Int64, strings: PresentationStrings, displayOrder: PresentationPersonNameOrder) -> String {

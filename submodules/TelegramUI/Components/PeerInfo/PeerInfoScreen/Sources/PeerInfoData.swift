@@ -1,3 +1,4 @@
+import RGLocalGifts // MARK: Regram
 import RGRegDateScheme
 import RGRegDate
 import RGSimpleSettings
@@ -1028,9 +1029,10 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         starsState,
         tonState,
         businessConnectedBot,
-        walletBalance
+        combineLatest(walletBalance, rgLocalAppearanceState(context: context)) // MARK: Regram
     )
-    |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalance -> PeerInfoScreenData in
+    |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalanceAndLocal -> PeerInfoScreenData in
+        let (walletBalance, localGifts) = walletBalanceAndLocal // MARK: Regram
         let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings) = notifications // MARK: Regram
         let (featuredStickerPacks, archivedStickerPacks) = stickerPacks
         
@@ -1084,10 +1086,10 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         )
         
         return PeerInfoScreenData(
-            peer: peer.flatMap(EnginePeer.init),
+            peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
             chatPeer: peer.flatMap(EnginePeer.init),
             savedMessagesPeer: nil,
-            cachedData: peerView.cachedData,
+            cachedData: rgLocalProfileCachedData(context: context, peerId: peerId, cachedData: peerView.cachedData, localState: localGifts), // MARK: Regram
             firstWelcomeMessageText: nil,
             status: nil,
             peerNotificationSettings: nil,
@@ -1608,17 +1610,18 @@ func peerInfoScreenData(
                 premiumGiftOptions,
                 webAppPermissions,
                 savedMusicContext.state,
-                combineLatest(businessConnectedBot, walletBalance)
+                combineLatest(businessConnectedBot, walletBalance, rgLocalAppearanceState(context: context))
             )
             |> mapToSignal { regDate, peerView, availablePanes, globalNotificationSettings, encryptionKeyFingerprint, status, hasStories, hasStoryArchive, recommendedBots, accountIsPremium, savedMessagesPeer, hasSavedMessagesChats, hasSavedMessages, hasSavedMessageTags, hasBotPreviewItems, personalChannel, privacySettings, starsRevenueContextAndState, revenueContextAndState, premiumGiftOptions, webAppPermissions, savedMusicState, businessConnectedBotAndWalletBalance -> Signal<PeerInfoScreenData, NoError> in
-                let (businessConnectedBot, walletBalance) = businessConnectedBotAndWalletBalance
+                let (businessConnectedBot, walletBalance, localGifts) = businessConnectedBotAndWalletBalance
                 var availablePanes = availablePanes
                 if isMyProfile {
                     availablePanes?.insert(.stories, at: 0)
-                    if availablePanes != nil, profileGiftsContext != nil, let cachedData = peerView.cachedData as? CachedUserData {
-                        if let starGiftsCount = cachedData.starGiftsCount, starGiftsCount > 0 {
-                            availablePanes?.insert(.gifts, at: 1)
-                        }
+                    // MARK: Regram — local purchases expose the owner's gifts pane even without server gifts.
+                    let serverGiftCount = (peerView.cachedData as? CachedUserData)?.starGiftsCount ?? 0
+                    let hasLocalGifts = peerId == context.account.peerId && localGifts.enabled && !localGifts.purchases.isEmpty
+                    if availablePanes != nil, profileGiftsContext != nil, (serverGiftCount > 0 || hasLocalGifts), availablePanes?.contains(.gifts) != true {
+                        availablePanes?.insert(.gifts, at: 1)
                     }
                     if let hasStoryArchive, hasStoryArchive {
                         availablePanes?.append(.storyArchive)
@@ -1765,10 +1768,10 @@ func peerInfoScreenData(
                     
                     return PeerInfoScreenData(
                         regDate: regDate,
-                        peer: peer.flatMap(EnginePeer.init),
+                        peer: peer.flatMap(EnginePeer.init).map { rgLocalAppearancePeer(context: context, peer: $0, localState: localGifts) },
                         chatPeer: peerView.peers[peerId].flatMap(EnginePeer.init),
                         savedMessagesPeer: savedMessagesPeer,
-                        cachedData: peerView.cachedData,
+                        cachedData: rgLocalProfileCachedData(context: context, peerId: peerId, cachedData: peerView.cachedData, localState: localGifts), // MARK: Regram
                         firstWelcomeMessageText: nil,
                         status: status,
                         peerNotificationSettings: peerView.notificationSettings as? TelegramPeerNotificationSettings,

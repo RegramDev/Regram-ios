@@ -200,7 +200,7 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
             guard list.rows.indices.contains(indexPath.row) else { cell.textLabel?.text = (list.loading ? "Bookmarks.Loading" : "Bookmarks.Empty").i18n(lang); cell.textLabel?.textColor = data.theme.list.itemSecondaryTextColor; cell.selectionStyle = .none; return cell }
             let row = list.rows[indexPath.row]
             cell.textLabel?.text = row.peer?.rgGroupDisplayTitle(accountId: context.account.peerId.toInt64(), strings: data.strings, displayOrder: data.nameDisplayOrder) ?? "Bookmarks.Unavailable".i18n(lang)
-            let preview = row.message.map { $0.text.isEmpty ? "Bookmarks.Media".i18n(lang) : $0.text } ?? "Bookmarks.Unavailable".i18n(lang)
+            let preview = row.message.map { $0.rgPreviewText.isEmpty ? "Bookmarks.Media".i18n(lang) : $0.rgPreviewText } ?? "Bookmarks.Unavailable".i18n(lang)
             let metadata = dateFormatter.string(from: Date(timeIntervalSince1970: row.bookmark.addedAt)) + (row.bookmark.tags.isEmpty ? "" : " · " + row.bookmark.tags.map { "#" + $0 }.joined(separator: "  "))
             cell.detailTextLabel?.text = metadata + "\n" + preview
             cell.accessoryType = .disclosureIndicator

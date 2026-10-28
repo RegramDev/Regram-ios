@@ -132,7 +132,7 @@ extension RichTextEngineEditorView {
         return [
             UIKeyCommand(input: "\r", modifierFlags: [], action: #selector(handleHardwareReturn(_:))),
             UIKeyCommand(input: "\r", modifierFlags: .command, action: #selector(handleHardwareReturn(_:))),
-        ]
+        ] + (onSoftwareReturn == nil ? [] : [UIKeyCommand(input: "\r", modifierFlags: .shift, action: #selector(handleHardwareReturn(_:)))]) // MARK: Regram
     }
 
     /// The host decides first; when it declines (returns true: "insert a newline") the Return is typed
@@ -145,6 +145,9 @@ extension RichTextEngineEditorView {
             finalizeComposerMarkedText()
             return
         }
+        // MARK: Regram — preserve newline fallback regardless of the software send preference.
+        composerHostState.isHandlingHardwareReturn = true
+        defer { composerHostState.isHandlingHardwareReturn = false }
         if onHardwareReturn?(sender.modifierFlags) ?? true {
             engine.insertText("\n")
         }

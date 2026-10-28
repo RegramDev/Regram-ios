@@ -152,6 +152,12 @@ public final class Transaction {
         self.postbox?.deleteMessagesInRange(peerId: peerId, namespace: namespace, minId: minId, maxId: maxId, forEachMedia: forEachMedia)
     }
     
+    // MARK: Regram — bounded by peer and message id range, without rendering message bodies.
+    public func rgMessageIdsInRange(peerId: PeerId, namespace: MessageId.Namespace, minId: MessageId.Id, maxId: MessageId.Id) -> [MessageId] {
+        assert(!self.disposed)
+        return self.postbox?.rgMessageIdsInRange(peerId: peerId, namespace: namespace, minId: minId, maxId: maxId) ?? []
+    }
+
     public func withAllMessages(peerId: PeerId, namespace: MessageId.Namespace? = nil, reversed: Bool = false, _ f: (Message) -> Bool) {
         self.postbox?.withAllMessages(peerId: peerId, namespace: namespace, reversed: reversed, f)
     }
@@ -2323,6 +2329,11 @@ final class PostboxImpl {
         self.messageHistoryTable.removeMessagesInRange(peerId: peerId, namespace: namespace, minId: minId, maxId: maxId, operationsByPeerId: &self.currentOperationsByPeerId, updatedMedia: &self.currentUpdatedMedia, unsentMessageOperations: &currentUnsentOperations, updatedPeerReadStateOperations: &self.currentUpdatedSynchronizeReadStateOperations, globalTagsOperations: &self.currentGlobalTagsOperations, pendingActionsOperations: &self.currentPendingMessageActionsOperations, updatedMessageActionsSummaries: &self.currentUpdatedMessageActionsSummaries, updatedMessageTagSummaries: &self.currentUpdatedMessageTagSummaries, invalidateMessageTagSummaries: &self.currentInvalidateMessageTagSummaries, localTagsOperations: &self.currentLocalTagsOperations, timestampBasedMessageAttributesOperations: &self.currentTimestampBasedMessageAttributesOperations, forEachMedia: forEachMedia)
     }
     
+    // MARK: Regram — retain the same inclusive bounds as deleteMessagesInRange.
+    fileprivate func rgMessageIdsInRange(peerId: PeerId, namespace: MessageId.Namespace, minId: MessageId.Id, maxId: MessageId.Id) -> [MessageId] {
+        return self.messageHistoryIndexTable.rgMessageIdsInRange(peerId: peerId, namespace: namespace, minId: minId, maxId: maxId)
+    }
+
     fileprivate func withAllMessages(peerId: PeerId, namespace: MessageId.Namespace?, reversed: Bool = false, _ f: (Message) -> Bool) {
         var indexes = self.messageHistoryTable.allMessageIndices(peerId: peerId, namespace: namespace)
         if reversed { indexes.reverse() }

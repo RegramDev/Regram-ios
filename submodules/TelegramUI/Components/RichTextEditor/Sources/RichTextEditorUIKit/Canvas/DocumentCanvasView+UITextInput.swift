@@ -519,7 +519,11 @@ extension DocumentCanvasView: UIKeyInput {
     // TASK 27b (Family 4): one-line router. The body below moved to `legacyInsertText(_:)` and the
     // backend forwards straight back to it (`LegacyRichTextInputBackend+Insertion.swift`) — a PLAIN
     // D24 forward with no bracket of its own, because the body brackets itself per branch.
-    func insertText(_ text: String) { inputBackend.insertText(text) }
+    func insertText(_ text: String) {
+        // MARK: Regram — multiline paste/dictation and marked-text commits remain ordinary edits.
+        if text == "\n", markedTextRange == nil, !isHandlingHardwareReturn, onSoftwareReturn?() == false { return }
+        inputBackend.insertText(text)
+    }
 
     /// Was `DocumentCanvasView.insertText(_:)`, renamed by TASK 27b when the witness became a router;
     /// the body is untouched. `LegacyRichTextInputBackend.insertText(_:)` forwards here, and

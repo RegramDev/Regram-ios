@@ -207,7 +207,7 @@ public struct RGContentFilterState {
     }
 
     public func shouldHide(message: EngineMessage) -> Bool {
-        return self.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.text, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(self.accountPeerId))
+        return self.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(self.accountPeerId))
     }
 }
 

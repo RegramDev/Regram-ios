@@ -281,10 +281,12 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
             let cell = tableView.dequeueReusableCell(withIdentifier: "message", for: indexPath) as! RGCommonGroupMessageCell
             let message = rows[indexPath.row]
             let group = messageGroups[message.id].flatMap { groups[$0]?.peer }
-            let spoilers = message.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap(\.entities).compactMap { entity -> Range<Int>? in
+            // Rich previews mask their own spoilers; legacy entity offsets belong to message.text.
+            let spoilers: [Range<Int>] = message.attributes.contains(where: { $0 is RichTextMessageAttribute }) ? [] : message.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap(\.entities).compactMap { entity -> Range<Int>? in
                 if case .Spoiler = entity.type { return entity.range }; return nil
             }
-            let body = message.text.isEmpty ? "CommonGroups.Media".i18n(lang) : RGCommonGroupPreview.text(message.text, spoilers: spoilers, reveal: RGSimpleSettings.shared.automaticallyRevealSpoilers)
+            let preview = RGSimpleSettings.shared.automaticallyRevealSpoilers ? message.rgTextContent : message.rgPreviewText
+            let body = preview.isEmpty ? "CommonGroups.Media".i18n(lang) : RGCommonGroupPreview.text(preview, spoilers: spoilers, reveal: RGSimpleSettings.shared.automaticallyRevealSpoilers)
             let date = Date(timeIntervalSince1970: Double(message.timestamp))
             cell.update(context: context, group: group, title: group.map { groupTitle($0) } ?? "CommonGroups.Group".i18n(lang), date: dateFormatter.string(from: date), fullDate: fullDateFormatter.string(from: date), body: body, openHint: "CommonGroups.OpenMessage".i18n(lang), availableWidth: tableView.bounds.width, data: presentationData)
             return cell

@@ -1,4 +1,5 @@
 import Foundation
+import RGLocalGifts // MARK: Regram
 import LottieSettings
 import UIKit
 import Display
@@ -1271,6 +1272,11 @@ final class GiftStoreScreenComponent: Component {
         }
         
         func presentBalanceMenu() {
+            // MARK: Regram — the simulated balance opens its editor instead of the real wallet.
+            if let component = self.component, rgLocalGiftsEnabled(context: component.context), let controller = self.environment?.controller() {
+                controller.push(rgLocalGiftsController(context: component.context))
+                return
+            }
             guard let component = self.component, let starsContext = component.context.starsContext, let tonContext = component.context.tonContext, let controller = self.environment?.controller() else {
                 return
             }
@@ -1348,8 +1354,8 @@ final class GiftStoreScreenComponent: Component {
             self.state = state
             
             if self.component == nil, let tonContext = component.context.tonContext {
-                self.starsStateDisposable = (tonContext.state
-                |> deliverOnMainQueue).start(next: { [weak self] state in
+                self.starsStateDisposable = (combineLatest(tonContext.state, rgLocalGiftsState(context: component.context)) // MARK: Regram
+                |> deliverOnMainQueue).start(next: { [weak self] state, _ in
                     guard let self else {
                         return
                     }
@@ -1507,7 +1513,7 @@ final class GiftStoreScreenComponent: Component {
                 transition.setFrame(view: subtitleView, frame: subtitleFrame)
             }
             
-            if let tonState = self.starsState, tonState.balance.value == 0 {
+            if (rgLocalGiftBalance(context: component.context, ton: true) ?? self.starsState?.balance.value ?? 0) == 0 { // MARK: Regram
                 let starsFilterSize = self.starsFilter.update(
                     transition: transition,
                     component: AnyComponent(

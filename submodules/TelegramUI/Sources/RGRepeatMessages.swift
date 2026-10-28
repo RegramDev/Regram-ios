@@ -1,6 +1,7 @@
 import Foundation
 import TelegramCore
 import AccountContext
+import SwiftSignalKit
 
 // MARK: Regram — 复读 / 无引用复读, shared by the message menu and double tap.
 
@@ -35,7 +36,7 @@ func rgRepeatCopyItems(_ messages: [EngineRawMessage]) -> [(message: EngineRawMe
         guard message.id.namespace == Namespaces.Message.Cloud, let media = rgRepeatableMedia(of: message) else {
             return nil
         }
-        if media.isEmpty && message.text.isEmpty {
+        if media.isEmpty && message.text.isEmpty && !message.attributes.contains(where: { $0 is RichTextMessageAttribute }) {
             return nil
         }
         items.append((message, media.first))
@@ -45,11 +46,34 @@ func rgRepeatCopyItems(_ messages: [EngineRawMessage]) -> [(message: EngineRawMe
 
 /// Re-sends the messages' own content into `peerId` under your name. Unlike a forward this produces
 /// an ordinary message with no link back to the original, which is the point of 无引用复读.
-func rgSendRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)]) {
+func rgSendRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], failed: @escaping () -> Void) {
+    guard !items.isEmpty else { return }
+    let signals: [Signal<RichTextMessageAttribute?, NoError>] = items.map { item in
+        guard let rich = item.message.attributes.first(where: { $0 is RichTextMessageAttribute }) as? RichTextMessageAttribute else { return .single(nil) }
+        if (rich.fullInstantPage ?? rich.instantPage).isComplete { return .single(rich) }
+        return context.engine.messages.requestFullRichText(id: item.message.id)
+    }
+    // Do not turn a server preview into a truncated copy, or send only part of a selected album.
+    let _ = (combineLatest(signals) |> take(1) |> timeout(20, queue: .mainQueue(), alternate: .single([])) |> deliverOnMainQueue).startStandalone(next: { pages in
+        guard pages.count == items.count else { failed(); return }
+        var resolved: [EngineMessage.Id: RichTextMessageAttribute] = [:]
+        for (index, item) in items.enumerated() where item.message.attributes.contains(where: { $0 is RichTextMessageAttribute }) {
+            guard let rich = pages[index], (rich.fullInstantPage ?? rich.instantPage).isComplete else { failed(); return }
+            resolved[item.message.id] = rich
+        }
+        rgEnqueueRepeatCopy(context: context, peerId: peerId, threadId: threadId, items: items, richPages: resolved)
+    })
+}
+
+private func rgEnqueueRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], richPages: [EngineMessage.Id: RichTextMessageAttribute]) {
     var enqueued: [EnqueueMessage] = []
     let groupingKey: Int64? = items.count > 1 ? Int64.random(in: Int64.min ... Int64.max) : nil
     for item in items {
         var attributes: [EngineMessage.Attribute] = []
+        if let rich = richPages[item.message.id] {
+            // Keep authored blocks and embedded media on the normal rich-message send path.
+            attributes.append(RichTextMessageAttribute(instantPage: rich.fullInstantPage ?? rich.instantPage, fullInstantPage: nil))
+        }
         if let entities = (item.message.attributes.first(where: { $0 is TextEntitiesMessageAttribute }) as? TextEntitiesMessageAttribute)?.entities, !entities.isEmpty {
             attributes.append(TextEntitiesMessageAttribute(entities: entities))
         }

@@ -226,6 +226,9 @@ class DocumentCanvasView: UIView {
     /// (e.g. sent the message) and the editor does nothing. The SOFTWARE keyboard's Return never triggers a
     /// keyCommand, so it always inserts a newline (there's a separate send button) — matching the legacy input.
     final var onHardwareReturn: ((UIKeyModifierFlags) -> Bool)?
+    // MARK: Regram — scoped hardware bypass keeps Shift-Return and Command-Return independent.
+    final var onSoftwareReturn: (() -> Bool)?
+    final var isHandlingHardwareReturn = false
 
     /// Interior content margins — interactable padding around the document, ADDED to the built-in
     /// `pageMargin`. Unlike the host's scroll insets (covered by chrome/keyboard, content scrolls under),
@@ -1429,6 +1432,8 @@ class DocumentCanvasView: UIView {
          UIKeyCommand(input: "U", modifierFlags: .command, action: #selector(keyToggleUnderline)),
          UIKeyCommand(input: "X", modifierFlags: [.command, .shift], action: #selector(keyToggleStrikethrough)),
          UIKeyCommand(input: "M", modifierFlags: [.command, .shift], action: #selector(keyToggleMonospace))]
+        // MARK: Regram — only chat hosts with a software send callback need the bypass command.
+        + (onSoftwareReturn == nil ? [] : [UIKeyCommand(input: "\r", modifierFlags: .shift, action: #selector(handleReturnKey(_:)))])
     }
     @objc private final func handleTabKey() {
         // Inside a table cell → cell nav; otherwise a quote-aware Tab (body → author end, author → out).
@@ -1440,6 +1445,10 @@ class DocumentCanvasView: UIView {
     /// Ask the host first (send-on-Enter etc.). true (or no host) → insert a newline like a normal Return;
     /// false → the host consumed it (sent the message), so the editor does nothing.
     final func performHardwareReturn(_ modifierFlags: UIKeyModifierFlags) {
+        // MARK: Regram — committing a composition must not send; hardware fallback is always a newline.
+        if markedTextRange != nil { unmarkText(); return }
+        isHandlingHardwareReturn = true
+        defer { isHandlingHardwareReturn = false }
         if onHardwareReturn?(modifierFlags) ?? true { insertText("\n") }
     }
     @objc private final func keyToggleBold() { toggleBold() }

@@ -38,6 +38,8 @@ def main():
     content_source = output / 'ProductionContentFilter.swift'
     content_source.write_text(content_filter)
     suites = [
+        ('quote-selection', [simple+'Sources/RGFeaturePangu.swift', simple+'Sources/RGMessageQuoteSelection.swift', simple+'Tests/MessageQuoteSelectionTests.swift'], []),
+        ('local-gifts', [simple+'Sources/LocalGifts.swift', simple+'Tests/LocalGiftsTests.swift'], []),
         ('filter', [simple+'Sources/MessageFilter.swift', simple+'Tests/MessageFilterTests.swift'], []),
         ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
         ('content-filter-cache', [simple+'Sources/MessageFilter.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
@@ -59,6 +61,16 @@ def main():
         flags = ['-DREGRAM_MEDIA_LOADING_EXPERIMENT'] if name == 'media-experiment-default' else []
         if run(name+'-compile', ['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors'] + flags + sources + ['-o', str(binary)]):
             run(name, [str(binary)] + arguments)
+    run('rich-message-tools', ['python3', 'Regram/RGProUI/Tests/run-rich-message-checks.py'])
+    run('rich-edit-history-codec', ['python3', 'Regram/RGProUI/Tests/run-edit-history-checks.py'])
+    run('translation-chunk-sequencing', ['python3', 'Regram/RGGTranslate/Tests/run-chunk-sequencing-checks.py'])
+    run('summary-range-failures', ['python3', 'Regram/RGProUI/Tests/run-summary-range-checks.py'])
+    run('message-retention', ['python3', 'build-system/check-regram-retention.py'])
+    run('story-flag-persistence', ['python3', 'build-system/check-regram-story-flags.py'])
+    run('local-gift-boundary', ['python3', 'Regram/RGLocalGifts/Tests/run-boundary-checks.py'])
+    run('local-phone-display', ['python3', 'Regram/RGLocalGifts/Tests/run-phone-display-checks.py'])
+    run('local-profile-projection', ['python3', 'Regram/RGLocalGifts/Tests/run-profile-projection-checks.py'])
+    run('local-appearance-projection', ['python3', 'Regram/RGLocalGifts/Tests/run-appearance-projection-checks.py'])
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('settings-search-transitions', ['python3', 'Regram/RGProUI/Tests/run-settings-search-checks.py'])
     run('common-group-pagination', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-search-failure-checks.py'])
@@ -71,7 +83,10 @@ def main():
     run('root-settings-gesture', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-settings-gesture-checks.py'])
     run('root-tab-transition', ['python3', 'Regram/RGSimpleSettings/Tests/run-root-tab-transition-checks.py'])
     run('navigation-capsules', ['python3', 'Regram/RGSimpleSettings/Tests/run-navigation-capsule-checks.py'])
+    run('profile-navigation-colors', ['python3', 'Regram/RGSettingsUI/Tests/run-profile-navigation-color-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
+    run('chat-action-policies', ['python3', 'Regram/RGSimpleSettings/Tests/run-chat-action-checks.py'])
+    run('remark-search', ['python3', 'Regram/RGSimpleSettings/Tests/run-group-remark-search-checks.py'])
     run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('llm-endpoint-urls', ['python3', 'Regram/RGGTranslate/Tests/run-url-checks.py'])
     run('transcription-routing', ['python3', 'Regram/RGTranscription/Tests/run-routing-checks.py'])

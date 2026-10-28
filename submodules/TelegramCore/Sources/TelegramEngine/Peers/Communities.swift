@@ -472,8 +472,10 @@ func _internal_toggleCommunityCollapsedInDialogs(account: Account, communityId: 
                     for peerId in linkedPeerIds {
                         // MARK: Regram — retain existing archives; recover hidden dialogs from the server.
                         if collapsed {
+                            rgRememberChatListPlacement(transaction: transaction, peerId: peerId) // MARK: Regram
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
                         } else if isPeerHiddenByCollapsedCommunity(transaction: transaction, peerId: peerId) {
+                            rgRememberChatListPlacement(transaction: transaction, peerId: peerId) // MARK: Regram
                             transaction.updatePeerChatListInclusion(peerId, inclusion: .notIncluded)
                         } else if case .notIncluded = transaction.getPeerChatListInclusion(peerId),
                                   !shouldExcludePeerFromChatList(transaction: transaction, peerId: peerId),

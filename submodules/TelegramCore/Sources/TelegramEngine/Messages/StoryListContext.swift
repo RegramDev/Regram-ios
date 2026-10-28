@@ -3,6 +3,7 @@ import Postbox
 internal import TelegramApi
 import SwiftSignalKit
 import MtProtoKit
+import RGSimpleSettings // MARK: Regram
 
 enum InternalStoryUpdate {
     case deleted(peerId: PeerId, id: Int32)
@@ -80,7 +81,9 @@ public final class EngineStoryItem: Equatable {
     public let isCloseFriends: Bool
     public let isContacts: Bool
     public let isSelectedContacts: Bool
-    public let isForwardingDisabled: Bool
+    // MARK: Regram — the live override belongs to the UI projection, never to persisted story data.
+    private let serverForwardingDisabled: Bool
+    public var isForwardingDisabled: Bool { self.serverForwardingDisabled && !RGSimpleSettings.shared.allowDownloadingStories }
     public let isEdited: Bool
     public let isMy: Bool
     public let myReaction: MessageReaction.Reaction?
@@ -133,7 +136,7 @@ public final class EngineStoryItem: Equatable {
         self.isCloseFriends = isCloseFriends
         self.isContacts = isContacts
         self.isSelectedContacts = isSelectedContacts
-        self.isForwardingDisabled = isForwardingDisabled
+        self.serverForwardingDisabled = isForwardingDisabled
         self.isEdited = isEdited
         self.isMy = isMy
         self.myReaction = myReaction
@@ -195,7 +198,7 @@ public final class EngineStoryItem: Equatable {
         if lhs.isSelectedContacts != rhs.isSelectedContacts {
             return false
         }
-        if lhs.isForwardingDisabled != rhs.isForwardingDisabled {
+        if lhs.serverForwardingDisabled != rhs.serverForwardingDisabled {
             return false
         }
         if lhs.isEdited != rhs.isEdited {
@@ -267,7 +270,7 @@ public extension EngineStoryItem {
             isCloseFriends: self.isCloseFriends,
             isContacts: self.isContacts,
             isSelectedContacts: self.isSelectedContacts,
-            isForwardingDisabled: self.isForwardingDisabled,
+            isForwardingDisabled: self.serverForwardingDisabled,
             isEdited: self.isEdited,
             isMy: self.isMy,
             myReaction: self.myReaction,

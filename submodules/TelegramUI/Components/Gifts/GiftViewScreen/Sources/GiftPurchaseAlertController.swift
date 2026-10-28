@@ -266,6 +266,7 @@ public func giftPurchaseAlertController(
         navigationController: navigationController,
         chatPeerId: context.account.peerId,
         showBalance: true,
+        useLocalGiftBalance: true, // MARK: Regram
         currencySignal: currencyPromise.get(),
         animateBalanceOverlay: animateBalanceOverlay
     )

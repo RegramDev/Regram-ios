@@ -2604,6 +2604,11 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             }
         }
         
+        // MARK: Regram — local cover icons open the native viewer without resolving a public slug.
+        self.headerNode.openLocalProfileGift = { [weak self] gift in
+            guard let self, self.peerId == self.context.account.peerId else { return }
+            self.controller?.present(GiftViewScreen(context: self.context, subject: .profileGift(self.peerId, gift), profileGiftsContext: self.data?.profileGiftsContext), in: .window(.root))
+        }
         self.headerNode.openUniqueGift = { [weak self] _, slug in
             guard let self, let profileGifts = self.data?.profileGiftsContext else {
                 return
@@ -5780,6 +5785,15 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         let theme = peerInfoNavigationBarTheme(glass: glass, base: base.theme)
         navigationBar.updatePresentationData(NavigationBarPresentationData(theme: theme, strings: base.strings), transition: transition)
         self.navigationButtonColor = theme.buttonColor
+        // MARK: Regram — custom node items retain explicit image colors; refresh them with the glass.
+        if let leading = self.rgSettingsLeadingButtons {
+            let presentationTheme = self.presentationData.theme
+            leading.node.update(backImage: PresentationResourcesRootController.navigationBackIcon(presentationTheme), qrImage: PresentationResourcesRootController.navigationQrCodeIcon(presentationTheme), color: theme.buttonColor, backTitle: self.presentationData.strings.Common_Back, qrTitle: self.presentationData.strings.PeerInfo_QRCode_Title)
+        }
+        if self.navigationItems.appliedSlotKey != nil && self.navigationIconButtonColor != theme.buttonColor {
+            self.navigationIconButtonColor = theme.buttonColor
+            self.navigationIconButton.updateContentsColor(theme.buttonColor, transition: transition)
+        }
     }
 
     /// A bar button's view, for a tooltip or a transition's source.

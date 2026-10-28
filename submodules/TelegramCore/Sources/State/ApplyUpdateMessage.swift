@@ -437,6 +437,8 @@ func applyUpdateMessage(postbox: Postbox, stateManager: AccountStateManager, mes
             return .update(updatedMessageValue)
         })
         if let updatedMessage = updatedMessage, case let .Id(updatedId) = updatedMessage.id {
+            // MARK: Regram — refresh the daily task's media reference after its silent send.
+            rgApplyStartupDailyDelivery(transaction: transaction, previousId: message.id, updatedId: updatedId)
             if message.id.namespace == Namespaces.Message.Local && updatedId.namespace == Namespaces.Message.Cloud && updatedId.peerId.namespace == Namespaces.Peer.CloudChannel {
                 if let threadId = updatedMessage.threadId {
                     if let authorId = updatedMessage.authorId {
@@ -663,6 +665,10 @@ func applyUpdateGroupMessages(postbox: Postbox, stateManager: AccountStateManage
                 
                 return .update(StoreMessage(id: updatedId, customStableId: nil, globallyUniqueId: nil, groupingKey: currentMessage.groupingKey, threadId: currentMessage.threadId, timestamp: updatedMessage.timestamp, flags: [], tags: tags, globalTags: globalTags, localTags: currentMessage.localTags, forwardInfo: storeForwardInfo, authorId: currentMessage.author?.id, text: text, attributes: attributes, media: media))
             })
+            // MARK: Regram — the same durable reference update applies to grouped outgoing media.
+            if case let .Id(updatedId) = updatedMessage.id {
+                rgApplyStartupDailyDelivery(transaction: transaction, previousId: message.id, updatedId: updatedId)
+            }
         }
         
         for file in sentStickers {

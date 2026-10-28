@@ -15,6 +15,7 @@ import PlainButtonComponent
 import WalletContext
 import WalletCardComponent
 import WalletGiftStickerMediaComponent
+import RGLocalGifts // MARK: Regram
 
 private final class PeerWalletTransitionSource {
     weak var view: UIView?
@@ -58,27 +59,32 @@ private final class PeerWalletOverlayComponent: Component {
         var fiatCurrency: WalletContext.FiatCurrency = .usd
         var fiatRate: WalletContext.FiatRate?
         var hasOwnWallet: Bool
+        var isLocal = false // MARK: Regram
         private let disposables = DisposableSet()
 
         init(context: AccountContext, peer: EnginePeer, card: WalletCard?) {
             self.peer = peer
             self.card = nil
             self.hasOwnWallet = context.walletContext?.stateValue.walletAddress != nil
+            self.isLocal = rgLocalWalletEnabled(context: context, peerId: peer.id) // MARK: Regram
             super.init()
-            self.updateCard(card, context: context)
+            self.updateCard(card, context: context, localStickers: self.isLocal ? rgLocalWalletStickers(context: context) : nil) // MARK: Regram
 
-            self.disposables.add((context.engine.data.subscribe(
+            // MARK: Regram — remote refreshes must not overwrite the local display card.
+            self.disposables.add((combineLatest(context.engine.data.subscribe(
                 TelegramEngine.EngineData.Item.Peer.Peer(id: peer.id),
                 TelegramEngine.EngineData.Item.Peer.CachedData(id: peer.id)
-            )
-            |> deliverOnMainQueue).startStrict(next: { [weak self] peer, cachedData in
+            ), rgLocalGiftsState(context: context))
+            |> deliverOnMainQueue).startStrict(next: { [weak self] remote, local in
                 guard let self else { return }
+                let (peer, cachedData) = remote
                 if let peer {
                     self.peer = peer
                 }
-                if let cachedData = cachedData as? CachedUserData {
-                    self.updateCard(cachedData.walletCard, context: context)
-                }
+                self.isLocal = self.peer.id == context.account.peerId && local.enabled && local.walletCardEnabled
+                let displayData = rgLocalProfileCachedData(context: context, peerId: self.peer.id, cachedData: cachedData, localState: local) as? CachedUserData
+                self.updateCard(displayData?.walletCard, context: context,
+                    localStickers: self.isLocal ? rgLocalWalletStickers(context: context, state: local) : nil)
                 self.updated(transition: .immediate)
             }))
             if let walletContext = context.walletContext {
@@ -96,18 +102,20 @@ private final class PeerWalletOverlayComponent: Component {
             }
         }
 
-        private func updateCard(_ card: WalletCard?, context: AccountContext) {
-            guard self.card != card else { return }
-            let previous = self.card
-            self.card = card
-            self.stickers = (card?.stickers ?? []).compactMap {
+        private func updateCard(_ card: WalletCard?, context: AccountContext, localStickers: [WalletContext.CardSticker]? = nil) {
+            // MARK: Regram — use native media decoding for local-only artwork, without NFT lookups.
+            let stickers = localStickers ?? (card?.stickers ?? []).compactMap {
                 WalletContext.CardSticker(serverSticker: $0, backgroundNftAddress: card?.backgroundNft?.address)
             }
+            guard self.card != card || self.stickers != stickers else { return }
+            let previous = self.stickers
+            self.card = card
+            self.stickers = stickers
             let ids = Set(self.stickers.map { $0.gift.address })
             for id in Array(self.stickerMedia.keys) where !ids.contains(id) { self.stickerMedia.removeValue(forKey: id) }
             for sticker in self.stickers {
                 let id = sticker.gift.address
-                let unchanged = previous?.stickers.contains(where: { $0.nft == sticker.gift.nft }) == true
+                let unchanged = previous.contains(sticker)
                 if self.stickerMedia[id] != nil && unchanged { continue }
                 let media = WalletGiftStickerMedia(context: context, gift: sticker.gift, modelFile: sticker.modelFile,
                     style: sticker.giftStyle)
@@ -533,6 +541,11 @@ private final class PeerWalletOverlayComponent: Component {
             transition.setFrame(view: self.blurView, frame: CGRect(origin: .zero, size: availableSize))
             transition.setFrame(view: self.dimView, frame: CGRect(origin: .zero, size: availableSize))
             let openQr: () -> Void = { [weak state] in
+                // MARK: Regram — a local card has no receiving address or payment QR.
+                if state?.isLocal == true, let controller = controller() {
+                    rgPresentLocalWalletNotice(context: component.context, controller: controller)
+                    return
+                }
                 guard let address = state?.address, !address.isEmpty, let controller = controller() else { return }
                 controller.push(component.context.sharedContext.makeWalletReceiveScreen(context: component.context, address: address, isOwnWallet: component.peer.id == component.context.account.peerId))
             }
@@ -543,7 +556,9 @@ private final class PeerWalletOverlayComponent: Component {
             var cardTopLimit = max(environment.safeInsets.top, environment.statusBarHeight) + 16.0
             self.noticeContainer.frame = CGRect(origin: .zero, size: availableSize)
             let noticeString: String?
-            if component.peer.id == component.context.account.peerId {
+            if state.isLocal { // MARK: Regram
+                noticeString = rgLocalWalletNotice(context: component.context)
+            } else if component.peer.id == component.context.account.peerId {
                 noticeString = environment.strings.Wallet_PublicBalanceNotice
             } else if let balance = state.balance {
                 let amount = formatTonAmountText(balance, dateTimeFormat: environment.dateTimeFormat, formatString: environment.strings.Currency_Grams)
@@ -653,7 +668,7 @@ private final class PeerWalletOverlayComponent: Component {
             }
 
             let isOwnWallet = component.peer.id == component.context.account.peerId
-            let showsWalletInfo = !isOwnWallet && !state.hasOwnWallet
+            let showsWalletInfo = state.isLocal || (!isOwnWallet && !state.hasOwnWallet) // MARK: Regram
             let buttonSize = self.sendButton.update(
                 transition: transition,
                 component: AnyComponent(ButtonComponent(
@@ -665,14 +680,14 @@ private final class PeerWalletOverlayComponent: Component {
                         cornerRadius: 26.0
                     ),
                     content: AnyComponentWithIdentity(id: "send", component: AnyComponent(Text(
-                        text: isOwnWallet ? environment.strings.Wallet_Transaction_OpenWallet : (showsWalletInfo ? environment.strings.Wallet_HowDoesItWork : environment.strings.Wallet_SendMoney),
+                        text: showsWalletInfo ? environment.strings.Wallet_HowDoesItWork : (isOwnWallet ? environment.strings.Wallet_Transaction_OpenWallet : environment.strings.Wallet_SendMoney), // MARK: Regram
                         font: Font.semibold(17.0),
                         color: buttonForegroundColor
                     ))),
                     isEnabled: isOwnWallet || showsWalletInfo || (component.context.walletContext != nil && state.card != nil),
                     action: {
                         guard let controller = controller() as? PeerWalletScreen else { return }
-                        if showsWalletInfo {
+                        if showsWalletInfo || state.isLocal { // MARK: Regram
                             controller.push(component.context.sharedContext.makeWalletInfoScreen(context: component.context, mode: .wallet, completion: nil))
                         } else {
                             component.sendMoney(controller)

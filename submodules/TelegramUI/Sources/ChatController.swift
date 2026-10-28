@@ -4670,11 +4670,13 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                         quoteData = quoteContentNode?.currentReplyQuote(maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
                     } else {
                         let nsRange = NSRange(location: range.lowerBound, length: range.upperBound - range.lowerBound)
-                        let quoteText = (message.text as NSString).substring(with: nsRange)
-
-                        let trimmedText = trimStringWithEntities(string: quoteText, entities: messageTextEntitiesInRange(entities: message.textEntitiesAttribute?.entities ?? [], range: nsRange, onlyQuoteable: true), maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
-                        if !trimmedText.string.isEmpty {
-                            quoteData = EngineMessageReplyQuote(text: trimmedText.string, offset: nsRange.location, entities: trimmedText.entities, media: nil)
+                        // MARK: Regram — a live message can change while its selection menu is open.
+                        // Invalid or stale offsets must produce a plain reply, not an NSString exception.
+                        if let selection = RGMessageQuoteSelection.validated(nsRange, in: message.text, expectedText: text.string) {
+                            let trimmedText = trimStringWithEntities(string: selection.text, entities: messageTextEntitiesInRange(entities: message.textEntitiesAttribute?.entities ?? [], range: selection.range, onlyQuoteable: true), maxLength: quoteMaxLength(appConfig: self.context.currentAppConfiguration.with({ $0 })))
+                            if !trimmedText.string.isEmpty {
+                                quoteData = EngineMessageReplyQuote(text: trimmedText.string, offset: selection.range.location, entities: trimmedText.entities, media: nil)
+                            }
                         }
                     }
                     

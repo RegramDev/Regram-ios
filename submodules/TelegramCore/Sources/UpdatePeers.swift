@@ -53,6 +53,8 @@ func shouldExcludePeerFromChatList(transaction: Transaction, peerId: PeerId, pee
 
 func updatePeerChatInclusionWithMinTimestamp(transaction: Transaction, id: PeerId, minTimestamp: Int32, forceRootGroupIfNotExists: Bool, peer: Peer? = nil) {
     if shouldExcludePeerFromChatList(transaction: transaction, peerId: id, peer: peer) {
+        // MARK: Regram — community hiding is temporary; preserve the dialog's archive placement.
+        rgRememberChatListPlacement(transaction: transaction, peerId: id)
         transaction.updatePeerChatListInclusion(id, inclusion: .notIncluded)
         return
     }
@@ -74,7 +76,8 @@ func updatePeerChatInclusionWithMinTimestamp(transaction: Transaction, id: PeerI
             updatedInclusion = .ifHasMessagesOrOneOf(groupId: groupId, pinningIndex: pinningIndex, minTimestamp: updatedMinTimestamp)
         default:
             if forceRootGroupIfNotExists {
-                updatedInclusion = .ifHasMessagesOrOneOf(groupId: .root, pinningIndex: nil, minTimestamp: minTimestamp)
+                // MARK: Regram — a linked peer becoming visible must retain its prior archive.
+                updatedInclusion = .ifHasMessagesOrOneOf(groupId: rgRestoredChatListGroup(transaction: transaction, peerId: id), pinningIndex: nil, minTimestamp: minTimestamp)
             }
     }
     if let updatedInclusion = updatedInclusion {
@@ -97,6 +100,8 @@ func minTimestampForPeerInclusion(_ peer: Peer) -> Int32? {
 func updateCommunityChatListInclusion(transaction: Transaction, communityId: EnginePeer.Id, collapsedInDialogs: Bool, minTimestamp: Int32?) {
     if !collapsedInDialogs {
         if transaction.getPeerChatListInclusion(communityId) != .notIncluded {
+            // MARK: Regram — expanded communities temporarily remove their container.
+            rgRememberChatListPlacement(transaction: transaction, peerId: communityId)
             transaction.updatePeerChatListInclusion(communityId, inclusion: .notIncluded)
         }
         return
@@ -126,7 +131,7 @@ func updateCommunityChatListInclusion(transaction: Transaction, communityId: Eng
         transaction.updatePeerChatListInclusion(communityId, inclusion: .ifHasMessagesOrOneOf(groupId: groupId, pinningIndex: pinningIndex, minTimestamp: updatedMinTimestamp))
     default:
         transaction.updatePeerChatListInclusion(communityId, inclusion: .ifHasMessagesOrOneOf(
-            groupId: .root,
+            groupId: rgRestoredChatListGroup(transaction: transaction, peerId: communityId), // MARK: Regram
             pinningIndex: transaction.getPeerChatListIndex(communityId)?.1.pinningIndex,
             minTimestamp: effectiveMinTimestamp
         ))

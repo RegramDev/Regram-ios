@@ -62,14 +62,17 @@ tests = '''
   func ids(_ scope:TelegramSearchPeersScope = .everywhere,_ predicate:ChatListFilterPredicate?=nil)->[Int64] {
    c.searchLocalPeers(query:"local name",scope:scope,predicate:predicate).value.map {$0.peerId.value}
   }
-  precondition(ids()==[11,12],"Deduplicate original-name hits and exclude broadcasts, users, migrated or removed groups")
+  precondition(ids()==[11,13,12],"Deduplicate original-name hits and include channel aliases while excluding users, migrated or removed groups")
   precondition(ids(.groups)==[11,12])
-  precondition(ids(.channels).isEmpty && ids(.privateChats).isEmpty && ids(.bots).isEmpty)
+  precondition(ids(.channels)==[13],"Channel scope must include only broadcast aliases")
+  precondition(ids(.privateChats).isEmpty && ids(.bots).isEmpty)
   precondition(ids(.everywhere,ChatListFilterPredicate(ids:[12]))==[12],"A remark must not bypass the current folder filter")
   let other=Contacts(Account(2,p));p.t.normal=[]
   precondition(other.searchLocalPeers(query:"local name").value.isEmpty,"Do not expose another account's remarks")
   testStore.setName("",accountId:1,peerId:12)
-  precondition(ids()==[11],"Clearing a name removes its alias search match")
+  precondition(ids()==[11,13],"Clearing a group name retains the channel alias")
+  testStore.setName("",accountId:1,peerId:13)
+  precondition(ids()==[11],"Clearing a channel name removes its alias match")
   print("Production group search checks passed with database adapters: scope, folder predicate, archive, deduplication, removed/migrated peers and account isolation.")
  }
 }
