@@ -1009,6 +1009,11 @@ public class ChatMessageAnimatedStickerItemNode: ChatMessageItemView {
                 needsShareButton = false
             }
             
+            // MARK: Regram
+            if rgShouldHideMessageForwardButton(item: item, isEnabled: RGSimpleSettings.shared.hideMessageForwardButton, commentsEnabled: true) {
+                needsShareButton = false
+            }
+
             var isEmoji = false
             if let _ = telegramDice {
                 imageSize = displaySize

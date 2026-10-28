@@ -66,14 +66,15 @@ public func rgGroupRemarkController(context: AccountContext, peer: EnginePeer) -
     let signal = combineLatest(queue: .mainQueue(), context.sharedContext.presentationData, state.get())
     |> map { presentationData, value -> (ItemListControllerState, (ItemListNodeState, Any)) in
         let lang = presentationData.strings.rgLanguageCode
+        let prefix = peer.rgRemarkLocalizationPrefix
         let originalName = peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)
         let entries: [RGGroupRemarkEntry] = [
-            .originalName(String(format: "GroupRemark.OriginalName".i18n(lang), originalName)),
+            .originalName(String(format: "\(prefix).OriginalName".i18n(lang), originalName)),
             .input(text: value, placeholder: originalName),
-            .notice("GroupRemark.Notice".i18n(lang)),
-            .clear("GroupRemark.UseOriginalName".i18n(lang))
+            .notice("\(prefix).Notice".i18n(lang)),
+            .clear("\(prefix).UseOriginalName".i18n(lang))
         ]
-        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("GroupRemark.Title".i18n(lang)), leftNavigationButton: nil, rightNavigationButton: ItemListNavigationButton(content: .text(presentationData.strings.Common_Save), style: .bold, enabled: peer.rgCanSetGroupRemark, action: arguments.save), backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+        let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("\(prefix).Title".i18n(lang)), leftNavigationButton: nil, rightNavigationButton: ItemListNavigationButton(content: .text(presentationData.strings.Common_Save), style: .bold, enabled: peer.rgCanSetGroupRemark, action: arguments.save), backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         return (controllerState, (ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks), arguments))
     }
     let controller = ItemListController(context: context, state: signal)

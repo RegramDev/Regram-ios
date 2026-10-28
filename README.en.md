@@ -12,7 +12,7 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 
 - Unlimited locally pinned chats and ordering in the main list and archive. Pins beyond the Telegram account limit remain local.
 - The last 50 opened chats per account, with quick navigation and history clearing.
-- Local group remarks: set a display name from the group profile, saved per account and used in lists, titles and local search. Clear it to restore the original name.
+- Local group and channel remarks: set a display name from the group or channel profile, saved per account and used in lists, titles and local search. Clear it to restore the original name.
 - Message bookmarks and tags: add from a message menu, manage below Saved Messages on the outer Settings page, filter and edit tags, and return to the original message.
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.

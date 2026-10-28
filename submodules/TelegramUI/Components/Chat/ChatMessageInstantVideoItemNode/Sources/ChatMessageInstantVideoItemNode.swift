@@ -390,6 +390,11 @@ public class ChatMessageInstantVideoItemNode: ChatMessageItemView, ASGestureReco
                 needsShareButton = false
             }
             
+            // MARK: Regram
+            if rgShouldHideMessageForwardButton(item: item, isEnabled: RGSimpleSettings.shared.hideMessageForwardButton, commentsEnabled: false) {
+                needsShareButton = false
+            }
+
             var layoutInsets = layoutConstants.instantVideo.insets
             if dateHeaderAtBottom.hasDate && dateHeaderAtBottom.hasTopic {
                 layoutInsets.top += layoutConstants.timestampDateAndTopicHeaderHeight

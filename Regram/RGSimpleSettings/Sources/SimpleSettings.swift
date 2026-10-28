@@ -194,6 +194,8 @@ public class RGSimpleSettings {
         case quickTranslateButton
         case outgoingLanguageTranslation
         case hideReactions
+        case hideMessageForwardButton // MARK: Regram
+        case autoSelectDeleteModerationActions // MARK: Regram
         case showRepostToStory
         case showRepostToStoryV2
         case contextShowSelectFromUser
@@ -446,6 +448,8 @@ public class RGSimpleSettings {
         Keys.quickTranslateButton.rawValue: false,
         Keys.outgoingLanguageTranslation.rawValue: [:],
         Keys.hideReactions.rawValue: false,
+        Keys.hideMessageForwardButton.rawValue: false,
+        Keys.autoSelectDeleteModerationActions.rawValue: false,
         Keys.showRepostToStory.rawValue: true,
         Keys.contextShowSelectFromUser.rawValue: true,
         Keys.contextShowSaveToCloud.rawValue: true,
@@ -887,7 +891,7 @@ public class RGSimpleSettings {
         if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
         if touches(RGNotificationExperiment.key) { center.post(name: RGNotificationExperiment.changed, object: nil) }
-        if touches("features.enablePanguOnReceiving") { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
+        if touches("features.enablePanguOnReceiving") || touches(Keys.hideMessageForwardButton.rawValue) { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
         if touches("sendWithReturnKey") { center.post(name: Self.inputSettingsDidChange, object: nil) }
         if touches("features.showFoldersInShareSheet") { center.post(name: Self.shareSettingsDidChange, object: nil) }
         if touches("fixLinkPreviews", "linkPreviewXHost", "linkPreviewInstagramHost") { center.post(name: RGLinkPreviewRules.didChangeNotification, object: nil) }
@@ -935,6 +939,19 @@ public class RGSimpleSettings {
     
     @UserDefault(key: Keys.hideReactions.rawValue)
     public var hideReactions: Bool
+
+    // MARK: Regram — redraw visible messages when the side forward button preference changes.
+    @UserDefault(key: Keys.hideMessageForwardButton.rawValue)
+    public var hideMessageForwardButton: Bool {
+        didSet {
+            if hideMessageForwardButton != oldValue {
+                NotificationCenter.default.post(name: Self.featureMessagePresentationDidChange, object: nil)
+            }
+        }
+    }
+
+    @UserDefault(key: Keys.autoSelectDeleteModerationActions.rawValue)
+    public var autoSelectDeleteModerationActions: Bool
 
     // @available(*, deprecated, message: "Use showRepostToStoryV2 instead")
     @UserDefault(key: Keys.showRepostToStory.rawValue)

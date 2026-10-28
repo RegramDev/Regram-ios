@@ -184,3 +184,16 @@ public func hasCommentButton(item: ChatMessageItem) -> Bool {
     }
     return false
 }
+
+// MARK: Regram — the side control also serves comments, navigation and ad actions.
+// Hide only the forward action, before calculating the message's layout.
+public func rgShouldHideMessageForwardButton(item: ChatMessageItem, isEnabled: Bool, commentsEnabled: Bool) -> Bool {
+    guard isEnabled, item.message.adAttribute == nil,
+          !item.message.id.peerId.isRepliesOrSavedMessages(accountPeerId: item.context.account.peerId),
+          !item.controllerInteraction.summarizedMessageIds.contains(item.message.id) else { return false }
+    if case .pinnedMessages = item.associatedData.subject { return false }
+    if case let .customChatContents(contents) = item.associatedData.subject, case .hashTagSearch = contents.kind { return false }
+    if let channel = item.message.peers[item.message.id.peerId] as? TelegramChannel, channel.isMonoForum, case .peer = item.chatLocation { return false }
+    if commentsEnabled && hasCommentButton(item: item) { return false }
+    return true
+}

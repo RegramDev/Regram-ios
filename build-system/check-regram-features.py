@@ -38,6 +38,7 @@ def main():
     content_source = output / 'ProductionContentFilter.swift'
     content_source.write_text(content_filter)
     suites = [
+        ('quote-selection', [simple+'Sources/RGFeaturePangu.swift', simple+'Sources/RGMessageQuoteSelection.swift', simple+'Tests/MessageQuoteSelectionTests.swift'], []),
         ('local-gifts', [simple+'Sources/LocalGifts.swift', simple+'Tests/LocalGiftsTests.swift'], []),
         ('filter', [simple+'Sources/MessageFilter.swift', simple+'Tests/MessageFilterTests.swift'], []),
         ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
@@ -84,6 +85,8 @@ def main():
     run('navigation-capsules', ['python3', 'Regram/RGSimpleSettings/Tests/run-navigation-capsule-checks.py'])
     run('profile-navigation-colors', ['python3', 'Regram/RGSettingsUI/Tests/run-profile-navigation-color-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
+    run('chat-action-policies', ['python3', 'Regram/RGSimpleSettings/Tests/run-chat-action-checks.py'])
+    run('remark-search', ['python3', 'Regram/RGSimpleSettings/Tests/run-group-remark-search-checks.py'])
     run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('llm-endpoint-urls', ['python3', 'Regram/RGGTranslate/Tests/run-url-checks.py'])
     run('transcription-routing', ['python3', 'Regram/RGTranscription/Tests/run-routing-checks.py'])

@@ -1323,3 +1323,12 @@
 
 "RecurringMessages.DailyStartup" = "每日首次啟動";
 "RecurringMessages.Create" = "儲存每日啟動任務";
+
+"ChannelRemark.Title" = "頻道備註";
+"ChannelRemark.OriginalName" = "原頻道名稱：%@";
+"ChannelRemark.Notice" = "僅目前帳號在本機可見，顯示於聊天列表、聊天標題及本機搜尋。留空並儲存即可恢復原頻道名稱。";
+"ChannelRemark.UseOriginalName" = "使用原頻道名稱";
+"Settings.HideMessageForwardButton" = "隱藏訊息轉發按鈕";
+"Settings.HideMessageForwardButton.Notice" = "隱藏訊息旁的轉發箭頭，適用於文字、媒體和貼圖。仍可從訊息選單轉發。";
+"Settings.AutoSelectDeleteModerationActions" = "刪除訊息自動一鍵三連";
+"Settings.AutoSelectDeleteModerationActions.Notice" = "管理員刪除群組訊息時，自動勾選檢舉垃圾訊息、刪除傳送者全部訊息與回應、封鎖。僅勾選有權限的操作，繼續前可檢視或取消勾選。";

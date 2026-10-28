@@ -1091,17 +1091,20 @@ private final class AdminUserActionsSheetComponent: Component {
     let chatPeer: EnginePeer
     let peers: [RenderedChannelParticipant]
     let mode: AdminUserActionsSheet.Mode
+    let preselectModerationActions: Bool // MARK: Regram
     
     init(
         context: AccountContext,
         chatPeer: EnginePeer,
         peers: [RenderedChannelParticipant],
-        mode: AdminUserActionsSheet.Mode
+        mode: AdminUserActionsSheet.Mode,
+        preselectModerationActions: Bool
     ) {
         self.context = context
         self.chatPeer = chatPeer
         self.peers = peers
         self.mode = mode
+        self.preselectModerationActions = preselectModerationActions
     }
     
     static func ==(lhs: AdminUserActionsSheetComponent, rhs: AdminUserActionsSheetComponent) -> Bool {
@@ -1318,35 +1321,18 @@ private final class AdminUserActionsSheetComponent: Component {
             }
             
             if self.component == nil {
-                let _ = (component.context.account.postbox.peerView(id: component.chatPeer.id)
-                |> take(1)).start(next: { [weak self] peerView in
-                    guard let self else {
-                        return
+                // MARK: Regram — initialize once, synchronously, so later updates cannot undo
+                // the user's checkbox choices. Keep the sheet's existing permission checks.
+                if component.preselectModerationActions, case .chat = component.mode {
+                    let options = availableAdminUserActionOptionSections(accountPeerId: component.context.account.peerId, chatPeer: component.chatPeer, peers: component.peers, mode: component.mode)
+                    let peers = Set(component.peers.map { $0.peer.id }).subtracting([component.context.account.peerId])
+                    if options.contains(.report) { self.optionReportSelectedPeers = peers }
+                    if options.contains(.deleteAll) {
+                        self.optionDeleteAllSelectedPeers = peers
+                        self.optionDeleteAllReactionsSelectedPeers = peers
                     }
-                    
-                    var selectAll = false
-                    if let cachedData = peerView.cachedData as? CachedChannelData {
-                        if let memberCount = cachedData.participantsSummary.memberCount, memberCount >= 1000 {
-                            selectAll = true
-                        } else if case let .known(peerId) = cachedData.linkedDiscussionPeerId, let _ = peerId {
-                            selectAll = true
-                        }
-                    }
-                    
-                    if selectAll && !"".isEmpty {
-                        var selectedPeers = Set<EnginePeer.Id>()
-                        for peer in component.peers {
-                            selectedPeers.insert(peer.peer.id)
-                        }
-                        self.optionReportSelectedPeers = selectedPeers
-                        self.optionDeleteAllSelectedPeers = selectedPeers
-                        self.optionBanSelectedPeers = selectedPeers
-                    }
-                    
-                    if !self.isUpdating {
-                        self.state?.updated()
-                    }
-                })
+                    if options.contains(.ban) { self.optionBanSelectedPeers = peers }
+                }
                 
                 var (allowedParticipantRights, allowedMediaRights) = rightsFromBannedRights([])
                 if case let .channel(channel) = component.chatPeer {
@@ -1898,11 +1884,11 @@ public class AdminUserActionsSheet: ViewControllerComponentContainer {
     private var isDismissed: Bool = false
     private var dismissCompletion: (() -> Void)?
     
-    public init(context: AccountContext, chatPeer: EnginePeer, peers: [RenderedChannelParticipant], mode: Mode, customTheme: PresentationTheme? = nil) {
+    public init(context: AccountContext, chatPeer: EnginePeer, peers: [RenderedChannelParticipant], mode: Mode, customTheme: PresentationTheme? = nil, preselectModerationActions: Bool = false) {
         self.context = context
         super.init(
             context: context,
-            component: AdminUserActionsSheetComponent(context: context, chatPeer: chatPeer, peers: peers, mode: mode),
+            component: AdminUserActionsSheetComponent(context: context, chatPeer: chatPeer, peers: peers, mode: mode, preselectModerationActions: preselectModerationActions),
             navigationBarAppearance: .none,
             theme: customTheme.flatMap({ .custom($0) }) ?? .default
         )

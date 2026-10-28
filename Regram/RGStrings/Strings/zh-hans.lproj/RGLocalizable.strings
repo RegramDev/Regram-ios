@@ -1325,3 +1325,12 @@
 
 "RecurringMessages.DailyStartup" = "每日首次启动";
 "RecurringMessages.Create" = "保存每日启动任务";
+
+"ChannelRemark.Title" = "频道备注";
+"ChannelRemark.OriginalName" = "原频道名：%@";
+"ChannelRemark.Notice" = "仅当前账号在本机可见，显示于聊天列表、聊天标题和本地搜索。留空并保存即可恢复原频道名。";
+"ChannelRemark.UseOriginalName" = "使用原频道名";
+"Settings.HideMessageForwardButton" = "隐藏消息转发按钮";
+"Settings.HideMessageForwardButton.Notice" = "隐藏消息旁的转发箭头，适用于文字、媒体和贴纸。仍可从消息菜单转发。";
+"Settings.AutoSelectDeleteModerationActions" = "删除消息自动一键三连";
+"Settings.AutoSelectDeleteModerationActions.Notice" = "管理员删除群消息时，自动勾选举报垃圾消息、删除发送者全部消息与回应、封禁。仅勾选有权限的操作，继续前可查看或取消勾选。";

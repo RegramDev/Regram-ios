@@ -11,6 +11,22 @@ extension UserDefaults {
         // An installed three-line value must migrate before the singleton caches its wrappers.
         UserDefaults.rgTestStandard.set("3", forKey: "chatListLines")
         let settings = RGSimpleSettings.shared
+        expect(!settings.hideMessageForwardButton && !settings.autoSelectDeleteModerationActions, "New chat action settings are opt-in")
+        final class MessageChanges: @unchecked Sendable { var count = 0 }
+        let messageChanges = MessageChanges()
+        let messageObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.featureMessagePresentationDidChange, object: nil, queue: nil) { _ in messageChanges.count += 1 }
+        settings.hideMessageForwardButton = true
+        settings.autoSelectDeleteModerationActions = true
+        expect(messageChanges.count == 1, "Hiding forward buttons refreshes existing messages immediately")
+        let actionBackup = settings.exportPreferences(categories: [.appearance, .messages])
+        expect(actionBackup.values["hideMessageForwardButton"] == .bool(true) && actionBackup.values["autoSelectDeleteModerationActions"] == .bool(true), "Both switches are portable")
+        settings.hideMessageForwardButton = false
+        settings.autoSelectDeleteModerationActions = false
+        settings.applyPreferences(actionBackup.values)
+        expect(settings.hideMessageForwardButton && settings.autoSelectDeleteModerationActions, "Restore invalidates both cached switch values")
+        settings.applyPreferences([:], resetCategories: [.appearance, .messages])
+        expect(!settings.hideMessageForwardButton && !settings.autoSelectDeleteModerationActions, "Category reset restores the opt-in defaults")
+        NotificationCenter.default.removeObserver(messageObserver)
         let suite = ProcessInfo.processInfo.environment["RG_TEST_SUITE"]!
         defer {
             UserDefaults.rgTestStandard.removePersistentDomain(forName: suite + "-standard")

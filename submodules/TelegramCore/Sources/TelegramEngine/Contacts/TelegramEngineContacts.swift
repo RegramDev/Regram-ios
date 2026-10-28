@@ -62,8 +62,8 @@ public extension TelegramEngine {
         }
 
         public func searchLocalPeers(query: String, scope: TelegramSearchPeersScope = .everywhere, predicate: ChatListFilterPredicate? = nil) -> Signal<[EngineRenderedPeer], NoError> {
-            // MARK: Regram — include local group names while retaining folder and search scopes.
-            let remarkIds = (scope == .everywhere || scope == .groups) ? Set(RGGroupRemarks.shared.matchingPeerIds(accountId: self.account.peerId.toInt64(), query: query)) : []
+            // MARK: Regram — include local group/channel names while retaining folder and search scopes.
+            let remarkIds = (scope == .everywhere || scope == .groups || scope == .channels) ? Set(RGGroupRemarks.shared.matchingPeerIds(accountId: self.account.peerId.toInt64(), query: query)) : []
             let localPeers: Signal<[RenderedPeer], NoError>
             if remarkIds.isEmpty {
                 localPeers = self.account.postbox.searchPeers(query: query, predicate: predicate)
@@ -74,7 +74,7 @@ public extension TelegramEngine {
                     let filter: (Peer) -> Bool = { peer in
                         guard remarkIds.contains(peer.id.toInt64()) else { return false }
                         if let group = peer as? TelegramGroup { return group.migrationReference == nil }
-                        if let channel = peer as? TelegramChannel, case .group = channel.info { return true }
+                        if peer is TelegramChannel { return true }
                         return false
                     }
                     for groupId in [PeerGroupId.root, Namespaces.PeerGroup.archive] {

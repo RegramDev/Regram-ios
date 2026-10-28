@@ -140,6 +140,8 @@ public enum RGSettingsCatalog {
         .init("settings.messageActions", "showMessageId", "Settings.ShowMessageId"),
         .init("settings.messageActions", "automaticallyRevealSpoilers", "Settings.AutomaticallyRevealSpoilers", keywords: "spoiler 剧透 劇透 reveal"),
         .init("settings.messageActions", "showForwardedMessageDate", "Settings.ShowForwardedMessageDate"),
+        .init("settings.messageActions", "hideMessageForwardButton", "Settings.HideMessageForwardButton", keywords: "forward share arrow 转发 分享 箭头 轉發 隱藏"),
+        .init("settings.messageActions", "autoSelectDeleteModerationActions", "Settings.AutoSelectDeleteModerationActions", keywords: "delete report spam ban moderation 删除 举报 垃圾消息 封禁 一键三连 刪除 舉報 封鎖"),
         .init("settings.messageActions", "hideRecordingButton", "Settings.RecordingButton"),
         .init("settings.appearance", "disableSnapDeletionEffect", "Settings.SnapDeletionEffect"),
         .init("settings.messageActions", "disableSendAsButton", "Settings.SendAsButton"),

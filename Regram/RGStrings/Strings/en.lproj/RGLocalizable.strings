@@ -1332,3 +1332,12 @@ Matching is case-insensitive.";
 
 "RecurringMessages.DailyStartup" = "Daily on first launch";
 "RecurringMessages.Create" = "Save daily launch task";
+
+"ChannelRemark.Title" = "Channel Remark";
+"ChannelRemark.OriginalName" = "Original channel name: %@";
+"ChannelRemark.Notice" = "Only visible to this account on this device. The name appears in the chat list, chat title and local search. Leave it empty and save to use the original channel name.";
+"ChannelRemark.UseOriginalName" = "Use Original Channel Name";
+"Settings.HideMessageForwardButton" = "Hide Message Forward Button";
+"Settings.HideMessageForwardButton.Notice" = "Hide the forward arrow beside messages, including media and stickers. Forwarding remains available in the message menu.";
+"Settings.AutoSelectDeleteModerationActions" = "Auto-select Moderation Actions";
+"Settings.AutoSelectDeleteModerationActions.Notice" = "When deleting group messages as an admin, preselect report spam, delete all messages and reactions from the senders, and ban. Only available actions are selected; review or uncheck them before continuing.";

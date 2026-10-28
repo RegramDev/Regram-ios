@@ -73,6 +73,8 @@ extension String {
         assert(contains("DNS", "networkPolicy", "test"))
         assert(contains("总结", "summary", "enabled"))
         assert(contains("盘古", "pro.input", "panguSpacing"))
+        assert(contains("一键三连", "settings.messageActions", "autoSelectDeleteModerationActions"))
+        assert(contains("隐藏消息转发按钮", "settings.messageActions", "hideMessageForwardButton"))
         assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnEditing") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnEditing"))
         assert(RGSettingsDestination(page: "settings.input", item: "enablePanguOnReceiving") == RGSettingsDestination(page: "pro.input", item: "enablePanguOnReceiving"))
         assert(RGSettingsDestination(page: "settings.messageActions", item: "autoInlineBotEnabled") == RGSettingsDestination(page: "inlineBots", item: "enabled"))
