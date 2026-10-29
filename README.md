@@ -130,7 +130,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34641 已完成 Xcode 27.1 的完整 arm64 Release、77 项自动检查及独立 UIKit 夹具 95 项断言，以及主程序／六扩展、三语资源、严格签名和 12 份匹配 dSYM 校验。七个 Bundle 的安装身份和完整 entitlements 与 b34640 一致；构建前后源码摘要一致。构建源码、包摘要与验证范围见[本轮记录](docs/common-group-messages-bot-retention.md)；历次记录见[更新记录](docs/changelog.md)。
+b34641 已完成 Xcode 27.1 的完整 arm64 Release、77 项自动检查及独立 UIKit 夹具 95 项断言，以及主程序／六扩展、三语资源、严格签名和 12 份匹配 dSYM 校验。七个 Bundle 的安装身份和完整 entitlements 与 b34640 一致；构建前后源码摘要一致。Latest、公开完整下载、SHA-256 附件与生产更新解析核对通过。构建源码、包摘要与验证范围见[本轮记录](docs/common-group-messages-bot-retention.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

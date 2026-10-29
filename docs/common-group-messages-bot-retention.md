@@ -37,3 +37,12 @@ Xcode 27.1 / iPhoneOS 27.1 SDK 已完成 `RGSimpleSettings`、`RGStrings`、`Tel
 - 最终包的 TelegramUIFramework 已核对到机器人排除和温控查询的功能键；新增三语键完整，符号 ZIP CRC 检查通过。
 - 文件：`Regram-13.1.1-b34641.ipa`，78,594,715 字节；SHA-256：`85735f8b8b83fbe5ad4714e12592a543ba41fd3de0fb8118f511daa6eb761b5a`。
 - IPA、校验文件、匹配符号与报告保存在缓存之外的 `build-input/common-groups-bot-retention-20261029/ipa-34641/`；测试 IPA 另复制到下载目录。参考包供 LCSign 等工具按原配置重新签名，覆盖安装和实际设备体验由此包继续验收。
+
+
+## b34641 正式发布与公开核验
+
+- Release：[v13.1.1-b34641](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641)，ID `427737738`，已公开并设为 Latest。
+- Release 与 tag 的构建源码为 `a21427927fdeb7f0ad18f0ce2d26d4989bbb1fca`。主分支后续文档提交只记录交付状态，不改变本版 IPA。
+- 附件仅包含 `Regram-13.1.1-b34641.ipa` 和对应 `.ipa.sha256`；公开完整下载的字节数、SHA-256 和校验附件与此前交付的安装包一致。
+- 使用生产 `RGUpdateRelease.parseGitHub` 解析实际公开和 Latest JSON，确认版本、构建号、文件大小、摘要与下载地址一致；b34640 可识别更新，同版和更新构建号不会重复提示或降级，缓存元数据回读通过。
+- 发布 JSON、下载副本、生产解析器结果和核验报告保存在 `build-input/common-groups-bot-retention-20261029/ipa-34641/release/`，另在原项目的忽略目录保存副本。匹配符号继续本地留存。

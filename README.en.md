@@ -131,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34641 passed the full Xcode 27.1 arm64 Release build, 77 automated checks and 95 assertions in a standalone UIKit fixture. The main app, six extensions, localization resources, strict signatures and 12 matching dSYMs were verified. All seven bundle identities and complete entitlements match b34640, and source hashes stayed unchanged during the build. See the [delivery record](docs/common-group-messages-bot-retention.md) for source, package and validation details.
+b34641 passed the full Xcode 27.1 arm64 Release build, 77 automated checks and 95 assertions in a standalone UIKit fixture. The main app, six extensions, localization resources, strict signatures and 12 matching dSYMs were verified. All seven bundle identities and complete entitlements match b34640, and source hashes stayed unchanged during the build. Latest, the full public download, the checksum attachment and the production update parser were verified. See the [delivery record](docs/common-group-messages-bot-retention.md) for source, package and validation details.
 
 ## Building
 

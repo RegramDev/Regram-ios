@@ -4,7 +4,7 @@
 
 ## b34641：共群发言界面与机器人消息排除（2026-10-29）
 
-[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641)。
+[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641)。已正式发布并设为 Latest，公开完整下载、SHA-256 附件与生产更新解析核对通过。
 
 - 共群发言改为原生分组列表，提供独立群筛选、导航栏暂停／继续／重试与下拉刷新。
 - 返回保留消息行、头像与滚动位置，修复头像重复刷新和打开原消息缺少高亮的问题。
