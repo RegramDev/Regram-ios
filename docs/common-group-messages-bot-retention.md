@@ -1,6 +1,6 @@
 # 共群发言与机器人撤回消息
 
-2026-10-29 的源码修复记录，基于当前远端 13.1.1 / b34640（`68c13f794bd110661a633b1bd368d5e3d8959fbd`）。改动位于独立工作树及 `codex/common-groups-bot-retention` 分支，原目录的无关改动已保留。本轮没有调整版本号，也没有生成或发布 IPA。
+2026-10-29 的源码修复记录，基于当前远端 13.1.1 / b34640（`68c13f794bd110661a633b1bd368d5e3d8959fbd`）。改动位于独立工作树及 `codex/common-groups-bot-retention` 分支，原目录的无关改动已保留。本轮测试包使用 **13.1.1 / b34641**，仅供本地签名测试，未公开发布。
 
 ## 共群发言
 
@@ -26,4 +26,14 @@
 - 原生 UIKit 独立夹具在 iPhone 17 Pro／iOS 26.5 模拟器完成 95 项断言，执行生产单元格、头像绑定、快照更新和暂停方法；覆盖重复进度／返回、真实导航往返、滚动位置、新结果插入、空筛选恢复、下拉刷新指示器，以及 320／390／768 点宽度和大字体布局。夹具使用合成 peer 与头像适配器，没有登录或访问真实账号。
 - 当前基线的全量本地检查 77/77 通过，包含分页、机器人删除、设置存储、备份、搜索和三语资源检查。
 
-Xcode 27.1 / iPhoneOS 27.1 SDK 已完成 `RGSimpleSettings`、`RGStrings`、`TelegramCore`、`RGCommonGroupMessagesUI` 和 `RGProUI` 五个模块的 arm64 优化对象与 Swift module 编译，共 804 份源文件。复用与当前基线／SDK 匹配的已编译依赖，逐模块保存并核对构建前后源码摘要；未链接完整主应用。本轮没有真机、真实账号消息跳转和实际发热验收。日志、夹具与截图保存在被忽略的 `build-input/common-groups-bot-retention-20261029/`；构建缓存保留。
+Xcode 27.1 / iPhoneOS 27.1 SDK 已完成 `RGSimpleSettings`、`RGStrings`、`TelegramCore`、`RGCommonGroupMessagesUI` 和 `RGProUI` 五个模块的 arm64 优化对象与 Swift module 编译，共 804 份源文件。复用与当前基线／SDK 匹配的已编译依赖，逐模块保存并核对构建前后源码摘要；后续完整主应用构建及测试包校验见下。本轮没有真机、真实账号消息跳转和实际发热验收。日志、夹具与截图保存在被忽略的 `build-input/common-groups-bot-retention-20261029/`；构建缓存保留。
+
+
+## b34641 本地测试包
+
+- 构建源码：`a21427927fdeb7f0ad18f0ce2d26d4989bbb1fca`；后续文档提交不改变应用源码。
+- Xcode 27.1 / iPhoneOS 27.1 SDK 完成 `//Telegram:Regram` 的完整 arm64 Release。构建前后 34,472 份工作区源码摘要一致，复用既有输出缓存；未清理输出或磁盘缓存，Bazel 服务已关闭。
+- 最终参考 IPA 再次解包通过主应用、六扩展、arm64、最低 iOS 15.0、零描述文件、严格 ad-hoc 签名、12 个 Mach-O／12 份匹配 dSYM、字体许可及三语资源检查。七个 Bundle 的标识和完整 entitlement 与 b34640 一致。
+- 最终包的 TelegramUIFramework 已核对到机器人排除和温控查询的功能键；新增三语键完整，符号 ZIP CRC 检查通过。
+- 文件：`Regram-13.1.1-b34641.ipa`，78,594,715 字节；SHA-256：`85735f8b8b83fbe5ad4714e12592a543ba41fd3de0fb8118f511daa6eb761b5a`。
+- IPA、校验文件、匹配符号与报告保存在缓存之外的 `build-input/common-groups-bot-retention-20261029/ipa-34641/`；测试 IPA 另复制到下载目录。参考包供 LCSign 等工具按原配置重新签名，覆盖安装和实际设备体验由此包继续验收。
