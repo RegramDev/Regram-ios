@@ -14,7 +14,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 BRAND = ROOT / 'Regram/RGBranding'
 VECTOR_NAMES = ('RGConversation', 'RGAzure', 'RGIris', 'RGMint', 'RGGathering', 'RGAmber', 'RGNebula', 'RGJade')
-NAMES = VECTOR_NAMES + ('RGClassic',)
+NAMES = VECTOR_NAMES + ('RGClassic', 'RGXChat')
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--compiled-icons-plist', type=Path, help='Optional actool partial Info.plist to validate iPhone/iPad icon declarations')
 parser.add_argument('--compiled-catalog', type=Path, help='Optional Assets.car to validate the compiled appearance renditions')
@@ -60,6 +60,11 @@ for name in NAMES:
     preview = BRAND / 'Images.xcassets' / (name + 'Preview.imageset')
     for image in catalog(preview, {'light', 'dark'}):
         assert png(preview / image['filename'])[:2] == (256, 256)
+    if name == 'RGXChat':
+        # The supplied silver artwork intentionally keeps the same appearance in both modes.
+        for imageset in (iconset, preview):
+            assert (imageset / f'{name}-light.png').read_bytes() == (imageset / f'{name}-dark.png').read_bytes(), imageset
+        continue
     assert (iconset / f'{name}-light.png').read_bytes() != (iconset / f'{name}-dark.png').read_bytes(), name
     if name == 'RGClassic':
         continue
@@ -123,16 +128,16 @@ if args.compiled_catalog is not None:
             for rendition in icons:
                 mode = 'dark' if rendition.get('Appearance') == 'UIAppearanceDark' else 'light'
                 assert rendition['RenditionName'] == f'{name}-{mode}.png', (name, rendition)
-    print('Compiled iPhone/iPad app icons contain distinct default and dark renditions for all nine styles.')
+    print(f'Compiled iPhone/iPad app icons contain default and dark renditions for all {len(NAMES)} styles.')
 
 for lang in ('en', 'zh-hans', 'zh-hant'):
     strings = (ROOT / f'Regram/RGStrings/Strings/{lang}.lproj/RGLocalizable.strings').read_text()
     for kind in ('conversation', 'azure', 'iris', 'mint', 'gathering', 'amber', 'nebula', 'jade'):
         assert f'"AppIcon.Name.{kind}"' in strings and f'"AppBadge.Name.{kind}"' in strings
-    for key in ('AppIcon.Name.classic', 'AppBadge.Name.regram', 'AppBadge.Name.zhiqiu'):
+    for key in ('AppIcon.Name.classic', 'AppIcon.Name.xchat', 'AppBadge.Name.regram', 'AppBadge.Name.zhiqiu'):
         assert f'"{key}"' in strings
     assert '"AppBadge.Name.default"' not in strings
 
-print('Branding checks passed: nine app icons with explicit light/dark slots from shared sources, '
+print(f'Branding checks passed: {len(NAMES)} app icons with explicit light/dark slots from shared sources, '
       'opaque 1024px icons, adaptive 112×28pt light/dark alpha badges, matching preview/product assets, three languages '
       'and two preserved original badges. No app build or device run.')

@@ -1245,6 +1245,7 @@ Matching is case-insensitive.";
 "AppBadge.Name.amber" = "Amber";
 
 "AppIcon.Name.nebula" = "Nebula";
+"AppIcon.Name.xchat" = "XChat";
 
 "AppBadge.Name.nebula" = "Nebula";
 
