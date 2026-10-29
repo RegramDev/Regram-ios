@@ -54,6 +54,7 @@ def main():
         ('settings-catalog', ['Regram/RGStrings/Sources/RGSettingsLink.swift', 'Regram/RGStrings/Sources/RGSettingsCatalog.swift', 'Regram/RGStrings/Sources/RGProSearchIndex.swift', 'Regram/RGStrings/Tests/SettingsCatalogTests.swift'], ['Regram/RGStrings/Strings']),
         ('settings-search', ['Regram/RGStrings/Sources/RGProSearchIndex.swift', 'Regram/RGStrings/Tests/SettingsSearchTests.swift'], ['Regram/RGStrings/Strings']),
         ('local-app-links', ['Regram/RGSettingsUI/Sources/RGLocalAppLink.swift', 'Regram/RGSettingsUI/Tests/LocalAppLinkTests.swift'], []),
+        ('common-group-search-policy', ['Regram/RGCommonGroupMessagesUI/Sources/RGCommonGroupSearchPolicy.swift', 'Regram/RGCommonGroupMessagesUI/Tests/SearchPolicyTests.swift'], []),
     ]
     for name, sources, arguments in suites:
         binary = output / name
@@ -74,6 +75,7 @@ def main():
     run('localization-manager', ['python3', 'Regram/RGStrings/Tests/run-localization-checks.py'])
     run('settings-search-transitions', ['python3', 'Regram/RGProUI/Tests/run-settings-search-checks.py'])
     run('common-group-pagination', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-search-failure-checks.py'])
+    run('anti-revoke-senders', ['python3', 'Regram/RGSimpleSettings/Tests/run-anti-revoke-checks.py'])
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('common-group-table-navigation', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-table-navigation-checks.py'])
     run('settings-focus', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-focus-checks.py'])

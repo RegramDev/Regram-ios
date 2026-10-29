@@ -28,9 +28,21 @@ enum RGCommonGroupSearchPolicy {
     static let pageSize = 30
     static let displayPageSize = 50
 
-    static func nextGroups(_ statuses: [RGCommonGroupSearchStatus], orders: [RGCommonMessageOrder], visibleLimit: Int, selectedGroup: Int64?) -> [Int64] {
+    // Match ProcessInfo.ThermalState raw values without requiring UIKit in pagination tests.
+    static func requestLimit(lowPower: Bool, thermalState: Int) -> Int {
+        if thermalState >= 3 { return 0 }
+        if lowPower || thermalState >= 2 { return 1 }
+        return thermalState == 1 ? 2 : concurrency
+    }
+
+    static func requestDelay(lowPower: Bool, thermalState: Int) -> TimeInterval {
+        if thermalState >= 2 { return 1.0 }
+        return lowPower || thermalState == 1 ? 0.6 : 0.2
+    }
+
+    static func nextGroups(_ statuses: [RGCommonGroupSearchStatus], orders: [RGCommonMessageOrder], visibleLimit: Int, selectedGroup: Int64?, concurrencyLimit: Int = concurrency) -> [Int64] {
         let groups = statuses.filter { selectedGroup == nil || $0.peerId == selectedGroup }
-        let capacity = max(0, concurrency - groups.filter(\.loading).count)
+        let capacity = max(0, min(concurrency, concurrencyLimit) - statuses.filter(\.loading).count)
         let sorted = orders.sorted(by: >)
         let limit = max(1, visibleLimit)
         let cutoff = sorted.count >= limit ? sorted[limit - 1] : nil

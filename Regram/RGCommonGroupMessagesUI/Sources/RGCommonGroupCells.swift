@@ -8,55 +8,60 @@ import TelegramCore
 import TelegramPresentationData
 import LocalizedPeerData
 
+// Keep each image subscription attached to its peer across progress and return transitions.
+private final class RGCommonGroupAvatarView: UIView {
+    private let avatar: AvatarNode
+    private let size: CGFloat
+    private var peer: EnginePeer?
+    private var theme: PresentationTheme?
+    private var hasPeer = false
+
+    init(size: CGFloat) {
+        self.size = size
+        self.avatar = AvatarNode(font: avatarPlaceholderFont(size: floor(size * 0.4)))
+        super.init(frame: .zero)
+        addSubview(avatar.view)
+        translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([widthAnchor.constraint(equalToConstant: size), heightAnchor.constraint(equalToConstant: size)])
+        isAccessibilityElement = false
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func layoutSubviews() { super.layoutSubviews(); avatar.frame = bounds }
+    func update(context: AccountContext, peer: EnginePeer?, data: PresentationData) {
+        guard !hasPeer || self.peer != peer || theme !== data.theme else { return }
+        hasPeer = true; self.peer = peer; theme = data.theme
+        avatar.setPeer(context: context, theme: data.theme, peer: peer, synchronousLoad: true, displayDimensions: CGSize(width: size, height: size))
+    }
+}
+
 final class RGCommonGroupHeaderView: UIView {
-    var filterAction: (() -> Void)?
-    var primaryAction: (() -> Void)?
-    private let avatar = AvatarNode(font: avatarPlaceholderFont(size: 20.0))
-    private let avatarContainer = UIView()
+    private let avatar = RGCommonGroupAvatarView(size: 48.0)
     private let nameLabel = UILabel()
     private let summaryLabel = UILabel()
     private let spinner = UIActivityIndicatorView(style: .medium)
-    private let filterButton = UIButton(type: .system)
-    private let actionButton = UIButton(type: .system)
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        avatarContainer.addSubview(avatar.view)
-        avatarContainer.translatesAutoresizingMaskIntoConstraints = false
         let status = UIStackView(arrangedSubviews: [spinner, summaryLabel])
         status.spacing = 6.0; status.alignment = .center
         let personText = UIStackView(arrangedSubviews: [nameLabel, status])
         personText.axis = .vertical; personText.spacing = 5.0
-        let person = UIStackView(arrangedSubviews: [avatarContainer, personText])
+        let person = UIStackView(arrangedSubviews: [avatar, personText])
         person.spacing = 12.0; person.alignment = .center
-        let controls = UIStackView(arrangedSubviews: [filterButton, actionButton])
-        controls.spacing = 10.0
-        let stack = UIStackView(arrangedSubviews: [person, controls])
-        stack.axis = .vertical; stack.spacing = 16.0; stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
+        person.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(person)
         NSLayoutConstraint.activate([
-            avatarContainer.widthAnchor.constraint(equalToConstant: 48.0),
-            avatarContainer.heightAnchor.constraint(equalToConstant: 48.0),
-            controls.heightAnchor.constraint(equalToConstant: 44.0),
-            actionButton.widthAnchor.constraint(equalToConstant: 44.0),
-            stack.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 20.0),
-            stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -20.0),
-            stack.topAnchor.constraint(equalTo: topAnchor, constant: 16.0),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12.0)
+            person.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 20.0),
+            person.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -20.0),
+            person.topAnchor.constraint(equalTo: topAnchor, constant: 16.0),
+            person.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8.0)
         ])
         nameLabel.numberOfLines = 2; summaryLabel.numberOfLines = 2
         spinner.hidesWhenStopped = true
-        actionButton.layer.cornerRadius = 22.0
-        filterButton.addTarget(self, action: #selector(filterPressed), for: .touchUpInside)
-        actionButton.addTarget(self, action: #selector(actionPressed), for: .touchUpInside)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layoutSubviews() { super.layoutSubviews(); avatar.frame = avatarContainer.bounds }
-    @objc private func filterPressed() { filterAction?() }
-    @objc private func actionPressed() { primaryAction?() }
-
-    func update(context: AccountContext, author: EnginePeer, summary: String, filterTitle: String, filterHint: String, filterEnabled: Bool, actionTitle: String, actionSymbol: String, loading: Bool, data: PresentationData) {
-        avatar.setPeer(context: context, theme: data.theme, peer: author, displayDimensions: CGSize(width: 48.0, height: 48.0))
+    func update(context: AccountContext, author: EnginePeer, summary: String, loading: Bool, data: PresentationData) {
+        avatar.update(context: context, peer: author, data: data)
         nameLabel.text = author.displayTitle(strings: data.strings, displayOrder: data.nameDisplayOrder)
         nameLabel.font = Font.semibold(max(18.0, data.listsFontSize.baseDisplaySize))
         nameLabel.textColor = data.theme.list.itemPrimaryTextColor
@@ -65,40 +70,16 @@ final class RGCommonGroupHeaderView: UIView {
         summaryLabel.textColor = data.theme.list.itemSecondaryTextColor
         spinner.color = data.theme.list.itemAccentColor
         if loading { spinner.startAnimating() } else { spinner.stopAnimating() }
-
-        var configuration = UIButton.Configuration.plain()
-        configuration.title = filterTitle
-        configuration.titleLineBreakMode = .byTruncatingTail
-        configuration.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11.0, weight: .semibold))
-        configuration.imagePlacement = .trailing; configuration.imagePadding = 8.0
-        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10.0, leading: 16.0, bottom: 10.0, trailing: 16.0)
-        configuration.baseForegroundColor = data.theme.list.itemAccentColor
-        configuration.background.backgroundColor = data.theme.list.itemBlocksBackgroundColor
-        configuration.background.cornerRadius = 22.0
-        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-            var result = attributes; result.font = Font.medium(max(14.0, data.listsFontSize.baseDisplaySize - 3.0)); return result
-        }
-        filterButton.configuration = configuration
-        filterButton.contentHorizontalAlignment = .leading
-        filterButton.isEnabled = filterEnabled; filterButton.alpha = filterEnabled ? 1.0 : 0.5
-        filterButton.accessibilityLabel = filterHint; filterButton.accessibilityValue = filterTitle
-        actionButton.setImage(UIImage(systemName: actionSymbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 17.0, weight: .medium)), for: .normal)
-        actionButton.backgroundColor = data.theme.list.itemBlocksBackgroundColor
-        actionButton.tintColor = data.theme.list.itemAccentColor
-        actionButton.accessibilityLabel = actionTitle
     }
 }
 
 final class RGCommonGroupPeerCell: UITableViewCell {
-    private let avatar = AvatarNode(font: avatarPlaceholderFont(size: 18.0))
-    private let avatarContainer = UIView()
+    private let avatarContainer = RGCommonGroupAvatarView(size: 44.0)
     private let nameLabel = UILabel()
     private let summaryLabel = UILabel()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
-        avatarContainer.addSubview(avatar.view)
-        avatarContainer.translatesAutoresizingMaskIntoConstraints = false
         let text = UIStackView(arrangedSubviews: [nameLabel, summaryLabel])
         text.axis = .vertical; text.spacing = 4.0
         text.translatesAutoresizingMaskIntoConstraints = false
@@ -107,8 +88,6 @@ final class RGCommonGroupPeerCell: UITableViewCell {
         NSLayoutConstraint.activate([
             avatarContainer.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
             avatarContainer.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            avatarContainer.widthAnchor.constraint(equalToConstant: 44.0),
-            avatarContainer.heightAnchor.constraint(equalToConstant: 44.0),
             text.leadingAnchor.constraint(equalTo: avatarContainer.trailingAnchor, constant: 12.0),
             text.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
             text.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14.0),
@@ -118,12 +97,8 @@ final class RGCommonGroupPeerCell: UITableViewCell {
         isAccessibilityElement = true
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        avatar.frame = avatarContainer.bounds
-    }
     func update(context: AccountContext, peer: EnginePeer?, title: String, summary: String?, data: PresentationData, selected: Bool = false, selectable: Bool = true) {
-        avatar.setPeer(context: context, theme: data.theme, peer: peer, displayDimensions: CGSize(width: 44.0, height: 44.0))
+        avatarContainer.update(context: context, peer: peer, data: data)
         nameLabel.text = title; summaryLabel.text = summary; summaryLabel.isHidden = summary?.isEmpty != false
         nameLabel.font = Font.semibold(data.listsFontSize.baseDisplaySize)
         summaryLabel.font = Font.regular(max(13.0, data.listsFontSize.baseDisplaySize - 3.0))
@@ -143,8 +118,7 @@ final class RGCommonGroupPeerCell: UITableViewCell {
 }
 
 final class RGCommonGroupMessageCell: UITableViewCell {
-    private let avatar = AvatarNode(font: avatarPlaceholderFont(size: 16.0))
-    private let avatarContainer = UIView()
+    private let avatarContainer = RGCommonGroupAvatarView(size: 36.0)
     private let groupLabel = UILabel()
     private let dateLabel = UILabel()
     private let bodyLabel = UILabel()
@@ -152,8 +126,6 @@ final class RGCommonGroupMessageCell: UITableViewCell {
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
-        avatarContainer.addSubview(avatar.view)
-        avatarContainer.translatesAutoresizingMaskIntoConstraints = false
         heading.addArrangedSubview(groupLabel); heading.addArrangedSubview(dateLabel)
         heading.spacing = 8.0; heading.alignment = .firstBaseline
         groupLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -168,8 +140,6 @@ final class RGCommonGroupMessageCell: UITableViewCell {
         NSLayoutConstraint.activate([
             avatarContainer.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
             avatarContainer.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16.0),
-            avatarContainer.widthAnchor.constraint(equalToConstant: 36.0),
-            avatarContainer.heightAnchor.constraint(equalToConstant: 36.0),
             text.leadingAnchor.constraint(equalTo: avatarContainer.trailingAnchor, constant: 10.0),
             text.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
             text.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 16.0),
@@ -180,12 +150,8 @@ final class RGCommonGroupMessageCell: UITableViewCell {
         separatorInset = UIEdgeInsets(top: 0, left: 62.0, bottom: 0, right: 0)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        avatar.frame = avatarContainer.bounds
-    }
     func update(context: AccountContext, group: EnginePeer?, title: String, date: String, fullDate: String, body: String, openHint: String, availableWidth: CGFloat, data: PresentationData) {
-        avatar.setPeer(context: context, theme: data.theme, peer: group, displayDimensions: CGSize(width: 36.0, height: 36.0))
+        avatarContainer.update(context: context, peer: group, data: data)
         groupLabel.text = title; dateLabel.text = date; bodyLabel.text = body
         groupLabel.font = Font.semibold(max(14.0, data.listsFontSize.baseDisplaySize - 2.0))
         dateLabel.font = Font.regular(max(12.0, data.listsFontSize.baseDisplaySize - 5.0))
@@ -206,7 +172,7 @@ final class RGCommonGroupMessageCell: UITableViewCell {
         let selection = selectedBackgroundView ?? UIView()
         selection.backgroundColor = data.theme.list.itemHighlightedBackgroundColor
         selectedBackgroundView = selection
-        accessoryType = .none
+        accessoryType = .disclosureIndicator
         accessibilityLabel = [title, fullDate, body].joined(separator: ", ")
         accessibilityHint = openHint
     }

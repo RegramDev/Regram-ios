@@ -291,6 +291,7 @@ public class RGSimpleSettings {
         case hideStories
         case disableAllAds
         case antiRevoke
+        case antiRevokeIgnoreBots
         case revokedMarkerStyle, revokedMarkerText, revokedMarkerColor // MARK: Regram
         case antiAutoDelete
         case antiSelfDestruct
@@ -536,6 +537,7 @@ public class RGSimpleSettings {
         Keys.hideStories.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.antiRevoke.rawValue: false,
+        Keys.antiRevokeIgnoreBots.rawValue: false,
         Keys.revokedMarkerStyle.rawValue: "icon", Keys.revokedMarkerText.rawValue: "", Keys.revokedMarkerColor.rawValue: "",
         Keys.antiAutoDelete.rawValue: false,
         Keys.antiSelfDestruct.rawValue: false,
@@ -698,6 +700,10 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.antiRevoke.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
     public var antiRevoke: Bool
+
+    // MARK: Regram — shared with the notification extension's deletion processing.
+    @UserDefault(key: Keys.antiRevokeIgnoreBots.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
+    public var antiRevokeIgnoreBots: Bool
 
     // MARK: Regram — visual marker preferences live in the main application only.
     @UserDefault(key: Keys.revokedMarkerStyle.rawValue) public var revokedMarkerStyle: String

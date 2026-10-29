@@ -40,6 +40,8 @@ extension String {
         assert(contains("OpenAI 模型", "llm", "model"))
         assert(RGSettingsCatalog.results(query: "温度", language: "zh-hans").allSatisfy { $0.destination.item == "temperature" })
         assert(contains("复读", "settings.messageActions", "messageDoubleTapAction"))
+        assert(contains("机器人", "antiFeatures", "antiRevokeIgnoreBots"))
+        assert(RGSettingsCatalog.results(query: "bot", language: "en").contains { $0.destination.item == "antiRevokeIgnoreBots" })
         assert(contains("照片 上传", "settings.photos", "outgoingPhotoQuality"))
         assert(contains("分隔线", "settings.chatList", "hideChatListSeparators"))
         assert(contains("检查更新", "updates", "check"))

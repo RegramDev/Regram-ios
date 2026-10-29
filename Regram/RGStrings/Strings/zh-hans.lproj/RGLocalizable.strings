@@ -1335,3 +1335,7 @@
 "Settings.HideMessageForwardButton.Notice" = "隐藏消息旁的转发箭头，适用于文字、媒体和贴纸。仍可从消息菜单转发。";
 "Settings.AutoSelectDeleteModerationActions" = "删除消息自动一键三连";
 "Settings.AutoSelectDeleteModerationActions.Notice" = "管理员删除群消息时，自动勾选举报垃圾消息、删除发送者全部消息与回应、封禁。仅勾选有权限的操作，继续前可查看或取消勾选。";
+
+"AntiFeatures.IgnoreBots" = "不保留机器人消息";
+"AntiFeatures.IgnoreBotsNotice" = "开启后，机器人发送的消息被撤回时会正常删除，适用于全局及单独开启防撤回的会话。已有撤回记录不会自动清理。";
+"CommonGroups.Cooling" = "设备温度较高，降温后继续查询";

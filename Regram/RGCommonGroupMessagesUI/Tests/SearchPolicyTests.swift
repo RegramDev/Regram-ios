@@ -11,6 +11,17 @@ private func order(_ timestamp: Int32, peer: Int64 = 1, id: Int32 = 1) -> RGComm
         assert(RGCommonGroupSearchPolicy.nextGroups(limited, orders: [], visibleLimit: 50, selectedGroup: nil) == [3])
         limited[2].loading = true
         assert(RGCommonGroupSearchPolicy.nextGroups(limited, orders: [], visibleLimit: 50, selectedGroup: nil).isEmpty)
+        for lowPower in [false, true] {
+            for thermal in 0...3 {
+                let limit = RGCommonGroupSearchPolicy.requestLimit(lowPower: lowPower, thermalState: thermal)
+                let expected = thermal == 3 ? 0 : lowPower || thermal == 2 ? 1 : thermal == 1 ? 2 : 3
+                assert(limit == expected)
+                assert(RGCommonGroupSearchPolicy.nextGroups(fresh, orders: [], visibleLimit: 50, selectedGroup: nil, concurrencyLimit: limit).count == expected)
+                assert(RGCommonGroupSearchPolicy.requestDelay(lowPower: lowPower, thermalState: thermal) >= 0.2)
+            }
+        }
+        assert(RGCommonGroupSearchPolicy.nextGroups(limited, orders: [], visibleLimit: 50, selectedGroup: 6, concurrencyLimit: 1).isEmpty, "Requests outside the selected group still consume the device budget")
+        assert(RGCommonGroupSearchPolicy.nextGroups(fresh, orders: [], visibleLimit: 50, selectedGroup: nil, concurrencyLimit: -1).isEmpty)
         let visible = (90...139).map { order(Int32($0)) }
         var hot = RGCommonGroupSearchStatus(peerId: 1); hot.loaded = true; hot.oldest = order(100)
         var quiet = RGCommonGroupSearchStatus(peerId: 2); quiet.loaded = true; quiet.oldest = order(70)
@@ -63,6 +74,6 @@ private func order(_ timestamp: Int32, peer: Int64 = 1, id: Int32 = 1) -> RGComm
                 assert(Array(actual) == Array(expected), "A globally merged page must match the complete history prefix")
             }
         }
-        print("Common-group pagination passed: concurrency, busy-group cutoff, loaded-window expansion, filtering, failures, stable identity and spoiler previews.")
+        print("Common-group pagination passed: power/thermal budgets, bounded concurrency, busy-group cutoff, loaded-window expansion, filtering, failures, stable identity and spoiler previews.")
     }
 }

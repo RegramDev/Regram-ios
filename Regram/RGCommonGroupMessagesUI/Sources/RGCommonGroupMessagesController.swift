@@ -23,7 +23,7 @@ private func rgConfigureCommonGroupTableNavigation(controller: ViewController, t
 }
 
 private final class GroupSearch {
-    let peer: EnginePeer
+    var peer: EnginePeer
     var status: RGCommonGroupSearchStatus
     var cursor: SearchMessagesState?
     init(peer: EnginePeer) { self.peer = peer; self.status = .init(peerId: peer.id.toInt64()) }
@@ -33,20 +33,44 @@ private func messageOrder(_ message: Message) -> RGCommonMessageOrder {
     .init(timestamp: message.timestamp, peerId: message.id.peerId.toInt64(), namespace: message.id.namespace, messageId: message.id.id)
 }
 
+private enum RGCommonGroupSection: Int, CaseIterable {
+    case filter, messages, status
+}
+
+private enum RGCommonGroupItem: Hashable {
+    case filter, message(MessageId), empty, status
+}
+
+private final class RGCommonGroupDataSource: UITableViewDiffableDataSource<RGCommonGroupSection, RGCommonGroupItem> {
+    var headerTitle: ((Int) -> String?)?
+    var footerTitle: ((Int) -> String?)?
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { headerTitle?(section) }
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { footerTitle?(section) }
+}
+
 public func rgCommonGroupMessagesController(context: AccountContext, author: EnginePeer) -> ViewController? {
     guard author.id.namespace == Namespaces.Peer.CloudUser, author.id != context.account.peerId else { return nil }
     return RGCommonGroupMessagesController(context: context, author: author)
 }
 
-private final class RGCommonGroupMessagesController: ViewController, UITableViewDataSource, UITableViewDelegate {
+private final class RGCommonGroupMessagesController: ViewController, UITableViewDelegate {
     private let context: AccountContext
     private let author: EnginePeer
     private let table = UITableView(frame: .zero, style: .insetGrouped)
     private let header = RGCommonGroupHeaderView()
+    private let refreshControl = UIRefreshControl()
+    private var dataSource: RGCommonGroupDataSource?
+    private var rowUpdate: DispatchWorkItem?
+    private var scheduledSearch: DispatchWorkItem?
+    private var refreshAllRows = false
+    private var changedMessages = Set<MessageId>()
+    private var sortedMessages: [Message]?
+    private var primaryActionKey: String?
     private var presentationData: PresentationData
     private var presentationDisposable: Disposable?
     private var filtersDisposable: Disposable?
     private var backgroundObserver: NSObjectProtocol?
+    private var resourceObservers: [NSObjectProtocol] = []
     private var groupsContext: GroupsInCommonContext?
     private let groupsDisposable = MetaDisposable()
     private var groupTimer: Foundation.Timer?
@@ -68,7 +92,9 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     private var lang: String {
         RGLocalizationManager.shared.preferredLocale(primary: presentationData.strings.primaryComponent.languageCode, secondary: presentationData.strings.secondaryComponent?.languageCode)
     }
-    private var busy: Bool { groupsContext != nil || !requests.isEmpty }
+    private var requestLimit: Int { RGCommonGroupSearchPolicy.requestLimit(lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, thermalState: ProcessInfo.processInfo.thermalState.rawValue) }
+    private var cooling: Bool { requestLimit == 0 }
+    private var busy: Bool { groupsContext != nil || !requests.isEmpty || scheduledSearch != nil }
     private var failed: Bool { groupsFailed || groups.values.contains { ($0.status.peerId == selectedGroup || selectedGroup == nil) && $0.status.failed } }
 
     init(context: AccountContext, author: EnginePeer) {
@@ -86,23 +112,39 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         self.backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
             self?.pausedByUser = true; self?.pause()
         }
-        self.filtersDisposable = (rgContentFiltersDidChange() |> deliverOnMainQueue).start(next: { [weak self] _ in self?.reloadRows() })
+        for name in [Notification.Name.NSProcessInfoPowerStateDidChange, ProcessInfo.thermalStateDidChangeNotification] {
+            self.resourceObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                guard let self, self.active else { return }
+                // Cancel excess in-flight work immediately; keep rows and successful cursors.
+                self.pause(); self.active = true; self.resume()
+            })
+        }
+        self.filtersDisposable = (rgContentFiltersDidChange() |> deliverOnMainQueue).start(next: { [weak self] _ in
+            self?.refreshAllRows = true; self?.reloadRows(); self?.enqueueSearch()
+        })
     }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit {
         presentationDisposable?.dispose(); filtersDisposable?.dispose(); groupsDisposable.dispose(); groupTimer?.invalidate()
         requests.values.forEach { $0.dispose() }
+        rowUpdate?.cancel(); scheduledSearch?.cancel()
         if let observer = backgroundObserver { NotificationCenter.default.removeObserver(observer) }
+        resourceObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
     override func loadDisplayNode() {
         self.displayNode = ASDisplayNode()
-        self.table.dataSource = self; self.table.delegate = self; self.table.rowHeight = UITableView.automaticDimension
+        self.table.delegate = self; self.table.rowHeight = UITableView.automaticDimension
         self.table.contentInsetAdjustmentBehavior = .never
         self.table.estimatedRowHeight = 100
         self.table.register(RGCommonGroupMessageCell.self, forCellReuseIdentifier: "message")
         self.table.register(RGCommonGroupStateCell.self, forCellReuseIdentifier: "state")
-        self.header.filterAction = { [weak self] in self?.openGroupPicker() }
-        self.header.primaryAction = { [weak self] in self?.performPrimaryAction() }
+        self.dataSource = RGCommonGroupDataSource(tableView: table, cellProvider: { [weak self] table, indexPath, item in
+            self?.cell(tableView: table, indexPath: indexPath, item: item)
+        })
+        self.dataSource?.headerTitle = { [weak self] section in self?.headerTitle(section) }
+        self.dataSource?.footerTitle = { [weak self] section in self?.footerTitle(section) }
+        self.refreshControl.addTarget(self, action: #selector(refreshPressed), for: .valueChanged)
+        self.table.refreshControl = refreshControl
         self.table.tableHeaderView = header
         self.displayNode.view.addSubview(table)
         self.displayNodeDidLoad(); self.updateAppearance()
@@ -119,7 +161,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         transition.updateFrame(view: table, frame: CGRect(x: 0, y: top, width: layout.size.width, height: max(0, layout.size.height - top)))
         table.contentInset.bottom = layout.insets(options: []).bottom
         updateHeader()
-        if previousWidth != table.bounds.width { table.reloadData() }
+        if previousWidth != table.bounds.width { refreshAllRows = true; reloadRows() }
     }
     private func updateAppearance() {
         title = "CommonGroups.PageTitle".i18n(lang)
@@ -131,41 +173,49 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         displayNode.backgroundColor = presentationData.theme.list.blocksBackgroundColor
         table.separatorColor = presentationData.theme.list.itemBlocksSeparatorColor
         table.tintColor = presentationData.theme.list.itemAccentColor
+        refreshControl.tintColor = presentationData.theme.list.itemAccentColor
         statusBar.statusBarStyle = presentationData.theme.rootController.statusBarStyle.style
-        updateHeader()
-        table.reloadData()
+        primaryActionKey = nil; refreshAllRows = true; updateRows()
     }
     private func updateHeader() {
         let summary: String
-        if groupsContext != nil { summary = "CommonGroups.LoadingGroups".i18n(lang) }
+        if cooling { summary = "CommonGroups.Cooling".i18n(lang) }
+        else if groupsContext != nil { summary = "CommonGroups.LoadingGroups".i18n(lang) }
         else if busy { summary = "CommonGroups.SummaryLoading".i18n(lang, args: String(rows.count)) }
         else if pausedByUser { summary = "CommonGroups.SummaryPaused".i18n(lang, args: String(rows.count)) }
         else if failed { summary = "CommonGroups.SummaryFailed".i18n(lang, args: String(rows.count)) }
         else { summary = "CommonGroups.Loaded".i18n(lang, args: String(rows.count), String(groups.count)) }
-        header.update(
-            context: context, author: author, summary: summary,
-            filterTitle: selectedGroup.flatMap { groups[$0]?.peer }.map { groupTitle($0) } ?? "CommonGroups.All".i18n(lang),
-            filterHint: "CommonGroups.Filter".i18n(lang), filterEnabled: !groups.isEmpty,
-            actionTitle: (busy ? "CommonGroups.Cancel" : pausedByUser ? "CommonGroups.Continue" : failed ? "CommonGroups.Retry" : "CommonGroups.Refresh").i18n(lang),
-            actionSymbol: busy ? "pause.fill" : pausedByUser ? "play.fill" : "arrow.clockwise",
-            loading: busy, data: presentationData
-        )
+        header.update(context: context, author: author, summary: summary, loading: busy, data: presentationData)
+        let actionKey = busy ? "CommonGroups.Cancel" : pausedByUser ? "CommonGroups.Continue" : failed ? "CommonGroups.Retry" : "CommonGroups.Refresh"
+        if primaryActionKey != actionKey {
+            primaryActionKey = actionKey
+            let symbol = busy ? "pause" : pausedByUser ? "play" : "arrow.clockwise"
+            let button = UIBarButtonItem(image: UIImage(systemName: symbol), style: .plain, target: self, action: #selector(primaryPressed))
+            button.accessibilityLabel = actionKey.i18n(lang)
+            navigationItem.rightBarButtonItem = button
+        }
+        navigationItem.rightBarButtonItem?.isEnabled = !cooling
         guard table.bounds.width > 0.0 else { return }
         let size = header.systemLayoutSizeFitting(CGSize(width: table.bounds.width, height: 0.0), withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
         let frame = CGRect(x: 0, y: 0, width: table.bounds.width, height: ceil(size.height))
         if header.frame != frame { header.frame = frame; table.tableHeaderView = header }
     }
-    private func pause() {
+    private func pause(endRefreshing: Bool = true) {
         active = false; generation = UUID(); groupTimer?.invalidate(); groupTimer = nil
+        scheduledSearch?.cancel(); scheduledSearch = nil
         groupsDisposable.set(nil); groupsContext = nil
         let current = requests; requests.removeAll()
         current.values.forEach { $0.dispose() }
         groups.values.forEach { $0.status.loading = false }
-        if isNodeLoaded { updateHeader(); table.reloadData() }
+        if isNodeLoaded {
+            if endRefreshing { refreshControl.endRefreshing() }
+            reloadRows()
+        }
     }
     private func resume() {
-        guard active, !pausedByUser else { return }
-        if !groupsComplete && !groupsFailed { loadGroups() } else { scheduleMessages() }
+        guard active, !pausedByUser, !cooling else { reloadRows(); return }
+        if !groupsComplete && !groupsFailed { loadGroups() }
+        enqueueSearch()
     }
     private func loadGroups() {
         guard groupsContext == nil else { return }
@@ -181,14 +231,16 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
                 switch engine { case .legacyGroup: isGroup = true; case let .channel(channel): if case .group = channel.info { isGroup = true } else { isGroup = false }; default: isGroup = false }
                 guard isGroup else { continue }
                 let id = engine.id.toInt64()
-                if self.groups[id] == nil { self.groups[id] = GroupSearch(peer: engine) }
+                if let group = self.groups[id] {
+                    if group.peer != engine { group.peer = engine; self.refreshAllRows = true }
+                } else { self.groups[id] = GroupSearch(peer: engine) }
             }
             switch state.dataState {
             case .loading:
                 self.groupTimer?.invalidate()
                 self.groupTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 25, repeats: false) { [weak self] _ in
                     guard let self, self.generation == token, self.active else { return }
-                    self.groupsFailed = true; self.groupsDisposable.set(nil); self.groupsContext = nil; self.scheduleMessages()
+                    self.groupsFailed = true; self.groupsDisposable.set(nil); self.groupsContext = nil; self.enqueueSearch()
                 }
             case let .ready(canLoadMore):
                 self.groupTimer?.invalidate(); self.groupTimer = nil
@@ -201,19 +253,34 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
                 } else {
                     self.groupsComplete = true; self.groupsContext = nil; self.groupsDisposable.set(nil)
                 }
-                self.scheduleMessages()
             }
+            self.enqueueSearch()
             self.reloadRows()
         }))
     }
     private func filteredMessages() -> [Message] {
-        messages.values.filter { selectedGroup == nil || messageGroups[$0.id] == selectedGroup }.sorted { messageOrder($0) > messageOrder($1) }
+        if sortedMessages == nil { sortedMessages = messages.values.sorted { messageOrder($0) > messageOrder($1) } }
+        let filter = RGContentFilterState(accountPeerId: context.account.peerId)
+        return (sortedMessages ?? []).filter {
+            (selectedGroup == nil || messageGroups[$0.id] == selectedGroup) && !filter.shouldHide(message: EngineMessage($0))
+        }
+    }
+    private func enqueueSearch() {
+        guard active, !pausedByUser, !cooling, scheduledSearch == nil else { return }
+        let token = generation
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.generation == token else { return }
+            self.scheduledSearch = nil; self.scheduleMessages()
+        }
+        scheduledSearch = work
+        let delay = RGCommonGroupSearchPolicy.requestDelay(lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, thermalState: ProcessInfo.processInfo.thermalState.rawValue)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
     }
     private func scheduleMessages() {
-        guard active, !pausedByUser else { reloadRows(); return }
-        // Query cached/loaded groups even if fetching another common-group page failed.
-        guard groupsComplete || groupsFailed else { reloadRows(); return }
-        let next = RGCommonGroupSearchPolicy.nextGroups(groups.values.map(\.status), orders: filteredMessages().map(messageOrder), visibleLimit: visibleLimit, selectedGroup: selectedGroup)
+        guard active, !pausedByUser, !cooling else { reloadRows(); return }
+        // Group discovery shares the budget, so results can arrive before its final page.
+        let budget = max(0, requestLimit - (groupsContext == nil ? 0 : 1))
+        let next = RGCommonGroupSearchPolicy.nextGroups(groups.values.map(\.status), orders: filteredMessages().map(messageOrder), visibleLimit: visibleLimit, selectedGroup: selectedGroup, concurrencyLimit: budget)
         for id in next { if let group = groups[id] { loadMessages(group) } }
         reloadRows()
     }
@@ -234,28 +301,64 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
                     group.cursor = cursor; group.status.loaded = true; group.status.hasMore = !result.completed
                     if let oldest = result.messages.map(messageOrder).min() { group.status.oldest = min(group.status.oldest ?? oldest, oldest) }
                     // The engine also includes the group's pre-migration history, with its original peer ID.
+                    var updated = false
                     for message in result.messages where message.author?.id == self.author.id {
+                        // Search pages include earlier results; their unchanged objects need no layout.
+                        guard self.messages[message.id] !== message || self.messageGroups[message.id] != id else { continue }
                         self.messages[message.id] = message
                         self.messageGroups[message.id] = id
+                        self.changedMessages.insert(message.id)
+                        updated = true
                     }
+                    if updated { self.sortedMessages = nil }
                 }
             } else { group.status.failed = true }
-            // Avoid recursive synchronous pages if the engine answers from local state.
-            DispatchQueue.main.async { [weak self] in guard let self, self.generation == token else { return }; self.scheduleMessages() }
+            self.enqueueSearch()
             self.reloadRows()
         }))
     }
     private func reloadRows() {
-        let filter = RGContentFilterState(accountPeerId: context.account.peerId)
-        rows = filteredMessages().prefix(visibleLimit).filter { !filter.shouldHide(message: EngineMessage($0)) }
-        if isNodeLoaded { updateHeader(); table.reloadData() }
+        guard isNodeLoaded, rowUpdate == nil else { return }
+        // Several peers can finish together; publish one snapshot and retain existing cells.
+        let work = DispatchWorkItem { [weak self] in self?.updateRows() }
+        rowUpdate = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+    }
+    private func updateRows() {
+        rowUpdate?.cancel(); rowUpdate = nil
+        guard let dataSource else { return }
+        rows = Array(filteredMessages().prefix(visibleLimit))
+        updateHeader()
+        if !busy { refreshControl.endRefreshing() }
+        var snapshot = NSDiffableDataSourceSnapshot<RGCommonGroupSection, RGCommonGroupItem>()
+        snapshot.appendSections(RGCommonGroupSection.allCases)
+        snapshot.appendItems([.filter], toSection: .filter)
+        snapshot.appendItems(rows.isEmpty ? [.empty] : rows.map { .message($0.id) }, toSection: .messages)
+        if !rows.isEmpty { snapshot.appendItems([.status], toSection: .status) }
+        let existing = Set(dataSource.snapshot().itemIdentifiers)
+        let updates = snapshot.itemIdentifiers.filter { item in
+            guard existing.contains(item) else { return false }
+            if refreshAllRows { return true }
+            if case let .message(id) = item { return changedMessages.contains(id) }
+            return true
+        }
+        snapshot.reconfigureItems(updates)
+        refreshAllRows = false; changedMessages.removeAll()
+        dataSource.apply(snapshot, animatingDifferences: false)
+        // UIKit retains section headers when only items change.
+        for section in RGCommonGroupSection.allCases {
+            if let view = table.headerView(forSection: section.rawValue) {
+                view.textLabel?.text = headerTitle(section.rawValue)
+                styleSectionLabel(view, isHeader: true)
+            }
+            if let view = table.footerView(forSection: section.rawValue) {
+                view.textLabel?.text = footerTitle(section.rawValue)
+                styleSectionLabel(view, isHeader: false)
+            }
+        }
     }
     private var canLoadMore: Bool {
         filteredMessages().count > visibleLimit || groups.values.contains { (selectedGroup == nil || $0.status.peerId == selectedGroup) && $0.status.hasMore && !$0.status.failed }
-    }
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? max(1, rows.count) : (rows.isEmpty ? 0 : 1)
     }
     func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
         styleSectionLabel(view, isHeader: true)
@@ -269,17 +372,34 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         view.textLabel?.font = Font.regular(max(13.0, presentationData.listsFontSize.baseDisplaySize - 4.0))
         view.textLabel?.numberOfLines = 0
     }
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 0 ? "CommonGroups.Results".i18n(lang, args: String(rows.count)) : nil
+    private func headerTitle(_ section: Int) -> String? {
+        section == RGCommonGroupSection.messages.rawValue ? "CommonGroups.Results".i18n(lang, args: String(rows.count)) : nil
     }
-    func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        if section == 1 { return "CommonGroups.Scope".i18n(lang) }
-        return failed && !rows.isEmpty ? "CommonGroups.PartialFailure".i18n(lang) : nil
+    private func footerTitle(_ section: Int) -> String? {
+        let scopeSection = rows.isEmpty ? RGCommonGroupSection.messages : .status
+        return section == scopeSection.rawValue ? "CommonGroups.Scope".i18n(lang) : nil
     }
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if indexPath.section == 0 && rows.indices.contains(indexPath.row) {
+    private func cell(tableView: UITableView, indexPath: IndexPath, item: RGCommonGroupItem) -> UITableViewCell {
+        if item == .filter {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "filter") ?? UITableViewCell(style: .value1, reuseIdentifier: "filter")
+            cell.textLabel?.text = "CommonGroups.Filter".i18n(lang)
+            cell.detailTextLabel?.text = selectedGroup.flatMap { groups[$0]?.peer }.map { groupTitle($0) } ?? "CommonGroups.All".i18n(lang)
+            cell.textLabel?.font = Font.regular(presentationData.listsFontSize.baseDisplaySize)
+            cell.detailTextLabel?.font = Font.regular(presentationData.listsFontSize.baseDisplaySize)
+            cell.textLabel?.textColor = presentationData.theme.list.itemPrimaryTextColor
+            cell.detailTextLabel?.textColor = presentationData.theme.list.itemSecondaryTextColor
+            cell.backgroundColor = presentationData.theme.list.itemBlocksBackgroundColor
+            cell.accessoryType = .disclosureIndicator
+            cell.selectionStyle = groups.isEmpty ? .none : .default
+            cell.contentView.alpha = groups.isEmpty ? 0.5 : 1.0
+            let selection = cell.selectedBackgroundView ?? UIView()
+            selection.backgroundColor = presentationData.theme.list.itemHighlightedBackgroundColor
+            cell.selectedBackgroundView = selection
+            cell.accessibilityTraits = groups.isEmpty ? [.button, .notEnabled] : .button
+            return cell
+        }
+        if case let .message(id) = item, let message = messages[id] {
             let cell = tableView.dequeueReusableCell(withIdentifier: "message", for: indexPath) as! RGCommonGroupMessageCell
-            let message = rows[indexPath.row]
             let group = messageGroups[message.id].flatMap { groups[$0]?.peer }
             // Rich previews mask their own spoilers; legacy entity offsets belong to message.text.
             let spoilers: [Range<Int>] = message.attributes.contains(where: { $0 is RichTextMessageAttribute }) ? [] : message.attributes.compactMap { $0 as? TextEntitiesMessageAttribute }.flatMap(\.entities).compactMap { entity -> Range<Int>? in
@@ -293,26 +413,28 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         }
 
         let cell = tableView.dequeueReusableCell(withIdentifier: "state", for: indexPath) as! RGCommonGroupStateCell
-        let isLoading = busy || (!groupsComplete && !groupsFailed && !pausedByUser)
+        let isLoading = !cooling && (busy || (active && !groupsComplete && !groupsFailed && !pausedByUser))
         let titleKey: String
         let detailKey: String?
         let symbol: String
         let actionable: Bool
-        if isLoading {
+        if cooling {
+            titleKey = "CommonGroups.Cooling"; detailKey = "CommonGroups.Paused"; symbol = "thermometer"; actionable = false
+        } else if isLoading {
             titleKey = groupsContext != nil || groups.isEmpty ? "CommonGroups.LoadingGroups" : "CommonGroups.Loading"
             detailKey = nil; symbol = "magnifyingglass"; actionable = false
         } else if pausedByUser {
             titleKey = "CommonGroups.Continue"; detailKey = "CommonGroups.Paused"; symbol = "pause.circle"; actionable = true
         } else if failed {
             titleKey = "CommonGroups.Retry"; detailKey = "CommonGroups.PartialFailure"; symbol = "exclamationmark.circle"; actionable = true
-        } else if indexPath.section == 1 {
+        } else if item == .status {
             titleKey = canLoadMore ? "CommonGroups.LoadMore" : "CommonGroups.AllLoaded"
             detailKey = nil; symbol = canLoadMore ? "arrow.down.circle" : "checkmark.circle"; actionable = canLoadMore
         } else {
             titleKey = groups.isEmpty ? "CommonGroups.NoGroups" : "CommonGroups.Empty"
             detailKey = groups.isEmpty ? nil : "CommonGroups.EmptyHint"; symbol = groups.isEmpty ? "person.2" : "text.bubble"; actionable = false
         }
-        cell.update(title: titleKey.i18n(lang), detail: detailKey?.i18n(lang), symbol: symbol, loading: isLoading, actionable: actionable, compact: indexPath.section == 1, data: presentationData)
+        cell.update(title: titleKey.i18n(lang), detail: detailKey?.i18n(lang), symbol: symbol, loading: isLoading, actionable: actionable, compact: item == .status, data: presentationData)
         return cell
     }
     private func groupTitle(_ peer: EnginePeer) -> String {
@@ -320,9 +442,19 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        if indexPath.section == 0 && rows.indices.contains(indexPath.row) { openMessage(rows[indexPath.row]) }
-        else if !busy && (pausedByUser || failed) { performPrimaryAction() }
-        else if indexPath.section == 1 { loadMore() }
+        guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
+        switch item {
+        case .filter: openGroupPicker()
+        case let .message(id): if let message = messages[id] { openMessage(message) }
+        case .empty, .status:
+            if !busy && !cooling && (pausedByUser || failed) { performPrimaryAction() }
+            else if item == .status { loadMore() }
+        }
+    }
+    @objc private func primaryPressed() { performPrimaryAction() }
+    @objc private func refreshPressed() {
+        guard !cooling else { refreshControl.endRefreshing(); return }
+        refresh()
     }
     private func performPrimaryAction() {
         if busy { pausedByUser = true; pause(); active = true; return }
@@ -333,7 +465,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         else { refresh() }
     }
     private func refresh() {
-        pause(); groups.removeAll(); messages.removeAll(); messageGroups.removeAll(); rows = []; groupsComplete = false; groupsFailed = false
+        pause(endRefreshing: false); groups.removeAll(); messages.removeAll(); messageGroups.removeAll(); sortedMessages = nil; changedMessages.removeAll(); groupsComplete = false; groupsFailed = false
         selectedGroup = nil; visibleLimit = RGCommonGroupSearchPolicy.displayPageSize; active = true; pausedByUser = false; resume()
     }
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -342,8 +474,8 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         loadMore()
     }
     private func loadMore() {
-        guard active, !busy, !pausedByUser, canLoadMore else { return }
-        visibleLimit += RGCommonGroupSearchPolicy.displayPageSize; scheduleMessages()
+        guard active, !busy, !pausedByUser, !cooling, canLoadMore else { return }
+        visibleLimit += RGCommonGroupSearchPolicy.displayPageSize; enqueueSearch(); reloadRows()
     }
     private func openGroupPicker() {
         guard !groups.isEmpty, let navigation = navigationController as? NavigationController else { return }
@@ -359,7 +491,7 @@ private final class RGCommonGroupMessagesController: ViewController, UITableView
         if case let .channel(channel) = peer, channel.isForumOrMonoForum, let thread = message.threadId {
             let _ = context.sharedContext.navigateToForumThread(context: context, peerId: peer.id, threadId: thread, messageId: message.id, navigationController: navigation, activateInput: nil, scrollToEndIfExists: false, keepStack: .always, animated: true).startStandalone()
         } else {
-            context.sharedContext.navigateToChatController(.init(navigationController: navigation, context: context, chatLocation: .peer(peer), subject: .message(id: .id(message.id), highlight: nil, timecode: nil, setupReply: false), keepStack: .always, useExisting: false))
+            context.sharedContext.navigateToChatController(.init(navigationController: navigation, context: context, chatLocation: .peer(peer), subject: .message(id: .id(message.id), highlight: ChatControllerSubject.MessageHighlight(quote: nil), timecode: nil, setupReply: false), keepStack: .always, useExisting: false))
         }
     }
 }

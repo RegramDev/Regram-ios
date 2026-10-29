@@ -207,6 +207,7 @@ public enum RGSettingsCatalog {
         .init("localGifts", "walletCard", "LocalWallet.Title", keywords: "local wallet card TON Gram balance 本地 钱包 錢包 卡片 余额 餘額"),
         .init("pro.tools", "appUpdate", "AppUpdate.Title"),
         .init("antiFeatures", "antiRevoke", "AntiFeatures.Revoke"),
+        .init("antiFeatures", "antiRevokeIgnoreBots", "AntiFeatures.IgnoreBots", keywords: "bot bots revoke retention 机器人 機器人 撤回"),
         .init("antiFeatures", "revokedMarker", "RevokedMarker.Title"),
         .init("revokedMarker", "style", "RevokedMarker.Style"),
         .init("revokedMarker", "text", "RevokedMarker.Text"),
