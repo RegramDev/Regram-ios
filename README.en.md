@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34638**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34638). This release fixes crashes when quoting selected text and adds channel remarks, optional moderation presets when deleting messages, and a setting to hide message forward buttons. See the [delivery record](docs/quote-channel-tools-34638.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34639**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34639). This release adds the XChat silver-bubble app icon with iPhone, iPad and settings previews. See the [delivery record](docs/xchat-icon-34639.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -131,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34638 passed the full Xcode 27.1 arm64 Release build, 74 automated checks, and package validation for the main app, six extensions and 12 matching dSYMs. Installation identity matches b34637. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [delivery record](docs/quote-channel-tools-34638.md) for source, package and validation details.
+b34639 passed the full Xcode 27.1 arm64 Release build, 74 automated checks, XChat icon compilation and package verification for the main app, six extensions and 12 matching dSYMs. Installation identity matches b34638. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [delivery record](docs/xchat-icon-34639.md) for source, package and validation details.
 
 ## Building
 

@@ -1,8 +1,10 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34638** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34639** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
+
+- [b34639 XChat 应用图标](xchat-icon-34639.md)：新增黑底银色气泡图标，包含资源、编译、包校验与正式发布记录。
 
 - [b34638 引用、频道备注与消息操作](quote-channel-tools-34638.md)：修复盘古选区引用越界，增加频道备注、删除自动一键三连及隐藏消息转发按钮。
 
