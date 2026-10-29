@@ -1,6 +1,6 @@
 # 共群发言与机器人撤回消息
 
-2026-10-29 的源码修复记录，基于当前远端 13.1.1 / b34640（`68c13f794bd110661a633b1bd368d5e3d8959fbd`）。改动位于独立工作树及 `codex/common-groups-bot-retention` 分支，原目录的无关改动已保留。本轮测试包使用 **13.1.1 / b34641**，仅供本地签名测试，未公开发布。
+2026-10-29 的源码修复记录，基于当前远端 13.1.1 / b34640（`68c13f794bd110661a633b1bd368d5e3d8959fbd`）。改动位于独立工作树及 `codex/common-groups-bot-retention` 分支，原目录的无关改动已保留。本轮版本为 **13.1.1 / b34641**，发布沿用已经交付的相同 IPA 和 SHA-256；正式发布及下载校验记录见文末。
 
 ## 共群发言
 
@@ -29,7 +29,7 @@
 Xcode 27.1 / iPhoneOS 27.1 SDK 已完成 `RGSimpleSettings`、`RGStrings`、`TelegramCore`、`RGCommonGroupMessagesUI` 和 `RGProUI` 五个模块的 arm64 优化对象与 Swift module 编译，共 804 份源文件。复用与当前基线／SDK 匹配的已编译依赖，逐模块保存并核对构建前后源码摘要；后续完整主应用构建及测试包校验见下。本轮没有真机、真实账号消息跳转和实际发热验收。日志、夹具与截图保存在被忽略的 `build-input/common-groups-bot-retention-20261029/`；构建缓存保留。
 
 
-## b34641 本地测试包
+## b34641 构建与安装包
 
 - 构建源码：`a21427927fdeb7f0ad18f0ce2d26d4989bbb1fca`；后续文档提交不改变应用源码。
 - Xcode 27.1 / iPhoneOS 27.1 SDK 完成 `//Telegram:Regram` 的完整 arm64 Release。构建前后 34,472 份工作区源码摘要一致，复用既有输出缓存；未清理输出或磁盘缓存，Bazel 服务已关闭。

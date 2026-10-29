@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.1.1 / b34639**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34639). This release adds the XChat silver-bubble app icon with iPhone, iPad and settings previews. See the [delivery record](docs/xchat-icon-34639.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.1.1 / b34641**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641). This release rebuilds the common-group messages page with native grouped lists, fixes avatar flicker and message highlighting, limits concurrent searches, and adds an anti-revoke option to exclude bot messages. See the [delivery record](docs/common-group-messages-bot-retention.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 ## Features
 
@@ -17,7 +17,7 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with keyword search, clear-to-restore and navigation to the original message.
-- Messages in common groups: open from a person’s profile More menu, browse their searchable messages across shared groups, filter by group, load more, and return to the original message.
+- Messages in common groups: open from a person’s profile More menu, browse searchable messages in native grouped lists, filter by group and load more. Returning preserves avatars and list state; opening a result highlights the original message. Search concurrency adapts to Low Power Mode and device temperature.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
 - Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
@@ -29,7 +29,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
-- Global/per-chat anti-revoke, a local revoked-message archive, and selected deletion and media-saving controls.
+- Global/per-chat anti-revoke, an optional exclusion for newly revoked bot messages, a local revoked-message archive, and selected deletion and media-saving controls.
 - Deleted-message markers as icons, custom text or hidden, with a custom color and immediate refresh of visible messages.
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
@@ -131,7 +131,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34639 passed the full Xcode 27.1 arm64 Release build, 74 automated checks, XChat icon compilation and package verification for the main app, six extensions and 12 matching dSYMs. Installation identity matches b34638. Latest, the complete public download, the SHA-256 attachment and the production update parser were verified. See the [delivery record](docs/xchat-icon-34639.md) for source, package and validation details.
+b34641 passed the full Xcode 27.1 arm64 Release build, 77 automated checks and 95 assertions in a standalone UIKit fixture. The main app, six extensions, localization resources, strict signatures and 12 matching dSYMs were verified. All seven bundle identities and complete entitlements match b34640, and source hashes stayed unchanged during the build. See the [delivery record](docs/common-group-messages-bot-retention.md) for source, package and validation details.
 
 ## Building
 

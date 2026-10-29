@@ -1,10 +1,10 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34639** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34641** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
-- [共群发言与机器人撤回消息](common-group-messages-bot-retention.md)：2026-10-29 源码修复记录，包含原生列表、头像复用、消息高亮、受限并发与机器人排除开关；附 b34641 本地测试包及校验记录。
+- [共群发言与机器人撤回消息](common-group-messages-bot-retention.md)：2026-10-29 源码修复记录，包含原生列表、头像复用、消息高亮、受限并发与机器人排除开关；附 b34641 安装包、发布及校验记录。
 
 - [b34639 XChat 应用图标](xchat-icon-34639.md)：新增黑底银色气泡图标，包含资源、编译、包校验与正式发布记录。
 
