@@ -1,0 +1,152 @@
+name: TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build only, publish a new build, or retry external distribution
+        type: choice
+        options: [build, publish, distribute]
+        default: publish
+        required: true
+      build_number:
+        description: Existing build number (required for distribute mode)
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regram-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    if: github.ref == 'refs/heads/master'
+    runs-on: xcode-27
+    timeout-minutes: 360
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      BUNDLE_ID: dev.regram.ios
+      TESTFLIGHT_GROUP: External Testers
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      FASTLANE_SKIP_UPDATE_CHECK: "1"
+      FASTLANE_HIDE_CHANGELOG: "1"
+      FASTLANE_DISABLE_COLORS: "1"
+    steps:
+      - name: Checkout master and pinned submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install isolated signing dependencies
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/testflight-python"
+          "$RUNNER_TEMP/testflight-python/bin/pip" install --disable-pip-version-check cryptography==46.0.3
+          echo "$RUNNER_TEMP/testflight-python/bin" >> "$GITHUB_PATH"
+
+      - name: Validate release notes and prepare private signing inputs
+        env:
+          REGRAM_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BUILD_CONFIGURATION }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          DIST_CERT_P12_BASE64: ${{ secrets.DIST_CERT_P12_BASE64 }}
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+          EXISTING_BUILD: ${{ inputs.build_number }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = distribute ] && ! [[ "$EXISTING_BUILD" =~ ^[0-9]+$ ]]; then
+            echo "::error::distribute mode requires a numeric build_number"
+            exit 1
+          fi
+          python3 build-system/ci/testflight.py notes
+          python3 build-system/ci/testflight.py prepare
+
+      - name: Select the next unused App Store Connect build number
+        if: inputs.mode != 'distribute'
+        run: python3 build-system/ci/testflight.py next-build
+
+      - name: Import distribution identity into an ephemeral keychain
+        if: inputs.mode != 'distribute'
+        env:
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/regram-testflight.keychain-db"
+          PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$PASSWORD"
+          echo "SIGNING_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          security create-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN"
+          python3 build-system/ci/private-command.py security import \
+            build-input/testflight/distribution.p12 -k "$KEYCHAIN" -P "$DIST_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security -f pkcs12
+          python3 build-system/ci/private-command.py security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: -s -k "$PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" "$HOME/Library/Keychains/login.keychain-db"
+          rm -f build-input/testflight/distribution.p12
+
+      - name: Fetch and verify real App Store profiles
+        if: inputs.mode != 'distribute'
+        run: python3 build-system/ci/testflight.py profiles
+
+      # Restore only. Saving this directory after signing would publish signing metadata.
+      - name: Restore the existing reference build cache
+        if: inputs.mode != 'distribute'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build-input/ci-cache
+          key: regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-${{ github.sha }}
+          restore-keys: |
+            regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-
+            regram-xcode27-arm64-
+
+      - name: Install Metal toolchain
+        if: inputs.mode != 'distribute'
+        run: |
+          set -euo pipefail
+          xcodebuild -downloadComponent MetalToolchain
+          xcrun --find metal
+
+      - name: Build and verify the signed app with all six extensions
+        if: inputs.mode != 'distribute'
+        run: bash build-system/ci/testflight-build.sh
+
+      - name: Upload to App Store Connect
+        if: inputs.mode == 'publish'
+        run: |
+          set -euo pipefail
+          python3 build-system/ci/private-command.py fastlane pilot upload \
+            --api_key_path build-input/testflight/api-key.json \
+            --ipa bazel-bin/Telegram/Regram.ipa --app_identifier "$BUNDLE_ID" \
+            --skip_submission true --skip_waiting_for_build_processing true
+
+      - name: Attach external group and submit Beta App Review
+        if: inputs.mode == 'publish' || inputs.mode == 'distribute'
+        env:
+          EXISTING_BUILD: ${{ inputs.build_number }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = distribute ]; then
+            BUILD_NUMBER="$EXISTING_BUILD"
+          fi
+          python3 build-system/ci/testflight.py distribute --build "$BUILD_NUMBER"
+
+      - name: Remove private signing inputs
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -n "${SIGNING_KEYCHAIN:-}" ]; then
+            security delete-keychain "$SIGNING_KEYCHAIN"
+          fi
+          rm -rf build-input/testflight build-input/configuration-repository
+          rm -rf "$HOME/.appstoreconnect/private_keys" "$HOME/.itmstransporter"
+          rm -rf "$HOME/Library/Logs/Transporter" "$HOME/.fastlane"

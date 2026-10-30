@@ -1,0 +1,7 @@
+Regram Messenger 13.1.1
+
+Initial TestFlight build of the Regram Telegram client.
+
+Please test sign-in, messaging, media playback, calls, push notifications, the share extension, widgets, and Regram settings. Check message filtering, locally retained message history, translation, and speech recognition with the providers you configure.
+
+Report the steps to reproduce any issue and your iOS version. Avoid including private messages or account credentials in reports.
