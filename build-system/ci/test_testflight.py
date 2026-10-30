@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from prepare import VARIABLES
-from testflight import (Connect, distribute, next_build, release_notes,
+from testflight import (Connect, distribute, invite_internal_testers, next_build, release_notes,
                         signing_configuration, validate_profile, wait_for_build)
 
 
@@ -131,6 +131,26 @@ class DistributionTests(unittest.TestCase):
         client.all.return_value = [{"attributes": {"name": "External", "isInternalGroup": True}}]
         with self.assertRaisesRegex(ValueError, "external TestFlight"):
             distribute(client, "app", "External", "101", "1.0", "Notes")
+
+    def test_only_pending_internal_testers_are_invited(self):
+        client = Mock()
+        groups = [{"id": "internal", "attributes": {"isInternalGroup": True}},
+                  {"id": "external", "attributes": {"isInternalGroup": False}}]
+        testers = [{"id": "pending", "attributes": {"state": "NOT_INVITED"}},
+                   {"id": "accepted", "attributes": {"state": "ACCEPTED"}}]
+        client.all.side_effect = [groups, testers]
+        invite_internal_testers(client, "app")
+        client.all.assert_any_call("/v1/betaGroups/internal/betaTesters", limit=200)
+        self.assertEqual(client.request.call_count, 1)
+        body = client.request.call_args.args[2]["data"]["relationships"]
+        self.assertEqual(body["betaTester"]["data"]["id"], "pending")
+
+    def test_rejected_internal_invitation_does_not_fail_release(self):
+        client = Mock()
+        client.all.side_effect = [[{"id": "internal", "attributes": {"isInternalGroup": True}}],
+                                  [{"id": "pending", "attributes": {"state": "NOT_INVITED"}}]]
+        client.request.side_effect = RuntimeError("App Store Connect POST failed (HTTP 409)")
+        invite_internal_testers(client, "app")
 
     def test_missing_or_oversized_notes_fail_before_upload(self):
         with tempfile.TemporaryDirectory() as temporary:

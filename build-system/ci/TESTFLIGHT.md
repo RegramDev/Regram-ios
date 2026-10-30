@@ -5,6 +5,10 @@ target with an Apple Distribution identity, includes all six extensions, verifie
 the signed IPA, uploads it to App Store Connect, and submits the processed build
 to Beta App Review for the **External Testers** group.
 
+The internal **Admins** group receives every build automatically. After a build
+is valid, distribution also sends any pending internal invitations. The App Store
+Connect app uses Limited Access, so only Admin-role users can see it.
+
 The app's registered bundle ID is `dev.regram.ios`. Its App Store Connect name is
 **Regram Messenger**; the installed app keeps the Regram name.
 
@@ -44,6 +48,12 @@ workflow inputs, source literals, or documentation:
 | `ASC_KEY_P8_BASE64` | Base64 encoded API private key |
 | `DIST_CERT_P12_BASE64` | Base64 encoded distribution certificate and private key |
 | `DIST_CERT_PASSWORD` | Password for the distribution certificate archive |
+
+The `ASC_KEY_*` secrets belong to a team API key used only by this workflow, with
+the App Manager role. Revoking it in App Store Connect under **Users and Access ›
+Integrations › App Store Connect API** stops the workflow without affecting other
+apps. To resume, generate a new App Manager key and replace `ASC_KEY_ID`,
+`ASC_ISSUER_ID`, and `ASC_KEY_P8_BASE64`.
 
 The workflow replaces the reference build's installation identity with the
 registered TestFlight app, while preserving its Telegram API and Regram

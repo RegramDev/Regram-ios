@@ -393,6 +393,30 @@ def distribute(client, app, group_name, build, version, notes):
     print("Verified external TestFlight group membership")
 
 
+def invite_internal_testers(client, app):
+    # Apple keeps internal testers NOT_INVITED until the first installable build exists.
+    invited = failed = 0
+    for group in client.all(f"/v1/apps/{app}/betaGroups", limit=200):
+        if not group["attributes"]["isInternalGroup"]:
+            continue
+        for tester in client.all(f"/v1/betaGroups/{group['id']}/betaTesters", limit=200):
+            if tester["attributes"].get("state") != "NOT_INVITED":
+                continue
+            try:
+                client.request("POST", "/v1/betaTesterInvitations", {"data": {
+                    "type": "betaTesterInvitations", "relationships": {
+                        "app": {"data": resource("apps", app)},
+                        "betaTester": {"data": resource("betaTesters", tester["id"])},
+                    },
+                }})
+                invited += 1
+            except RuntimeError:
+                failed += 1
+    print(f"Invited {invited} pending internal tester(s)")
+    if failed:
+        print(f"::warning::{failed} internal invitation(s) were not accepted yet; rerun distribute later")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["prepare", "profiles", "configure", "next-build", "distribute", "notes", "verify"])
@@ -424,6 +448,7 @@ def main():
             raise ValueError("A numeric build number is required for distribution")
         distribute(Connect(), os.environ["ASC_APP_ID"], os.environ["TESTFLIGHT_GROUP"],
                    build, versions["app"], release_notes(args.notes))
+        invite_internal_testers(Connect(), os.environ["ASC_APP_ID"])
 
 
 if __name__ == "__main__":
