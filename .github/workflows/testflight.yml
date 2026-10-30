@@ -97,6 +97,14 @@ jobs:
         if: inputs.mode != 'distribute'
         run: python3 build-system/ci/testflight.py profiles
 
+      - name: Reclaim hosted runner simulator space
+        if: inputs.mode != 'distribute'
+        run: |
+          xcrun simctl delete all || true
+          xcrun simctl runtime delete all || true
+          sudo rm -rf /Library/Developer/CoreSimulator/Caches || true
+          df -h .
+
       # Restore only. Saving this directory after signing would publish signing metadata.
       - name: Restore the existing reference build cache
         if: inputs.mode != 'distribute'

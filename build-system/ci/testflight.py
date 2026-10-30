@@ -306,8 +306,8 @@ def verify_ipa(root):
                     or entitlements.get("application-identifier") != config["telegram_team_id"] + "." + info["CFBundleIdentifier"]
                     or entitlements.get("get-task-allow", False)):
                 raise ValueError("Signed entitlements do not match the distribution configuration")
-            prefix = str(Path(temporary) / "signer")
-            result = subprocess.run(["codesign", "-d", "--extract-certificates", prefix, str(bundle)],
+            prefix = str(Path(temporary) / ("signer-" + bundle.name))
+            result = subprocess.run(["codesign", "-d", "--extract-certificates=" + prefix, str(bundle)],
                                     capture_output=True)
             if result.returncode or Path(prefix + "0").read_bytes() != (root / "distribution.cer").read_bytes():
                 raise ValueError("Signed bundle does not use the selected distribution certificate")
