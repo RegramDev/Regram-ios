@@ -90,6 +90,7 @@ def main():
     run('chat-action-policies', ['python3', 'Regram/RGSimpleSettings/Tests/run-chat-action-checks.py'])
     run('remark-search', ['python3', 'Regram/RGSimpleSettings/Tests/run-group-remark-search-checks.py'])
     run('search-typing', ['python3', 'Regram/RGSimpleSettings/Tests/run-search-typing-checks.py'])
+    run('search-rendering', ['python3', 'Regram/RGSimpleSettings/Tests/run-search-rendering-checks.py'])
     run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('llm-endpoint-urls', ['python3', 'Regram/RGGTranslate/Tests/run-url-checks.py'])
     run('transcription-routing', ['python3', 'Regram/RGTranscription/Tests/run-routing-checks.py'])
