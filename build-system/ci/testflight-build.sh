@@ -30,12 +30,13 @@ python3 build-system/ci/testflight.py configure --bazel "$bazel_path"
 git -C build-system/bazel-rules/rules_apple apply --check ../../patches/rules_apple-local.patch
 git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-local.patch
 
-identity="$(cat build-input/testflight/identity)"
+# rules_apple matches an explicit certificate name against the identity's name only.
+# Without one, it signs with the keychain identity listed in each verified profile.
 # Signed outputs contain the signing organization. Keep caches and raw compiler
 # diagnostics only on this ephemeral runner, never in public Actions artifacts.
 python3 build-system/ci/private-command.py \
   "$bazel_path" --nohome_rc --host_jvm_args=-Xmx1536m build //Telegram:Regram \
-  --ios_signing_cert_name="$identity" --xcode_version="$xcode_selector" \
+  --xcode_version="$xcode_selector" \
   --action_env="XCODE_VERSION_OVERRIDE=$DEVELOPER_DIR" \
   --define="buildNumber=$BUILD_NUMBER" -c opt --ios_multi_cpus=arm64 \
   --watchos_cpus=armv7k,arm64_32 --apple_generate_dsym --output_groups=+dsyms \
