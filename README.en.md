@@ -6,6 +6,8 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 
 **13.1.1 / b34641**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641). This release rebuilds the common-group messages page with native grouped lists, fixes avatar flicker and message highlighting, limits concurrent searches, and adds an anti-revoke option to exclude bot messages. See the [delivery record](docs/common-group-messages-bot-retention.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
+The current source is **13.1.2 / b34643**, including the upstream sync and top-search rendering fix. `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md). The download link above still points to the published b34641 release.
+
 ## Features
 
 ### Messages and chats

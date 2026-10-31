@@ -6,6 +6,8 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 当前版本 **13.1.1 / b34641**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34641)。本版重构共同群组发言界面，修复返回时头像闪烁及原消息高亮，增加受限并发与防撤回机器人排除开关。详情见[本轮记录](docs/common-group-messages-bot-retention.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
 
+当前源码为 **13.1.2 / b34643**，包含上游同步和顶部搜索刷新修正。`master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。上面的下载链接仍对应已发布的 b34641。
+
 ## 功能
 
 ### 消息与聊天管理

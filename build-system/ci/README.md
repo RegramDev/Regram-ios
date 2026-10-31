@@ -1,5 +1,9 @@
 # Regram CI 构建与发布
 
+`master` 用于侧载参考 IPA；`regram-beta` 用于 TestFlight。TestFlight 的签名、上传、送审脚本及[使用说明](https://github.com/RegramDev/Regram-ios/blob/regram-beta/build-system/ci/TESTFLIGHT.md)位于 `regram-beta`。
+
+GitHub 要求手动工作流入口存在于默认分支，因此 `master` 保留同名 `TestFlight` 入口，但只提示选择 `regram-beta`，不读取签名 Secret、构建或上传。操作路径为 Actions → TestFlight → Run workflow → 选择 `regram-beta`。日常发布选择 `publish`，`build_number` 留空；上传后的分发重试选择 `distribute` 并填写已上传的构建号。
+
 TestFlight 的签名构建、上传、外部测试分组与重试方式见 [TestFlight](TESTFLIGHT.md)。
 
 版本和构建号由根目录 versions.json 的 app/build 声明。Actions 与本地构建均通过 versioning.py 读取，工作流重跑不会递增。
