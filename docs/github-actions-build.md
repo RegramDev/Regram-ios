@@ -6,7 +6,7 @@
 
 调试符号用于构建时 UUID 校验，其归档保留在构建目录，不作为 Actions 附件上传；`BUILD-MANIFEST.json` 另以 `package-verification` 附件保存，文件名、源码提交和 SHA-256 同时写入该次构建的 Summary。推送构建不会创建 Release。
 
-`regram-beta` 使用 `com.regram.app` 和 `group.com.regram.app`，只提供 Actions 安装包；下列 Release 流程仍只适用于 master。
+`regram-beta` 统一使用 `dev.regram.ios` 和 `group.dev.regram.ios`，通过手动 [TestFlight 工作流](../build-system/ci/TESTFLIGHT.md)签名、上传和外部分发；推送仍可生成 Actions 参考安装包。下列 GitHub Release 流程只适用于 master。
 
 ## 确认后发布 Release
 

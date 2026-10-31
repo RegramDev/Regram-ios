@@ -1,6 +1,7 @@
 import Foundation
 
-public let FALLBACK_BASE_BUNDLE_ID: String = "com.regram.app"
+// MARK: Regram — the beta application and all extensions share their registered App Group.
+public let FALLBACK_BASE_BUNDLE_ID: String = "dev.regram.ios"
 
 public func rgBaseBundleIdentifier() -> String {
     return FALLBACK_BASE_BUNDLE_ID
@@ -111,7 +112,7 @@ public func rgSignatureGrants(_ entitlement: String) -> Bool {
 }
 
 public func rgOwnAppGroupIdentifier() -> String {
-    return "group.com.regram.app"
+    return "group." + FALLBACK_BASE_BUNDLE_ID
 }
 
 private func rgAppGroupCandidates() -> [String] {

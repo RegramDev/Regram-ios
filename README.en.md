@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, and appearance customization.
 
-This branch is **regram-beta / 13.1.1 / b34638**. See [Actions builds](https://github.com/RegramDev/Regram-ios/actions/workflows/build.yml?query=branch%3Aregram-beta) for Beta packages. This sync brings the applicable b34631–b34638 mainline changes, including local gift and profile customization, message search, first-launch daily tasks, startup and network crash fixes, quote selection and channel remarks, plus the XChat alternate app icon. See the [Beta integration record](docs/beta-sync-20261028.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+This is **regram-beta / 13.1.2 / b34643**, the TestFlight branch. It includes the current mainline updates, Telegram 13.1.2, and chat-list search typing fixes. See [TestFlight](build-system/ci/TESTFLIGHT.md), the [beta sync record](docs/beta-sync-20261031.md), [feature list](docs/features.md), and [changelog](docs/changelog.md). Sideload packages and GitHub Releases use `master`.
 
 ## Features
 
@@ -17,7 +17,7 @@ This branch is **regram-beta / 13.1.1 / b34638**. See [Actions builds](https://g
 - Double-tap actions: react, show reactions, reply, repeat, repeat without attribution, translate, edit, or disable. Messages without editing permission can use a separate action.
 - Enable, hide and reorder available message-menu actions, respecting message types and account permissions.
 - A separate paginated page for a sender's messages in the current chat or topic, opened from the avatar menu, with keyword search, clear-to-restore and navigation to the original message.
-- Messages in common groups: open from a person’s profile More menu, browse their searchable messages across shared groups, filter by group, load more, and return to the original message.
+- Messages in common groups: open from a person’s profile More menu, browse searchable messages in native grouped lists, filter by group and load more. Returning preserves avatars and list state; opening a result highlights the original message. Search concurrency adapts to Low Power Mode and device temperature.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
 - Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
@@ -29,7 +29,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
-- Global/per-chat anti-revoke, a local revoked-message archive, and selected deletion and media-saving controls.
+- Global/per-chat anti-revoke, an optional exclusion for newly revoked bot messages, a local revoked-message archive, and selected deletion and media-saving controls.
 - Deleted-message markers as icons, custom text or hidden, with a custom color and immediate refresh of visible messages.
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
@@ -124,11 +124,11 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-This branch integrates the applicable **13.1.1 / b34638** mainline changes while retaining `com.regram.app`, `group.com.regram.app` and the absence of in-app update installation. This sync includes source changes and related checks, with no Beta package build, device validation or CI build triggered. Mainline package validation and release records do not validate the Beta package. See the [Beta integration record](docs/beta-sync-20261028.md).
+This branch integrates applicable **13.1.2 / b34643** changes and continues to exclude in-app IPA updates. All builds use `dev.regram.ios` / `group.dev.regram.ios`, shared by the main application and all six extensions. See the [beta sync record](docs/beta-sync-20261031.md) for validation scope. Historical mainline package checks do not validate a beta package.
 
 ## Building
 
-Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.1.1 upstream integration record](docs/upstream-sync-20261023.md) for compatibility and verification scope.
+Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.1.2 upstream integration record](docs/upstream-sync/13.1.2.md) for compatibility and verification scope.
 
 ```sh
 git clone --branch regram-beta --recursive https://github.com/RegramDev/Regram-ios.git
@@ -143,7 +143,7 @@ git -C build-system/bazel-rules/rules_apple apply --check ../../patches/rules_ap
 git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-local.patch
 ```
 
-Copy the configuration template into ignored `build-input/`, retain this branch's Bundle ID `com.regram.app`, and supply your own Telegram API credentials and Team ID. Obtain Telegram API credentials from [my.telegram.org](https://my.telegram.org/apps).
+Copy the configuration template into ignored `build-input/`, retain this branch's Bundle ID `dev.regram.ios`, and supply your own Telegram API credentials and Team ID. Obtain Telegram API credentials from [my.telegram.org](https://my.telegram.org/apps).
 
 ```sh
 mkdir -p build-input
@@ -187,6 +187,6 @@ The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging g
 
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
 
-This branch uses `com.regram.app` and `group.com.regram.app`. The application and six extensions share the declared App Group. Application update downloads, certificate imports and IPA installation are excluded.
+This branch uses `dev.regram.ios` and `group.dev.regram.ios`. The application and six extensions share the declared App Group. Application update downloads, certificate imports and IPA installation are excluded.
 
-The source baseline is [Telegram’s official master branch](https://github.com/TelegramMessenger/Telegram-iOS/tree/master), revision `fb0e62ba8a147f0821da6aa63c09da7d79a10111` (13.1.1), with Regram changes maintained on top. The `regram-beta` branch in this repository is a separate product branch.
+The source baseline is [Telegram’s official master branch](https://github.com/TelegramMessenger/Telegram-iOS/tree/master), revision `279f89e4d4f63f17227bf877dc3d8990f22ecd58` (13.1.2), with Regram changes maintained on top. The `regram-beta` branch in this repository is a separate product branch.

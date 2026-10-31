@@ -29,7 +29,7 @@ public enum RGProSearchIndex {
         "disableLinkPreview": ["LinkPreview.Disable", "link preview 链接 预览"],
         "panguSpacing": ["Pangu.Title", "spacing 盘古 空格"],
         "defaultOutgoingFormatting": ["OutgoingFormatting.Title", "format bold italic 默认 格式 加粗 斜体"],
-        "antiFeatures": ["AntiFeatures.Header", "AntiFeatures.Revoke", "AntiFeatures.AutoDelete", "AntiFeatures.SelfDestruct", "AntiFeatures.Screenshot", "AntiFeatures.SaveProtected", "AntiFeatures.SaveProtectedStories", "AntiFeatures.DisableAds", "privacy ads sponsored 隐私 广告 赞助 防撤回"],
+        "antiFeatures": ["AntiFeatures.Header", "AntiFeatures.Revoke", "AntiFeatures.IgnoreBots", "AntiFeatures.AutoDelete", "AntiFeatures.SelfDestruct", "AntiFeatures.Screenshot", "AntiFeatures.SaveProtected", "AntiFeatures.SaveProtectedStories", "AntiFeatures.DisableAds", "privacy ads sponsored bots 隐私 广告 赞助 防撤回 机器人 機器人"],
         "antiRevokeChats": ["AntiRevoke.Chats.Title", "revoked chats 防撤回 会话"],
         "ghostMode": ["Ghost.Header", "Ghost.DontReadStories", "Ghost.DontSendOnline", "Ghost.DontSendTyping", "ghost online typing 幽灵 在线 输入状态 快拍"],
         "pinnedMessageNotifications": ["Notifications.PinnedMessages.Title", "pinned notification 置顶 通知"],

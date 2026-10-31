@@ -29,6 +29,7 @@ private struct RGPrivacyToggle {
 
 private enum RGPrivacyToolsToggle: String {
     case antiRevoke
+    case antiRevokeIgnoreBots
     case saveEditHistory
     case antiAutoDelete
     case antiSelfDestruct
@@ -48,6 +49,7 @@ private func antiFeatureToggles() -> [RGPrivacyToggle] {
     let settings = RGSimpleSettings.shared
     return [
         RGPrivacyToggle(setting: .antiRevoke, localizationKey: "AntiFeatures.Revoke", get: { settings.antiRevoke }, set: { settings.antiRevoke = $0 }),
+        RGPrivacyToggle(setting: .antiRevokeIgnoreBots, localizationKey: "AntiFeatures.IgnoreBots", get: { settings.antiRevokeIgnoreBots }, set: { settings.antiRevokeIgnoreBots = $0 }),
         RGPrivacyToggle(setting: .saveEditHistory, localizationKey: "AntiFeatures.EditHistory", get: { settings.saveEditHistory }, set: { settings.saveEditHistory = $0 }),
         RGPrivacyToggle(setting: .antiAutoDelete, localizationKey: "AntiFeatures.AutoDelete", get: { settings.antiAutoDelete }, set: { settings.antiAutoDelete = $0 }),
         RGPrivacyToggle(setting: .antiSelfDestruct, localizationKey: "AntiFeatures.SelfDestruct", get: { settings.antiSelfDestruct }, set: { settings.antiSelfDestruct = $0 }),
@@ -77,6 +79,9 @@ private func rgPrivacyToolsController(context: AccountContext, title: String, no
         var entries: [RGPrivacyToolsEntry] = []
         for toggle in toggles {
             entries.append(.toggle(id: id.count, section: .main, settingName: toggle.setting, value: toggle.get(), text: toggle.localizationKey.i18n(lang), enabled: true))
+            if toggle.setting == .antiRevokeIgnoreBots {
+                entries.append(.notice(id: id.count, section: .main, text: "AntiFeatures.IgnoreBotsNotice".i18n(lang)))
+            }
         }
         if page == "antiFeatures" {
             entries.append(.disclosure(id: id.count, section: .main, link: AnyHashable("revokedMarker"), text: "RevokedMarker.Title".i18n(lang)))

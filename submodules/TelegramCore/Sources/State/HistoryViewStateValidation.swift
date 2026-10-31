@@ -995,7 +995,7 @@ private func validateBatch(postbox: Postbox, network: Network, transaction: Tran
                                 } else {
                                     // MARK: Regram — Anti-revoke. History validation prunes anything the server no
                                     // longer returns, which would silently undo the kept messages.
-                                    if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
+                                    if !rgShouldRetainRevokedMessage(transaction: transaction, id: id) {
                                         _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
                                     } else {
                                         rgMarkMessageRevoked(transaction: transaction, id: id, reason: .unavailable)
@@ -1184,7 +1184,7 @@ private func validateReplyThreadBatch(postbox: Postbox, network: Network, transa
                         if !validMessageIds.contains(id) {
                             // MARK: Regram — Anti-revoke. History validation prunes anything the server no
                             // longer returns, which would silently undo the kept messages.
-                            if !RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: id.peerId.toInt64()) {
+                            if !rgShouldRetainRevokedMessage(transaction: transaction, id: id) {
                                 _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [id])
                             } else {
                                 rgMarkMessageRevoked(transaction: transaction, id: id, reason: .unavailable)

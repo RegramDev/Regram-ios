@@ -5629,7 +5629,8 @@ final class ChatListSearchListPaneNode: ASDisplayNode, ChatListSearchPaneNode {
             self.enqueuedTransitions.remove(at: 0)
 
             var options = ListViewDeleteAndInsertOptions()
-            if isFirstTime && [.chats, .topics, .channels, .apps, .globalPosts].contains(self.key) {
+            // MARK: Regram — query changes must leave row layout, resource loading and drawing asynchronous.
+            if isFirstTime && (transition.query?.isEmpty ?? true) && [.chats, .topics, .channels, .apps, .globalPosts].contains(self.key) {
                 options.insert(.PreferSynchronousDrawing)
                 options.insert(.PreferSynchronousResourceLoading)
                 options.insert(.Synchronous)

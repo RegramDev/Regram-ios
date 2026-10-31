@@ -1244,3 +1244,7 @@
 "Settings.HideMessageForwardButton.Notice" = "隱藏訊息旁的轉發箭頭，適用於文字、媒體和貼圖。仍可從訊息選單轉發。";
 "Settings.AutoSelectDeleteModerationActions" = "刪除訊息自動一鍵三連";
 "Settings.AutoSelectDeleteModerationActions.Notice" = "管理員刪除群組訊息時，自動勾選檢舉垃圾訊息、刪除傳送者全部訊息與回應、封鎖。僅勾選有權限的操作，繼續前可檢視或取消勾選。";
+
+"AntiFeatures.IgnoreBots" = "不保留機器人訊息";
+"AntiFeatures.IgnoreBotsNotice" = "開啟後，機器人傳送的訊息被撤回時會正常刪除，適用於全域及單獨開啟防撤回的對話。已有撤回記錄不會自動清理。";
+"CommonGroups.Cooling" = "裝置溫度較高，降溫後繼續查詢";

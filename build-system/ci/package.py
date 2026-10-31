@@ -62,8 +62,8 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
     config = json.loads(configuration.read_text())
     destination.mkdir(parents=True, exist_ok=True)
     version = json.loads((root / 'versions.json').read_text())['app']
-    if config['telegram_bundle_id'] != 'com.regram.app':
-        raise RuntimeError('This branch requires Bundle ID com.regram.app')
+    if config['telegram_bundle_id'] != 'dev.regram.ios':
+        raise RuntimeError('This branch requires Bundle ID dev.regram.ios')
     filename = f'Regram-{version}-b{build_number}.ipa'
     final = destination / filename
     if final.exists():

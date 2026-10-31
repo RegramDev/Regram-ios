@@ -1253,3 +1253,7 @@ Matching is case-insensitive.";
 "Settings.HideMessageForwardButton.Notice" = "Hide the forward arrow beside messages, including media and stickers. Forwarding remains available in the message menu.";
 "Settings.AutoSelectDeleteModerationActions" = "Auto-select Moderation Actions";
 "Settings.AutoSelectDeleteModerationActions.Notice" = "When deleting group messages as an admin, preselect report spam, delete all messages and reactions from the senders, and ban. Only available actions are selected; review or uncheck them before continuing.";
+
+"AntiFeatures.IgnoreBots" = "Do Not Keep Bot Messages";
+"AntiFeatures.IgnoreBotsNotice" = "When enabled, revoked messages sent by bots are deleted normally, in all chats covered by anti-revoke. Existing revoked-message records are kept.";
+"CommonGroups.Cooling" = "Search paused until the device cools down";

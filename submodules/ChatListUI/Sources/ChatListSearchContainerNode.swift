@@ -734,14 +734,34 @@ public final class ChatListSearchContainerNode: SearchDisplayControllerContentNo
     override public func searchTextUpdated(text: String) {
         let searchQuery: String? = !text.isEmpty ? text : nil
 
+        // MARK: Regram — coalesce typing before starting queries or parsing date suggestions.
+        guard self.searchQueryValue != searchQuery else {
+            return
+        }
+        self.searchQueryValue = searchQuery
+
         if !text.hasPrefix("#") && self.paneContainerNode.currentPaneKey == .publicPosts {
             self.paneContainerNode.requestSelectPane(.chats)
         }
-        
-        self.searchQuery.set(.single(searchQuery))
-        self.searchQueryValue = searchQuery
-        
-        self.suggestedDates.set(.single(suggestDates(for: text, strings: self.presentationData.strings, dateTimeFormat: self.presentationData.dateTimeFormat)))
+
+        if text.isEmpty {
+            self.searchQuery.set(.single(nil))
+            self.suggestedDates.set(.single([]))
+        } else {
+            // Promise replacement cancels the pending value; clearing stays immediate.
+            self.searchQuery.set(.single(searchQuery) |> delay(0.12, queue: Queue.mainQueue()))
+
+            let strings = self.presentationData.strings
+            let dateTimeFormat = self.presentationData.dateTimeFormat
+            self.suggestedDates.set(
+                (Signal<String, NoError>.single(text)
+                |> delay(0.12, queue: Queue.concurrentDefaultQueue())
+                |> map { text in
+                    suggestDates(for: text, strings: strings, dateTimeFormat: dateTimeFormat)
+                })
+                |> deliverOnMainQueue
+            )
+        }
     }
     
     private func currentPaneUpdated(_ key: ChatListSearchPaneKey, transitionFraction: CGFloat = 0.0, transition: ContainedViewLayoutTransition) {

@@ -1,10 +1,16 @@
 # Regram CI 构建与发布
 
+`master` 用于侧载参考 IPA；`regram-beta` 用于 TestFlight。TestFlight 的签名、上传、送审脚本及[使用说明](https://github.com/RegramDev/Regram-ios/blob/regram-beta/build-system/ci/TESTFLIGHT.md)位于 `regram-beta`。
+
+GitHub 要求手动工作流入口存在于默认分支，因此 `master` 保留同名 `TestFlight` 入口，但只提示选择 `regram-beta`，不读取签名 Secret、构建或上传。操作路径为 Actions → TestFlight → Run workflow → 选择 `regram-beta`。日常发布选择 `publish`，`build_number` 留空；上传后的分发重试选择 `distribute` 并填写已上传的构建号。
+
+TestFlight 的签名构建、上传、外部测试分组与重试方式见 [TestFlight](TESTFLIGHT.md)。
+
 版本和构建号由根目录 versions.json 的 app/build 声明。Actions 与本地构建均通过 versioning.py 读取，工作流重跑不会递增。
 
 Build Regram 在 macOS/Xcode 27 作业内构建 Regram，保留主应用与六个扩展，输出一份 IPA 和验证报告。
 
-仓库 Secret `REGRAM_BETA_BUILD_CONFIGURATION` 使用 prepare.py 的 VARIABLES 完整配置结构，Bundle ID 为 `com.regram.app`，App Group 为 `group.com.regram.app`，API 配置保存在私有构建输入中。凭据仅写入忽略的 build-input/ci，结束时清除。不得把真实 API 凭据、证书或生成的配置加入提交。
+仓库 Secret `REGRAM_BETA_BUILD_CONFIGURATION` 使用 prepare.py 的 VARIABLES 完整配置结构。本分支所有构建统一使用 `dev.regram.ios`／`group.dev.regram.ios`，Secret 内的 `telegram_bundle_id` 也须为 `dev.regram.ios`。TestFlight 保留相同 API 与 Regram 设置，使用真实 App Store 签名。凭据仅写入忽略的 build-input，结束时清除。不得把真实 API 凭据、证书或生成的配置加入提交。
 
 安装包使用 `Regram-version-bbuild.ipa` 文件名，原始下载、签名、版本和校验信息继续验证；不再生成多身份包。
 

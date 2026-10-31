@@ -63,6 +63,9 @@ extension UserDefaults {
         settings.messageSummaryEnabled = true
         expect(!settings.automaticallyRevealSpoilers, "Spoilers must remain concealed by default")
         settings.automaticallyRevealSpoilers = true
+        expect(!settings.antiRevokeIgnoreBots, "Bot exclusion must preserve existing retention behavior until enabled")
+        settings.antiRevokeIgnoreBots = true
+        expect(UserDefaults(suiteName: suite + "-group")!.bool(forKey: "antiRevokeIgnoreBots"), "Bot exclusion must reach extension deletion processing")
         settings.panguSpacing = false
         settings.defaultOutgoingFormatting = "none"
         settings.fontFamily = "inter"
@@ -98,16 +101,19 @@ extension UserDefaults {
         let backup = settings.exportPreferences(categories: Set(RGBackupCategory.allCases))
         expect(backup.values["api_hash"] == nil && backup.values["status"] == nil && backup.values["primaryUserId"] == nil, "Export must include allowlisted preferences only")
         expect(backup.selectedValues(categories: [.messages])["automaticallyRevealSpoilers"] == .bool(true), "Spoiler display must persist in message settings backups")
+        expect(backup.selectedValues(categories: [.privacy])["antiRevokeIgnoreBots"] == .bool(true), "Bot exclusion belongs in privacy backups")
         let decoded = try RGSettingsBackup.decode(backup.encoded())
         expect(decoded.values == backup.values, "All exported defaults must round-trip with correct types")
         settings.fontFamily = "lora"
         settings.automaticallyRevealSpoilers = false
+        settings.antiRevokeIgnoreBots = false
         settings.panguSpacing = true
         settings.messageFilterRules = [RGMessageFilterRule(pattern: "different")]
         _ = settings.messageFilterRules; _ = settings.fontFamily
         let generation = settings.contentFilterGeneration
         settings.applyPreferences(decoded.values)
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
+        expect(settings.antiRevokeIgnoreBots && UserDefaults(suiteName: suite + "-group")!.bool(forKey: "antiRevokeIgnoreBots"), "Restore must update bot exclusion in shared preferences")
         expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model", "Summary preferences must round-trip")
         expect(settings.revokedMarker.text == "test撤回" && settings.revokedMarker.color == "#AABBCC", "Marker preferences must restore from backups")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
@@ -133,6 +139,7 @@ extension UserDefaults {
         expect(!settings.networkPolicy.disableBackupAddresses && !RGNetworkPolicy(defaults: group).disableBackupAddresses, "Backup discovery reset must reach extensions")
         expect(!settings.networkPolicy.dohEnabled && RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .automatic, "Transport reset must update the extension too")
         settings.applyPreferences([:], resetCategories: [.privacy])
+        expect(!settings.antiRevokeIgnoreBots && !UserDefaults(suiteName: suite + "-group")!.bool(forKey: "antiRevokeIgnoreBots"), "Privacy reset must restore bot retention in the app and extension")
         expect(settings.revokedMarker == RGRevokedMarker(), "Reset restores the original icon marker")
         Self.checkIconSwitching()
         let hide = RGMessageFilterRule(pattern: "spam")

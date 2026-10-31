@@ -1,0 +1,9 @@
+Regram Messenger 13.1.2
+
+Updated to Telegram 13.1.2. This build includes chat-list search responsiveness improvements, common-group message browsing fixes, and an optional exclusion of new bot messages from locally retained deleted-message history.
+
+Please test sign-in, messaging, media playback, calls, push notifications, the share extension, widgets, and Regram settings. Check message filtering, locally retained message history, translation, and speech recognition with the providers you configure.
+
+Please also try fast Chinese and English input in the search field at the top of the chat list, clear and retype queries, and open results. In common-group messages, check filtering, pagination, returning to the list, and opening the original message.
+
+Report the steps to reproduce any issue and your iOS version. Avoid including private messages or account credentials in reports.

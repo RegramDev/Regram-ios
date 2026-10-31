@@ -8,7 +8,7 @@ from package import verify_share_access_entitlements
 class ConfigurationChecks(unittest.TestCase):
     def configuration(self):
         result = {name: (False if kind is bool else '') for name, kind in VARIABLES.items()}
-        result.update(rg_config='{"fixture": true}', telegram_bundle_id='com.regram.app',
+        result.update(rg_config='{"fixture": true}', telegram_bundle_id='dev.regram.ios',
                       telegram_api_id='1', telegram_api_hash='0' * 32,
                       telegram_team_id='TESTTEAM01', telegram_aps_environment='production')
         return result

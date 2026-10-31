@@ -8,7 +8,8 @@ import Foundation
     static func main() throws {
         expect(RGAppIconNames.canonicalName(nil) == nil, "The primary icon remains nil")
         expect(RGAppIconNames.canonicalName("RGAnime") == nil, "Retired RG artwork selects the current primary")
-        for name in ["RGSilver", "BlueIcon", "SGSilver", "SGAnime"] {
+        expect(RGAppIconNames.canonicalName("RGSilver") == "RGSilver", "The existing beta alternate-icon identifier remains available")
+        for name in ["BlueIcon", "SGSilver", "SGAnime"] {
             expect(RGAppIconNames.canonicalName(name) == nil, "Removed artwork must resolve to primary instead of retaining a missing asset")
         }
 

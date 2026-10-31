@@ -4629,15 +4629,10 @@ func replayFinalState(
                 // on for some chats only, each id is resolved to find its chat and only the rest are
                 // deleted.
                 var ids = rgAllIds
-                if RGSimpleSettings.shared.antiRevoke {
-                    for messageId in transaction.messageIdsForGlobalIds(ids) {
-                        rgMarkMessageRevoked(transaction: transaction, id: messageId)
-                    }
-                    break
-                } else if RGSimpleSettings.shared.isAntiRevokeActive {
+                if RGSimpleSettings.shared.isAntiRevokeActive {
                     ids = ids.filter { globalId in
                         let messageIds = transaction.messageIdsForGlobalIds([globalId])
-                        guard let messageId = messageIds.first, RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: messageId.peerId.toInt64()) else {
+                        guard let messageId = messageIds.first, rgShouldRetainRevokedMessage(transaction: transaction, id: messageId) else {
                             return true
                         }
                         for messageId in messageIds {
@@ -4662,7 +4657,7 @@ func replayFinalState(
                 var ids = rgAllIds
                 if RGSimpleSettings.shared.isAntiRevokeActive {
                     ids = ids.filter { messageId in
-                        guard RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: messageId.peerId.toInt64()) else {
+                        guard rgShouldRetainRevokedMessage(transaction: transaction, id: messageId) else {
                             return true
                         }
                         rgMarkMessageRevoked(transaction: transaction, id: messageId)

@@ -14,7 +14,7 @@ KEY = 'com.apple.developer.usernotifications.filtering'
 class NotificationPermissionChecks(unittest.TestCase):
     def test_seven_profiles_request_filtering_only_for_service(self):
         config = {name: (False if kind is bool else '') for name, kind in prepare.VARIABLES.items()}
-        config.update(telegram_bundle_id='com.regram.app', telegram_api_id='1',
+        config.update(telegram_bundle_id='dev.regram.ios', telegram_api_id='1',
                       telegram_api_hash='0' * 32, telegram_team_id='TESTTEAM01',
                       telegram_aps_environment='production')
         with tempfile.TemporaryDirectory(prefix='regram-capability-check-') as directory:
@@ -25,8 +25,8 @@ class NotificationPermissionChecks(unittest.TestCase):
                 result = subprocess.run(['openssl', 'cms', '-verify', '-binary', '-inform', 'DER', '-noverify', '-nosigs', '-in', str(path)], capture_output=True, check=True)
                 rights = plistlib.loads(result.stdout)['Entitlements']
                 self.assertEqual(rights.get(KEY) is True, name == 'NotificationService')
-                self.assertEqual(rights['application-identifier'], 'TESTTEAM01.com.regram.app' + suffix)
-                self.assertEqual(rights['com.apple.security.application-groups'], ['group.com.regram.app'])
+                self.assertEqual(rights['application-identifier'], 'TESTTEAM01.dev.regram.ios' + suffix)
+                self.assertEqual(rights['com.apple.security.application-groups'], ['group.dev.regram.ios'])
 
     def test_package_rejects_missing_or_misplaced_filtering(self):
         with tempfile.TemporaryDirectory(prefix='regram-filtering-boundary-') as directory:

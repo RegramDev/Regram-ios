@@ -1,10 +1,15 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.1 / b34638** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.2 / b34643** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
-本分支为 `regram-beta`，使用 `com.regram.app`／`group.com.regram.app`，不包含应用内更新安装。主线历史构建与真机记录不代表 Beta 包已经验收。
+本分支为 `regram-beta`，统一使用 `dev.regram.ios`／`group.dev.regram.ios`，不包含应用内更新安装。主线历史构建与真机记录不代表 Beta 包已经验收。
 
 ## 功能与使用
+
+- [b34643 顶部搜索快速输入复查](search-typing-followup-34643.md)：处理 b34642 仍卡顿的反馈，将非空查询结果交回异步排版与绘制，包含生产 ListView 对照和本地 IPA 校验记录。
+- [共群发言与机器人撤回消息](common-group-messages-bot-retention.md)：2026-10-29 源码修复记录，包含原生列表、头像复用、消息高亮、受限并发与机器人排除开关；附 b34641 安装包、发布及校验记录。
+
+- [b34639 XChat 应用图标](xchat-icon-34639.md)：新增黑底银色气泡图标，包含资源、编译、包校验与正式发布记录。
 
 - [b34638 引用、频道备注与消息操作](quote-channel-tools-34638.md)：修复盘古选区引用越界，增加频道备注、删除自动一键三连及隐藏消息转发按钮。
 
@@ -32,9 +37,12 @@
 
 ## 构建与维护
 
-- [Beta 同步主线 b34638](beta-sync-20261028.md)：本轮同步范围、XChat 图标、分支约束和未构建的验证边界。
+- [Beta 同步 b34643 与 TestFlight 迁移](beta-sync-20261031.md)：13.1.2、顶部搜索修复、分支身份和检查范围。
+- [TestFlight 使用说明](../build-system/ci/TESTFLIGHT.md)：选择 regram-beta，构建、上传、外部分组与重试方式。
+- [Beta 同步主线 b34638](beta-sync-20261028.md)：历史同步范围、XChat 图标、分支约束和当时未构建的验证边界。
 
 - [上次 Beta 同步记录](beta-sync-20261023.md)：同步主线 13.1.1 / b34630，保留分支身份及无更新安装约定，记录本分支检查。
+- [Telegram 13.1.2 同步与全局搜索输入](upstream-sync/13.1.2.md)：基于 b34641 同步官方上游，合并快速输入查询并将日期解析移到后台，包含回归、模拟器输入夹具及完整 arm64 Release 编译记录。
 - [b34637 网络与启动崩溃修复](crash-fixes-20261025.md)：三份崩溃日志的符号化结果、CFStream 观察流清理及 Postbox 字典解码修正，包含回归和编译范围。
 - [Telegram 13.1.1 上游同步](upstream-sync-20261023.md)：同步范围、现有 UI 保留、功能兼容修正及 b34630 构建与交付记录。
 - [图标与截图标记](../Regram/RGBranding/README.md)：絮语、合流及各配色从同一源派生明确的深浅资源，原默认图标改为备用；截图标记跟随应用主题，保留 Regram、知秋原图。
