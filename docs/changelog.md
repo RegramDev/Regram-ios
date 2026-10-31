@@ -9,6 +9,7 @@
 - TestFlight 签名、上传与外部测试分发移至 `regram-beta`；`master` 保留侧载和 GitHub Release 流程，以及仅提示选择 beta 的手动入口。
 - 保留 Beta 无应用内更新安装的约定；本分支统一改用已注册的 dev.regram.ios，主应用与六个扩展共享各自声明的 App Group。
 - XChat 使用主线方形原画，保留 Beta 的 RGSilver 图标选择。验证与使用方式见 [Beta 同步记录](beta-sync-20261031.md)。
+- 修正 Beta 的旧 Rust／通话子模块与当前 Swift 接口不配套导致的整包编译失败；对齐保留旧修正的主线版本，完整 arm64 Release 编译通过。
 
 ## b34641：共群发言界面与机器人消息排除（2026-10-29）
 
