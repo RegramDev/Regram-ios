@@ -1,5 +1,7 @@
 # Regram CI 构建与发布
 
+TestFlight 的签名构建、上传、外部测试分组与重试方式见 [TestFlight](TESTFLIGHT.md)。
+
 版本和构建号由根目录 versions.json 的 app/build 声明。Actions 与本地构建均通过 versioning.py 读取，工作流重跑不会递增。
 
 Build Regram 在 macOS/Xcode 27 作业内构建 Regram，保留主应用与六个扩展，输出一份 IPA 和验证报告。
