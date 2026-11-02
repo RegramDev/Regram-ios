@@ -556,6 +556,7 @@ Matching is case-insensitive.";
 "StickerSave.Saving" = "Saving sticker…";
 "StickerSave.Success" = "Sticker saved to Photos";
 "StickerSave.Failed" = "Unable to save sticker. Check Photos permission and try again.";
+"MediaSave.Failed" = "Unable to save media. Check Photos permission and available storage, or try another video quality.";
 "ProfileBadge.developer" = "Developer";
 "ProfileBadge.coreTester" = "Core Tester";
 "ProfileBadge.sponsor" = "Sponsor";

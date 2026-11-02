@@ -522,6 +522,7 @@
 "StickerSave.Saving" = "正在保存贴纸…";
 "StickerSave.Success" = "贴纸已保存到相册";
 "StickerSave.Failed" = "保存失败，请检查相册权限后重试。";
+"MediaSave.Failed" = "保存失败，请检查相册权限及可用空间，或尝试其他视频画质。";
 "ProfileBadge.developer" = "开发者";
 "ProfileBadge.coreTester" = "核心测试";
 "ProfileBadge.sponsor" = "赞助者";

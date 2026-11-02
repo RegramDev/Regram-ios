@@ -99,6 +99,7 @@ def main():
     run('settings-storage', ['python3', 'Regram/RGAppGroupIdentifier/Tests/run-storage-checks.py'])
     run('build-configuration', ['python3', 'build-system/ci/test_configuration.py'])
     run('gallery-playback', ['python3', 'Regram/RGGalleryUI/Tests/run-playback-checks.py'])
+    run('gallery-media-save', ['python3', 'Regram/RGGalleryUI/Tests/run-save-checks.py'])
     run('local-pinned-chats', ['python3', 'Regram/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py'])
     run('search-links', ['python3', 'Regram/RGSearchLink/Tests/run-search-link-checks.py'])
     run('inline-bot-queries', ['python3', 'Regram/RGLinkMetadata/Tests/run-inline-query-checks.py'])

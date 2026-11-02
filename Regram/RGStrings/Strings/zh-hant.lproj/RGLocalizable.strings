@@ -500,6 +500,7 @@
 "StickerSave.Saving" = "正在儲存貼紙…";
 "StickerSave.Success" = "貼紙已儲存到相簿";
 "StickerSave.Failed" = "儲存失敗，請檢查相簿權限後重試。";
+"MediaSave.Failed" = "儲存失敗，請檢查相簿權限及可用空間，或嘗試其他影片畫質。";
 "ProfileBadge.developer" = "開發者";
 "ProfileBadge.coreTester" = "核心測試";
 "ProfileBadge.sponsor" = "贊助者";
