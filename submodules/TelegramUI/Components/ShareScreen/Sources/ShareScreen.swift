@@ -714,7 +714,8 @@ public final class ShareScreen: ViewControllerComponentContainer {
             self.isSaving = false
             guard case .generic = error else { return }
             let data = self.context.sharedContext.currentPresentationData.with { $0 }
-            self.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "MediaSave.Failed".i18n(data.strings.rgLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: true, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
+            let language = RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode)
+            self.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "MediaSave.Failed".i18n(language), timeout: nil, customUndoText: nil), elevatedLayout: true, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
         }, completed: { [weak self] in self?.isSaving = false }))
     }
 

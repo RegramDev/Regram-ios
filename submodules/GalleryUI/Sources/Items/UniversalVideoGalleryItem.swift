@@ -3568,15 +3568,17 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
         guard let controller = self.galleryController() else { return }
         let stringSaving = self.presentationData.strings.Story_TooltipSaving
         let stringSaved = self.presentationData.strings.Story_TooltipSaved
+        let language = RGLocalizationManager.shared.preferredLocale(primary: self.presentationData.strings.primaryComponent.languageCode, secondary: self.presentationData.strings.secondaryComponent?.languageCode)
+        let failureText = "MediaSave.Failed".i18n(language)
         let saveScreen = SaveProgressScreen(context: self.context, content: .progress(stringSaving, 0.0))
         controller.present(saveScreen, in: .current)
-        let disposable = (SaveToCameraRoll.saveToCameraRollWithError(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
-        |> deliverOnMainQueue).start(next: { [weak saveScreen] progress in
+        let saveSignal: Signal<Float, SaveToCameraRollError> = SaveToCameraRoll.saveToCameraRollWithError(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
+        let disposable = (saveSignal |> deliverOnMainQueue).start(next: { [weak saveScreen] progress in
             saveScreen?.content = .progress(stringSaving, progress)
         }, error: { [weak self, weak saveScreen] error in
             saveScreen?.dismiss()
             guard let self, case .generic = error, let controller = self.galleryController() else { return }
-            controller.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: "MediaSave.Failed".i18n(self.presentationData.strings.rgLanguageCode), timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
+            controller.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: failureText, timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
         }, completed: { [weak saveScreen] in
             saveScreen?.content = .completion(stringSaved)
             Queue.mainQueue().after(3.0, { [weak saveScreen] in saveScreen?.dismiss() })
