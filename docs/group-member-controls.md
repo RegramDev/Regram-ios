@@ -35,3 +35,20 @@ Xcode **27.1（27A9275）** 完成 `//Telegram:Regram` 的完整 **arm64 Release
 运行日志、源码摘要和构建结果位于本轮工作树的 `build-input/group-member-controls/`。构建完成后已关闭本轮 Bazel 服务，退出码 **0**；保留 `/Users/yuki/Library/Caches/RegramBuild/upstream-13.1.1` 及项目可复用缓存，未运行 clean 或 expunge。
 
 初次功能实现阶段未制作新的侧载参考交付包或发布 Release，没有在真机、真实群聊或实际 APNs 到达场景中执行功能验收。隔离回归验证生产判断与角标逻辑，完整构建验证主应用及扩展的编译和链接。
+
+
+## b34645 安装包（2026-11-03）
+
+按用户要求生成 **13.1.2 / b34645** 本地侧载参考 IPA，包含群内定向屏蔽、指定成员发言特别提醒及相册多视频时长。构建源码为 `f87654d72b66f19ebb0f18896777537eea413237`，文档记录提交不改变安装包代码。
+
+Xcode **27.1（27A9275）** 再次完成完整 `//Telegram:Regram` arm64 Release 构建，Bazel 退出码 **0**，耗时 **34.93 秒**，复用 9834 项 action cache；构建前后 **34489** 份跟踪文件、子模块／兼容补丁和生成配置摘要一致。此前功能阶段的 82 项自动检查日志保留，本轮另外通过 **5 项版本规则**和 **7 项构建配置**检查。
+
+- 最终 IPA 重新解包检查通过：主应用与六扩展、12 个 arm64 Mach-O、严格 ad-hoc 签名、零描述文件、12 份匹配 dSYM 及符号归档 CRC。
+- 三语资源与源码一致，并核对两个群成员功能标题、字体目录／许可、通知过滤与实时活动声明。
+- 七个 Bundle 的完整 entitlements 及注册 URL schemes 与 `Regram-13.1.2-b34644.ipa` 一致。
+- 文件：`Regram-13.1.2-b34645.ipa`，78628115 字节。
+- SHA-256：`58a0a216ce060cc22f095272cb0c999135bb3485254f7a6a87bb7d95ebfdd9cc`。
+
+IPA、SHA-256 附件、匹配 dSYM 归档、manifest、源码摘要及构建／验证日志已保存在本机项目的持久化交付目录 `build-input/group-member-controls-34645/`，位于 Bazel 输出缓存之外。本轮工作树的运行日志位于 `build-input/group-member-controls/package-34645/`。本轮仅交付本地参考包，没有推送或发布 Release；前述真机、真实群聊及实际 APNs 验证边界保持不变。
+
+完成构建后关闭了本轮 Bazel 服务，退出码 **0**；复用并保留 `/Users/yuki/Library/Caches/RegramBuild/upstream-13.1.1` 和项目缓存，未运行 clean 或 expunge。
