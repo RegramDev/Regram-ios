@@ -4,7 +4,7 @@
 
 ## b34646：群成员管理、特别提醒与多视频时长（2026-11-03）
 
-[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.2-b34646)。
+[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.2-b34646)。 已正式发布并设为 Latest，公开完整下载、SHA-256 附件及应用内更新解析验证通过。
 
 - 群内定向屏蔽：仅隐藏指定成员在所选群中的消息，按账号保存，可从头像菜单、群资料页及 Pro 隐私页管理。
 - 群聊特别提醒：为指定群成员的新发言开启提醒，屏蔽与过滤优先；从 Pro 通知页或群资料页管理。

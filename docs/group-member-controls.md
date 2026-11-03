@@ -80,6 +80,20 @@ Xcode **27.1（27A9275）** 完成完整 `//Telegram:Regram` arm64 Release，Baz
 - 文件：`Regram-13.1.2-b34646.ipa`，78632322 字节。
 - SHA-256：`a4f42a12f60881c262f55f1e1d843f30557c2e94737417882e242f09abfc5131`。
 
-IPA、校验附件、匹配调试符号、manifest、源码摘要、基线失败复现及本轮构建／回归日志保存在本机项目的 `build-input/group-member-navigation-34646/`，位于 Bazel 输出缓存之外；本轮工作树运行记录位于 `build-input/group-member-navigation/`。本轮没有发布 Release，也没有在真机或真实账号中执行页面验收；自动界面回归使用前述隔离边界适配器。
+IPA、校验附件、匹配调试符号、manifest、源码摘要、基线失败复现及本轮构建／回归日志保存在本机项目的 `build-input/group-member-navigation-34646/`，位于 Bazel 输出缓存之外；本轮工作树运行记录位于 `build-input/group-member-navigation/`。本节记录本地交付阶段，后续公开发布结果见下一节。未在真机或真实账号中执行页面验收；自动界面回归使用前述隔离边界适配器。
 
 完成后关闭本轮 Bazel 服务，退出码 **0**，保留 `/Users/yuki/Library/Caches/RegramBuild/upstream-13.1.1` 与项目可复用缓存。文档记录提交不改变已构建的应用源码。
+
+
+## b34646 GitHub Release（2026-11-03）
+
+按用户要求，`group-member-controls` 与 `master` 已同步推送；[v13.1.2-b34646](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.2-b34646) 已正式发布并设为 Latest。Release ID 为 `432860806`，发布时间为 `2026-11-03T15:16:09Z`。
+
+标签指向 `bfb7ff5ee8464141f2530c9c7f8eed36864d1bfa`；与构建源码 `c2a61663a5a7bd3c1bd0336d355d2689942c2819` 之间仅有 README 和 docs 文档更新。远端标签解析结果与 Release 目标提交一致。
+
+- 发布附件为 `Regram-13.1.2-b34646.ipa` 及同名 `.ipa.sha256` 校验文件；匹配调试符号保存在本地交付目录。
+- 草稿阶段核对 GitHub 两份附件的大小与 SHA-256，通过后按 Release ID 正式发布。
+- 无需登录的公开地址已完整下载 IPA 和校验文件，文件大小为 **78632322 字节**，SHA-256 为 `a4f42a12f60881c262f55f1e1d843f30557c2e94737417882e242f09abfc5131`，与本地 manifest 和 GitHub 摘要一致。
+- 公开标签及 Latest API 均返回 b34646。使用生产 `RGUpdateRelease.parseGitHub` 编译运行，验证版本、构建号、文件地址、摘要、大小与缓存元数据；b34642 和 b34645 可识别更新，同版本同构建不重复提示。
+
+发布说明、草稿／公开 Release JSON、公开下载文件、标签记录及验证报告归档至本机项目的 `build-input/group-member-navigation-34646/release/`。本次发布未改动已完成构建的应用源码。
