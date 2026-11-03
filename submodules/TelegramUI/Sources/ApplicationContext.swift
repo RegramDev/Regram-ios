@@ -10,6 +10,7 @@ import TelegramPresentationData
 import TelegramUIPreferences
 import SwiftSignalKit
 import TelegramCore
+import Postbox // MARK: Regram — explicit message and group types in foreground notification filtering.
 import Display
 import LegacyComponents
 import DeviceAccess
