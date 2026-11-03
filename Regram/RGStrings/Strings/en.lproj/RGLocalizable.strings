@@ -1354,9 +1354,17 @@ Matching is case-insensitive.";
 "GroupMembers.Reminders.Title" = "Group Member Alerts";
 "GroupMembers.Reminders.Notice" = "Alert when a selected member posts in this group, including when the group is muted. Hidden or filtered messages stay excluded. Background alerts require Telegram to deliver a push to this device; they respect iOS notification permissions and Focus. Swipe left to remove.";
 "GroupMembers.SelectGroup" = "Select a Group";
-"GroupMembers.AddGroup" = "Add Group";
+"GroupMembers.AddGroup" = "Choose Group";
 "GroupMembers.AddMember" = "Add Member";
 "GroupMembers.Hide" = "Hide Only in This Group";
 "GroupMembers.Unhide" = "Unhide in This Group";
 "GroupMembers.EnableReminder" = "Alert When This Member Posts";
 "GroupMembers.DisableReminder" = "Disable This Member’s Alerts";
+
+"GroupMembers.Hidden.RootNotice" = "Choose a group, then add members to hide only in that group. Selections are separate for each account.";
+"GroupMembers.Reminders.RootNotice" = "Choose a group, then add members whose posts should trigger alerts. Each group shows its current number of selected members.";
+"GroupMembers.Hidden.Count" = "%d hidden members";
+"GroupMembers.Reminders.Count" = "%d members with alerts";
+"GroupMembers.Hidden.Status" = "Hidden only in this group";
+"GroupMembers.Reminders.Enabled" = "Member alerts enabled";
+"GroupMembers.Reminders.Suppressed" = "Alerts selected; sender hiding takes priority";

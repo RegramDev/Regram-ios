@@ -79,6 +79,7 @@ def main():
     run('font-store', ['python3', 'Regram/RGTypography/Tests/run-store-checks.py'])
     run('common-group-table-navigation', ['python3', 'Regram/RGCommonGroupMessagesUI/Tests/run-table-navigation-checks.py'])
     run('settings-focus', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-focus-checks.py'])
+    run('group-member-ui-flow', ['python3', 'Regram/RGSettingsUI/Tests/run-group-member-ui-checks.py'])
     run('settings-import-menu', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-import-menu-checks.py'])
     run('startup-folder', ['python3', 'Regram/RGSettingsUI/Tests/run-startup-folder-checks.py'])
     run('settings-row-touch', ['python3', 'Regram/RGSettingsUI/Tests/run-settings-row-touch-checks.py'])

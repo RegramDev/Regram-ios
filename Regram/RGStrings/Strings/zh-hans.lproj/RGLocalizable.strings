@@ -1347,9 +1347,17 @@
 "GroupMembers.Reminders.Title" = "群聊特别提醒";
 "GroupMembers.Reminders.Notice" = "指定成员在此群发言时提醒，群已静音时也会提醒。被隐藏或过滤的消息不触发特别提醒。后台提醒需要 Telegram 向此设备下发推送，并受 iOS 通知权限和专注模式控制。左滑可移除成员。";
 "GroupMembers.SelectGroup" = "选择群聊";
-"GroupMembers.AddGroup" = "添加群聊";
+"GroupMembers.AddGroup" = "选择群聊";
 "GroupMembers.AddMember" = "添加成员";
 "GroupMembers.Hide" = "仅在此群屏蔽";
 "GroupMembers.Unhide" = "取消此群屏蔽";
 "GroupMembers.EnableReminder" = "此成员发言特别提醒";
 "GroupMembers.DisableReminder" = "关闭此成员特别提醒";
+
+"GroupMembers.Hidden.RootNotice" = "选择群聊，再添加要屏蔽的成员。只影响当前账号所选群中的消息。";
+"GroupMembers.Reminders.RootNotice" = "选择群聊，再添加需要特别提醒的成员。群列表显示当前已开启提醒的成员数量。";
+"GroupMembers.Hidden.Count" = "%d 位已屏蔽成员";
+"GroupMembers.Reminders.Count" = "%d 位成员已开启提醒";
+"GroupMembers.Hidden.Status" = "已在此群屏蔽";
+"GroupMembers.Reminders.Enabled" = "特别提醒已开启";
+"GroupMembers.Reminders.Suppressed" = "已选择提醒，发送者屏蔽优先生效";

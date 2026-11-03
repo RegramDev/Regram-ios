@@ -311,7 +311,8 @@ class ChannelMembersSearchControllerNode: ASDisplayNode {
                 }
                 
                 var index = 0
-                for participant in participants.participants {
+                // MARK: Regram — selected members must be excluded from the outer member list.
+                membersLoop: for participant in participants.participants {
                     guard let peer = peerView.peers[participant.peerId] else {
                         continue
                     }
@@ -329,6 +330,7 @@ class ChannelMembersSearchControllerNode: ASDisplayNode {
                                 switch filter {
                                     case let .exclude(ids):
                                         if ids.contains(peer.id) {
+                                            if case .select = mode { continue membersLoop } // MARK: Regram
                                             continue
                                         }
                                     case let .disable(ids):
