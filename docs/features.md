@@ -1,6 +1,6 @@
 # Regram 功能清单
 
-本文按 **13.1.1 / b34641** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。本轮更新见[共群发言与机器人撤回消息](common-group-messages-bot-retention.md)。
+本文按 **13.1.2 / b34646** 的源码整理当前功能、入口与限制。阅读概要可用[中文 README](../README.md)／[English README](../README.en.md)；逐版修正见[近期更新记录](changelog.md)。本轮更新见[群成员管理与多视频时长](group-member-controls.md)。
 
 ## 设置与导航
 
