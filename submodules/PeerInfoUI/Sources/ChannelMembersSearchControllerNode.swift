@@ -321,7 +321,7 @@ class ChannelMembersSearchControllerNode: ASDisplayNode {
                     var label: String?
                     var enabled = true
                     switch mode {
-                        case .ban:
+                        case .ban, .select: // MARK: Regram
                             if peer.id == context.account.peerId {
                                 continue
                             }
@@ -542,7 +542,7 @@ class ChannelMembersSearchControllerNode: ASDisplayNode {
                     var label: String?
                     var enabled = true
                     switch mode {
-                        case .ban, .promote, .ownershipTransfer:
+                        case .ban, .promote, .ownershipTransfer, .select: // MARK: Regram
                             if participant.peer.id == context.account.peerId {
                                 continue participantsLoop
                             }
@@ -692,7 +692,10 @@ class ChannelMembersSearchControllerNode: ASDisplayNode {
             return
         }
         
-        self.searchDisplayController = SearchDisplayController(presentationData: self.presentationData, contentNode: ChannelMembersSearchContainerNode(context: self.context, forceTheme: self.forceTheme, peerId: self.peerId, mode: .banAndPromoteActions, filters: self.filters, searchContext: nil, displayUsername: true, prioritizeExactUsernameMatches: true, openPeer: { [weak self] peer, participant in
+        // MARK: Regram — local member controls search actual group members without moderation actions.
+        let searchMode: ChannelMembersSearchMode
+        if case .select = self.mode { searchMode = .searchMembers } else { searchMode = .banAndPromoteActions }
+        self.searchDisplayController = SearchDisplayController(presentationData: self.presentationData, contentNode: ChannelMembersSearchContainerNode(context: self.context, forceTheme: self.forceTheme, peerId: self.peerId, mode: searchMode, filters: self.filters, searchContext: nil, displayUsername: true, prioritizeExactUsernameMatches: true, openPeer: { [weak self] peer, participant in
             self?.requestOpenPeerFromSearch?(peer, participant)
         }, updateActivity: { value in
             

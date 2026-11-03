@@ -1330,6 +1330,7 @@ public enum StarsWithdrawalScreenSubject {
 }
 
 public enum ChannelMembersSearchControllerMode {
+    case select // MARK: Regram — a member picker without moderation or call-specific restrictions.
     case promote
     case ban
     case inviteToCall

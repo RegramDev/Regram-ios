@@ -257,6 +257,8 @@ public class RGSimpleSettings {
         case messageFilterKeywords
         case messageFilterRules
         case blockedPeerIds
+        case groupHiddenSenders
+        case groupNotificationSenders
         case messageFilterDisabledPeerIds
         case antiRevokePeerIds
         case inputToolbar
@@ -565,6 +567,8 @@ public class RGSimpleSettings {
         Keys.showRepostToStoryV2.rawValue: true,
         Keys.messageFilterRules.rawValue: "[]",
         Keys.blockedPeerIds.rawValue: [],
+        Keys.groupHiddenSenders.rawValue: [],
+        Keys.groupNotificationSenders.rawValue: [],
         Keys.messageFilterDisabledPeerIds.rawValue: [],
         Keys.antiRevokePeerIds.rawValue: [],
         // MARK: Ghost Mode — the app group suite, because the share/notification extensions run
@@ -867,7 +871,7 @@ public class RGSimpleSettings {
             UserDefaults.standard.set(UserDefaults.standard.integer(forKey: Keys.fontAssetsRevision.rawValue) + 1, forKey: Keys.fontAssetsRevision.rawValue)
         }
         for wrapper in wrappers { wrapper.invalidatePreferenceCache() }
-        if !changedKeys.isDisjoint(with: ["messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds"]) {
+        if !changedKeys.isDisjoint(with: ["messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "groupHiddenSenders", "groupNotificationSenders"]) {
             self.notifyContentFiltersChanged(postNotification: false)
         }
         if changedKeys.contains("antiRevokePeerIds") {
@@ -890,7 +894,7 @@ public class RGSimpleSettings {
         if keys.contains(where: { $0.hasPrefix("font") }) { center.post(name: RGFontConfiguration.settingsChanged, object: nil) }
         if touches("bottomBarLayout", "showTabNames", "hideTabBar", "tabBarWidthPercent", "native.showContactsTab", "native.showCallsTab") { center.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
         if touches("hideChatListSeparators", "compactChatList", "chatListLines") { center.post(name: Self.chatListSeparatorSettingsDidChange, object: nil) }
-        if touches("messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds") { center.post(name: Self.contentFiltersDidChangeNotification, object: nil) }
+        if touches("messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "groupHiddenSenders", "groupNotificationSenders") { center.post(name: Self.contentFiltersDidChangeNotification, object: nil) }
         if touches("defaultVideoQuality") { center.post(name: RGVideoQualityPreference.settingsChanged, object: nil) }
         if touches("mediaLoadingExperiment") { center.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil) }
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
@@ -1275,6 +1279,8 @@ public class RGSimpleSettings {
         self.contentFilterCacheLock.lock()
         self.cachedMessageFilterRules = nil
         self.cachedBlockedPeerIds = nil
+        self.cachedGroupHiddenSenders = nil
+        self.cachedGroupNotificationSenders = nil
         self.cachedMessageFilterDisabledPeerIds = nil
         self.contentFilterGenerationValue += 1
         self.contentFilterCacheLock.unlock()
@@ -1298,6 +1304,8 @@ public class RGSimpleSettings {
     private let contentFilterCacheLock = NSLock()
     private var cachedMessageFilterRules: [RGMessageFilterRule]?
     private var cachedBlockedPeerIds: Set<Int64>?
+    private var cachedGroupHiddenSenders: RGGroupMemberSelection?
+    private var cachedGroupNotificationSenders: RGGroupMemberSelection?
     private var cachedMessageFilterDisabledPeerIds: Set<Int64>?
 
     /// Decoded view over `messageFilterRulesJSON`.
@@ -1338,6 +1346,59 @@ public class RGSimpleSettings {
             self.blockedPeerIdsRaw = newValue.map { String($0) }
             self.notifyContentFiltersChanged()
         }
+    }
+
+    // MARK: Regram — group-scoped hiding and member reminders, shared with the push extension.
+    @UserDefault(key: Keys.groupHiddenSenders.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
+    public var groupHiddenSendersRaw: [String]
+
+    @UserDefault(key: Keys.groupNotificationSenders.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
+    public var groupNotificationSendersRaw: [String]
+
+    public var groupHiddenSenders: RGGroupMemberSelection {
+        get {
+            self.contentFilterCacheLock.lock()
+            defer { self.contentFilterCacheLock.unlock() }
+            if let cached = self.cachedGroupHiddenSenders { return cached }
+            let decoded = RGGroupMemberSelection(stored: self.groupHiddenSendersRaw)
+            self.cachedGroupHiddenSenders = decoded
+            return decoded
+        }
+        set {
+            self.groupHiddenSendersRaw = newValue.stored
+            self.notifyContentFiltersChanged()
+        }
+    }
+
+    public var groupNotificationSenders: RGGroupMemberSelection {
+        get {
+            self.contentFilterCacheLock.lock()
+            defer { self.contentFilterCacheLock.unlock() }
+            if let cached = self.cachedGroupNotificationSenders { return cached }
+            let decoded = RGGroupMemberSelection(stored: self.groupNotificationSendersRaw)
+            self.cachedGroupNotificationSenders = decoded
+            return decoded
+        }
+        set {
+            self.groupNotificationSendersRaw = newValue.stored
+            self.notifyContentFiltersChanged()
+        }
+    }
+
+    public func setGroupMemberHidden(accountId: Int64, groupId: Int64, senderId: Int64, hidden: Bool) {
+        var selection = self.groupHiddenSenders
+        selection.set(accountId: accountId, groupId: groupId, senderId: senderId, selected: hidden)
+        self.groupHiddenSenders = selection
+    }
+
+    public func setGroupMemberReminder(accountId: Int64, groupId: Int64, senderId: Int64, enabled: Bool) {
+        var selection = self.groupNotificationSenders
+        selection.set(accountId: accountId, groupId: groupId, senderId: senderId, selected: enabled)
+        self.groupNotificationSenders = selection
+    }
+
+    public var groupMemberReminderPreferences: RGGroupMemberReminderPreferences {
+        RGGroupMemberReminderPreferences(senders: self.groupNotificationSenders, groupHiddenSenders: self.groupHiddenSenders, hiddenSenders: self.blockedPeerIds, rules: self.messageFilterRules, disabledChats: self.messageFilterDisabledPeerIds)
     }
 
     // MARK: Regram — chats the keyword filter is switched off in, toggled from the chat's own

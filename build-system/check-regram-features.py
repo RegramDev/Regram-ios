@@ -42,7 +42,7 @@ def main():
         ('local-gifts', [simple+'Sources/LocalGifts.swift', simple+'Tests/LocalGiftsTests.swift'], []),
         ('filter', [simple+'Sources/MessageFilter.swift', simple+'Tests/MessageFilterTests.swift'], []),
         ('diagnostics', [simple+'Sources/MessageFilter.swift', simple+'Sources/TransferStatistics.swift', simple+'Sources/FilterBenchmark.swift', simple+'Tests/DiagnosticsTests.swift'], []),
-        ('content-filter-cache', [simple+'Sources/MessageFilter.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
+        ('content-filter-cache', [simple+'Sources/MessageFilter.swift', simple+'Sources/GroupMemberSelection.swift', str(content_source), simple+'Tests/ContentFilterStateTests.swift'], []),
         ('translation', ['Regram/RGGTranslate/Sources/RGTranslationLinkPlan.swift', 'Regram/RGGTranslate/Tests/LinkPlanTests.swift'], []),
         ('datacenter-statistics', [simple+'Sources/RGDatacenterStatistics.swift', simple+'Tests/DatacenterStatisticsTests.swift'], []),
         ('bottom-bar', [simple+'Sources/RGBottomBarSettings.swift', simple+'Sources/TabBarLayoutPolicy.swift', simple+'Sources/RGDatacenterLocation.swift', simple+'Tests/BottomBarSettingsTests.swift'], []),
@@ -87,6 +87,7 @@ def main():
     run('navigation-capsules', ['python3', 'Regram/RGSimpleSettings/Tests/run-navigation-capsule-checks.py'])
     run('profile-navigation-colors', ['python3', 'Regram/RGSettingsUI/Tests/run-profile-navigation-color-checks.py'])
     run('settings-runtime', ['python3', 'Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py'])
+    run('group-member-notifications', ['python3', 'Regram/RGSimpleSettings/Tests/run-group-notification-checks.py'])
     run('chat-action-policies', ['python3', 'Regram/RGSimpleSettings/Tests/run-chat-action-checks.py'])
     run('remark-search', ['python3', 'Regram/RGSimpleSettings/Tests/run-group-remark-search-checks.py'])
     run('search-typing', ['python3', 'Regram/RGSimpleSettings/Tests/run-search-typing-checks.py'])
@@ -99,6 +100,7 @@ def main():
     run('settings-storage', ['python3', 'Regram/RGAppGroupIdentifier/Tests/run-storage-checks.py'])
     run('build-configuration', ['python3', 'build-system/ci/test_configuration.py'])
     run('gallery-playback', ['python3', 'Regram/RGGalleryUI/Tests/run-playback-checks.py'])
+    run('album-video-duration', ['python3', 'Regram/RGGalleryUI/Tests/run-album-duration-checks.py'])
     run('gallery-media-save', ['python3', 'Regram/RGGalleryUI/Tests/run-save-checks.py'])
     run('local-pinned-chats', ['python3', 'Regram/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py'])
     run('search-links', ['python3', 'Regram/RGSearchLink/Tests/run-search-link-checks.py'])

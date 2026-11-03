@@ -1347,3 +1347,16 @@ Matching is case-insensitive.";
 "AntiFeatures.IgnoreBots" = "Do Not Keep Bot Messages";
 "AntiFeatures.IgnoreBotsNotice" = "When enabled, revoked messages sent by bots are deleted normally, in all chats covered by anti-revoke. Existing revoked-message records are kept.";
 "CommonGroups.Cooling" = "Search paused until the device cools down";
+
+// Group-scoped member controls
+"GroupMembers.Hidden.Title" = "Hide Members in Groups";
+"GroupMembers.Hidden.Notice" = "Hide selected members only in this group and this account. Other groups and private chats are unaffected. Swipe left to remove. Notification filtering also applies when enabled.";
+"GroupMembers.Reminders.Title" = "Group Member Alerts";
+"GroupMembers.Reminders.Notice" = "Alert when a selected member posts in this group, including when the group is muted. Hidden or filtered messages stay excluded. Background alerts require Telegram to deliver a push to this device; they respect iOS notification permissions and Focus. Swipe left to remove.";
+"GroupMembers.SelectGroup" = "Select a Group";
+"GroupMembers.AddGroup" = "Add Group";
+"GroupMembers.AddMember" = "Add Member";
+"GroupMembers.Hide" = "Hide Only in This Group";
+"GroupMembers.Unhide" = "Unhide in This Group";
+"GroupMembers.EnableReminder" = "Alert When This Member Posts";
+"GroupMembers.DisableReminder" = "Disable This Member’s Alerts";

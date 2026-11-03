@@ -19,6 +19,7 @@ final class RGSimpleSettings {
     static let shared = RGSimpleSettings()
     var messageFilterRules: [RGMessageFilterRule] = []
     var blockedPeerIds: Set<Int64> = []
+    var groupHiddenSenders = RGGroupMemberSelection()
     var messageFilterDisabledPeerIds: Set<Int64> = []
     var contentFilterGeneration = 0
     var revealedPeerIds: Set<Int64> = []
@@ -57,6 +58,21 @@ final class RGSimpleSettings {
         let selfHidden = state()
         expect(!selfHidden.shouldHide(text: "blocked", authorId: account, peerId: peer, isIncoming: false), "Your own outgoing messages must stay visible")
         settings.blockedPeerIds = []
+        settings.messageFilterRules = []
+        settings.groupHiddenSenders.set(accountId: 2, groupId: 1, senderId: 3, selected: true)
+        let scoped = state()
+        expect(!scoped.isEmpty, "A scoped sender alone must activate the history/list filter")
+        expect(scoped.shouldHide(text: "", authorId: EnginePeer.Id(value: 3), peerId: peer, isIncoming: true), "Scoped hiding must cover media-only messages")
+        expect(!scoped.shouldHide(text: "", authorId: EnginePeer.Id(value: 3), peerId: EnginePeer.Id(value: 4), isIncoming: true), "Other groups and private chats must stay visible")
+        let otherAccount = RGContentFilterState(accountPeerId: EnginePeer.Id(value: 9))
+        expect(!otherAccount.shouldHide(text: "", authorId: EnginePeer.Id(value: 3), peerId: peer, isIncoming: true), "Another account must not inherit a scoped block")
+        expect(scoped.shouldHide(messageId: id, stableVersion: 100, text: "", authorId: EnginePeer.Id(value: 3), isIncoming: true), "Cache the scoped hidden result")
+        expect(!otherAccount.shouldHide(messageId: id, stableVersion: 100, text: "", authorId: EnginePeer.Id(value: 3), isIncoming: true), "Identical message ids in another account must not share cached visibility")
+        expect(scoped.shouldHide(messageId: id, stableVersion: 101, text: "", authorId: EnginePeer.Id(value: 3), isIncoming: true), "Text-hash reuse must also remain account-scoped")
+        settings.revealedPeerIds = [1]
+        expect(!state().shouldHide(text: "", authorId: EnginePeer.Id(value: 3), peerId: peer, isIncoming: true), "Temporary reveal also recovers scoped hidden members")
+        settings.revealedPeerIds = []
+        settings.groupHiddenSenders = RGGroupMemberSelection()
         settings.messageFilterDisabledPeerIds = []
         settings.messageFilterRules = [disabled]
         let eviction = state()

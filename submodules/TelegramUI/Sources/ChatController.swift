@@ -4864,6 +4864,31 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                     })))
                 }
                 if !isChannel {
+                    // MARK: Regram — local controls for this member in the current group only.
+                    let groupPeer = strongSelf.presentationInterfaceState.renderedPeer?.chatMainPeer
+                    let isGroup: Bool
+                    if groupPeer is TelegramGroup { isGroup = true }
+                    else if let channel = groupPeer as? TelegramChannel, case .group = channel.info { isGroup = true }
+                    else { isGroup = false }
+                    if isGroup, case .user = peer, peer.id != context.account.peerId, let groupId = strongSelf.chatLocation.peerId {
+                        let accountId = context.account.peerId.toInt64()
+                        let senderId = peer.id.toInt64()
+                        let hidden = RGSimpleSettings.shared.groupHiddenSenders.contains(accountId: accountId, groupId: groupId.toInt64(), senderId: senderId)
+                        let reminder = RGSimpleSettings.shared.groupNotificationSenders.contains(accountId: accountId, groupId: groupId.toInt64(), senderId: senderId)
+                        let lang = strongSelf.presentationData.strings.rgLanguageCode
+                        items.append(.action(ContextMenuActionItem(text: (hidden ? "GroupMembers.Unhide" : "GroupMembers.Hide").i18n(lang), icon: { theme in
+                            generateTintedImage(image: UIImage(systemName: hidden ? "eye" : "eye.slash"), color: theme.contextMenu.primaryColor)
+                        }, action: { _, f in
+                            f(.dismissWithoutContent)
+                            RGSimpleSettings.shared.setGroupMemberHidden(accountId: accountId, groupId: groupId.toInt64(), senderId: senderId, hidden: !hidden)
+                        })))
+                        items.append(.action(ContextMenuActionItem(text: (reminder ? "GroupMembers.DisableReminder" : "GroupMembers.EnableReminder").i18n(lang), icon: { theme in
+                            generateTintedImage(image: UIImage(systemName: reminder ? "bell.slash" : "bell.badge"), color: theme.contextMenu.primaryColor)
+                        }, action: { _, f in
+                            f(.default)
+                            RGSimpleSettings.shared.setGroupMemberReminder(accountId: accountId, groupId: groupId.toInt64(), senderId: senderId, enabled: !reminder)
+                        })))
+                    }
                     items.append(.action(ContextMenuActionItem(text: "ContextMenu.viewAuthorMessages".i18n(strongSelf.presentationData.strings.baseLanguageCode), icon: { theme in
                         return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Search"), color: theme.actionSheet.primaryTextColor)
                     }, action: { _, f in

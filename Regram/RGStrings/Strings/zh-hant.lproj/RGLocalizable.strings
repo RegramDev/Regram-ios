@@ -1338,3 +1338,16 @@
 "AntiFeatures.IgnoreBots" = "不保留機器人訊息";
 "AntiFeatures.IgnoreBotsNotice" = "開啟後，機器人傳送的訊息被撤回時會正常刪除，適用於全域及單獨開啟防撤回的對話。已有撤回記錄不會自動清理。";
 "CommonGroups.Cooling" = "裝置溫度較高，降溫後繼續查詢";
+
+// Group-scoped member controls
+"GroupMembers.Hidden.Title" = "群內定向封鎖";
+"GroupMembers.Hidden.Notice" = "只在目前帳號的這個群組內隱藏指定成員的訊息，不影響其他群組和私訊。左滑可取消封鎖；已開啟通知內容過濾時，也會過濾對應通知。";
+"GroupMembers.Reminders.Title" = "群組特別提醒";
+"GroupMembers.Reminders.Notice" = "指定成員在此群組發言時提醒，群組已靜音時也會提醒。被隱藏或過濾的訊息不觸發特別提醒。背景提醒需要 Telegram 向此裝置傳送推播，並受 iOS 通知權限和專注模式控制。左滑可移除成員。";
+"GroupMembers.SelectGroup" = "選擇群組";
+"GroupMembers.AddGroup" = "新增群組";
+"GroupMembers.AddMember" = "新增成員";
+"GroupMembers.Hide" = "僅在此群組封鎖";
+"GroupMembers.Unhide" = "取消此群組封鎖";
+"GroupMembers.EnableReminder" = "此成員發言特別提醒";
+"GroupMembers.DisableReminder" = "關閉此成員特別提醒";

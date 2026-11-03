@@ -38,6 +38,12 @@ private final class RGContentFilterVerdictCache {
         let shouldHide: Bool
     }
 
+    // MARK: Regram — the same group message can have different visibility in two signed-in accounts.
+    private struct Key: Hashable {
+        let accountPeerId: EnginePeer.Id
+        let messageId: EngineMessage.Id
+    }
+
     /// Bounded so that a long session cannot grow it without limit. Evicted oldest-first, one entry
     /// at a time: dropping the whole table at the limit (as this used to) made the next rebuild
     /// re-match the entire window in one go, mid-scroll.
@@ -45,14 +51,15 @@ private final class RGContentFilterVerdictCache {
 
     private let lock = NSLock()
     private var generation: Int = -1
-    private var entries: [EngineMessage.Id: Entry] = [:]
-    private var insertionOrder: [EngineMessage.Id] = []
+    private var entries: [Key: Entry] = [:]
+    private var insertionOrder: [Key] = []
     private var nextEviction = 0
 
-    func verdict(for id: EngineMessage.Id, generation: Int, stableVersion: UInt32) -> Bool? {
+    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32) -> Bool? {
         self.lock.lock()
         defer { self.lock.unlock() }
-        guard self.generation == generation, let entry = self.entries[id], entry.stableVersion == stableVersion else {
+        let key = Key(accountPeerId: accountPeerId, messageId: id)
+        guard self.generation == generation, let entry = self.entries[key], entry.stableVersion == stableVersion else {
             return nil
         }
         return entry.shouldHide
@@ -60,10 +67,11 @@ private final class RGContentFilterVerdictCache {
 
     /// Same as above, but also accepts an entry for an older version of the message whose text is
     /// unchanged, and records the new version so the plain lookup hits from now on.
-    func verdict(for id: EngineMessage.Id, generation: Int, stableVersion: UInt32, textHash: Int) -> Bool? {
+    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32, textHash: Int) -> Bool? {
         self.lock.lock()
         defer { self.lock.unlock() }
-        guard self.generation == generation, var entry = self.entries[id] else {
+        let key = Key(accountPeerId: accountPeerId, messageId: id)
+        guard self.generation == generation, var entry = self.entries[key] else {
             return nil
         }
         if entry.stableVersion != stableVersion {
@@ -71,12 +79,12 @@ private final class RGContentFilterVerdictCache {
                 return nil
             }
             entry.stableVersion = stableVersion
-            self.entries[id] = entry
+            self.entries[key] = entry
         }
         return entry.shouldHide
     }
 
-    func store(_ shouldHide: Bool, for id: EngineMessage.Id, generation: Int, stableVersion: UInt32, textHash: Int) {
+    func store(_ shouldHide: Bool, for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32, textHash: Int) {
         self.lock.lock()
         defer { self.lock.unlock() }
         if generation < self.generation {
@@ -90,27 +98,28 @@ private final class RGContentFilterVerdictCache {
             self.insertionOrder.removeAll(keepingCapacity: true)
             self.nextEviction = 0
         }
-        if self.entries[id] == nil {
+        let key = Key(accountPeerId: accountPeerId, messageId: id)
+        if self.entries[key] == nil {
             if self.insertionOrder.count == self.limit {
                 self.entries.removeValue(forKey: self.insertionOrder[self.nextEviction])
-                self.insertionOrder[self.nextEviction] = id
+                self.insertionOrder[self.nextEviction] = key
                 self.nextEviction = (self.nextEviction + 1) % self.limit
             } else {
-                self.insertionOrder.append(id)
+                self.insertionOrder.append(key)
             }
         }
-        self.entries[id] = Entry(stableVersion: stableVersion, textHash: textHash, shouldHide: shouldHide)
+        self.entries[key] = Entry(stableVersion: stableVersion, textHash: textHash, shouldHide: shouldHide)
     }
 
     /// The candidates without a verdict for their current version, found under one lock.
-    func missing(_ candidates: [RGContentFilterCandidate], generation: Int) -> [RGContentFilterCandidate] {
+    func missing(_ candidates: [RGContentFilterCandidate], accountPeerId: EnginePeer.Id, generation: Int) -> [RGContentFilterCandidate] {
         self.lock.lock()
         defer { self.lock.unlock() }
         guard self.generation == generation else {
             return candidates
         }
         return candidates.filter { candidate in
-            guard let entry = self.entries[candidate.id] else {
+            guard let entry = self.entries[Key(accountPeerId: accountPeerId, messageId: candidate.id)] else {
                 return true
             }
             return entry.stableVersion != candidate.stableVersion
@@ -139,6 +148,7 @@ public struct RGContentFilterCandidate {
 public struct RGContentFilterState {
     public let rules: [RGMessageFilterRule]
     public let hiddenSenderIds: Set<Int64>
+    public let groupHiddenSenders: RGGroupMemberSelection // MARK: Regram
     /// Chats the keyword rules are switched off in, from the per-chat toggle on a peer's profile.
     /// Hidden senders are deliberately *not* subject to it: hiding someone is about the person, so
     /// it has to hold everywhere they post.
@@ -160,6 +170,7 @@ public struct RGContentFilterState {
         let settings = RGSimpleSettings.shared
         self.rules = settings.messageFilterRules
         self.hiddenSenderIds = settings.blockedPeerIds
+        self.groupHiddenSenders = settings.groupHiddenSenders // MARK: Regram
         self.filterDisabledPeerIds = settings.messageFilterDisabledPeerIds
         self.accountPeerId = accountPeerId
         self.temporarilyVisiblePeerIds = settings.temporarilyVisiblePeerIds(accountId: accountPeerId.toInt64())
@@ -167,7 +178,7 @@ public struct RGContentFilterState {
     }
 
     public var isEmpty: Bool {
-        return self.rules.isEmpty && self.hiddenSenderIds.isEmpty
+        return self.rules.isEmpty && self.hiddenSenderIds.isEmpty && self.groupHiddenSenders.isEmpty
     }
 
     /// - Parameters:
@@ -178,7 +189,8 @@ public struct RGContentFilterState {
     public func shouldHide(text: String, authorId: EnginePeer.Id?, peerId: EnginePeer.Id, isIncoming: Bool) -> Bool {
         // MARK: Regram — explicit temporary recovery is local display only; notifications stay filtered.
         if self.temporarilyVisiblePeerIds.contains(peerId.toInt64()) { return false }
-        if !self.hiddenSenderIds.isEmpty, let authorId = authorId, authorId != self.accountPeerId, self.hiddenSenderIds.contains(authorId.toInt64()) {
+        // MARK: Regram — a group selection only hides this sender in this account/conversation.
+        if let authorId, authorId != self.accountPeerId, self.hiddenSenderIds.contains(authorId.toInt64()) || self.groupHiddenSenders.contains(accountId: self.accountPeerId.toInt64(), groupId: peerId.toInt64(), senderId: authorId.toInt64()) {
             return true
         }
         if !self.rules.isEmpty, isIncoming, !self.filterDisabledPeerIds.contains(peerId.toInt64()), RGMessageFilter.shouldHide(text: text, peerId: peerId.toInt64(), rules: self.rules) {
@@ -194,15 +206,15 @@ public struct RGContentFilterState {
     /// rather than a Unicode-folding search per entry per rule.
     public func shouldHide(messageId: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool) -> Bool {
         let cache = RGContentFilterVerdictCache.shared
-        if let cached = cache.verdict(for: messageId, generation: self.generation, stableVersion: stableVersion) {
+        if let cached = cache.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion) {
             return cached
         }
         let textHash = text.hashValue
-        if let cached = cache.verdict(for: messageId, generation: self.generation, stableVersion: stableVersion, textHash: textHash) {
+        if let cached = cache.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion, textHash: textHash) {
             return cached
         }
         let result = self.shouldHide(text: text, authorId: authorId, peerId: messageId.peerId, isIncoming: isIncoming)
-        cache.store(result, for: messageId, generation: self.generation, stableVersion: stableVersion, textHash: textHash)
+        cache.store(result, for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion, textHash: textHash)
         return result
     }
 
@@ -247,7 +259,7 @@ public func rgPrepareContentFilter(candidates: [RGContentFilterCandidate], accou
         return .single(Void())
     }
     let cache = RGContentFilterVerdictCache.shared
-    let missing = cache.missing(candidates, generation: filter.generation)
+    let missing = cache.missing(candidates, accountPeerId: accountPeerId, generation: filter.generation)
     if missing.isEmpty {
         return .single(Void())
     }

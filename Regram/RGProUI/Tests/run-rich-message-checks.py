@@ -73,7 +73,7 @@ public class AutoclearTimeoutMessageAttribute: MessageAttribute { let timeout = 
 func rgEditHistoryCachedImageData(image: TelegramMediaImage, mediaBox: MediaBox) -> Data? { nil }
 public enum Namespaces { public enum Message { static let Cloud: Int32 = 0 }; public enum Peer { static let SecretChat: Int32 = 1 } }
 final class RGSimpleSettings {
- static let shared = RGSimpleSettings(); var messageFilterRules: [RGMessageFilterRule] = []; var blockedPeerIds: Set<Int64> = []; var messageFilterDisabledPeerIds: Set<Int64> = []; var contentFilterGeneration = 0; var saveEditHistory = true
+ static let shared = RGSimpleSettings(); var messageFilterRules: [RGMessageFilterRule] = []; var blockedPeerIds: Set<Int64> = []; var groupHiddenSenders = RGGroupMemberSelection(); var messageFilterDisabledPeerIds: Set<Int64> = []; var contentFilterGeneration = 0; var saveEditHistory = true
  func temporarilyVisiblePeerIds(accountId: Int64) -> Set<Int64> { [] }
 }
 struct Row { let message: Message? }
@@ -147,5 +147,5 @@ source += r'''
 with tempfile.TemporaryDirectory(prefix='regram-rich-messages-') as temporary:
     work = Path(temporary)
     (work / 'Checks.swift').write_text(source)
-    subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors', str(root / 'Regram/RGSimpleSettings/Sources/MessageFilter.swift'), str(work / 'Checks.swift'), '-o', str(work / 'checks')], check=True)
+    subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-warnings-as-errors', str(root / 'Regram/RGSimpleSettings/Sources/MessageFilter.swift'), str(root / 'Regram/RGSimpleSettings/Sources/GroupMemberSelection.swift'), str(work / 'Checks.swift'), '-o', str(work / 'checks')], check=True)
     subprocess.run([str(work / 'checks')], check=True, timeout=30)

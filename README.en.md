@@ -31,6 +31,8 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
+- Hide a member only in a selected group, separately for each account; manage selections from the member avatar menu or group profile.
+- Group member alerts notify when selected members post. Hidden and filtered messages stay excluded; background alerts depend on Telegram push delivery and system notification permissions.
 - Global/per-chat anti-revoke, an optional exclusion for newly revoked bot messages, a local revoked-message archive, and selected deletion and media-saving controls.
 - Deleted-message markers as icons, custom text or hidden, with a custom color and immediate refresh of visible messages.
 - Ghost controls for story read reporting, online presence and typing activity.

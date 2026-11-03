@@ -1075,6 +1075,29 @@ func infoItems(
         }))
     }
 
+    // MARK: Regram — scoped member controls in both basic groups and supergroups.
+    if let peer = data.peer {
+        let isGroup: Bool
+        switch peer {
+        case .legacyGroup: isGroup = true
+        case let .channel(channel): if case .group = channel.info { isGroup = true } else { isGroup = false }
+        default: isGroup = false
+        }
+        if isGroup {
+            let lang = presentationData.strings.rgLanguageCode
+            let accountId = context.account.peerId.toInt64()
+            items[.regram] = items[.regram] ?? []
+            for (index, mode) in [RGGroupMemberSettingsMode.hidden, .reminders].enumerated() {
+                let selection = mode == .hidden ? RGSimpleSettings.shared.groupHiddenSenders : RGSimpleSettings.shared.groupNotificationSenders
+                let count = selection.senderIds(accountId: accountId, groupId: peer.id.toInt64()).count
+                items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 9511 + index, label: .text(count == 0 ? "" : "\(count)"), text: (mode == .hidden ? "GroupMembers.Hidden.Title" : "GroupMembers.Reminders.Title").i18n(lang), action: {
+                    guard let controller = interaction.getController() else { return }
+                    (controller.navigationController as? NavigationController)?.pushViewController(rgGroupMemberSettingsController(context: context, groupId: peer.id, mode: mode))
+                }))
+            }
+        }
+    }
+
     // MARK: Regram — per-chat switch for the keyword filter, offered for every peer type. Rules
     // are global by default, and a group where the keyword is legitimate traffic needs an off switch
     // that does not require editing every rule's scope. Hidden senders are unaffected: hiding a

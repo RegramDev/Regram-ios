@@ -57,6 +57,8 @@ private struct RGNotificationPreferenceSnapshot {
     let filterEnabled: Bool
     let rules: [RGMessageFilterRule]
     let hiddenSenders: Set<Int64>
+    let groupHiddenSenders: RGGroupMemberSelection // MARK: Regram
+    let groupNotificationSenders: RGGroupMemberSelection // MARK: Regram
     let disabledChats: Set<Int64>
 
     init(defaults: UserDefaults?) {
@@ -67,7 +69,14 @@ private struct RGNotificationPreferenceSnapshot {
         filterEnabled = defaults?.bool(forKey: "filterNotifications") ?? false
         rules = RGMessageFilter.decode(defaults?.string(forKey: "messageFilterRules") ?? "[]")
         hiddenSenders = Set((defaults?.stringArray(forKey: "blockedPeerIds") ?? []).compactMap(Int64.init))
+        groupHiddenSenders = RGGroupMemberSelection(stored: defaults?.stringArray(forKey: "groupHiddenSenders") ?? []) // MARK: Regram
+        groupNotificationSenders = RGGroupMemberSelection(stored: defaults?.stringArray(forKey: "groupNotificationSenders") ?? []) // MARK: Regram
         disabledChats = Set((defaults?.stringArray(forKey: "messageFilterDisabledPeerIds") ?? []).compactMap(Int64.init))
+    }
+
+    // MARK: Regram — use the same preference generation for hiding and member alerts.
+    var memberPreferences: RGGroupMemberReminderPreferences {
+        RGGroupMemberReminderPreferences(senders: groupNotificationSenders, groupHiddenSenders: groupHiddenSenders, hiddenSenders: hiddenSenders, rules: rules, disabledChats: disabledChats)
     }
 }
 
@@ -622,6 +631,7 @@ private struct NotificationContent: CustomStringConvertible {
     var dismissAfterDelivery = false
     // MARK: Regram — set only after a message has been resolved from the local postbox.
     var filteredByContentRule = false
+    var isGroupMemberReminder = false // MARK: Regram
     var shouldSuppressAsEmptyControlNotification: Bool {
         return RGNotificationPolicy.shouldSuppress(markedControl: self.isEmpty || self.dismissAfterDelivery || self.forceIsEmpty, hasText: !(self.title ?? "").isEmpty || !(self.subtitle ?? "").isEmpty || !(self.body ?? "").isEmpty, hasAttachments: !self.attachments.isEmpty, hasSender: self.sender != nil)
     }
@@ -848,6 +858,11 @@ private struct NotificationContent: CustomStringConvertible {
         }
         if let sound = self.sound {
             content.sound = UNNotificationSound(named: UNNotificationSoundName(rawValue: sound))
+        }
+        // MARK: Regram — a selected member uses an ordinary audible notification, including in muted groups.
+        if self.isGroupMemberReminder, #available(iOSApplicationExtension 15.0, *) {
+            content.interruptionLevel = .active
+            content.relevanceScore = 1.0
         }
         if let badge = self.badge {
             content.badge = badge as NSNumber
@@ -1813,6 +1828,9 @@ private final class NotificationServiceHandler {
                             updateCurrentContent(content)
                             completed()
                         case let .poll(peerId, initialContent, messageId, reportDelivery, enableInlineEmoji):
+                            // MARK: Regram — read once for each push, independently of the recovery experiment.
+                            let filterPreferences = recoveryPreferences ?? RGNotificationPreferenceSnapshot(defaults: groupUserDefaults)
+                            let memberPreferences = filterPreferences.memberPreferences
                             // MARK: Regram — preserve the decrypted alert while
                             // waiting for network enrichment or attachment downloads.
                             updateCurrentContent(initialContent)
@@ -2447,9 +2465,14 @@ private final class NotificationServiceHandler {
                                             var content = content
                                             // MARK: Regram — opt-in notification filtering shares the same keyword
                                             // and hidden-sender preferences, using original text rather than alert prefixes.
-                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, recoveryPreferences?.filterEnabled ?? RGSimpleSettings.shared.filterNotifications {
-                                                let settings = RGSimpleSettings.shared
-                                                content.filteredByContentRule = RGNotificationFilterPolicy.shouldHide(text: message.text, senderId: message.author?.id.toInt64(), peerId: message.id.peerId.toInt64(), isIncoming: message.flags.contains(.Incoming), rules: recoveryPreferences?.rules ?? settings.messageFilterRules, hiddenSenders: recoveryPreferences?.hiddenSenders ?? settings.blockedPeerIds, disabledChats: recoveryPreferences?.disabledChats ?? settings.messageFilterDisabledPeerIds)
+                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, filterPreferences.filterEnabled {
+                                                content.filteredByContentRule = RGNotificationFilterPolicy.shouldHide(text: message.rgTextContent, senderId: message.author?.id.toInt64(), peerId: message.id.peerId.toInt64(), isIncoming: message.flags.contains(.Incoming), rules: filterPreferences.rules, hiddenSenders: filterPreferences.hiddenSenders, disabledChats: filterPreferences.disabledChats, accountId: stateManager.accountPeerId.toInt64(), groupHiddenSenders: filterPreferences.groupHiddenSenders)
+                                            }
+                                            // MARK: Regram — never revive read/control/filtered pushes or infer a sender from alert text.
+                                            if let messageId, let message = transaction.getMessage(messageId), !content.dismissAfterDelivery, !content.isEmpty, !content.forceIsEmpty, rgShouldRemindGroupMember(message: message, accountPeerId: stateManager.accountPeerId, preferences: memberPreferences) {
+                                                content.isGroupMemberReminder = true
+                                                content.silent = false
+                                                content.sound = content.sound ?? "0.m4a"
                                             }
                                             
                                             var parsedMedia: Media?
@@ -3720,6 +3743,7 @@ extension NotificationContent {
         return false
     }
     var forceIsSilent: Bool {
+        if self.isGroupMemberReminder { return false } // MARK: Regram
         if !self.silent {
             if self.isPinned {
                 var desiredAction = self.recoveryPreferences?.pinnedAction ?? PINNED_MESSAGE_ACTION
