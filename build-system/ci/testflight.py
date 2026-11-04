@@ -33,6 +33,28 @@ def mask(value):
         print("::add-mask::" + escaped, flush=True)
 
 
+def api_error_context(error, path):
+    # Include schema names and error codes, never IDs or Apple's free-form details.
+    resources = {"apps", "builds", "betaGroups", "relationships", "betaBuildLocalizations",
+                 "betaAppReviewSubmissions", "buildBetaDetails", "betaTesterInvitations",
+                 "profiles", "bundleIds", "certificates"}
+    parts = urllib.parse.urlsplit(path).path.strip("/").split("/")
+    context = ["/".join(part for part in parts if part in resources) or "API request"]
+    try:
+        payload = json.loads(error.read(65536))
+        for item in payload.get("errors", [])[:3]:
+            code = item.get("code", "")
+            pointer = item.get("source", {}).get("pointer", "")
+            if isinstance(code, str) and re.fullmatch(r"[A-Z][A-Z0-9_.]{0,159}", code):
+                context.append("code=" + code)
+            if isinstance(pointer, str) and len(pointer) <= 160 and re.fullmatch(
+                    r"(?:/(?:[A-Za-z][A-Za-z0-9_]*|[0-9]{1,3}))+", pointer):
+                context.append("field=" + pointer)
+    except (AttributeError, OSError, TypeError, ValueError):
+        pass
+    return "; ".join(context)
+
+
 class Connect:
     def __init__(self):
         self.key_id = os.environ["ASC_KEY_ID"]
@@ -75,7 +97,9 @@ class Connect:
                 if method == "GET" and (error.code == 429 or error.code >= 500) and attempt < 4:
                     time.sleep(min(30, 2 ** attempt * 2))
                     continue
-                raise RuntimeError(f"App Store Connect {method} failed (HTTP {error.code})") from None
+                context = api_error_context(error, path)
+                error.close()
+                raise RuntimeError(f"App Store Connect {method} failed (HTTP {error.code}) [{context}]") from None
 
     def all(self, path, **params):
         url = path + ("?" + urllib.parse.urlencode(params) if params else "")
@@ -344,9 +368,11 @@ def distribute(client, app, group_name, build, version, notes):
     if len(groups) != 1:
         raise ValueError("Configure exactly one matching external TestFlight group")
     row = wait_for_build(client, app, build, version)
+    print("Apple build processing is VALID", flush=True)
     build_id = row["id"]
     localizations = client.all(f"/v1/builds/{build_id}/betaBuildLocalizations")
     existing = next((l for l in localizations if l["attributes"]["locale"] == "en-US"), None)
+    print("Updating TestFlight What to Test notes", flush=True)
     if existing:
         client.request("PATCH", "/v1/betaBuildLocalizations/" + existing["id"], {"data": {
             **resource("betaBuildLocalizations", existing["id"]), "attributes": {"whatsNew": notes},
@@ -363,6 +389,7 @@ def distribute(client, app, group_name, build, version, notes):
         }})
     members = client.all(f"/v1/betaGroups/{groups[0]['id']}/builds", limit=200)
     if not any(member["id"] == build_id for member in members):
+        print("Attaching selected build to the external TestFlight group", flush=True)
         client.request("POST", f"/v1/betaGroups/{groups[0]['id']}/relationships/builds",
                        {"data": [resource("builds", build_id)]})
     # VALID can precede Apple's application of the existing encryption declaration.
@@ -375,7 +402,9 @@ def distribute(client, app, group_name, build, version, notes):
         print("Waiting for the external beta state to settle", flush=True)
         time.sleep(15)
     state = detail["attributes"]["externalBuildState"]
+    print("External beta state:", state, flush=True)
     if state == "READY_FOR_BETA_SUBMISSION":
+        print("Submitting selected build to Beta App Review", flush=True)
         client.request("POST", "/v1/betaAppReviewSubmissions", {"data": {
             "type": "betaAppReviewSubmissions",
             "relationships": {"build": {"data": resource("builds", build_id)}},

@@ -1,8 +1,10 @@
 import datetime
+import io
 import json
 from pathlib import Path
 import tempfile
 import unittest
+import urllib.error
 from unittest.mock import Mock, patch
 
 from prepare import VARIABLES
@@ -47,6 +49,43 @@ class BuildSelectionTests(unittest.TestCase):
         client.all.return_value = [{"attributes": {"processingState": "INVALID"}}]
         with self.assertRaisesRegex(ValueError, "INVALID"):
             wait_for_build(client, "app", "101", "1.0")
+
+
+class APIErrorPrivacyTests(unittest.TestCase):
+    def failure(self, path, body):
+        client = Connect.__new__(Connect)
+        client.token = Mock(return_value="fixture-token")
+        error = urllib.error.HTTPError("https://api.appstoreconnect.apple.com" + path,
+                                       422, "Unprocessable Entity", {}, io.BytesIO(body))
+        with patch("testflight.urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(RuntimeError) as caught:
+                client.request("POST", path, {"data": {}})
+        return str(caught.exception)
+
+    def test_publishing_operation_and_schema_error_are_identifiable_without_private_details(self):
+        body = json.dumps({"errors": [{
+            "id": "private-error-id", "code": "ENTITY_ERROR.RELATIONSHIP.INVALID",
+            "title": "private-organization", "detail": "private@example.invalid PRIVATE-TEAM",
+            "source": {"pointer": "/data/relationships/build/data/id"},
+        }]}).encode()
+        message = self.failure("/v1/betaGroups/private-group-id/relationships/builds", body)
+        self.assertIn("betaGroups/relationships/builds", message)
+        self.assertIn("ENTITY_ERROR.RELATIONSHIP.INVALID", message)
+        self.assertIn("/data/relationships/build/data/id", message)
+        for private in ["private-group-id", "private-error-id", "private-organization",
+                        "private@example.invalid", "PRIVATE-TEAM", "fixture-token"]:
+            self.assertNotIn(private, message)
+
+    def test_malformed_or_non_schema_error_fields_are_not_exposed(self):
+        for body in [b"private@example.invalid signing certificate",
+                     json.dumps({"errors": [{"code": "private@example.invalid",
+                                              "source": {"pointer": "/data/private-team-id"}}]}).encode(),
+                     json.dumps({"errors": None}).encode()]:
+            with self.subTest(body=body):
+                message = self.failure("/v1/betaAppReviewSubmissions", body)
+                self.assertIn("betaAppReviewSubmissions", message)
+                self.assertIn("HTTP 422", message)
+                self.assertNotIn("private", message)
 
 
 class SigningTests(unittest.TestCase):
