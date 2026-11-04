@@ -1,9 +1,9 @@
 Regram Messenger 13.1.2
 
-Updated to Telegram 13.1.2. This build includes chat-list search responsiveness improvements, common-group message browsing fixes, and an optional exclusion of new bot messages from locally retained deleted-message history.
+Synced mainline through b34646. This build adds group-scoped member hiding, alerts when selected group members speak, and individual durations for videos sent together. It also fixes member-settings navigation and state refresh, video saving to Photos, and retains the chat-list search improvements.
 
-Please test sign-in, messaging, media playback, calls, push notifications, the share extension, widgets, and Regram settings. Check message filtering, locally retained message history, translation, and speech recognition with the providers you configure.
+Please test hiding someone in one group while their messages remain visible elsewhere. Add and remove selected-member alerts from group info and Regram Pro; check switches, counts, current group names, back, cancel, and returning to the list. Hidden or filtered messages should stay excluded from alerts.
 
-Please also try fast Chinese and English input in the search field at the top of the chat list, clear and retype queries, and open results. In common-group messages, check filtering, pagination, returning to the list, and opening the original message.
+Send several videos as an album and check each duration during downloading and playback. Try saving videos to Photos and confirm the reported result matches what appears in the library, including videos that need format conversion.
 
-Report the steps to reproduce any issue and your iOS version. Avoid including private messages or account credentials in reports.
+Please also test sign-in, messaging, calls, push notifications, the share extension, widgets, search, and Regram settings. Report the steps to reproduce any issue and your iOS version. Avoid including private messages or account credentials in reports.

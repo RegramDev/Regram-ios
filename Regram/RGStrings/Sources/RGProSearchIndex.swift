@@ -23,6 +23,8 @@ public enum RGProSearchIndex {
 
         "messageFilter": ["MessageFilter.Title", "MessageFilter.Regex", "MessageFilter.Test.Title", "filter regex whitelist 过滤 正则 白名单"],
         "hiddenUsers": ["HiddenUsers.Title", "hidden blocked 隐藏 屏蔽用户"],
+        "groupHiddenMembers": ["GroupMembers.Hidden.Title", "group member hide block 定向屏蔽 群成员 隐藏"],
+        "groupReminders": ["GroupMembers.Reminders.Title", "group member notifications reminder 群聊 特别提醒 指定成员 发言"],
         "inputToolbar": ["InputToolbar.Title", "format toolbar 格式 工具栏"],
         "mentionAsUserIdLink": ["Mention.UserIdLink", "mention nickname 昵称 提及 艾特"],
         "localPremium": ["LocalPremium.Title", "premium"],

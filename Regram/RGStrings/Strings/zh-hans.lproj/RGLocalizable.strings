@@ -522,6 +522,7 @@
 "StickerSave.Saving" = "正在保存贴纸…";
 "StickerSave.Success" = "贴纸已保存到相册";
 "StickerSave.Failed" = "保存失败，请检查相册权限后重试。";
+"MediaSave.Failed" = "保存失败，请检查相册权限及可用空间，或尝试其他视频画质。";
 "ProfileBadge.developer" = "开发者";
 "ProfileBadge.coreTester" = "核心测试";
 "ProfileBadge.sponsor" = "赞助者";
@@ -1250,3 +1251,24 @@
 "AntiFeatures.IgnoreBots" = "不保留机器人消息";
 "AntiFeatures.IgnoreBotsNotice" = "开启后，机器人发送的消息被撤回时会正常删除，适用于全局及单独开启防撤回的会话。已有撤回记录不会自动清理。";
 "CommonGroups.Cooling" = "设备温度较高，降温后继续查询";
+
+// Group-scoped member controls
+"GroupMembers.Hidden.Title" = "群内定向屏蔽";
+"GroupMembers.Hidden.Notice" = "只在当前账号的这个群内隐藏指定成员的消息，不影响其他群和私聊。左滑可取消屏蔽；已开启通知内容过滤时，也会过滤对应通知。";
+"GroupMembers.Reminders.Title" = "群聊特别提醒";
+"GroupMembers.Reminders.Notice" = "指定成员在此群发言时提醒，群已静音时也会提醒。被隐藏或过滤的消息不触发特别提醒。后台提醒需要 Telegram 向此设备下发推送，并受 iOS 通知权限和专注模式控制。左滑可移除成员。";
+"GroupMembers.SelectGroup" = "选择群聊";
+"GroupMembers.AddGroup" = "选择群聊";
+"GroupMembers.AddMember" = "添加成员";
+"GroupMembers.Hide" = "仅在此群屏蔽";
+"GroupMembers.Unhide" = "取消此群屏蔽";
+"GroupMembers.EnableReminder" = "此成员发言特别提醒";
+"GroupMembers.DisableReminder" = "关闭此成员特别提醒";
+
+"GroupMembers.Hidden.RootNotice" = "选择群聊，再添加要屏蔽的成员。只影响当前账号所选群中的消息。";
+"GroupMembers.Reminders.RootNotice" = "选择群聊，再添加需要特别提醒的成员。群列表显示当前已开启提醒的成员数量。";
+"GroupMembers.Hidden.Count" = "%d 位已屏蔽成员";
+"GroupMembers.Reminders.Count" = "%d 位成员已开启提醒";
+"GroupMembers.Hidden.Status" = "已在此群屏蔽";
+"GroupMembers.Reminders.Enabled" = "特别提醒已开启";
+"GroupMembers.Reminders.Suppressed" = "已选择提醒，发送者屏蔽优先生效";

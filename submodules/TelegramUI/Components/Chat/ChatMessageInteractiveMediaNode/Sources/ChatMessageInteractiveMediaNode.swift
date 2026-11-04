@@ -3028,6 +3028,21 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                     }
             }
         }
+        // MARK: Regram — every video tile in an album keeps its own duration. Compact downloads
+        // otherwise replace it with a percentage, and remote HLS tiles may have no badge at all.
+        if case .unconstrained = sizeCalculation, !isSecretMedia,
+           let file = self.media?._asMedia() as? TelegramMediaFile, file.isVideo, !file.isAnimated, !file.isVideoSticker,
+           let duration = file.duration, duration.isFinite, duration >= 0.0 {
+            let durationString = stringForDuration(Int32(clamping: Int64(min(duration, Double(Int32.max)))), position: nil)
+            switch badgeContent {
+            case let .mediaDownload(background, foreground, _, size, muted, active):
+                badgeContent = .mediaDownload(backgroundColor: background, foregroundColor: foreground, duration: durationString, size: size, muted: muted, active: active)
+            case let .text(inset, background, foreground, _, icon):
+                badgeContent = .text(inset: inset, backgroundColor: background, foregroundColor: foreground, text: NSAttributedString(string: durationString), iconName: icon)
+            case nil:
+                badgeContent = .text(inset: 0.0, backgroundColor: messageTheme.mediaDateAndStatusFillColor, foregroundColor: messageTheme.mediaDateAndStatusTextColor, text: NSAttributedString(string: durationString), iconName: nil)
+            }
+        }
         if isPreview, let file = self.media?._asMedia() as? TelegramMediaFile {
             if let duration = file.duration, !file.isVideoSticker {
                 let durationString = file.isAnimated ? gifTitle : stringForDuration(Int32(duration), position: nil)

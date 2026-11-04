@@ -41,6 +41,7 @@ import VideoPlaybackControlsComponent
 import PhotoResources
 import GlassBackgroundComponent
 import RGMediaMetadata // MARK: Regram
+import RGStrings // MARK: Regram
 
 public enum UniversalVideoGalleryItemContentInfo {
     case message(Message, GalleryMediaSubject?)
@@ -3562,6 +3563,29 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
     }
 
 
+    // MARK: Regram — downloading and importing into Photos share one operation with an explicit result.
+    private func rgSaveVideoToCameraRoll(message: Message, mediaReference: AnyMediaReference) {
+        guard let controller = self.galleryController() else { return }
+        let stringSaving = self.presentationData.strings.Story_TooltipSaving
+        let stringSaved = self.presentationData.strings.Story_TooltipSaved
+        let language = RGLocalizationManager.shared.preferredLocale(primary: self.presentationData.strings.primaryComponent.languageCode, secondary: self.presentationData.strings.secondaryComponent?.languageCode)
+        let failureText = "MediaSave.Failed".i18n(language)
+        let saveScreen = SaveProgressScreen(context: self.context, content: .progress(stringSaving, 0.0))
+        controller.present(saveScreen, in: .current)
+        let saveSignal: Signal<Float, SaveToCameraRollError> = SaveToCameraRoll.saveToCameraRollWithError(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
+        let disposable = (saveSignal |> deliverOnMainQueue).start(next: { [weak saveScreen] progress in
+            saveScreen?.content = .progress(stringSaving, progress)
+        }, error: { [weak self, weak saveScreen] error in
+            saveScreen?.dismiss()
+            guard let self, case .generic = error, let controller = self.galleryController() else { return }
+            controller.present(UndoOverlayController(presentationData: self.presentationData, content: .info(title: nil, text: failureText, timeout: nil, customUndoText: nil), elevatedLayout: false, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
+        }, completed: { [weak saveScreen] in
+            saveScreen?.content = .completion(stringSaved)
+            Queue.mainQueue().after(3.0, { [weak saveScreen] in saveScreen?.dismiss() })
+        })
+        saveScreen.cancelled = { disposable.dispose() }
+    }
+
     private func contextMenuMainItems(isSettings: Bool, dismiss: @escaping () -> Void) -> Signal<(items: [ContextMenuItem], topItems: [ContextMenuItem]), NoError> {
         guard let videoNode = self.videoNode, let item = self.item else {
             return .single(([], []))
@@ -3747,13 +3771,11 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                         }
                         
                         if let content = item.content as? HLSVideoContent {
-                            guard let videoNode = self.videoNode, let qualityState = videoNode.videoQualityState(), !qualityState.available.isEmpty else {
-                                return
-                            }
-                            if qualityState.available.isEmpty {
-                                return
-                            }
-                            guard let qualitySet = HLSQualitySet(baseFile: content.fileReference, codecConfiguration: HLSCodecConfiguration(context: self.context)) else {
+                            // MARK: Regram — software AV1 playback does not imply Photos can import that representation.
+                            let saveCodecs = HLSCodecConfiguration(isHardwareAv1Supported: false, isSoftwareAv1Supported: false)
+                            guard let qualitySet = HLSQualitySet(baseFile: content.fileReference, codecConfiguration: saveCodecs) else {
+                                c?.dismiss(result: .default, completion: nil)
+                                self.rgSaveVideoToCameraRoll(message: message, mediaReference: content.fileReference.abstract)
                                 return
                             }
                             
@@ -3805,41 +3827,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                                     }, action: { [weak self] c, _ in
                                         c?.dismiss(result: .default, completion: nil)
                                         
-                                        guard let self else {
-                                            return
-                                        }
-                                        guard let controller = self.galleryController() else {
-                                            return
-                                        }
-                                        
-                                        let saveScreen = SaveProgressScreen(context: self.context, content: .progress(self.presentationData.strings.Story_TooltipSaving, 0.0))
-                                        controller.present(saveScreen, in: .current)
-                                        
-                                        let stringSaving = self.presentationData.strings.Story_TooltipSaving
-                                        let stringSaved = self.presentationData.strings.Story_TooltipSaved
-                                        
-                                        let saveFileReference: AnyMediaReference = qualityFile.abstract
-                                        let saveSignal = SaveToCameraRoll.saveToCameraRoll(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: saveFileReference)
-                                        
-                                        let disposable = (saveSignal
-                                        |> deliverOnMainQueue).start(next: { [weak saveScreen] progress in
-                                            guard let saveScreen else {
-                                                return
-                                            }
-                                            saveScreen.content = .progress(stringSaving, progress)
-                                        }, completed: { [weak saveScreen] in
-                                            guard let saveScreen else {
-                                                return
-                                            }
-                                            saveScreen.content = .completion(stringSaved)
-                                            Queue.mainQueue().after(3.0, { [weak saveScreen] in
-                                                saveScreen?.dismiss()
-                                            })
-                                        })
-                                        
-                                        saveScreen.cancelled = {
-                                            disposable.dispose()
-                                        }
+                                        self?.rgSaveVideoToCameraRoll(message: message, mediaReference: qualityFile.abstract)
                                     })))
                                 }
                                 
@@ -3851,7 +3839,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                                     #endif
                                 }
                                 
-                                for quality in qualityState.available {
+                                for quality in qualitySet.qualityFiles.keys.sorted(by: >) {
                                     guard let qualityFile = qualitySet.qualityFiles[quality] else {
                                         continue
                                     }
@@ -3862,26 +3850,7 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
                             })
                         } else {
                             c?.dismiss(result: .default, completion: nil)
-                            
-                            switch self.fetchStatus {
-                            case .Local:
-                                let _ = (SaveToCameraRoll.saveToCameraRoll(context: self.context, userLocation: .peer(message.id.peerId), mediaReference: .message(message: MessageReference(message), media: file))
-                                |> deliverOnMainQueue).start(completed: { [weak self] in
-                                    guard let self else {
-                                        return
-                                    }
-                                    guard let controller = self.galleryController() else {
-                                        return
-                                    }
-                                    controller.present(UndoOverlayController(presentationData: self.presentationData, content: .mediaSaved(text: self.presentationData.strings.Gallery_VideoSaved), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return false }), in: .window(.root))
-                                })
-                            default:
-                                guard let controller = self.galleryController() else {
-                                    return
-                                }
-                                controller.present(textAlertController(context: self.context, title: nil, text: self.presentationData.strings.Gallery_WaitForVideoDownoad, actions: [TextAlertAction(type: .defaultAction, title: self.presentationData.strings.Common_OK, action: {
-                                })]), in: .window(.root))
-                            }
+                            self.rgSaveVideoToCameraRoll(message: message, mediaReference: .message(message: MessageReference(message), media: file))
                         }
                     })))
                 }

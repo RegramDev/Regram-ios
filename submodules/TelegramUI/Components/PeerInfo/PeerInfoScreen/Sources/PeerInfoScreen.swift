@@ -310,6 +310,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
     private var rgAppIconObserver: NSObjectProtocol?
     private var rgAppIconForegroundObserver: NSObjectProtocol? // MARK: Regram
     private var rgGroupRemarkObserver: NSObjectProtocol? // MARK: Regram
+    private var rgGroupMemberObserver: NSObjectProtocol? // MARK: Regram
     weak var controller: PeerInfoScreenImpl?
     
     let context: AccountContext
@@ -611,6 +612,10 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
             guard let self, let change = notification.object as? RGGroupRemarkChange,
                   change.accountId == self.context.account.peerId.toInt64(), change.peerId == self.peerId.toInt64() else { return }
             self.requestLayout()
+        }
+        // MARK: Regram — keep group member counts in sync after editing the scoped lists.
+        self.rgGroupMemberObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.requestLayout()
         }
         // MARK: Regram — refresh an existing settings page after UIKit accepts an icon change.
         if self.isSettings {
@@ -2883,6 +2888,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         self.rgFeatureTabEntriesDisposable?.dispose()
         // MARK: Regram
         if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = self.rgGroupMemberObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = self.rgAppIconObserver { NotificationCenter.default.removeObserver(observer) }
         if let observer = self.rgAppIconForegroundObserver { NotificationCenter.default.removeObserver(observer) }
         self.dataDisposable?.dispose()

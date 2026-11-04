@@ -13,6 +13,7 @@ swift_library(
     ],
     deps = [
         "//Regram/RGSimpleSettings", # MARK: Regram
+        "//Regram/RGStrings", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/ContextUI",
         "//submodules/TelegramUI/Components/AuthConfirmationScreen",

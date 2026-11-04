@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation // MARK: Regram
 import UIKit
 import SwiftSignalKit
 import TelegramCore
@@ -97,11 +98,32 @@ public func fetchMediaData(context: AccountContext, userLocation: MediaResourceU
     }
 }
 
+// MARK: Regram — callers that display a result must observe the PhotoKit transaction, not a fetch completion.
+public enum SaveToCameraRollError: Error {
+    case accessDenied
+    case generic
+}
+
 public func saveToCameraRoll(context: AccountContext, userLocation: MediaResourceUserLocation, customUserContentType: MediaResourceUserContentType? = nil, mediaReference: AnyMediaReference, video: AnyMediaReference? = nil) -> Signal<Float, NoError> {
-    let mediaData: Signal<(FetchMediaDataState, Bool), NoError> = fetchMediaData(context: context, userLocation: userLocation, customUserContentType: customUserContentType, mediaReference: mediaReference)
+    return saveToCameraRollWithError(context: context, userLocation: userLocation, customUserContentType: customUserContentType, mediaReference: mediaReference, video: video)
+    |> `catch` { _ in .complete() }
+}
+
+public func saveToCameraRollWithError(context: AccountContext, userLocation: MediaResourceUserLocation, customUserContentType: MediaResourceUserContentType? = nil, mediaReference: AnyMediaReference, video: AnyMediaReference? = nil) -> Signal<Float, SaveToCameraRollError> {
+    let fetchData: (AnyMediaReference) -> Signal<(FetchMediaDataState, Bool), NoError> = { reference in
+        return fetchMediaData(context: context, userLocation: userLocation, customUserContentType: customUserContentType, mediaReference: reference)
+        |> take(until: { state, _ in
+            // MARK: Regram — late fetch status updates must not cancel or repeat an in-flight Photos import.
+            if case let .data(data) = state, data.isComplete {
+                return SignalTakeAction(passthrough: true, complete: true)
+            }
+            return SignalTakeAction(passthrough: true, complete: false)
+        })
+    }
+    let mediaData = fetchData(mediaReference)
     let videoData: Signal<FetchMediaDataState?, NoError>
     if let video {
-        videoData = fetchMediaData(context: context, userLocation: userLocation, customUserContentType: customUserContentType, mediaReference: video)
+        videoData = fetchData(video)
         |> map { state, _ in
             return state
         }
@@ -115,7 +137,8 @@ public func saveToCameraRoll(context: AccountContext, userLocation: MediaResourc
         mediaData,
         videoData
     )
-    |> mapToSignal { stateAndIsImage, videoStateAndIsImage -> Signal<Float, NoError> in
+    |> castError(SaveToCameraRollError.self)
+    |> mapToSignal { stateAndIsImage, videoStateAndIsImage -> Signal<Float, SaveToCameraRollError> in
         let isImage = stateAndIsImage.1
         var mainData: EngineMediaResource.ResourceData?
         var videoData: EngineMediaResource.ResourceData?
@@ -123,13 +146,13 @@ public func saveToCameraRoll(context: AccountContext, userLocation: MediaResourc
         if let videoState = videoStateAndIsImage {
             switch videoState {
             case let .progress(value):
-                return .single(value * 0.95)
+                return .single(value * 0.9)
             case let .data(data):
                 videoData = data
             }
             switch stateAndIsImage.0 {
             case let .progress(value):
-                return .single(0.95 + 0.05 * value)
+                return .single(0.9 + 0.05 * value)
             case let .data(data):
                 mainData = data
             }
@@ -137,72 +160,148 @@ public func saveToCameraRoll(context: AccountContext, userLocation: MediaResourc
         } else {
             switch stateAndIsImage.0 {
             case let .progress(value):
-                return .single(value)
+                // MARK: Regram — reserve 100% for a confirmed Photos write.
+                return .single(value * 0.95)
             case let .data(data):
                 mainData = data
             }
         }
-        if let mainData, mainData.isComplete, videoData != nil || !waitForVideo {
-            return Signal<Float, NoError> { subscriber in
+        if let mainData, mainData.isComplete, videoData?.isComplete == true || !waitForVideo {
+            return Signal<Float, SaveToCameraRollError> { subscriber in
+                let cancelled = Atomic(value: false)
+                let videoSaveDisposable = MetaDisposable()
                 DeviceAccess.authorizeAccess(to: .mediaLibrary(.save), presentationData: context.sharedContext.currentPresentationData.with { $0 }, present: { c, a in
                     context.sharedContext.presentGlobalController(c, a)
                 }, openSettings: context.sharedContext.applicationBindings.openSettings, { authorized in
+                    guard !cancelled.with({ $0 }) else { return }
                     if !authorized {
-                        subscriber.putCompletion()
+                        subscriber.putError(.accessDenied)
                         return
                     }
 
                     let tempVideoPath = NSTemporaryDirectory() + "\(Int64.random(in: Int64.min ... Int64.max)).mp4"
+                    let finish: (Bool, Error?) -> Void = { success, error in
+                        guard !cancelled.with({ $0 }) else { return }
+                        if success && error == nil {
+                            subscriber.putNext(1.0)
+                            subscriber.putCompletion()
+                        } else {
+                            subscriber.putError(.generic)
+                        }
+                    }
                     if isImage, let videoData, let imageData = try? Data(contentsOf: URL(fileURLWithPath: mainData.path)) {
                         let id = UUID().uuidString
 
-                        let jpegWithID = addAssetIdentifierToJPEG(imageData, assetIdentifier: id)!
+                        guard let jpegWithID = addAssetIdentifierToJPEG(imageData, assetIdentifier: id) else {
+                            subscriber.putError(.generic)
+                            return
+                        }
                         let outputVideoURL = URL(fileURLWithPath: NSTemporaryDirectory() + "\(id).mov")
 
-                        try? FileManager.default.copyItem(atPath: videoData.path, toPath: tempVideoPath)
+                        do {
+                            try FileManager.default.copyItem(atPath: videoData.path, toPath: tempVideoPath)
+                        } catch {
+                            subscriber.putError(.generic)
+                            return
+                        }
 
                         addAssetIdentifierToVideo(inputURL: URL(fileURLWithPath: tempVideoPath), outputURL: outputVideoURL, assetIdentifier: id) { success in
-                            guard success else { return }
+                            guard success, !cancelled.with({ $0 }) else {
+                                try? FileManager.default.removeItem(atPath: tempVideoPath)
+                                try? FileManager.default.removeItem(at: outputVideoURL)
+                                subscriber.putError(.generic)
+                                return
+                            }
 
                             PHPhotoLibrary.shared().performChanges({
                                 let request = PHAssetCreationRequest.forAsset()
 
                                 request.addResource(with: .photo, data: jpegWithID, options: nil)
                                 request.addResource(with: .pairedVideo, fileURL: outputVideoURL, options: nil)
-                            }, completionHandler: { _, error in
-                                let _ = try? FileManager.default.removeItem(atPath: tempVideoPath)
-                                subscriber.putNext(1.0)
-                                subscriber.putCompletion()
+                            }, completionHandler: { success, error in
+                                try? FileManager.default.removeItem(atPath: tempVideoPath)
+                                try? FileManager.default.removeItem(at: outputVideoURL)
+                                finish(success, error)
                             })
                         }
-                    } else {
+                    } else if isImage {
+                        guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: mainData.path)), !imageData.isEmpty else {
+                            subscriber.putError(.generic)
+                            return
+                        }
                         PHPhotoLibrary.shared().performChanges({
-                            if isImage {
-                                if let imageData = try? Data(contentsOf: URL(fileURLWithPath: mainData.path)) {
-                                    PHAssetCreationRequest.forAsset().addResource(with: .photo, data: imageData, options: nil)
-                                }
-                            } else {
-                                if let _ = try? FileManager.default.copyItem(atPath: mainData.path, toPath: tempVideoPath) {
-                                    PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: URL(fileURLWithPath: tempVideoPath))
-                                }
-                            }
-                        }, completionHandler: { _, error in
-                            if let error {
-                                print("\(error)")
-                            }
-                            let _ = try? FileManager.default.removeItem(atPath: tempVideoPath)
-                            subscriber.putNext(1.0)
-                            subscriber.putCompletion()
-                        })
+                            PHAssetCreationRequest.forAsset().addResource(with: .photo, data: imageData, options: nil)
+                        }, completionHandler: finish)
+                    } else {
+                        // MARK: Regram — video containers accepted for playback may require export before Photos can import them.
+                        videoSaveDisposable.set(rgSaveVideoToPhotoLibrary(path: mainData.path, completion: { success in finish(success, nil) }))
                     }
                 })
 
                 return ActionDisposable {
+                    let _ = cancelled.swap(true)
+                    videoSaveDisposable.dispose()
                 }
             }
         } else {
             return .complete()
         }
+    }
+}
+
+// MARK: Regram — retry a rejected video as a standard MP4 and report the actual import result.
+private func rgSaveVideoToPhotoLibrary(path: String, completion: @escaping (Bool) -> Void) -> Disposable {
+    let cancelled = Atomic(value: false)
+    let exportSession = Atomic<AVAssetExportSession?>(value: nil)
+    let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let originalURL = temporaryDirectory.appendingPathComponent("original.mp4")
+    let exportedURL = temporaryDirectory.appendingPathComponent("exported.mp4")
+    let finish: (Bool) -> Void = { success in
+        try? FileManager.default.removeItem(at: temporaryDirectory)
+        if !cancelled.with({ $0 }) { completion(success) }
+    }
+    do {
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: URL(fileURLWithPath: path), to: originalURL)
+    } catch {
+        finish(false)
+        return EmptyDisposable
+    }
+
+    let save: (URL, @escaping (Bool) -> Void) -> Void = { url, completion in
+        guard !cancelled.with({ $0 }) else { finish(false); return }
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetCreationRequest.forAsset().addResource(with: .video, fileURL: url, options: nil)
+        }, completionHandler: { success, error in
+            completion(success && error == nil)
+        })
+    }
+    save(originalURL, { success in
+        guard !cancelled.with({ $0 }) else { finish(false); return }
+        if success {
+            finish(true)
+            return
+        }
+        let asset = AVURLAsset(url: originalURL)
+        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
+            finish(false)
+            return
+        }
+        let _ = exportSession.swap(session)
+        session.outputURL = exportedURL
+        session.outputFileType = .mp4
+        session.shouldOptimizeForNetworkUse = true
+        session.exportAsynchronously {
+            guard session.status == .completed, !cancelled.with({ $0 }) else {
+                finish(false)
+                return
+            }
+            save(exportedURL, finish)
+        }
+    })
+    return ActionDisposable {
+        let _ = cancelled.swap(true)
+        exportSession.with({ $0 })?.cancelExport()
     }
 }
 

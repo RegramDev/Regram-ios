@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import Postbox
 import SwiftSignalKit
 internal import TelegramApi
@@ -1234,7 +1235,8 @@ public final class AccountStateManager {
                     var messageList: [([Message], PeerGroupId, Bool, MessageHistoryThreadData?)] = []
                     
                     for id in events.addedIncomingMessageIds {
-                        let (messages, notify, _, _, threadData) = messagesForNotification(transaction: transaction, id: id, alwaysReturnMessage: false)
+                        // MARK: Regram — member reminders can opt this group message into foreground delivery.
+                        let (messages, notify, _, _, threadData) = messagesForNotification(transaction: transaction, id: id, alwaysReturnMessage: false, accountPeerId: self.accountPeerId)
                         if !messages.isEmpty {
                             messageList.append((messages, .root, notify, threadData))
                         }
@@ -2436,7 +2438,20 @@ func resolveNotificationSettings(list: [TelegramPeerNotificationSettings], defau
     return (sound, notify, displayContents)
 }
 
-public func messagesForNotification(transaction: Transaction, id: MessageId, alwaysReturnMessage: Bool) -> (messages: [Message], notify: Bool, sound: PeerMessageSound, displayContents: Bool, threadData: MessageHistoryThreadData?) {
+// MARK: Regram — shared eligibility for foreground and already-delivered APNs notifications.
+public func rgShouldRemindGroupMember(message: Message, accountPeerId: PeerId, preferences: RGGroupMemberReminderPreferences = RGSimpleSettings.shared.groupMemberReminderPreferences) -> Bool {
+    let isGroup: Bool
+    if message.peers[message.id.peerId] is TelegramGroup {
+        isGroup = true
+    } else if let channel = message.peers[message.id.peerId] as? TelegramChannel, case .group = channel.info {
+        isGroup = true
+    } else {
+        isGroup = false
+    }
+    return preferences.shouldRemind(accountId: accountPeerId.toInt64(), groupId: message.id.peerId.toInt64(), senderId: message.author?.id.toInt64(), isIncoming: message.flags.contains(.Incoming), isGroup: isGroup, isService: message.media.contains(where: { $0 is TelegramMediaAction }), isImported: message.forwardInfo?.flags.contains(.isImported) == true, text: message.rgTextContent)
+}
+
+public func messagesForNotification(transaction: Transaction, id: MessageId, alwaysReturnMessage: Bool, accountPeerId: PeerId? = nil) -> (messages: [Message], notify: Bool, sound: PeerMessageSound, displayContents: Bool, threadData: MessageHistoryThreadData?) {
     if id.namespace == Namespaces.Message.EphemeralLocal || Namespaces.Message.allWelcomeMessages.contains(id.namespace) {
         return ([], false, defaultCloudPeerNotificationSound, false, nil)
     }
@@ -2563,6 +2578,12 @@ public func messagesForNotification(transaction: Transaction, id: MessageId, alw
         resultMessages.append(contentsOf: messageGroup.filter({ $0.id != message.id }))
     }
     
+    // MARK: Regram — preserve membership/read checks and preview privacy; override group muting only.
+    if let accountPeerId, rgShouldRemindGroupMember(message: message, accountPeerId: accountPeerId) {
+        notify = true
+        if sound == .none { sound = defaultCloudPeerNotificationSound }
+    }
+
     if notify {
         return (resultMessages, isUnread, sound, displayContents, threadData)
     } else {

@@ -80,6 +80,8 @@ private enum RGProDisclosureLink: String {
     case ghostMode
     case messageFilter
     case hiddenUsers
+    case groupHiddenMembers
+    case groupReminders
     case antiRevokeChats
     case appIcons
     case appBages
@@ -152,6 +154,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .messageFilter, text: "MessageFilter.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .hiddenUsers, text: "HiddenUsers.Title".i18n(lang)))
+    entries.append(.disclosure(id: id.count, section: .antiFeatures, link: .groupHiddenMembers, text: "GroupMembers.Hidden.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .input, settingName: .inputToolbar, value: RGSimpleSettings.shared.inputToolbar, text: "InputToolbar.Title".i18n(lang), enabled: true))
     // MARK: Regram
     entries.append(.toggle(id: id.count, section: .input, settingName: .mentionAsUserIdLink, value: RGSimpleSettings.shared.mentionAsUserIdLink, text: "Mention.UserIdLink".i18n(lang), enabled: true))
@@ -172,6 +175,7 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     
 
     entries.append(.header(id: id.count, section: .notifications, text: presentationData.strings.Notifications_Title.uppercased(), badge: nil))
+    entries.append(.disclosure(id: id.count, section: .notifications, link: .groupReminders, text: "GroupMembers.Reminders.Title".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .notificationRecoveryExperiment, value: RGNotificationExperiment.isEnabled, text: "Debug.NotificationExperiment".i18n(lang), enabled: RGSimpleSettings.shared.canSharePreferencesWithExtensions))
     entries.append(.notice(id: id.count, section: .notifications, text: "Debug.NotificationExperiment.Info".i18n(lang)))
     entries.append(.toggle(id: id.count, section: .notifications, settingName: .hideTabBarPermissionWarnings, value: RGSimpleSettings.shared.hideTabBarPermissionWarnings, text: "features.HideTabBarPermissionWarnings".i18n(lang), enabled: true))
@@ -393,6 +397,10 @@ public func rgProController(context: AccountContext, initialSearchQuery: String?
                 pushControllerImpl?(rgMessageFilterController(context: context, presentationData: presentationData))
             case .hiddenUsers:
                 pushControllerImpl?(rgHiddenUsersController(context: context))
+            case .groupHiddenMembers:
+                pushControllerImpl?(rgGroupMemberSettingsController(context: context, mode: .hidden))
+            case .groupReminders:
+                pushControllerImpl?(rgGroupMemberSettingsController(context: context, mode: .reminders))
             case .antiRevokeChats:
                 pushControllerImpl?(rgAntiRevokeChatsController(context: context))
             case .fonts:

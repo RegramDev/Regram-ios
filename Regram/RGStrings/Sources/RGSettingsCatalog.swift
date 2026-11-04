@@ -161,6 +161,8 @@ public enum RGSettingsCatalog {
         .init("settings.profiles", "hidePhoneInSettings", "Settings.HidePhoneInSettingsUI"),
         .init("pro.privacy", "messageFilter", "MessageFilter.Title"),
         .init("pro.privacy", "hiddenUsers", "HiddenUsers.Title"),
+        .init("pro.privacy", "groupHiddenMembers", "GroupMembers.Hidden.Title"),
+        .init("pro.notifications", "groupReminders", "GroupMembers.Reminders.Title"),
         .init("pro.messages", "mentionAsUserIdLink", "Mention.UserIdLink"),
         .init("localGifts", "localPremium", "LocalPremium.Title"),
         .init("pro.media", "disableLinkPreview", "LinkPreview.Disable"),

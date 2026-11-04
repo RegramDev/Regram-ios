@@ -4,7 +4,7 @@ English · [简体中文](README.md)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, and appearance customization.
 
-This is **regram-beta / 13.1.2 / b34643**, the TestFlight branch. It includes the current mainline updates, Telegram 13.1.2, and chat-list search typing fixes. See [TestFlight](build-system/ci/TESTFLIGHT.md), the [beta sync record](docs/beta-sync-20261031.md), [feature list](docs/features.md), and [changelog](docs/changelog.md). Sideload packages and GitHub Releases use `master`.
+This is **regram-beta / 13.1.2 / b34646**, the TestFlight branch. It adds group-scoped member hiding, selected-member alerts, individual video durations in albums, and fixes for member-settings navigation, state refresh, and saving videos to Photos. See [TestFlight](build-system/ci/TESTFLIGHT.md), the [beta sync record](docs/beta-sync-20261104.md), [feature list](docs/features.md), and [changelog](docs/changelog.md). Sideload packages and GitHub Releases use `master`.
 
 ## Features
 
@@ -29,6 +29,8 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
+- Hide a member only in a selected group, separately for each account; manage selections from the member avatar menu or group profile.
+- Group member alerts notify when selected members post. Hidden and filtered messages stay excluded; background alerts depend on Telegram push delivery and system notification permissions.
 - Global/per-chat anti-revoke, an optional exclusion for newly revoked bot messages, a local revoked-message archive, and selected deletion and media-saving controls.
 - Deleted-message markers as icons, custom text or hidden, with a custom color and immediate refresh of visible messages.
 - Ghost controls for story read reporting, online presence and typing activity.
@@ -124,7 +126,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-This branch integrates applicable **13.1.2 / b34643** changes and continues to exclude in-app IPA updates. All builds use `dev.regram.ios` / `group.dev.regram.ios`, shared by the main application and all six extensions. See the [beta sync record](docs/beta-sync-20261031.md) for validation scope. Historical mainline package checks do not validate a beta package.
+This branch integrates applicable **13.1.2 / b34646** changes and continues to exclude in-app IPA updates. All builds use `dev.regram.ios` / `group.dev.regram.ios`, shared by the main application and all six extensions. All 83 feature checks and 46 offline beta CI tests passed. See the [beta sync record](docs/beta-sync-20261104.md) for validation scope. Historical mainline package checks do not validate a beta package.
 
 ## Building
 

@@ -1,11 +1,14 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.2 / b34643** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.2 / b34646** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 本分支为 `regram-beta`，统一使用 `dev.regram.ios`／`group.dev.regram.ios`，不包含应用内更新安装。主线历史构建与真机记录不代表 Beta 包已经验收。
 
 ## 功能与使用
 
+- [群成员屏蔽、特别提醒与多视频时长](group-member-controls.md)：按账号和群隔离的成员管理、通知优先级、相册视频角标，以及 b34646 页面导航／返回状态修复。
+
+- [受保护频道／群组视频保存排查](protected-video-save.md)：相册写入结果、视频格式兼容回退、HLS 保存画质及 b34644 本地安装包校验。
 - [b34643 顶部搜索快速输入复查](search-typing-followup-34643.md)：处理 b34642 仍卡顿的反馈，将非空查询结果交回异步排版与绘制，包含生产 ListView 对照和本地 IPA 校验记录。
 - [共群发言与机器人撤回消息](common-group-messages-bot-retention.md)：2026-10-29 源码修复记录，包含原生列表、头像复用、消息高亮、受限并发与机器人排除开关；附 b34641 安装包、发布及校验记录。
 
@@ -37,6 +40,7 @@
 
 ## 构建与维护
 
+- [Beta 同步 b34646](beta-sync-20261104.md)：群成员管理、特别提醒、页面返回与状态、多视频时长及相册保存修正，保留 Beta 安装身份和 TestFlight 流程。
 - [Beta 同步 b34643 与 TestFlight 迁移](beta-sync-20261031.md)：13.1.2、顶部搜索修复、分支身份和检查范围。
 - [TestFlight 使用说明](../build-system/ci/TESTFLIGHT.md)：选择 regram-beta，构建、上传、外部分组与重试方式。
 - [Beta 同步主线 b34638](beta-sync-20261028.md)：历史同步范围、XChat 图标、分支约束和当时未构建的验证边界。

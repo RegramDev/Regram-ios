@@ -33,6 +33,7 @@ extension UserDefaults {
             UserDefaults(suiteName: suite + "-group")!.removePersistentDomain(forName: suite + "-group")
         }
         UserDefaults.rgTestStandard.set("synthetic", forKey: "api_hash")
+        try Self.checkGroupMembers(settings)
         // The relocated notification setting keeps its shared-store value and legacy fallback.
         let experimentDefaults = rgSharedUserDefaults()!
         experimentDefaults.set(true, forKey: "legacyNotificationsFix")
@@ -279,6 +280,56 @@ extension UserDefaults {
         try Self.checkPortableBackups(settings)
         Self.checkRefreshNotifications(settings)
         print("Settings runtime checks passed: storage/backup regressions, portable layout consistency, deferred/targeted refresh, account-scoped real-menu inventory, and reordering with hidden actions")
+    }
+
+    static func checkGroupMembers(_ settings: RGSimpleSettings) throws {
+        expect(settings.groupHiddenSenders.isEmpty && settings.groupNotificationSenders.isEmpty, "Member controls are opt-in")
+        let generation = settings.contentFilterGeneration
+        settings.setGroupMemberHidden(accountId: 11, groupId: 21, senderId: 31, hidden: true)
+        settings.setGroupMemberHidden(accountId: 12, groupId: 21, senderId: 32, hidden: true)
+        settings.setGroupMemberReminder(accountId: 11, groupId: 21, senderId: 31, enabled: true)
+        let selection = settings.groupHiddenSenders
+        expect(selection.senderIds(accountId: 11, groupId: 21) == [31] && selection.senderIds(accountId: 11, groupId: 22).isEmpty, "Selections must stay in the chosen group")
+        expect(!selection.contains(accountId: 12, groupId: 21, senderId: 31) && settings.blockedPeerIds.isEmpty, "Scoped hiding must not alter another account or the global hidden list")
+        expect(settings.contentFilterGeneration > generation, "A scoped update must invalidate history and preview verdicts")
+        let backup = try RGSettingsBackup.decode(settings.exportPreferences(categories: [.privacy, .notifications]).encoded())
+        expect(backup.values["groupHiddenSenders"] == .strings(selection.stored), "Backup must retain scoped member identities")
+        expect(RGSettingsBackup.category(for: "groupNotificationSenders") == .notifications && RGSettingsBackup.category(for: "groupHiddenSenders") == .privacy, "The two controls belong to their own backup categories")
+
+        func reminder(_ preferences: RGGroupMemberReminderPreferences, accountId: Int64 = 11, groupId: Int64 = 21, senderId: Int64? = 31, incoming: Bool = true, isGroup: Bool = true, isService: Bool = false, isImported: Bool = false, text: String = "") -> Bool {
+            preferences.shouldRemind(accountId: accountId, groupId: groupId, senderId: senderId, isIncoming: incoming, isGroup: isGroup, isService: isService, isImported: isImported, text: text)
+        }
+        expect(!reminder(settings.groupMemberReminderPreferences), "Hiding must win over a selected member reminder")
+        settings.setGroupMemberHidden(accountId: 11, groupId: 21, senderId: 31, hidden: false)
+        let preferences = settings.groupMemberReminderPreferences
+        expect(reminder(preferences), "Media-only posts by a selected member must qualify")
+        expect(!reminder(preferences, accountId: 12) && !reminder(preferences, groupId: 22) && !reminder(preferences, senderId: 32), "Reminders must isolate account, group and sender")
+        expect(!reminder(preferences, senderId: nil) && !reminder(preferences, senderId: 11), "Missing and self authors must not qualify")
+        expect(!reminder(preferences, incoming: false) && !reminder(preferences, isGroup: false) && !reminder(preferences, isService: true) && !reminder(preferences, isImported: true), "Outgoing, private, service and historical imports must not alert")
+        settings.blockedPeerIds = [31]
+        expect(!reminder(settings.groupMemberReminderPreferences), "Global hiding also wins over reminders")
+        settings.blockedPeerIds = []
+        settings.messageFilterRules = [RGMessageFilterRule(pattern: "spam")]
+        expect(!reminder(settings.groupMemberReminderPreferences, text: "spam"), "Keyword filtering must not be bypassed by special alerts")
+        settings.messageFilterDisabledPeerIds = [21]
+        expect(reminder(settings.groupMemberReminderPreferences, text: "spam"), "A disabled per-chat keyword filter permits reminders")
+        settings.setGroupMemberHidden(accountId: 11, groupId: 21, senderId: 31, hidden: true)
+        expect(RGNotificationFilterPolicy.shouldHide(text: "", senderId: 31, peerId: 21, isIncoming: true, rules: [], hiddenSenders: [], disabledChats: [21], accountId: 11, groupHiddenSenders: settings.groupHiddenSenders), "Disabling keyword filtering must not disable scoped sender hiding")
+
+        let extensionDefaults = rgSharedUserDefaults()!
+        expect(!reminder(RGGroupMemberReminderPreferences(defaults: extensionDefaults)), "The extension must see the scoped block")
+        settings.applyPreferences([:], resetCategories: [.privacy])
+        expect(settings.groupHiddenSenders.isEmpty && reminder(RGGroupMemberReminderPreferences(defaults: extensionDefaults)), "Privacy reset refreshes hiding while keeping the separate reminder category")
+        settings.applyPreferences([:], resetCategories: [.notifications])
+        expect(settings.groupNotificationSenders.isEmpty && !reminder(RGGroupMemberReminderPreferences(defaults: extensionDefaults)), "A reused extension snapshot must see newly disabled reminders")
+        settings.applyPreferences(backup.values)
+        expect(settings.groupHiddenSenders == selection && !reminder(settings.groupMemberReminderPreferences), "Restore must invalidate both settings caches")
+        do {
+            _ = try RGSettingsBackup.decode(RGSettingsBackup(values: ["groupHiddenSenders": .strings(["11:21:invalid"])]).encoded())
+            fatalError("Malformed member identities must be rejected during import")
+        } catch RGSettingsBackup.ValidationError.invalidValue("groupHiddenSenders") { }
+        expect(RGGroupMemberSelection(stored: ["bad", "11:21:31", "11:21:31"]).stored == ["11:21:31"], "Malformed stored identities are ignored and duplicates normalized")
+        settings.applyPreferences([:], resetCategories: [.privacy, .notifications])
     }
 
     static func checkRefreshNotifications(_ settings: RGSimpleSettings) {

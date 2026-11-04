@@ -1638,8 +1638,12 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 actions.append(.action(ContextMenuActionItem(text: isVideo ? chatPresentationInterfaceState.strings.Gallery_SaveVideo : chatPresentationInterfaceState.strings.Gallery_SaveImage, icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Save"), color: theme.actionSheet.primaryTextColor)
                 }, action: { _, f in
-                    let _ = (saveToCameraRoll(context: context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
-                             |> deliverOnMainQueue).startStandalone(completed: {
+                    // MARK: Regram — display success only after the Photos transaction succeeds.
+                    let _ = (saveToCameraRollWithError(context: context, userLocation: .peer(message.id.peerId), mediaReference: mediaReference)
+                             |> deliverOnMainQueue).startStandalone(error: { error in
+                        guard case .generic = error else { return }
+                        controllerInteraction.displayUndo(.info(title: nil, text: "MediaSave.Failed".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), timeout: nil, customUndoText: nil))
+                    }, completed: {
                         Queue.mainQueue().after(0.2) {
                             let presentationData = context.sharedContext.currentPresentationData.with { $0 }
                             controllerInteraction.presentControllerInCurrent(UndoOverlayController(presentationData: presentationData, content: .mediaSaved(text: isVideo ? presentationData.strings.Gallery_VideoSaved : presentationData.strings.Gallery_ImageSaved), elevatedLayout: false, animateInAsReplacement: false, action: { _ in return true }), nil)

@@ -9,6 +9,7 @@ import TelegramPresentationData
 import TelegramUIPreferences
 import SwiftSignalKit
 import TelegramCore
+import Postbox // MARK: Regram — explicit message and group types in foreground notification filtering.
 import Display
 import LegacyComponents
 import DeviceAccess
@@ -327,7 +328,20 @@ final class AuthorizedApplicationContext {
                 return
             }
 
-            if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {
+            // MARK: Regram — hidden members stay hidden in foreground previews; prefer selected senders.
+            guard let strongSelf = self else { return }
+            let notificationPreferences = RGSimpleSettings.shared.groupMemberReminderPreferences
+            let visibleList = messageList.compactMap { item -> ([Message], PeerGroupId, Bool, MessageHistoryThreadData?)? in
+                let messages = item.0.filter {
+                    !RGNotificationFilterPolicy.shouldHide(text: $0.rgTextContent, senderId: $0.author?.id.toInt64(), peerId: $0.id.peerId.toInt64(), isIncoming: $0.flags.contains(.Incoming), rules: notificationPreferences.rules, hiddenSenders: notificationPreferences.hiddenSenders, disabledChats: notificationPreferences.disabledChats, accountId: context.account.peerId.toInt64(), groupHiddenSenders: notificationPreferences.groupHiddenSenders)
+                }
+                return messages.isEmpty ? nil : (messages, item.1, item.2, item.3)
+            }
+            let selected = visibleList.last(where: { item in
+                item.2 && (item.0.first.map { rgShouldRemindGroupMember(message: $0, accountPeerId: context.account.peerId, preferences: notificationPreferences) } ?? false)
+            }) ?? visibleList.last
+            if let (messages, _, notify, threadData) = selected, let firstMessage = messages.first {
+                let isMemberReminder = notify && rgShouldRemindGroupMember(message: firstMessage, accountPeerId: context.account.peerId, preferences: notificationPreferences)
                 if UIApplication.shared.applicationState == .active {
                     let chatLocation: NavigateToChatControllerParams.Location
                     if let _ = threadData, let threadId = firstMessage.threadId {
@@ -387,7 +401,7 @@ final class AuthorizedApplicationContext {
                                     return false
                                 }
                             })
-                            if !isMuted {
+                            if !isMuted || isMemberReminder { // MARK: Regram
                                 if firstMessage.id.peerId == context.account.peerId, !firstMessage.flags.contains(.WasScheduled) {
                                 } else {
                                     if inAppNotificationSettings.playSounds {

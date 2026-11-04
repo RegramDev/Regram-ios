@@ -38,6 +38,7 @@ swift_library(
         "//submodules/TelegramPresentationData:TelegramPresentationData",
         "//submodules/TelegramUIPreferences:TelegramUIPreferences",
         "//submodules/ItemListUI:ItemListUI",
+        "//submodules/ItemListPeerItem:ItemListPeerItem",
         "//submodules/PresentationDataUtils:PresentationDataUtils",
         "//submodules/LocalizedPeerData", # MARK: Regram
         "//submodules/OverlayStatusController:OverlayStatusController",

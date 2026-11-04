@@ -62,6 +62,8 @@ extension String {
         assert(contains("右下角", "bottomBar", "visibility"))
         assert(RGSettingsCatalog.results(query: "书签", language: "zh-hans").isEmpty, "Bookmarks belong on outer Settings, not the Pro catalog")
         assert(contains("总结", "pro.messages", "summarySettings"))
+        assert(contains("定向屏蔽", "pro.privacy", "groupHiddenMembers"))
+        assert(contains("特别提醒", "pro.notifications", "groupReminders"))
         assert(contains("DoH", "networkPolicy", "enabled"))
         assert(RGSettingsCatalog.results(query: "色调", language: "zh-hans").isEmpty)
         assert(RGSettingsDestination(page: "settings.appearance", item: "liquidGlassTintPercent") == RGSettingsDestination(page: "bottomBar"))

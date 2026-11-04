@@ -23,6 +23,7 @@ import ContextUI
 import GlassBackgroundComponent
 import SegmentControlComponent
 import UIKitRuntimeUtils
+import RGStrings // MARK: Regram
 
 public struct ShareScreenSegmentedValue {
     public let title: String
@@ -701,12 +702,20 @@ public final class ShareScreen: ViewControllerComponentContainer {
         guard !references.isEmpty else { return }
         self.isSaving = true
         self.saveDisposable.set((combineLatest(references.map { location, reference in
-            SaveToCameraRoll.saveToCameraRoll(context: self.context, userLocation: location, mediaReference: reference) |> takeLast
+            // MARK: Regram — downloading a file is not proof that Photos saved it.
+            SaveToCameraRoll.saveToCameraRollWithError(context: self.context, userLocation: location, mediaReference: reference) |> takeLast
         }) |> filter { values in values.allSatisfy { $0 >= 1.0 } } |> take(1) |> deliverOnMainQueue).start(next: { [weak self] _ in
             guard let self else { return }
             self.isSaving = false
             self.actionCompleted?()
             self.close()
+        }, error: { [weak self] error in
+            guard let self else { return }
+            self.isSaving = false
+            guard case .generic = error else { return }
+            let data = self.context.sharedContext.currentPresentationData.with { $0 }
+            let language = RGLocalizationManager.shared.preferredLocale(primary: data.strings.primaryComponent.languageCode, secondary: data.strings.secondaryComponent?.languageCode)
+            self.present(UndoOverlayController(presentationData: data, content: .info(title: nil, text: "MediaSave.Failed".i18n(language), timeout: nil, customUndoText: nil), elevatedLayout: true, animateInAsReplacement: false, action: { _ in false }), in: .window(.root))
         }, completed: { [weak self] in self?.isSaving = false }))
     }
 
