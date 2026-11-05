@@ -1,6 +1,6 @@
 # Regram
 
-[English](README.en.md) · 简体中文
+[English](README.en.md) · 简体中文 · [LINUX DO 社区](https://linux.do/)
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
@@ -198,3 +198,7 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 - [贡献指南](.github/CONTRIBUTING.md)
 
 Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及第三方依赖的许可证，并明确标识为非官方客户端。
+
+## 社区与致谢
+
+感谢 [LINUX DO](https://linux.do/) 社区为开源项目提供交流与分享的平台，欢迎佬友交流 Regram 的使用体验与改进建议。

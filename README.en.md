@@ -1,6 +1,6 @@
 # Regram
 
-English · [简体中文](README.md)
+English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
@@ -198,3 +198,7 @@ The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging g
 - [Contributing](.github/CONTRIBUTING.md)
 
 Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
+
+## Community and acknowledgements
+
+Thanks to the [LINUX DO](https://linux.do/) community for providing a place to share and discuss open-source projects. Community members are welcome to share their experience with Regram and suggest improvements.
