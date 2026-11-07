@@ -17,7 +17,6 @@ swift_library(
     ],
     deps = rgDeps + [
         "//submodules/Display",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/ComponentFlow",
         "//submodules/AppBundle",
         "//submodules/TelegramCore",

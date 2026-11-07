@@ -1381,6 +1381,11 @@ final class UniversalVideoGalleryItemNode: ZoomableContentGalleryItemNode {
             }
             let scrubberView = ChatVideoGalleryItemScrubberView(chapters: chapters)
             self.scrubberView = scrubberView
+            let accessibilityStrings = self.presentationData.strings
+            scrubberView.accessibilityTitle = accessibilityStrings.VoiceOver_Gallery_PlaybackPosition
+            scrubberView.accessibilityValueFormat = { position, duration in
+                return accessibilityStrings.Items_NOfM(position, duration).string
+            }
             scrubberView.seek = { [weak self] timecode in
                 self?.videoNode?.seek(timecode)
             }

@@ -1,6 +1,5 @@
 import RGSimpleSettings
 import Foundation
-import LottieSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -1763,7 +1762,7 @@ public final class WallpaperBackgroundNodeImpl: ASDisplayNode, WallpaperBackgrou
             if let current = self.modelStickerNode {
                 modelStickerNode = current
             } else {
-                modelStickerNode = DefaultAnimatedStickerNodeImpl(lottieSettings: self.context.lottieRenderingSettings)
+                modelStickerNode = DefaultAnimatedStickerNodeImpl()
                 modelStickerNode.setup(source: AnimatedStickerResourceSource(account: self.context.account, resource: modelFile.resource, isVideo: false), width: 96, height: 96, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
                 modelStickerNode.visibility = true
                 self.modelStickerNode = modelStickerNode

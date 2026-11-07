@@ -4,7 +4,6 @@ rgdeps = [
     "//Regram/RGLocalGifts", # MARK: Regram
         "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
         "//Regram/RGJoinedChatFolderPicker", # MARK: Regram
-        "//submodules/ContactListUI", # MARK: Regram
     "//Regram/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
     "//Regram/RGSettingsUI:RGSettingsUI",
     "//Regram/RGStrings:RGStrings",
@@ -33,7 +32,6 @@ swift_library(
         "//submodules/TelegramUI/Components/NavigationBarComponent",
         "//submodules/TelegramUI/Components/NavigationExpansionTransition",
         "//submodules/AccountContext",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AccountUtils",
         "//submodules/ActionSheetPeerItem",
         "//submodules/ActivityIndicator",
@@ -47,6 +45,7 @@ swift_library(
         "//submodules/AvatarVideoNode",
         "//submodules/CalendarMessageScreen",
         "//submodules/CallListUI",
+        "//submodules/ContactListUI:ContactListUI",
         "//submodules/TelegramUI/Components/Chat/ChatAvatarNavigationNode",
         "//submodules/TelegramUI/Components/ChatControllerInteraction",
         "//submodules/ChatInterfaceState",
@@ -64,6 +63,7 @@ swift_library(
         "//submodules/DeviceAccess",
         "//submodules/Display",
         "//submodules/TelegramUI/Components/EmojiStatusComponent",
+        "//submodules/TelegramUI/Components/AgentConnectScreen",
         "//submodules/TelegramUI/Components/EmojiStatusSelectionComponent",
         "//submodules/EncryptionKeyVisualization",
         "//submodules/TelegramUI/Components/EntityKeyboard",
@@ -103,6 +103,7 @@ swift_library(
         "//submodules/PeerAvatarGalleryUI",
         "//submodules/PeerInfoAvatarListNode",
         "//submodules/TelegramUI/Components/PeerInfo/PeerInfoStoryGridScreen",
+        "//submodules/TelegramUI/Components/QrStudioScreen",
         "//submodules/PeerInfoUI",
         "//submodules/TelegramUI/Components/PeerInfo/PeerInfoVisualMediaPaneNode",
         "//submodules/TelegramUI/Components/Settings/PeerNameColorScreen",
@@ -183,6 +184,7 @@ swift_library(
         "//submodules/TelegramUI/Components/EmojiTextAttachmentView",
         "//submodules/TelegramUI/Components/MediaEditor",
         "//submodules/TelegramUI/Components/MediaEditorScreen",
+        "//submodules/TelegramUI/Components/ChatMediaEditorScreen",
         "//submodules/TelegramUI/Components/CameraScreen",
         "//submodules/TelegramUI/Components/PeerInfo/VerifyAlertController",
         "//submodules/TelegramUI/Components/Gifts/GiftViewScreen",

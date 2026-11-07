@@ -1388,7 +1388,8 @@ final class UserAppearanceScreenComponent: Component {
                                         }
                                         self.state?.updated(transition: .spring(duration: 0.4))
                                     },
-                                    sectionId: 0
+                                    sectionId: 0,
+                                    strings: environment.strings
                                 ),
                                 params: listItemParams
                             ))),
@@ -1724,7 +1725,8 @@ final class UserAppearanceScreenComponent: Component {
                                         self.selectedNameGift = nil
                                         self.state?.updated(transition: .spring(duration: 0.4))
                                     },
-                                    sectionId: 0
+                                    sectionId: 0,
+                                    strings: environment.strings
                                 ),
                                 params: listItemParams
                             ))),

@@ -1,7 +1,6 @@
 // MARK: Regram
 import RGSimpleSettings
 import Foundation
-import LottieSettings
 import UIKit
 import SwiftSignalKit
 import Display
@@ -801,7 +800,8 @@ final class TextProcessingContentComponent: Component {
                         selectedId: currentModeId,
                         outerInsets: UIEdgeInsets(),
                         axis: .horizontal,
-                        isCompact: false
+                        isCompact: false,
+                        usesSystemLayout: false
                     )),
                     environment: {},
                     containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: 62.0)
@@ -1872,8 +1872,7 @@ private final class TextProcessingSheetComponent: Component {
                     titleItem: titleString.isEmpty ? nil : AnyComponent(TitleComponent(
                         theme: theme,
                         title: titleString,
-                        isProcessing: self.contentExternalState.isProcessing,
-                        lottieSettings: component.context.lottieRenderingSettings
+                        isProcessing: self.contentExternalState.isProcessing
                     )),
                     leftItem: AnyComponent(
                         GlassBarButtonComponent(
@@ -1974,6 +1973,8 @@ private final class TextProcessingSheetComponent: Component {
             
             if self.contentExternalState.nonPremiumFloodTriggered {
                 let sideInset: CGFloat = 8.0
+                // Narrower on a regular-width layout, centred.
+                let toastBand = toastFrame(CGRect(x: sideInset, y: 0.0, width: availableSize.width - sideInset * 2.0, height: 0.0), metrics: environmentValue.metrics)
                 
                 let toast: ComponentView<Empty>
                 var toastTransition = transition
@@ -1994,8 +1995,7 @@ private final class TextProcessingSheetComponent: Component {
                             content: LottieComponent.AppBundleContent(name: "PremiumStar"),
                             startingPosition: .begin,
                             size: CGSize(width: 32.0, height: 32.0),
-                            playOnce: playOnce,
-                            lottieSettings: component.context.lottieRenderingSettings
+                            playOnce: playOnce
                         )),
                         content: AnyComponent(VStack([
                             AnyComponentWithIdentity(id: 0, component: AnyComponent(MultilineTextComponent(
@@ -2010,7 +2010,7 @@ private final class TextProcessingSheetComponent: Component {
                         iconSpacing: 12.0
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: availableSize.height)
+                    containerSize: CGSize(width: toastBand.width, height: availableSize.height)
                 )
                 if let toastView = toast.view {
                     if toastView.superview == nil, let sheetView = self.sheet.view as? ResizableSheetComponent<ViewControllerComponentContainer.Environment>.View {
@@ -2023,7 +2023,7 @@ private final class TextProcessingSheetComponent: Component {
                             iconView.playOnce()
                         }
                     }
-                    toastTransition.setFrame(view: toastView, frame: CGRect(origin: CGPoint(x: sideInset, y: availableSize.height - 94.0 - toastSize.height), size: toastSize))
+                    toastTransition.setFrame(view: toastView, frame: CGRect(origin: CGPoint(x: toastBand.minX, y: availableSize.height - 94.0 - toastSize.height), size: toastSize))
                 }
             } else {
                 if let toast = self.toast {
@@ -2038,6 +2038,8 @@ private final class TextProcessingSheetComponent: Component {
             
             if let styleCreatedToastData = self.styleCreatedToastData, !self.contentExternalState.nonPremiumFloodTriggered {
                 let sideInset: CGFloat = 8.0
+                // Narrower on a regular-width layout, centred.
+                let toastBand = toastFrame(CGRect(x: sideInset, y: 0.0, width: availableSize.width - sideInset * 2.0, height: 0.0), metrics: environmentValue.metrics)
                 
                 let styleCreatedToast: ComponentView<Empty>
                 var styleCreatedToastTransition = transition
@@ -2081,7 +2083,7 @@ private final class TextProcessingSheetComponent: Component {
                         iconSpacing: 12.0
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: availableSize.height)
+                    containerSize: CGSize(width: toastBand.width, height: availableSize.height)
                 )
                 if let styleCreatedToastView = styleCreatedToast.view {
                     if styleCreatedToastView.superview == nil, let sheetView = self.sheet.view as? ResizableSheetComponent<ViewControllerComponentContainer.Environment>.View {
@@ -2090,7 +2092,7 @@ private final class TextProcessingSheetComponent: Component {
                             styleCreatedToastView.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.25)
                         }
                     }
-                    styleCreatedToastTransition.setFrame(view: styleCreatedToastView, frame: CGRect(origin: CGPoint(x: sideInset, y: availableSize.height - 94.0 - styleCreatedToastSize.height), size: styleCreatedToastSize))
+                    styleCreatedToastTransition.setFrame(view: styleCreatedToastView, frame: CGRect(origin: CGPoint(x: toastBand.minX, y: availableSize.height - 94.0 - styleCreatedToastSize.height), size: styleCreatedToastSize))
                 }
             } else {
                 if let styleCreatedToast = self.styleCreatedToast {
@@ -2105,6 +2107,8 @@ private final class TextProcessingSheetComponent: Component {
             
             if let customToastData = self.customToastData, !self.contentExternalState.nonPremiumFloodTriggered, self.styleCreatedToastData == nil {
                 let sideInset: CGFloat = 8.0
+                // Narrower on a regular-width layout, centred.
+                let toastBand = toastFrame(CGRect(x: sideInset, y: 0.0, width: availableSize.width - sideInset * 2.0, height: 0.0), metrics: environmentValue.metrics)
                 
                 let customToast: ComponentView<Empty>
                 var customToastTransition = transition
@@ -2125,8 +2129,7 @@ private final class TextProcessingSheetComponent: Component {
                             content: LottieComponent.AppBundleContent(name: "anim_infotip"),
                             startingPosition: .begin,
                             size: CGSize(width: 32.0, height: 32.0),
-                            playOnce: playOnce,
-                            lottieSettings: component.context.lottieRenderingSettings
+                            playOnce: playOnce
                         )),
                         content: AnyComponent(VStack([
                             AnyComponentWithIdentity(id: 1, component: AnyComponent(MultilineTextComponent(
@@ -2138,7 +2141,7 @@ private final class TextProcessingSheetComponent: Component {
                         iconSpacing: 12.0
                     )),
                     environment: {},
-                    containerSize: CGSize(width: availableSize.width - sideInset * 2.0, height: availableSize.height)
+                    containerSize: CGSize(width: toastBand.width, height: availableSize.height)
                 )
                 if let customToastView = customToast.view {
                     if customToastView.superview == nil, let sheetView = self.sheet.view as? ResizableSheetComponent<ViewControllerComponentContainer.Environment>.View {
@@ -2148,7 +2151,7 @@ private final class TextProcessingSheetComponent: Component {
                         }
                         playOnce.invoke(())
                     }
-                    customToastTransition.setFrame(view: customToastView, frame: CGRect(origin: CGPoint(x: sideInset, y: availableSize.height - 94.0 - customToastSize.height), size: customToastSize))
+                    customToastTransition.setFrame(view: customToastView, frame: CGRect(origin: CGPoint(x: toastBand.minX, y: availableSize.height - 94.0 - customToastSize.height), size: customToastSize))
                 }
             } else {
                 if let customToast = self.customToast {
@@ -2434,18 +2437,15 @@ private final class TitleComponent: Component {
     let theme: PresentationTheme
     let title: String
     let isProcessing: Bool
-    let lottieSettings: LottieRenderingSettings
     
     init(
         theme: PresentationTheme,
         title: String,
-        isProcessing: Bool,
-        lottieSettings: LottieRenderingSettings
+        isProcessing: Bool
     ) {
         self.theme = theme
         self.title = title
         self.isProcessing = isProcessing
-        self.lottieSettings = lottieSettings
     }
     
     static func ==(lhs: TitleComponent, rhs: TitleComponent) -> Bool {
@@ -2517,8 +2517,7 @@ private final class TitleComponent: Component {
                         placeholderColor: nil,
                         startingPosition: .begin,
                         size: CGSize(width: 30.0, height: 30.0),
-                        loop: true,
-                        lottieSettings: component.lottieSettings
+                        loop: true
                     )),
                     environment: {},
                     containerSize: CGSize(width: 30.0, height: 30.0)

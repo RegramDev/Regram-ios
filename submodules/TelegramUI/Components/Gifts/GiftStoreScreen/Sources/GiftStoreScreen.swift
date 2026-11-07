@@ -1,6 +1,5 @@
 import Foundation
 import RGLocalGifts // MARK: Regram
-import LottieSettings
 import UIKit
 import Display
 import AsyncDisplayKit
@@ -426,8 +425,7 @@ public final class GiftStoreContentComponent: Component {
                 let emptyResultsAnimationSize = self.emptyResultsAnimation.update(
                     transition: .immediate,
                     component: AnyComponent(LottieComponent(
-                        content: LottieComponent.AppBundleContent(name: "ChatListNoResults"),
-                        lottieSettings: component.context.lottieRenderingSettings
+                        content: LottieComponent.AppBundleContent(name: "ChatListNoResults")
                     )),
                     environment: {},
                     containerSize: CGSize(width: emptyAnimationHeight, height: emptyAnimationHeight)

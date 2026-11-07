@@ -149,7 +149,8 @@ func _internal_composeRichMessageWithAI(account: Account, instantPage: InstantPa
     var inputRichMessage: Api.InputRichMessage?
     if let instantPage {
         flags |= (1 << 4)
-        inputRichMessage = RichTextMessageAttribute(instantPage: instantPage, fullInstantPage: nil).apiInputRichMessage()
+        // No `users`: this page is rewritten and handed back, not sent; the send that follows lists them.
+        inputRichMessage = RichTextMessageAttribute(instantPage: instantPage, fullInstantPage: nil).apiInputRichMessage(users: [])
     }
 
     return account.network.request(Api.functions.messages.composeRichMessageWithAI(flags: flags, text: inputRichMessage, translateToLang: translateToLang, tone: changeTone))
@@ -1026,7 +1027,8 @@ func _internal_composeAIMessage(account: Account, text: ComposedRichMessage, mod
         }
     case let .rich(instantPage):
         flags |= (1 << 4)
-        let inputText = RichTextMessageAttribute(instantPage: instantPage, fullInstantPage: nil).apiInputRichMessage()
+        // No `users`: this page is rewritten and handed back, not sent; the send that follows lists them.
+        let inputText = RichTextMessageAttribute(instantPage: instantPage, fullInstantPage: nil).apiInputRichMessage(users: [])
         return account.network.request(Api.functions.messages.composeRichMessageWithAI(flags: flags, text: inputText, translateToLang: translateToLang, tone: changeTone))
         |> `catch` { error -> Signal<Api.messages.ComposedRichMessageWithAI, TelegramAIComposeMessageError> in
             if error.errorDescription == "AICOMPOSE_FLOOD_PREMIUM" {

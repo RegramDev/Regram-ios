@@ -1,7 +1,6 @@
 import Foundation
 // MARK: Regram
 import RGSimpleSettings
-import LottieSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -199,7 +198,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         }
     }
     
-    required public init(lottieSettings: LottieRenderingSettings) {
+    required public init() {
         self.containerNode = ContainerNode()
         self.containerNode.clipsToBounds = true
         
@@ -207,7 +206,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         
         self.textAccessibilityOverlayNode = TextAccessibilityOverlayNode()
         
-        super.init(lottieSettings: lottieSettings)
+        super.init()
         
         self.addSubnode(self.containerNode)
         
@@ -311,6 +310,18 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                     default:
                         bottomInset = layoutConstants.text.bubbleInsets.bottom - 3.0
                     }
+                    
+                    if item.bubbleStyle == .bubbleless {
+                        // Without bubbles a caption belongs to the media above it: its capitals stand a block gap under
+                        // the media, closer than the next message does. Text above media keeps half the block gap.
+                        if case .Neighbour(_, .media, _) = top {
+                            let messageFont = item.presentationData.bubblelessIncomingBodyFont
+                            topInset = chatMessageBubblelessCaptionTopInset(ascender: messageFont.ascender, capHeight: messageFont.capHeight)
+                        }
+                        if case .Neighbour(_, .media, _) = bottom {
+                            bottomInset = layoutConstants.text.bubbleInsets.bottom + chatMessageBubblelessBlockGap * 0.5
+                        }
+                    }
                 }
                 
                 let message = item.message
@@ -392,6 +403,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 } else if !item.presentationData.chatBubbleCorners.hasTails {
                     displayStatus = false
                 } else if case let .messageOptions(_, _, info) = item.associatedData.subject, case let .link(link) = info, link.isCentered {
+                    displayStatus = false
+                }
+                if item.bubbleStyle.hidesIncomingStatus {
+                    // Without bubbles the time is in the author header.
                     displayStatus = false
                 }
                 if displayStatus {
@@ -591,7 +606,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                 
                 let messageTheme = incoming ? item.presentationData.theme.theme.chat.message.incoming : item.presentationData.theme.theme.chat.message.outgoing
                 
-                let textFont = item.presentationData.messageFont
+                // Message text in New York when it is picked in Text Size; its quotes and code-block titles keep the system
+                // family.
+                let messageBodyFonts = item.presentationData.messageBodyFonts
+                let textFont = messageBodyFonts.body.regular
                 
                 var codeHighlightSpecs: [CachedMessageSyntaxHighlight.Spec] = []
                 var cachedMessageSyntaxHighlight: CachedMessageSyntaxHighlight?
@@ -675,7 +693,7 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                         }
                     }
                     
-                    attributedText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, codeBlockFillColor: codeBlockFillColor, baseFont: textFont, linkFont: textFont, boldFont: item.presentationData.messageBoldFont, italicFont: item.presentationData.messageItalicFont, boldItalicFont: item.presentationData.messageBoldItalicFont, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
+                    attributedText = stringWithAppliedEntities(rawText, entities: entities, strings: item.presentationData.strings, dateTimeFormat: item.presentationData.dateTimeFormat, baseColor: messageTheme.primaryTextColor, linkColor: messageTheme.linkTextColor, baseQuoteTintColor: mainColor, baseQuoteSecondaryTintColor: secondaryColor, baseQuoteTertiaryTintColor: tertiaryColor, codeBlockTitleColor: codeBlockTitleColor, codeBlockAccentColor: codeBlockAccentColor, codeBlockBackgroundColor: codeBlockBackgroundColor, codeBlockFillColor: codeBlockFillColor, baseFont: textFont, linkFont: textFont, boldFont: messageBodyFonts.body.bold, italicFont: messageBodyFonts.body.italic, boldItalicFont: messageBodyFonts.body.boldItalic, fixedFont: item.presentationData.messageFixedFont, blockQuoteFont: item.presentationData.messageBlockQuoteFont, blockFonts: messageBodyFonts.blockFonts, underlineLinks: underlineLinks, message: item.message, adjustQuoteFontSize: true, cachedMessageSyntaxHighlight: cachedMessageSyntaxHighlight)
                 } else if !rawText.isEmpty {
                     attributedText = NSAttributedString(string: rawText, font: textFont, textColor: messageTheme.primaryTextColor)
                 } else {
@@ -942,7 +960,8 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
                                             })
                                             strongSelf.textNode.textNode.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.1)
                                         }
-                                    }
+                                    },
+                                    blockCornerRadius: item.bubbleStyle.isBubbleless ? chatMessageBubblelessInlineBlockCornerRadius : nil
                                 )
                             ))
                             animation.animator.updatePosition(layer: strongSelf.textNode.textNode.layer, position: realTextFrame.center, completion: nil)
@@ -1669,6 +1688,22 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         }
     }
     
+    override public func bubblelessLiftParts() -> [ChatMessageBubblelessLiftPart] {
+        let textNode = self.textNode.textNode
+        guard let layout = textNode.cachedLayout else {
+            return super.bubblelessLiftParts()
+        }
+        // The line boxes, and each quote or code background as a block.
+        let linesFrame = textNode.frame.inset(by: layout.insets)
+        var parts: [ChatMessageBubblelessLiftPart] = [.textLines(chatMessageBubblelessTextLinesFrame(nodeFrame: textNode.frame, insets: layout.insets, lineRects: layout.linesRects()))]
+        for segment in layout.segments {
+            if let blockQuoteFrame = segment.blockQuoteFrame {
+                parts.append(.block(blockQuoteFrame.offsetBy(dx: linesFrame.minX, dy: linesFrame.minY)))
+            }
+        }
+        return parts
+    }
+    
     override public func willUpdateIsExtractedToContextPreview(_ value: Bool) {
         if !value {
             if let textSelectionNode = self.textSelectionNode {
@@ -1682,6 +1717,10 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
         }
     }
     
+    override public func resignTextSelection() {
+        self.cancelTextSelection()
+    }
+
     override public func updateIsExtractedToContextPreview(_ value: Bool) {
         if value {
             if self.textSelectionNode == nil, let item = self.item, let rootNode = item.controllerInteraction.chatControllerNode() {

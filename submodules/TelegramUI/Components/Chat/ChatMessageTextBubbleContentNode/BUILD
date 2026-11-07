@@ -13,7 +13,6 @@ swift_library(
         # MARK: Regram — automatic spoiler display preference.
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//submodules/AsyncDisplayKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/Display",
         "//submodules/TelegramCore",
         "//submodules/TextFormat",

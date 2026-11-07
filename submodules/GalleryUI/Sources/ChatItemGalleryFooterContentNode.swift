@@ -2,7 +2,6 @@ import RGGalleryUI // MARK: Regram — bottom playback capsule.
 import RGStrings
 import RGSimpleSettings // MARK: Regram — automatic spoiler display in gallery captions.
 import Foundation
-import LottieSettings
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -35,6 +34,7 @@ import TelegramNotices
 import SolidRoundedButtonNode
 import UrlHandling
 import GlassControls
+import ContextUI
 import ComponentFlow
 import ComponentDisplayAdapters
 import EdgeEffect
@@ -272,6 +272,20 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                         }
                         self.statusNode.transitionToState(statusState, completion: {})
                         self.statusButtonNode.isUserInteractionEnabled = statusState != .none
+                        // VoiceOver: the button exists only while it does something: cancel a download in progress, or
+                        // start one (a cloud icon). With nothing shown it is not an element.
+                        switch status {
+                        case .Fetching:
+                            self.statusButtonNode.isAccessibilityElement = true
+                            self.statusButtonNode.accessibilityLabel = self.strings.Common_Cancel
+                        case .Remote, .Paused:
+                            self.statusButtonNode.isAccessibilityElement = statusState != .none
+                            self.statusButtonNode.accessibilityLabel = self.strings.WebBrowser_Download_Download
+                        case .Local:
+                            self.statusButtonNode.isAccessibilityElement = false
+                            self.statusButtonNode.accessibilityLabel = nil
+                        }
+                        self.statusButtonNode.accessibilityTraits = .button
                     case let .playback(paused, seekable):
                         self.currentIsPaused = paused
                         
@@ -431,9 +445,11 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         self.playbackControlButton = HighlightableButtonNode()
         self.playbackControlButton.isHidden = true
         
-        self.playPauseIconNode = PlayPauseIconNode(lottieSettings: context.lottieRenderingSettings)
+        self.playPauseIconNode = PlayPauseIconNode()
         
         self.statusButtonNode = HighlightTrackingButtonNode()
+        // VoiceOver: an element only while it cancels or starts a download (`content`).
+        self.statusButtonNode.isAccessibilityElement = false
         self.statusNode = RadialStatusNode(backgroundNodeColor: .clear)
         self.statusNode.isUserInteractionEnabled = false
         
@@ -1369,7 +1385,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.actionButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_Share
                 ))
             }
             // MARK: Regram — picture-in-picture, speed and quality live in the header's More menu.
@@ -1383,7 +1400,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.pipButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_PictureInPicture
                 ))
             }
             if let settingsButtonState = buttonsState.settingsButtonState {
@@ -1398,12 +1416,13 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                         guard let self, let buttonPanelView = self.buttonPanel.view as? GlassControlPanelComponent.View else {
                             return
                         }
-                        if let centerItemView = buttonPanelView.centerItemView, let itemView = centerItemView.itemView(id: AnyHashable("settings")) {
-                            self.settingsButtonPressed(sourceView: itemView)
-                        } else if let rightItemView = buttonPanelView.rightItemView, let itemView = rightItemView.itemView(id: AnyHashable("settings")) {
-                            self.settingsButtonPressed(sourceView: itemView)
+                        if let centerItemView = buttonPanelView.centerItemView, centerItemView.itemView(id: AnyHashable("settings")) != nil {
+                            self.settingsButtonPressed(sourceView: centerItemView.menuSourceView)
+                        } else if let rightItemView = buttonPanelView.rightItemView, rightItemView.itemView(id: AnyHashable("settings")) != nil {
+                            self.settingsButtonPressed(sourceView: rightItemView.menuSourceView)
                         }
-                    }
+                    },
+                    accessibilityLabel: self.strings.VoiceOver_Gallery_VideoSettings
                 ))
             }
             }
@@ -1416,7 +1435,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.editButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_Edit
                 ))
             }
             if buttonsState.displayTextRecognitionButton {
@@ -1428,7 +1448,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.textRecognitionButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.VoiceOver_Gallery_TextRecognition
                 ))
             }
             if buttonsState.displayStickersButton && !self.rgVideoControlsEnabled {
@@ -1440,7 +1461,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.stickersButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_Stickers
                 ))
             }
             if buttonsState.displayFullscreenButton && !metrics.isTablet && !self.rgVideoControlsEnabled {
@@ -1452,7 +1474,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.fullscreenButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_Fullscreen
                 ))
             }
             if buttonsState.displayDeleteButton {
@@ -1464,7 +1487,8 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             return
                         }
                         self.deleteButtonPressed()
-                    }
+                    },
+                    accessibilityLabel: self.strings.Gallery_VoiceOver_Delete
                 ))
             }
         }
@@ -1550,6 +1574,9 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
         transition.updateFrame(node: self.statusNode, frame: CGRect(origin: CGPoint(x: floor(buttonsCenterX - statusSize.width / 2.0), y: panelHeight - bottomInset - statusSize.height - 8.0), size: statusSize))
         
         self.statusButtonNode.frame = CGRect(origin: CGPoint(x: floor(buttonsCenterX - 22.0), y: panelHeight - bottomInset - 44.0), size: CGSize(width: 44.0, height: 44.0))
+        // VoiceOver: an element only while it shows a cancel or download icon (`content`); ASControlNode turns any
+        // interactive control into an element, which left an empty one here.
+        self.statusButtonNode.isAccessibilityElement = !self.statusButtonNode.isHidden && self.statusButtonNode.isUserInteractionEnabled && self.statusButtonNode.accessibilityLabel != nil
         
         if let (videoFramePreviewNode, videoFrameTextNode) = self.videoFramePreviewNode {
             let intrinsicImageSize = videoFramePreviewNode.image?.size ?? CGSize(width: 320.0, height: 240.0)
@@ -1656,10 +1683,7 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     } else {
                         strongSelf.interacting?(true)
                         
-                        var presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }
-                        if !presentationData.theme.overallDarkAppearance {
-                            presentationData = presentationData.withUpdated(theme: defaultDarkColorPresentationTheme)
-                        }
+                        let presentationData = strongSelf.context.sharedContext.currentPresentationData.with { $0 }.withUpdated(theme: defaultDarkColorPresentationTheme)
                         
                         var generalMessageContentKind: MessageContentKind?
                         for message in messages {
@@ -1694,45 +1718,62 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                             }
                         }
                     
-                        let actionSheet = ActionSheetController(presentationData: presentationData)
-                        actionSheet.dismissed = { [weak self] _ in
-                            self?.interacting?(false)
-                        }
-                        let items: [ActionSheetItem] = [
-                            ActionSheetButtonItem(title: singleText, color: .destructive, action: { [weak actionSheet] in
-                                actionSheet?.dismissAnimated()
-                                deleteAction([EngineMessage(currentMessage)])
-                            }),
-                            ActionSheetButtonItem(title: multipleText, color: .destructive, action: { [weak actionSheet] in
-                                actionSheet?.dismissAnimated()
-                                deleteAction(messages)
-                            })
-                        ]
-                    
-                        actionSheet.setItemGroups([
-                            ActionSheetItemGroup(items: items),
-                            ActionSheetItemGroup(items: [
-                                ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                                    actionSheet?.dismissAnimated()
+                        let items: [ContextMenuItem] = [
+                            .action(ContextMenuActionItem(text: singleText, textColor: .destructive, icon: { theme in
+                                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
+                            }, action: { c, _ in
+                                c?.dismiss(completion: {
+                                    deleteAction([EngineMessage(currentMessage)])
                                 })
-                            ])
-                        ])
-                        strongSelf.controllerInteraction?.presentController(actionSheet, nil)
+                            })),
+                            .action(ContextMenuActionItem(text: multipleText, textColor: .destructive, icon: { theme in
+                                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
+                            }, action: { c, _ in
+                                c?.dismiss(completion: {
+                                    deleteAction(messages)
+                                })
+                            }))
+                        ]
+                        strongSelf.presentDeleteContextMenu(items: items, presentationData: presentationData)
                     }
                 }
             })
         }
     }
 
+    private func deleteButtonSourceView() -> UIView? {
+        guard let buttonPanelView = self.buttonPanel.view as? GlassControlPanelComponent.View else {
+            return nil
+        }
+        if let rightItemView = buttonPanelView.rightItemView, let itemView = rightItemView.itemView(id: AnyHashable("delete")) {
+            return itemView
+        } else if let centerItemView = buttonPanelView.centerItemView, let itemView = centerItemView.itemView(id: AnyHashable("delete")) {
+            return itemView
+        }
+        return buttonPanelView
+    }
+    
+    private func presentDeleteContextMenu(items: [ContextMenuItem], presentationData: PresentationData) {
+        guard let controller = self.controllerInteraction?.controller(), let sourceView = self.deleteButtonSourceView() else {
+            self.interacting?(false)
+            return
+        }
+        let contextController = makeContextController(
+            presentationData: presentationData,
+            source: .reference(HeaderContextReferenceContentSource(controller: controller, sourceView: sourceView, actionsOnTop: true)),
+            items: .single(ContextController.Items(content: .list(items)))
+        )
+        contextController.dismissed = { [weak self] in
+            self?.interacting?(false)
+        }
+        controller.presentInGlobalOverlay(contextController)
+    }
+    
     private func commitDeleteMessages(_ messages: [EngineMessage], ask: Bool) {
         self.messageContextDisposable.set((self.context.sharedContext.chatAvailableMessageActions(engine: self.context.engine, accountPeerId: self.context.account.peerId, messageIds: Set(messages.map { $0.id }), keepUpdated: false) |> deliverOnMainQueue).start(next: { [weak self] actions in
-            if let strongSelf = self, let controllerInteration = strongSelf.controllerInteraction, !actions.options.isEmpty {
-                var presentationData = strongSelf.presentationData
-                if !presentationData.theme.overallDarkAppearance {
-                    presentationData = presentationData.withUpdated(theme: defaultDarkColorPresentationTheme)
-                }
-                let actionSheet = ActionSheetController(presentationData: presentationData)
-                var items: [ActionSheetItem] = []
+            if let strongSelf = self, let _ = strongSelf.controllerInteraction, !actions.options.isEmpty {
+                let presentationData = strongSelf.presentationData.withUpdated(theme: defaultDarkColorPresentationTheme)
+                var items: [ContextMenuItem] = []
                 var personalPeerName: String?
                 var isChannel = false
                 let peerId: EnginePeer.Id = messages[0].id.peerId
@@ -1751,13 +1792,15 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     } else {
                         globalTitle = strongSelf.strings.Conversation_DeleteMessagesForEveryone
                     }
-                    items.append(ActionSheetButtonItem(title: globalTitle, color: .destructive, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
+                    items.append(.action(ContextMenuActionItem(text: globalTitle, textColor: .destructive, icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
+                    }, action: { _, f in
+                        f(.default)
                         if let strongSelf = self {
                             let _ = strongSelf.context.engine.messages.deleteMessagesInteractively(messageIds: messages.map { $0.id }, type: .forEveryone).start()
                             strongSelf.controllerInteraction?.dismissController()
                         }
-                    }))
+                    })))
                 }
                 if actions.options.contains(.deleteLocally) {
                     var localOptionText = strongSelf.strings.Conversation_DeleteMessagesForMe
@@ -1766,28 +1809,22 @@ final class ChatItemGalleryFooterContentNode: GalleryFooterContentNode, ASScroll
                     } else if strongSelf.context.account.peerId == peerId {
                         localOptionText = strongSelf.strings.Conversation_Moderate_Delete
                     }
-                    items.append(ActionSheetButtonItem(title: localOptionText, color: .destructive, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
+                    items.append(.action(ContextMenuActionItem(text: localOptionText, textColor: .destructive, icon: { theme in
+                        return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor)
+                    }, action: { _, f in
+                        f(.default)
                         if let strongSelf = self {
                             let _ = strongSelf.context.engine.messages.deleteMessagesInteractively(messageIds: messages.map { $0.id }, type: .forLocalPeer).start()
                             strongSelf.controllerInteraction?.dismissController()
                         }
-                    }))
+                    })))
                 }
                 if !ask && items.count == 1 {
                     let _ = strongSelf.context.engine.messages.deleteMessagesInteractively(messageIds: messages.map { $0.id }, type: .forEveryone).start()
                     strongSelf.controllerInteraction?.dismissController()
                 } else if !items.isEmpty {
                     strongSelf.interacting?(true)
-                    actionSheet.dismissed = { [weak self] _ in
-                        self?.interacting?(false)
-                    }
-                    actionSheet.setItemGroups([ActionSheetItemGroup(items: items), ActionSheetItemGroup(items: [
-                        ActionSheetButtonItem(title: strongSelf.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                            actionSheet?.dismissAnimated()
-                        })
-                    ])])
-                    controllerInteration.presentController(actionSheet, nil)
+                    strongSelf.presentDeleteContextMenu(items: items, presentationData: presentationData)
                 }
             }
         }))
@@ -2392,8 +2429,8 @@ private final class PlayPauseIconNode: ManagedAnimationNode {
     private let duration: Double = 0.35
     private var iconState: PlayPauseIconNodeState = .pause
     
-    init(lottieSettings: LottieRenderingSettings) {
-        super.init(size: CGSize(width: 40.0, height: 40.0), lottieSettings: lottieSettings)
+    init() {
+        super.init(size: CGSize(width: 40.0, height: 40.0))
         
         self.trackTo(item: ManagedAnimationItem(source: .local("anim_playpause"), frames: .range(startFrame: 41, endFrame: 41), duration: 0.01))
     }

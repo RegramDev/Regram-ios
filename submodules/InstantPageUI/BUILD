@@ -60,6 +60,7 @@ swift_library(
     ]),
     deps = [
         ":InstantPageUI",
+        "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/TelegramUI/Components/RichTextEditor:RichTextEditorUIKit",
         "//submodules/TelegramUI/Components/RichTextEditor:RichTextEditorCore",
         "//submodules/TelegramPresentationData:TelegramPresentationData",
@@ -70,6 +71,8 @@ swift_library(
         "//submodules/TelegramUI/Components/UnsupportedContentPill",
         "//submodules/TelegramUI/Components/RichTextButtonIcons",
         "//submodules/TelegramUI/Components/RichTextEditorMessageConversion",
+        "//submodules/SemanticStatusNode:SemanticStatusNode",
+        "//submodules/MediaPlayer:UniversalMediaPlayer",
     ],
 )
 

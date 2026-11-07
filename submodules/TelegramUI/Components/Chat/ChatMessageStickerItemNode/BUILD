@@ -13,6 +13,7 @@ swift_library(
     ],
     deps = [
         "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//submodules/TelegramUI/Components/StaticGlassBackground",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",

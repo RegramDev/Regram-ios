@@ -290,8 +290,9 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     // MARK: Regram — 联系人 / 通话记录入口只在对应 tab 不在底栏时显示
     let rgFeatureBottomBarSettings = RGSimpleSettings.shared.bottomBarSettings
     let rgFeatureVisibleTabs = rgFeatureBottomBarSettings.isBottomBarVisible ? rgFeatureBottomBarSettings.visibleNavigationItems : []
+    let contactsWarning = !(RGSimpleSettings.shared.hideTabBarPermissionWarnings) && (data.globalSettings?.contactsWarning ?? false) // MARK: Regram
     if !rgFeatureVisibleTabs.contains(.contacts) {
-        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 51, text: presentationData.strings.Contacts_Title, icon: PresentationResourcesSettings.clearSynced, action: {
+        items[.shortcuts]!.append(PeerInfoScreenDisclosureItem(id: 51, label: contactsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Contacts_Title, icon: PresentationResourcesSettings.contacts, action: {
             interaction.openSettings(.rgFeatureContacts)
         }))
     }
@@ -326,7 +327,7 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     } else {
         notificationsWarning = false
     }
-    items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 0, label: notificationsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Settings_NotificationsAndSounds, icon: PresentationResourcesSettings.notifications, action: {
+    items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 0, label: notificationsWarning ? .badge("!", presentationData.theme.list.itemDestructiveColor) : .none, text: presentationData.strings.Settings_NotificationsAndSounds, icon: PresentationResourcesSettings.notifications, labelAccessibilityText: notificationsWarning ? presentationData.strings.VoiceOver_TabBar_AttentionRequired : nil, action: {
         interaction.openSettings(.notificationsAndSounds)
     }))
     items[.advanced]!.append(PeerInfoScreenDisclosureItem(id: 1, text: presentationData.strings.Settings_PrivacySettings, icon: PresentationResourcesSettings.security, action: {

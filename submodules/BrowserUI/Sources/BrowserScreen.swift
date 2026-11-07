@@ -1,7 +1,6 @@
 import RGStrings // MARK: Regram
 import PresentationDataUtils
 import Foundation
-import LottieSettings
 import UIKit
 import SwiftSignalKit
 import Display
@@ -172,7 +171,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                     ),
                                     action: {
                                         performAction.invoke(.close)
-                                    }
+                                    },
+                                    accessibility: ComponentAccessibility(label: environment.strings.Common_Close)
                                 ).minSize(CGSize(width: 44.0, height: 44.0))
                             )
                         )
@@ -221,7 +221,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             action: {
                                                 performAction.invoke(.navigateBack)
-                                            }
+                                            },
+                                            accessibility: ComponentAccessibility(label: environment.strings.Common_Back, traits: canGoBack ? [] : .notEnabled)
                                         ).minSize(CGSize(width: 44.0, height: 44.0))
                                     )
                                 )
@@ -239,7 +240,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             action: {
                                                 performAction.invoke(.navigateForward)
-                                            }
+                                            },
+                                            accessibility: ComponentAccessibility(label: environment.strings.VoiceOver_Browser_Forward, traits: canGoForward ? [] : .notEnabled)
                                         ).minSize(CGSize(width: 44.0, height: 44.0))
                                     )
                                 )
@@ -259,14 +261,14 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             color: environment.theme.chat.inputPanel.panelControlColor,
                                             size: CGSize(width: 34.0, height: 34.0),
-                                            playOnce: moreButtonPlayOnce,
-                                            lottieSettings: context.component.context.lottieRenderingSettings
+                                            playOnce: moreButtonPlayOnce
                                         )
                                     ),
                                     action: {
                                         performAction.invoke(.openSettings)
                                         moreButtonPlayOnce.invoke(Void())
-                                    }
+                                    },
+                                    accessibility: ComponentAccessibility(label: environment.strings.Common_More)
                                 ).minSize(CGSize(width: 44.0, height: 44.0)).tagged(settingsTag)
                             )
                         )
@@ -287,7 +289,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             action: {
                                                 performAction.invoke(.openBookmarks)
-                                            }
+                                            },
+                                            accessibility: ComponentAccessibility(label: environment.strings.WebBrowser_Bookmarks_Title)
                                         ).minSize(CGSize(width: 44.0, height: 44.0))
                                     )
                                 ),
@@ -308,7 +311,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             action: {
                                                 performAction.invoke(.share)
-                                            }
+                                            },
+                                            accessibility: ComponentAccessibility(label: environment.strings.WebBrowser_Share)
                                         ).minSize(CGSize(width: 44.0, height: 44.0))
                                     )
                                 ),
@@ -329,7 +333,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                                             ),
                                             action: {
                                                 performAction.invoke(.openIn)
-                                            }
+                                            },
+                                            accessibility: ComponentAccessibility(label: environment.strings.InstantPage_OpenInBrowser("Safari").string)
                                         ).minSize(CGSize(width: 44.0, height: 44.0))
                                     )
                                 )
@@ -384,6 +389,7 @@ private final class BrowserScreenComponent: CombinedComponent {
                     component: AnyComponent(
                         NavigationToolbarContentComponent(
                             theme: environment.theme,
+                            strings: environment.strings,
                             canGoBack: context.component.contentState?.canGoBack ?? false,
                             canGoForward: context.component.contentState?.canGoForward ?? false,
                             canOpenIn: canOpenIn,
@@ -486,7 +492,8 @@ private final class BrowserScreenComponent: CombinedComponent {
                         )),
                         action: { _ in
                             performAction.invoke(.close)
-                        }
+                        },
+                        accessibility: ComponentAccessibility(label: environment.strings.Common_Close)
                     ),
                     availableSize: CGSize(width: 44.0, height: 44.0),
                     transition: context.transition
@@ -548,6 +555,30 @@ public class BrowserScreen: ViewController, MinimizableController {
         private let context: AccountContext
         
         private let contentContainerView = UIView()
+        
+        /// VoiceOver: the bar (close, title, more) first, then the page, then the toolbar. The bar and the toolbar
+        /// share one host view added above the page, so UIKit's order would read the page first or the bars together.
+        override var screenAccessibilityElements: [Any]? {
+            guard let hostView = self.componentHost.view, hostView.superview === self.view else {
+                return nil
+            }
+            var top: [Any] = []
+            var bottom: [Any] = []
+            for subview in hostView.subviews where !subview.isHidden && subview.alpha > 0.01 && subview.frame.intersects(hostView.bounds) {
+                if subview.frame.minY > hostView.bounds.midY {
+                    bottom.append(subview)
+                } else {
+                    top.append(subview)
+                }
+            }
+            var elements: [Any] = top
+            elements.append(self.contentContainerView)
+            elements.append(contentsOf: bottom)
+            for subview in self.view.subviews where subview !== hostView && subview !== self.contentContainerView && !subview.isHidden && subview.alpha > 0.01 {
+                elements.append(subview)
+            }
+            return elements
+        }
         fileprivate let contentNavigationContainer = ComponentView<Empty>()
         private(set) var content: [BrowserContent] = []
         fileprivate var contentState: BrowserContentState?
@@ -1234,7 +1265,7 @@ public class BrowserScreen: ViewController, MinimizableController {
                 }
             }
             
-            let source: ContextContentSource = .reference(BrowserReferenceContentSource(controller: controller, sourceView: referenceView))
+            let source: ContextContentSource = .reference(BrowserReferenceContentSource(controller: controller, sourceView: BrowserNavigationBarComponent.menuSourceView(itemView: referenceView)))
             
             let items: Signal<ContextController.Items, NoError> = combineLatest(
                 queue: Queue.mainQueue(),

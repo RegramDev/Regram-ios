@@ -358,6 +358,7 @@ private final class RecentSessionSheetContent: CombinedComponent {
                 )
                 context.add(icon
                     .position(CGPoint(x: context.availableSize.width / 2.0, y: contentHeight + icon.size.height / 2.0))
+                    .accessibilityHidden(true)
                 )
                 contentHeight += icon.size.height
                 contentHeight += 18.0
@@ -547,6 +548,7 @@ private final class RecentSessionSheetContent: CombinedComponent {
             )
             context.add(title
                 .position(CGPoint(x: context.availableSize.width / 2.0, y: contentHeight + title.size.height / 2.0))
+                .accessibilityTraits(.header)
             )
             contentHeight += title.size.height
             contentHeight += 2.0
@@ -599,7 +601,9 @@ private final class RecentSessionSheetContent: CombinedComponent {
                             insets: UIEdgeInsets(top: 0.0, left: 8.0, bottom: 0.0, right: 14.0),
                             isInteractive: true
                         )),
-                        action: nil
+                        action: nil,
+                        // The row reads as "title, value" (the value text stays selectable for sighted users).
+                        accessibility: ComponentAccessibility(label: applicationTitle, value: applicationString)
                     )
                 ))
             )
@@ -639,7 +643,9 @@ private final class RecentSessionSheetContent: CombinedComponent {
                                 insets: UIEdgeInsets(top: 0.0, left: 8.0, bottom: 0.0, right: 14.0),
                                 isInteractive: true
                             )),
-                            action: nil
+                            action: nil,
+                            // The row reads as "title, value" (the value text stays selectable for sighted users).
+                            accessibility: ComponentAccessibility(label: strings.AuthSessions_View_IP, value: ipString)
                         )
                     ))
                 )
@@ -673,7 +679,9 @@ private final class RecentSessionSheetContent: CombinedComponent {
                             insets: UIEdgeInsets(top: 0.0, left: 8.0, bottom: 0.0, right: 14.0),
                             isInteractive: true
                         )),
-                        action: nil
+                        action: nil,
+                        // The row reads as "title, value" (the value text stays selectable for sighted users).
+                        accessibility: ComponentAccessibility(label: strings.AuthSessions_View_Location, value: locationString)
                     )
                 ))
             )
@@ -707,7 +715,9 @@ private final class RecentSessionSheetContent: CombinedComponent {
                                 insets: UIEdgeInsets(top: 0.0, left: 8.0, bottom: 0.0, right: 14.0),
                                 isInteractive: false
                             )),
-                            action: nil
+                            action: nil,
+                            // The row reads as "title, value" (the value text stays selectable for sighted users).
+                            accessibility: ComponentAccessibility(label: strings.RecentSession_ConnectedBot_Date, value: dateString)
                         )
                     ))
                 )

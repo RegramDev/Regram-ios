@@ -15,7 +15,6 @@ class BuildConfiguration:
         api_id,
         api_hash,
         team_id,
-        app_center_id,
         is_internal_build,
         is_appstore_build,
         appstore_id,
@@ -29,7 +28,6 @@ class BuildConfiguration:
         self.api_id = api_id
         self.api_hash = api_hash
         self.team_id = team_id
-        self.app_center_id = app_center_id
         self.is_internal_build = is_internal_build
         self.is_appstore_build = is_appstore_build
         self.appstore_id = appstore_id
@@ -47,7 +45,6 @@ class BuildConfiguration:
         string += 'telegram_api_id = "{}"\n'.format(self.api_id)
         string += 'telegram_api_hash = "{}"\n'.format(self.api_hash)
         string += 'telegram_team_id = "{}"\n'.format(self.team_id)
-        string += 'telegram_app_center_id = "{}"\n'.format(self.app_center_id)
         string += 'telegram_is_internal_build = "{}"\n'.format(self.is_internal_build)
         string += 'telegram_is_appstore_build = "{}"\n'.format(self.is_appstore_build)
         string += 'telegram_appstore_id = "{}"\n'.format(self.appstore_id)
@@ -76,7 +73,6 @@ def build_configuration_from_json(path):
             'api_id',
             'api_hash',
             'team_id',
-            'app_center_id',
             'is_internal_build',
             'is_appstore_build',
             'appstore_id',
@@ -94,7 +90,6 @@ def build_configuration_from_json(path):
             api_id=configuration_dict['api_id'],
             api_hash=configuration_dict['api_hash'],
             team_id=configuration_dict['team_id'],
-            app_center_id=configuration_dict['app_center_id'],
             is_internal_build=configuration_dict['is_internal_build'],
             is_appstore_build=configuration_dict['is_appstore_build'],
             appstore_id=configuration_dict['appstore_id'],

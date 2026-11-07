@@ -13,7 +13,6 @@ swift_library(
         "//submodules/DeviceAccess:DeviceAccess",
         "//submodules/Display:Display",
         "//submodules/AnimatedStickerNode:AnimatedStickerNode",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/WebPBinding:WebPBinding",
         "//submodules/SaveToCameraRoll:SaveToCameraRoll",
     ],

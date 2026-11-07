@@ -136,10 +136,7 @@ public struct RGBottomBarSettings: Equatable {
     public mutating func toggleHidden(_ item: RGBottomBarItemId) {
         if item == .search { self.setSearchMode(self.isVisible(.search) ? .hidden : .button); return }
         if self.hiddenItems.contains(item) {
-            self.hiddenItems.remove(item)
-            if self.externalItem != item && !self.bottomItems.contains(item) {
-                self.bottomItems.append(item)
-            }
+            self.show(item)
         } else {
             self.hide(item)
             return
@@ -157,10 +154,7 @@ public struct RGBottomBarSettings: Equatable {
         if item == .search {
             self.searchMode = .hidden
         }
-        self.bottomItems.removeAll(where: { $0 == item })
-        if self.externalItem == item {
-            self.externalItem = nil
-        }
+        // Visibility keeps the saved order and external slot, so enabling restores the same placement.
         self.normalize()
     }
 
@@ -182,13 +176,11 @@ public struct RGBottomBarSettings: Equatable {
     }
 
     public mutating func moveBottomItem(from sourceIndex: Int, to targetIndex: Int) {
-        guard self.bottomItems.indices.contains(sourceIndex) else {
+        let visible = self.activeBottomItems
+        guard visible.indices.contains(sourceIndex) else {
             return
         }
-        let item = self.bottomItems.remove(at: sourceIndex)
-        let index = max(0, min(targetIndex, self.bottomItems.count))
-        self.bottomItems.insert(item, at: index)
-        self.normalize()
+        self.moveToBottom(visible[sourceIndex], at: targetIndex)
     }
 
     public mutating func moveToExternal(_ item: RGBottomBarItemId) {
@@ -200,7 +192,7 @@ public struct RGBottomBarSettings: Equatable {
         self.hiddenItems.remove(item)
         let replacementIndex = self.bottomItems.firstIndex(of: item) ?? self.bottomItems.count
         self.bottomItems.removeAll(where: { $0 == item })
-        if let previous = self.externalItem, previous != item, previous.isNavigationItem, !self.hiddenItems.contains(previous) {
+        if let previous = self.externalItem, previous != item, previous.isNavigationItem {
             let index = max(0, min(replacementIndex, self.bottomItems.count))
             self.bottomItems.insert(previous, at: index)
         }
@@ -215,7 +207,9 @@ public struct RGBottomBarSettings: Equatable {
             self.externalItem = nil
         }
         self.bottomItems.removeAll(where: { $0 == item })
-        let index = max(0, min(targetIndex, self.bottomItems.count))
+        let visible = self.activeBottomItems
+        let visibleIndex = max(0, min(targetIndex, visible.count))
+        let index = visibleIndex < visible.count ? self.bottomItems.firstIndex(of: visible[visibleIndex])! : self.bottomItems.count
         self.bottomItems.insert(item, at: index)
         self.normalize()
     }
@@ -243,7 +237,7 @@ public struct RGBottomBarSettings: Equatable {
 
         var seen = Set<RGBottomBarItemId>()
         self.bottomItems = self.bottomItems.compactMap { item in
-            guard !seen.contains(item), !self.hiddenItems.contains(item), self.externalItem != item else {
+            guard !seen.contains(item), self.externalItem != item else {
                 return nil
             }
             seen.insert(item)
@@ -251,20 +245,19 @@ public struct RGBottomBarSettings: Equatable {
         }
 
         if let externalItem = self.externalItem {
-            if self.hiddenItems.contains(externalItem) {
-                self.externalItem = nil
-            } else {
-                seen.insert(externalItem)
-            }
+            seen.insert(externalItem)
         }
 
         self.hiddenItems = self.hiddenItems.filter { RGBottomBarItemId.allCases.contains($0) }
-        for item in self.hiddenItems {
-            seen.insert(item)
-        }
-
         for item in RGBottomBarItemId.allCases where !seen.contains(item) && item != .search {
-            self.bottomItems.append(item)
+            // Old settings removed hidden tabs entirely. Recover their standard position once;
+            // subsequent visibility changes retain the complete saved order.
+            if self.hiddenItems.contains(item), let rank = Self.defaultBottomItems.firstIndex(of: item),
+               let index = self.bottomItems.firstIndex(where: { (Self.defaultBottomItems.firstIndex(of: $0) ?? Int.max) > rank }) {
+                self.bottomItems.insert(item, at: index)
+            } else {
+                self.bottomItems.append(item)
+            }
             seen.insert(item)
         }
         self.buttonWidthFillRatio = max(0, min(100, self.buttonWidthFillRatio))
