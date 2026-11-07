@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.2 / b34648**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34648)。同步 Telegram 13.2，适配新的聊天侧栏、媒体选择与编辑、原生 HLS 和交互式消息组件；修复底栏顺序、重复搜索按钮及开关后的崩溃、文件组错位、缓存上限设置，以及新照片发送流程的质量和粘贴图片分辨率。详情见[本轮记录](docs/crash-and-native-media-34648.md)、[上游同步记录](docs/upstream-sync/13.2.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
+当前版本 **13.2 / b34649**：[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34649)。修复相机初始化时的照片尺寸配置闪退，保存每个账号的文件夹标签颜色，并支持将本地音频导入为语音消息，试听后再发送。详情见[本轮记录](docs/camera-folder-colors-voice-import.md)、[13.2 上游同步](docs/upstream-sync/13.2.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
@@ -22,7 +22,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 - 共同群组发言：从个人资料页「更多」进入，汇总对方在共同群组内的可搜索消息，采用原生分组列表，支持按群筛选、按需分页与原消息高亮；返回保留头像和列表状态，查询并发随低电量与温度状态调整。
 - 编辑历史：保存本机观察到的文本、说明、实体、结构化富文本和图片替换前的版本；补齐富文本缓存不产生虚假编辑，支持图片预览与持久存储。
 - 自动显示剧透文字、图片和视频，默认关闭；显示群组／频道消息 ID、时间秒数及转发消息原始时间。
-- 加入群组／频道后选择分组，记住上次分组，调整分组位置、标签及聊天列表显示；分组标签的本机开关跨重启保留。
+- 加入群组／频道后选择分组，记住上次分组，调整分组位置、标签及聊天列表显示；分组标签的本机开关及颜色按账号保存，重启和同步后保留。
 - 独立的「每日首次启动」任务：在定时发送的重复菜单选择一次，从所选日期起每天首次打开时静默发送，当天不重复；按账号保存在本机，支持编辑、删除和立即发送。会员原生每日／每周等服务端定时保持原有行为。
 
 本轮聊天、分组、搜索与界面增强的入口及逐项状态见[实现清单](docs/chat-and-interface-tools.md)。新增分享文件夹、群资料管理项、批量撤销邀请、搜索链接与独立隐私选项。格式工具栏保留原样。
@@ -56,6 +56,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 ### 媒体与链接
 
+- 本地音频按语音消息发送：从聊天附件选择单个 MP3／M4A／OGG／Opus 等音频，选择「以语音消息发送」后进入原生试听预览；支持取消，单个文件最长 60 分钟。
 - 链接预览修复：X／Twitter、Instagram、TikTok、Reddit、Bluesky、Pixiv 等域名规则，支持缓存、更新及自定义 X／Instagram 预览服务域名；保留消息原链接。
 - 静态贴纸保存为 PNG，动画／视频贴纸转为 GIF 后保存到相册。
 - 贴纸包 ZIP 备份：原始 WebP／PNG、TGS、WebM 文件及顺序、表情元数据；最多 500 个文件、32 MiB／文件、256 MiB／包。
@@ -135,7 +136,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34641 已完成 Xcode 27.1 的完整 arm64 Release、77 项自动检查及独立 UIKit 夹具 95 项断言，以及主程序／六扩展、三语资源、严格签名和 12 份匹配 dSYM 校验。七个 Bundle 的安装身份和完整 entitlements 与 b34640 一致；构建前后源码摘要一致。Latest、公开完整下载、SHA-256 附件与生产更新解析核对通过。构建源码、包摘要与验证范围见[本轮记录](docs/common-group-messages-bot-retention.md)；历次记录见[更新记录](docs/changelog.md)。
+b34649 已完成 Xcode 27.1 的完整 arm64 Release、版本声明检查，以及主应用／六扩展、严格 ad-hoc 签名、三语资源和 12 份匹配 dSYM 校验。修复源码通过 86 项项目检查和相机、颜色持久化、实际音频转换专项回归；七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34648 一致。构建源码、文件摘要和验证范围见[本轮记录](docs/camera-folder-colors-voice-import.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

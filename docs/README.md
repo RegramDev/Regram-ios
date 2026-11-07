@@ -1,6 +1,6 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.2 / b34646** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34649** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
@@ -39,7 +39,7 @@
 
 ## 构建与维护
 
-- [相机、分组颜色与语音导入](camera-folder-colors-voice-import.md)：b34648 后续修复，包含相机异常边界、标签颜色持久化及本地音频作为语音草稿导入。
+- [相机、分组颜色与语音导入](camera-folder-colors-voice-import.md)：b34649 的相机异常边界、标签颜色持久化、本地音频作为语音草稿导入及发行包校验。
 
 - [b34648 底栏崩溃与原生媒体复查](crash-and-native-media-34648.md)：崩溃符号化、保留按钮回调的身份映射、新照片流程设置兼容及扩大回归范围。
 - [Telegram 13.2、底栏、文件组与缓存](upstream-sync/13.2.md)：官方上游同步、底栏顺序与搜索控件复用、文件组父容器及运行中缓存上限修复。

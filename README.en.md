@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.2 / b34648**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34648). Syncs Telegram 13.2, including the chat sidebar, media picker and editor, native HLS and interactive message widgets. Fixes tab ordering, duplicate search buttons and crashes after changing tab visibility, grouped-file layout, cache-size enforcement, and photo quality and clipboard image resolution in the native send pipeline. See the [delivery record](docs/crash-and-native-media-34648.md), [upstream sync notes](docs/upstream-sync/13.2.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
+**13.2 / b34649**: [release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34649). Fixes the camera initialization crash caused by photo dimensions, preserves folder-tag colors per account, and imports local audio as voice messages with a native preview before sending. See the [delivery record](docs/camera-folder-colors-voice-import.md), [13.2 sync notes](docs/upstream-sync/13.2.md), [feature catalog](docs/features.md) and [changelog](docs/changelog.md).
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 
@@ -22,7 +22,7 @@ Regram is an unofficial Telegram client maintained on top of Telegram for iOS, w
 - Messages in common groups: open from a person’s profile More menu, browse searchable messages in native grouped lists, filter by group and load more. Returning preserves avatars and list state; opening a result highlights the original message. Search concurrency adapts to Low Power Mode and device temperature.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
-- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
+- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility and colors are saved per account across restarts and synchronization.
 - Independent daily first-launch tasks in the scheduled-send repeat menu: configure once, then silently send on the first launch each day from the chosen date. Tasks stay on this device per account, support editing/deletion/Send Now, and skip missed days. Premium daily/weekly server schedules retain their existing behavior.
 
 The [implementation checklist](docs/chat-and-interface-tools.md) lists share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
@@ -56,6 +56,7 @@ Custom recognition is user initiated, excludes secret chats and view-once media,
 
 ### Media and links
 
+- Send local audio as a voice message: select one MP3, M4A, OGG, Opus or other supported audio file from chat attachments, choose Send as Voice Message, then preview before sending. Conversion can be cancelled; files may be up to 60 minutes long.
 - Preview repair for X/Twitter, Instagram, TikTok, Reddit, Bluesky, Pixiv and other supported rules, with caching, updates and configurable X/Instagram preview domains. Original message links are preserved.
 - Save static stickers as PNG and animated/video stickers as GIF to Photos.
 - Sticker-pack ZIP backups with original WebP/PNG, TGS and WebM files, ordering and emoji metadata. Limits: 500 files, 32 MiB per file and 256 MiB per pack.
@@ -135,7 +136,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34641 passed the full Xcode 27.1 arm64 Release build, 77 automated checks and 95 assertions in a standalone UIKit fixture. The main app, six extensions, localization resources, strict signatures and 12 matching dSYMs were verified. All seven bundle identities and complete entitlements match b34640, and source hashes stayed unchanged during the build. Latest, the full public download, the checksum attachment and the production update parser were verified. See the [delivery record](docs/common-group-messages-bot-retention.md) for source, package and validation details.
+b34649 passed the full Xcode 27.1 arm64 Release build and version checks, with the main app, six extensions, strict ad-hoc signatures, localization resources and 12 matching dSYMs verified. The fixes passed 86 project checks plus camera, folder-color persistence and real-audio conversion regressions. All seven bundle identities, complete entitlements and URL schemes match b34648. See the [delivery record](docs/camera-folder-colors-voice-import.md) for source, package and validation details.
 
 ## Building
 
