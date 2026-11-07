@@ -347,8 +347,10 @@ private final class TimeBasedCleanupImpl {
     private let scheduledScanDisposable = MetaDisposable()
     private let scanQueue = Queue(name: "TimeBasedCleanupScan", qos: .background)
     private let scanDelay: Double
+    private let sizeLimitRescanInterval: Double // MARK: Regram
     
-    init(queue: Queue, storageBox: StorageBox, cacheStorageBox: StorageBox, generalPaths: [String], totalSizeBasedPath: String, shortLivedPaths: [String], scanDelay: Double) {
+    init(queue: Queue, storageBox: StorageBox, cacheStorageBox: StorageBox, generalPaths: [String], totalSizeBasedPath: String, shortLivedPaths: [String], scanDelay: Double, sizeLimitRescanInterval: Double) {
+        self.sizeLimitRescanInterval = sizeLimitRescanInterval // MARK: Regram
         self.queue = queue
         self.storageBox = storageBox
         self.cacheStorageBox = cacheStorageBox
@@ -574,7 +576,14 @@ private final class TimeBasedCleanupImpl {
         let scanFirstTime = scanOnce
         |> delay(self.scanDelay, queue: Queue.concurrentDefaultQueue())
         
-        let scan = scanFirstTime
+        // MARK: Regram — keep enforcing a finite cap as new downloads grow the cache.
+        // Chaining after completion keeps scans serial; changing settings or disposing cancels the wait.
+        let scan: Signal<Never, NoError>
+        if gigabytesLimit < Int32.max {
+            scan = (scanFirstTime |> then(.complete() |> delay(self.sizeLimitRescanInterval, queue: scanQueue))) |> restart
+        } else {
+            scan = scanFirstTime
+        }
         self.scheduledScanDisposable.set((scan
         |> deliverOn(self.queue)).start())
     }
@@ -615,10 +624,10 @@ final class TimeBasedCleanup {
     private let queue = Queue()
     private let impl: QueueLocalObject<TimeBasedCleanupImpl>
     
-    init(storageBox: StorageBox, cacheStorageBox: StorageBox, generalPaths: [String], totalSizeBasedPath: String, shortLivedPaths: [String], scanDelay: Double = 10.0) {
+    init(storageBox: StorageBox, cacheStorageBox: StorageBox, generalPaths: [String], totalSizeBasedPath: String, shortLivedPaths: [String], scanDelay: Double = 10.0, sizeLimitRescanInterval: Double = 5.0 * 60.0) { // MARK: Regram
         let queue = self.queue
         self.impl = QueueLocalObject(queue: self.queue, generate: {
-            return TimeBasedCleanupImpl(queue: queue, storageBox: storageBox, cacheStorageBox: cacheStorageBox, generalPaths: generalPaths, totalSizeBasedPath: totalSizeBasedPath, shortLivedPaths: shortLivedPaths, scanDelay: scanDelay)
+            return TimeBasedCleanupImpl(queue: queue, storageBox: storageBox, cacheStorageBox: cacheStorageBox, generalPaths: generalPaths, totalSizeBasedPath: totalSizeBasedPath, shortLivedPaths: shortLivedPaths, scanDelay: scanDelay, sizeLimitRescanInterval: sizeLimitRescanInterval)
         })
     }
     

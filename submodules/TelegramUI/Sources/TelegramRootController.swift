@@ -80,8 +80,9 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     
     public var rootTabController: TabBarController?
     
-    /// The Contacts screen `openContacts()` pushed; `getContactsController()` returns it while it is open.
-    private weak var contactsController: ContactsController?
+    // MARK: Regram — retain the optional tab while hidden; pushed Contacts has a separate lifetime.
+    public var contactsController: ContactsController?
+    private weak var pushedContactsController: ContactsController?
     public var callListController: CallListController?
     public var chatListController: ChatListController?
     public var accountSettingsController: PeerInfoScreen?
@@ -156,7 +157,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     }
     
     public func getContactsController() -> ViewController? {
-        return self.contactsController
+        return self.pushedContactsController ?? self.contactsController // MARK: Regram
     }
     
     public func getChatsController() -> ViewController? {
@@ -216,6 +217,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         var controllers: [ViewController] = []
         
         let contactsController = ContactsController(context: self.context)
+        // MARK: Regram — stable identities also work when Reduce Motion disables tab animations.
+        contactsController.tabBarItem.tag = 0x524701
+        callListController.tabBarItem.tag = 0x524702
+        chatListController.tabBarItem.tag = 0x524703
         contactsController.switchToChatsController = {  [weak self] in
             self?.openChatsController(activateSearch: false)
         }
@@ -249,11 +254,13 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             strongSelf.pushViewController(debugController(sharedContext: strongSelf.context.sharedContext, context: strongSelf.context))
         }
         accountSettingsController.parentController = self
+        accountSettingsController.tabBarItem.tag = 0x524704 // MARK: Regram
         controllers.append(accountSettingsController)
                 
         let chatsIndex = controllers.firstIndex(where: { $0 === chatListController }) ?? 0
         tabBarController.setControllers(controllers, selectedIndex: restoreSettignsController != nil ? (controllers.count - 1) : chatsIndex)
         
+        self.contactsController = contactsController // MARK: Regram
         self.callListController = callListController
         self.newsController = newsController
         self.chatListController = chatListController
@@ -931,8 +938,13 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
             rootTabController.selectedIndex = index
         }
         
-        let contactsController = ContactsController(context: self.context)
-        self.contactsController = contactsController
+        // MARK: Regram — reuse the root tab when present; never replace it with a pushed controller.
+        if let contactsController = self.contactsController, let index = rootTabController.controllers.firstIndex(where: { $0 === contactsController }) {
+            rootTabController.selectedIndex = index
+            return
+        }
+        let contactsController = ContactsController(context: self.context, rgFeatureIsPushed: true)
+        self.pushedContactsController = contactsController
         self.pushViewController(contactsController)
     }
         

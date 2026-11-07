@@ -60,6 +60,10 @@ enum RadialStatusNodeState: Equatable {
 }
 enum PlayPauseIconNodeState { case play, pause }
 final class Node {
+    enum Traits { case button }
+    var accessibilityTraits = Traits.button
+    var isAccessibilityElement = false
+    var accessibilityLabel: String?
     var isHidden = false
     var isUserInteractionEnabled = false
     func enqueueState(_ state: PlayPauseIconNodeState, animated: Bool) {}
@@ -94,6 +98,8 @@ enum GlassControlGroupComponent {
 }
 CONTENT_ENUM
 final class Footer {
+    struct Strings { let Common_Cancel = "Cancel", WebBrowser_Download_Download = "Download" }
+    let strings = Strings()
     var rgVideoControlsEnabled = true
     var currentIsPaused = true
     var hasSeekControls = false

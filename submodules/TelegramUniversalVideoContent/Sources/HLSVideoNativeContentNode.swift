@@ -14,6 +14,9 @@ import HLSPlayback
 // Plays an adaptive (HLS) video with the native playback controller: qualities chosen per segment, cache first,
 // every byte through MediaBox's own file contexts, parts rendered by ChunkMediaPlayerV2.
 final class HLSVideoNativeContentNode: ASDisplayNode, UniversalVideoContentNode {
+    // MARK: Regram — hand the inline thumbnail off only after a decoded native HLS frame.
+    private let rgDisplayReadyPromise = Promise<Void>()
+    var rgDisplayReady: Signal<Void, NoError> { return self.rgDisplayReadyPromise.get() }
     private struct VideoQualityState: Equatable {
         var current: Int
         var preferred: UniversalVideoContentVideoQuality
@@ -195,6 +198,7 @@ final class HLSVideoNativeContentNode: ASDisplayNode, UniversalVideoContentNode 
             }
             didProcessFramesToDisplay = true
             self.playerNode.isHidden = false
+            self.rgDisplayReadyPromise.set(.single(Void())) // MARK: Regram
             self.stats.noteFirstFrame(now: CACurrentMediaTime())
             self.logStartIfNeeded()
         }

@@ -228,6 +228,14 @@ final class TabBarControllerNode: ASDisplayNode {
     
     // MARK: Regram — map native controllers to stable configurable tab identities.
     private func rgItemId(for item: UITabBarItem) -> RGBottomBarItemId? {
+        // MARK: Regram — animation names are absent under Reduce Motion.
+        switch item.tag {
+        case 0x524701: return .contacts
+        case 0x524702: return .calls
+        case 0x524703: return .chats
+        case 0x524704: return .settings
+        default: break
+        }
         switch item.animationName {
         case "TabContacts":
             return .contacts
@@ -278,16 +286,12 @@ final class TabBarControllerNode: ASDisplayNode {
             }
             return (id, (index, item))
         })
-        let makeComponentItem: (RGBottomBarItemId) -> TabBarComponent.Item? = { [weak self] id in
+        let makeNativeComponentItem: (Int, TabBarNodeItem) -> TabBarComponent.Item? = { [weak self] index, item in
             guard let self else {
                 return nil
             }
-            guard let item = tabBarItemsById[id] else {
-                return nil
-            }
-            let index = item.index
             return TabBarComponent.Item(
-                content: .tabBarItem(item.item.item),
+                content: .tabBarItem(item.item),
                 action: { [weak self] isLongTap in
                     self?.itemSelected(index, isLongTap, [])
                 },
@@ -300,7 +304,21 @@ final class TabBarControllerNode: ASDisplayNode {
             )
         }
 
-        let visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        let makeComponentItem: (RGBottomBarItemId) -> TabBarComponent.Item? = { id in
+            guard let item = tabBarItemsById[id] else { return nil }
+            return makeNativeComponentItem(item.index, item.item)
+        }
+        var visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        // MARK: Regram — retain new upstream tabs (13.2 News) when their native feature is enabled.
+        if bottomBarSettings.isBottomBarVisible {
+            let upstreamItems = self.tabBarItems.enumerated().compactMap { index, item -> TabBarComponent.Item? in
+                guard self.rgItemId(for: item.item) == nil else { return nil }
+                return makeNativeComponentItem(index, item)
+            }
+            let anchor = tabBarItemsById[.chats] ?? tabBarItemsById[.settings]
+            let insertionIndex = anchor.flatMap { anchor in visibleComponentItems.firstIndex(where: { $0.id == AnyHashable(ObjectIdentifier(anchor.item.item)) }) } ?? visibleComponentItems.count
+            visibleComponentItems.insert(contentsOf: upstreamItems, at: insertionIndex)
+        }
         let externalComponentItem: TabBarComponent.Item?
         // MARK: Regram — search belongs to the main capsule; retain standalone navigation items.
         if bottomBarSettings.isBottomBarVisible, let externalItemId = bottomBarSettings.externalItem, externalItemId != .search, !bottomBarSettings.hiddenItems.contains(externalItemId) {

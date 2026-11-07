@@ -7,10 +7,13 @@ import tempfile
 root = Path(__file__).resolve().parents[3]
 core = root / 'submodules/TelegramCore/Sources'
 policy = '\n'.join(line for line in (core / 'Utils/RGAntiRevoke.swift').read_text().splitlines() if not line.startswith('import '))
-updates = (core / 'State/AccountStateManagementUtils.swift').read_text()
-start = updates.index('            case let .DeleteMessagesWithGlobalIds(rgAllIds):')
-end = updates.index('            case let .UpdateMinAvailableMessage(id):', start)
+updates = (core / 'State/Sync/StateReplay+Messages.swift').read_text()
+start = updates.index('    func applyDeleteMessagesWithGlobalIds(')
+end = updates.index('    func applyUpdateMinAvailableMessage(', start)
 deletions = updates[start:end]
+confirmations = (core / 'State/StoredMessageConfirmation.swift').read_text()
+start = confirmations.index('func deleteStoredMessagesAsReceivedDeletion(')
+confirmations = confirmations[start:confirmations.index('\n}', start) + 2]
 history = (core / 'State/HistoryViewStateValidation.swift').read_text()
 prunings = []
 offset = 0
@@ -30,7 +33,7 @@ struct PeerId: Hashable {
     var namespace: Int32 { value < 100 ? 0 : 1 }
     func toInt64() -> Int64 { value }
 }
-enum Namespaces { enum Peer { static let CloudUser: Int32 = 0 } }
+enum Namespaces { enum Peer { static let CloudUser: Int32 = 0; static let CloudChannel: Int32 = 1 } }
 struct MessageId: Hashable { let peerId: PeerId; let id: Int32 }
 class Peer {}
 final class TelegramUser: Peer {
@@ -62,6 +65,7 @@ final class Transaction {
     func getPeer(_ id: PeerId) -> Peer? { peers[id] }
     func messageIdsForGlobalIds(_ ids: [Int32]) -> [MessageId] { messages.keys.filter { ids.contains($0.id) } }
     func deleteMessagesWithGlobalIds(_ ids: [Int32], forEachMedia: (Media) -> Void) { deleted.formUnion(messageIdsForGlobalIds(ids)) }
+    func deleteMessages(_ ids: [MessageId], forEachMedia: (Media) -> Void) { deleted.formUnion(ids) }
 }
 final class Signal { func start() -> Int { 0 } }
 final class MediaBox { func removeCachedResources(_ ids: [Int], force: Bool) -> Signal { Signal() } }
@@ -72,14 +76,26 @@ func _internal_deleteMessages(transaction: Transaction, mediaBox: MediaBox, ids:
 func addMessageThreadStatsDifference(threadKey: Int, remove: Int, addedMessagePeer: Int?, addedMessageId: MessageId?, isOutgoing: Bool) {}
 enum DeletedId { case global(Int32), messageId(MessageId) }
 enum Operation { case DeleteMessagesWithGlobalIds([Int32]), DeleteMessages([MessageId]) }
+final class StoredMessageConfirmationDeletionReporters {
+    static let shared = StoredMessageConfirmationDeletionReporters()
+    func report(_ ids: [MessageId], mediaBox: MediaBox, transaction: Transaction) {}
+}
 POLICY
-func apply(_ operation: Operation, transaction: Transaction) {
+CONFIRMATIONS
+final class ReplayContext {
+    let transaction: Transaction
     let mediaBox = MediaBox()
     var deletedMessageIds: [DeletedId] = []
+    init(_ transaction: Transaction) { self.transaction = transaction }
+    func addMessageThreadStatsDifference(threadKey: Int, remove: Int, addedMessagePeer: Int?, addedMessageId: MessageId?, isOutgoing: Bool) {}
+    DELETIONS
+}
+func apply(_ operation: Operation, transaction: Transaction) {
+    let context = ReplayContext(transaction)
     switch operation {
-        DELETIONS
+    case let .DeleteMessagesWithGlobalIds(ids): context.applyDeleteMessagesWithGlobalIds(ids)
+    case let .DeleteMessages(ids): context.applyDeleteMessages(ids)
     }
-    _ = deletedMessageIds
 }
 func reconcile(transaction: Transaction, id: MessageId) {
     let postbox = Postbox()
@@ -118,11 +134,15 @@ func expect(_ value: @autoclosure () -> Bool, _ message: String) { precondition(
                     let tx = transaction()
                     apply(.DeleteMessagesWithGlobalIds(globalIds.map(\.id)), transaction: tx)
                     apply(.DeleteMessages(groupIds), transaction: tx)
+                    let confirmed = transaction()
+                    let deleted = deleteStoredMessagesAsReceivedDeletion(transaction: confirmed, mediaBox: MediaBox(), ids: globalIds + groupIds)
+                    expect(Set(deleted) == confirmed.deleted, "Confirmation reports only messages it deleted")
                     for id in globalIds + groupIds {
                         let isBot = id == botId || id == groupBotId || id == missingAuthorBotId
                         let retained = (global || (scoped && [1, 100].contains(id.peerId.value))) && !(ignoreBots && isBot)
                         expect(tx.marked.contains(id) == retained, "Update retention must respect scope and the bot sender")
                         expect(tx.deleted.contains(id) == !retained, "Excluded messages must use normal deletion and resource cleanup")
+                        expect(confirmed.marked.contains(id) == retained && confirmed.deleted.contains(id) == !retained, "Reset and history-confirmation deletions must apply the same retention policy")
                     }
                     for reconcile in [reconcile, reconcileTopic] {
                         let history = transaction()
@@ -145,7 +165,7 @@ func expect(_ value: @autoclosure () -> Bool, _ message: String) { precondition(
         print("Anti-revoke passed: all 8 scope/switch combinations, private/group updates, both history paths, missing authors, outgoing and inline-bot messages.")
     }
 }
-'''.replace('POLICY', policy).replace('DELETIONS', deletions).replace('TOPIC_HISTORY', prunings[1]).replace('HISTORY', prunings[0])
+'''.replace('POLICY', policy).replace('CONFIRMATIONS', confirmations).replace('DELETIONS', deletions).replace('TOPIC_HISTORY', prunings[1]).replace('HISTORY', prunings[0])
 with tempfile.TemporaryDirectory(prefix='regram-anti-revoke-') as directory:
     folder = Path(directory)
     source = folder / 'Checks.swift'

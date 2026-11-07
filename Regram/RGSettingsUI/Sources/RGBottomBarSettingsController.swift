@@ -191,7 +191,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                         if settings.isVisible(id) {
                             settings.hide(id)
                         } else {
-                            settings.moveToBottom(id, at: settings.bottomItems.count)
+                            settings.show(id)
                         }
                     }
                 }

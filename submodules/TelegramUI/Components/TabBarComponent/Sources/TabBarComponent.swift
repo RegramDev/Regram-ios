@@ -1587,7 +1587,7 @@ private final class ItemComponent: Component {
             self.contextContainerView.contentRect = CGRect(origin: CGPoint(), size: availableSize)
 
             if component.isUnconstrained {
-                return CGSize(width: component.showsTitle ? titleSize.width + 10.0 * 2.0 : 44.0, height: availableSize.height) // MARK: Regram
+                return CGSize(width: component.showsTitle ? titleSize.width : 44.0, height: availableSize.height) // MARK: Regram — layout adds item padding.
             } else {
                 return availableSize
             }

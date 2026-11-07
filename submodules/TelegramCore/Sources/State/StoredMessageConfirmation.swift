@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import Postbox
 import SwiftSignalKit
 internal import TelegramApi
@@ -210,7 +211,13 @@ func confirmStoredMessages(accountPeerId: PeerId, postbox: Postbox, source: Fetc
 ///
 /// Returns the ids it deleted: the private-chat and basic-group ones, then the channel ones, each in the order given.
 @discardableResult
-func deleteStoredMessagesAsReceivedDeletion(transaction: Transaction, mediaBox: MediaBox, ids: [MessageId]) -> [MessageId] {
+func deleteStoredMessagesAsReceivedDeletion(transaction: Transaction, mediaBox: MediaBox, ids allIds: [MessageId]) -> [MessageId] {
+    // MARK: Regram — 13.2 reset/confirmation paths share the same anti-revoke sender policy.
+    let ids = allIds.filter { id in
+        guard RGSimpleSettings.shared.isAntiRevokeActive, rgShouldRetainRevokedMessage(transaction: transaction, id: id) else { return true }
+        rgMarkMessageRevoked(transaction: transaction, id: id)
+        return false
+    }
     var regularIds: [MessageId] = []
     var channelIds: [MessageId] = []
     for id in ids {

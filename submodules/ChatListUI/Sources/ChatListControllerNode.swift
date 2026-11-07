@@ -186,13 +186,8 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
     private var isSettingUpContentOffset = false
     
     private func syncItemNodeNavigationOffset(_ itemNode: ChatListContainerItemNode) { // MARK: Regram
-        let scrollOffset: CGFloat
-        if let currentItemNodeValue = self.currentItemNodeValue, currentItemNodeValue.listNode.isNavigationHidden {
-            scrollOffset = self.currentSearchScrollHeight()
-        } else {
-            scrollOffset = 0.0
-        }
-        let _ = itemNode.listNode.scrollToOffsetFromTop(scrollOffset, animated: false)
+        // The native header already reflects Regram's search visibility and story height.
+        self.scrollToNavigationBarOffset(itemNode: itemNode)
     }
 
     private func applyItemNodeAsCurrent(id: ChatListFilterTabEntryId, itemNode: ChatListContainerItemNode) {

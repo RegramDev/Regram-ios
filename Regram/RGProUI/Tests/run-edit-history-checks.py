@@ -19,7 +19,8 @@ func mdb_cmp_memn(_ a:UnsafeRawPointer,_ al:Int,_ b:UnsafeRawPointer,_ bl:Int)->
 }
 public protocol MessageAttribute:PostboxCoding {}
 public typealias PeerId=Int64
-public typealias MediaId=Int64
+public struct MediaId:Equatable { let namespace:Int32; let id:Int64 }
+enum Namespaces { enum Media { static let CloudFile:Int32 = 0 } }
 public struct MessageTextEntity:PostboxCoding,Equatable {
  let value:String
  init(_ value:String){self.value=value}
@@ -34,6 +35,8 @@ public class TelegramMediaImage:PostboxCoding {
 }
 public struct Message {let attributes:[MessageAttribute]}
 public struct InstantPage:PostboxCoding,Equatable {
+ var referencedUserIds:[PeerId] { [] }
+ var customEmojiFileIds:[Int64] { [] }
  let blocks:String
  init(_ blocks:String){self.blocks=blocks}
  public init(decoder:PostboxDecoder){blocks=decoder.decodeStringForKey("b",orElse:"")}
