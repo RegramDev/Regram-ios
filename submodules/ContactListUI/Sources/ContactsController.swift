@@ -102,7 +102,7 @@ public class ContactsController: ViewController {
         self.tabBarItem.title = self.presentationData.strings.Contacts_Title
         self.tabBarItem.image = UIImage(bundleImageName: useSpecialTabBarIcons() ? "Chat List/Tabs/Holiday/IconContacts" : "Chat List/Tabs/IconContacts")
         self.tabBarItem.selectedImage = self.tabBarItem.image
-        self.tabBarItem.animationName = "TabContacts"
+        self.tabBarItem.animationName = self.presentationData.reduceMotion ? nil : "TabContacts"
         
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Back, style: .plain, target: nil, action: nil)
         
@@ -185,7 +185,7 @@ public class ContactsController: ViewController {
         self.tabBarItem.title = self.presentationData.strings.Contacts_Title
         self.tabBarItem.image = UIImage(bundleImageName: useSpecialTabBarIcons() ? "Chat List/Tabs/Holiday/IconContacts" : "Chat List/Tabs/IconContacts")
         self.tabBarItem.selectedImage = self.tabBarItem.image
-        self.tabBarItem.animationName = "TabContacts"
+        self.tabBarItem.animationName = self.presentationData.reduceMotion ? nil : "TabContacts"
         self.navigationItem.backBarButtonItem = UIBarButtonItem(title: self.presentationData.strings.Common_Back, style: .plain, target: nil, action: nil)
     }
     

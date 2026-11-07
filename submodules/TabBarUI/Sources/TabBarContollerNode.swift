@@ -316,13 +316,12 @@ final class TabBarControllerNode: ASDisplayNode {
                 guard self.rgItemId(for: item.item) == nil else { return nil }
                 return makeNativeComponentItem(index, item)
             }
-            let anchor = tabBarItemsById[.chats] ?? tabBarItemsById[.settings]
-            let insertionIndex = anchor.flatMap { anchor in
+            let insertionIndex = [RGBottomBarItemId.chats, .settings].compactMap { tabBarItemsById[$0] }.compactMap { anchor in
                 visibleComponentItems.firstIndex(where: { item in
                     if case let .tabBarItem(nativeItem) = item.content { return nativeItem === anchor.item.item }
                     return false
                 })
-            } ?? visibleComponentItems.count
+            }.first ?? visibleComponentItems.count
             visibleComponentItems.insert(contentsOf: upstreamItems, at: insertionIndex)
         }
         let externalComponentItem: TabBarComponent.Item?
