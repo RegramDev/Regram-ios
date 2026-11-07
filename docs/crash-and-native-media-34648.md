@@ -49,4 +49,10 @@ IPA、校验文件、匹配符号、manifest、源码摘要及验证日志存入
 
 ## GitHub 发布
 
-发布目标为 `RegramDev/Regram-ios` 的稳定版 `v13.2-b34648`，沿用已验证且摘要相同的 IPA。源码按现行 `master` 侧载分支约定快进推送；发布附件为唯一 IPA 及其 `.ipa.sha256`，匹配符号和内部 manifest 本地保留。公开后核对 Release、Latest、完整下载摘要与生产应用内更新解析结果，实际结果随后补记。
+已于 2026-11-07 18:17（Asia/Singapore）公开发布 [v13.2-b34648](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34648)，Release ID 为 **437495552**，并设为 **Latest**。源码按现行 `master` 侧载分支约定快进推送，同时保留修复分支；发布附件为唯一 IPA 及其 `.ipa.sha256`，匹配符号和内部 manifest 本地保留。
+
+- Release 标签固定指向 `b298ffd5552bad0d2ef41ab0ff97a04058667027`；与构建源码 `a5b39d7141eb2f6c6a6c36d4d1250d746ad2d210` 之间仅有文档变化。后续发布核验记录同样只改文档。
+- 公开 Release、Latest、标签提交、两份附件名称、字节数和 GitHub digest 核对通过。
+- 从公开地址完整下载 IPA 与校验文件，**83875411 字节**及 SHA-256 与原验证包一致。
+- 使用生产 `RGUpdateRelease.parseGitHub` 解析实际公开 JSON，识别 **13.2 / b34648**，版本、大小、摘要及地址匹配；相对上一公开版 **13.1.2 / b34646** 和本地 **13.2 / b34647** 均识别为更新，同版本同构建号不重复提示，缓存元数据验证通过。
+- 发布及更新解析 JSON、发布说明和校验报告位于本轮忽略目录 `github-release/`，并复制到持久化交付目录。未重建或替换已经验证的 IPA。

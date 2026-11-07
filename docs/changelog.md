@@ -4,7 +4,7 @@
 
 ## b34648：Telegram 13.2、底栏崩溃与原生照片发送（2026-11-07）
 
-[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34648)。
+[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34648)。已正式发布并设为 Latest，公开完整下载、SHA-256 附件及生产应用内更新解析验证通过。
 
 - 同步 Telegram 13.2 的聊天侧栏、媒体选择器与相机编辑、原生 HLS、交互式消息组件，以及消息状态同步和可访问性改进；News 在此上游标签暂时停用，无气泡模式与 New York 字体仍受服务端配置控制。
 - 联系人、通话关闭再开启恢复保存的位置；连续切换搜索开关不会残留重复按钮。
