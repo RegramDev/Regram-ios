@@ -63,4 +63,14 @@ python3 Regram/RGVoiceMessages/Tests/run-conversion-checks.py
 - 文件：`Regram-13.2-b34649.ipa`，**84023083 字节**；SHA-256：`fac2e149e17e0d2164f3091ff67d9f74317a6db769ddf915f28a5b6267324b99`。
 - 关闭本轮闲置 Bazel 服务，退出码 **0**；保留可复用输出、磁盘及模块缓存。安装包、校验文件、匹配符号和验证日志保存在原项目忽略目录 `build-input/camera-folder-colors-voice-34649/`，本轮执行日志在当前工作树的 `build-input/camera-folders-voice-34649/`。
 
-GitHub 发布及公开下载核验完成后另行补记。此阶段未新增真机、真实账号或覆盖升级操作。
+此阶段未新增真机、真实账号或覆盖升级操作。
+
+### GitHub 发布与公开下载
+
+已于 **2026-11-08 01:43（Asia/Singapore）** 公开发布 [v13.2-b34649](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34649)，Release ID 为 **437734232**，并设为 **Latest**。
+
+- 标签固定指向 `11bd181fb6e013a59b5a6e5b1bd714920a92569c`；与构建源码 `a5630dbc9ee9100c27396acd7e8ba2c9cc418018` 之间仅有文档更新。源码已按现行约定快进推送 `master`，同时保留任务分支。
+- 草稿上传和公开后均核对目标提交、唯一 IPA 与校验文件、上传完成状态、字节数及 GitHub SHA-256 digest；正式标签及 Latest 指向正确。
+- 公开完整流下载遇到连接中断后，使用公开链接的 21 个 HTTP Range 请求逐段检查 Content-Range，组装完整 **84023083 字节** IPA，并核对整体 SHA-256；公开校验文件同样核验通过。
+- 生产 `RGUpdateRelease.parseGitHub` 解析实际公开 JSON，通过版本、构建号、大小、摘要、下载地址和缓存元数据检查；相对公开 b34648 正确识别为更新，同版本同构建号不重复提示。
+- 发布 JSON、公开下载验证、生产解析结果与发布说明存入本轮忽略目录 `github-release/`，必要记录同步至持久化交付目录。发布后的记录提交只修改文档，不替换已核验的安装包。

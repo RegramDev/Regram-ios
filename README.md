@@ -136,7 +136,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34649 已完成 Xcode 27.1 的完整 arm64 Release、版本声明检查，以及主应用／六扩展、严格 ad-hoc 签名、三语资源和 12 份匹配 dSYM 校验。修复源码通过 86 项项目检查和相机、颜色持久化、实际音频转换专项回归；七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34648 一致。构建源码、文件摘要和验证范围见[本轮记录](docs/camera-folder-colors-voice-import.md)；历次记录见[更新记录](docs/changelog.md)。
+b34649 已完成 Xcode 27.1 的完整 arm64 Release、版本声明检查，以及主应用／六扩展、严格 ad-hoc 签名、三语资源和 12 份匹配 dSYM 校验。修复源码通过 86 项项目检查和相机、颜色持久化、实际音频转换专项回归；七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34648 一致。Latest、公开完整下载、SHA-256 附件及生产更新解析核对通过。构建源码、文件摘要和验证范围见[本轮记录](docs/camera-folder-colors-voice-import.md)；历次记录见[更新记录](docs/changelog.md)。
 
 ## 构建
 

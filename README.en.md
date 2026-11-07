@@ -136,7 +136,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34649 passed the full Xcode 27.1 arm64 Release build and version checks, with the main app, six extensions, strict ad-hoc signatures, localization resources and 12 matching dSYMs verified. The fixes passed 86 project checks plus camera, folder-color persistence and real-audio conversion regressions. All seven bundle identities, complete entitlements and URL schemes match b34648. See the [delivery record](docs/camera-folder-colors-voice-import.md) for source, package and validation details.
+b34649 passed the full Xcode 27.1 arm64 Release build and version checks, with the main app, six extensions, strict ad-hoc signatures, localization resources and 12 matching dSYMs verified. The fixes passed 86 project checks plus camera, folder-color persistence and real-audio conversion regressions. All seven bundle identities, complete entitlements and URL schemes match b34648. Latest, the complete public download, checksum attachment and production update parser were verified. See the [delivery record](docs/camera-folder-colors-voice-import.md) for source, package and validation details.
 
 ## Building
 
