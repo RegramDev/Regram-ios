@@ -94,6 +94,8 @@ def main():
     run('search-typing', ['python3', 'Regram/RGSimpleSettings/Tests/run-search-typing-checks.py'])
     run('search-rendering', ['python3', 'Regram/RGSimpleSettings/Tests/run-search-rendering-checks.py'])
     run('ui-cache-regressions', ['python3', 'Regram/RGSimpleSettings/Tests/run-ui-cache-regression-checks.py'])
+    run('tab-selection-regressions', ['python3', 'Regram/RGSimpleSettings/Tests/run-tab-selection-checks.py'])
+    run('native-photo-regressions', ['python3', 'Regram/RGSimpleSettings/Tests/run-native-photo-checks.py'])
     run('permission-warning-badges', ['python3', 'Regram/RGFeatureSignals/Tests/run-permission-warning-checks.py'])
     run('llm-endpoint-urls', ['python3', 'Regram/RGGTranslate/Tests/run-url-checks.py'])
     run('transcription-routing', ['python3', 'Regram/RGTranscription/Tests/run-routing-checks.py'])

@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram — retain photo quality in the native send pipeline.
 import UIKit
 import TelegramCore
 import Display
@@ -93,7 +94,13 @@ func chatMediaSendVideoCover(_ cover: UIImage, storeResourceData: (EngineMediaRe
     )
 }
 
-func chatMediaSendRenderedImageMedia(image: UIImage, nominalDimensions: PixelDimensions, thumbnail: UIImage?, stickerFiles: [TelegramMediaFile], forceHd: Bool, livePhotoVideo: TelegramMediaFile? = nil, storeResourceData: (EngineMediaResource.Id, Data) -> Void) -> TelegramMediaImage? {
+// MARK: Regram — UIImage sources in this pipeline come from the pasteboard adapter.
+func rgChatMediaSendIsPastedPhoto(_ item: ChatMediaSendItem) -> Bool {
+    if case .image = item.source { return true }
+    return false
+}
+
+func chatMediaSendRenderedImageMedia(image: UIImage, nominalDimensions: PixelDimensions, thumbnail: UIImage?, stickerFiles: [TelegramMediaFile], forceHd: Bool, livePhotoVideo: TelegramMediaFile? = nil, isPastedPhoto: Bool = false, storeResourceData: (EngineMediaResource.Id, Data) -> Void) -> TelegramMediaImage? {
     var representations: [TelegramMediaImageRepresentation] = []
     if let thumbnail {
         if let representation = chatMediaSendThumbnailRepresentation(thumbnail: thumbnail, fittedTo: thumbnail.size, storeResourceData: storeResourceData) {
@@ -104,7 +111,7 @@ func chatMediaSendRenderedImageMedia(image: UIImage, nominalDimensions: PixelDim
     var randomId: Int64 = 0
     arc4random_buf(&randomId, 8)
     let tempFilePath = NSTemporaryDirectory() + "\(randomId).jpeg"
-    let scaledSize = chatMediaEditorImageSendSize(nominalDimensions: nominalDimensions, forceHd: forceHd)
+    let scaledSize = chatMediaEditorImageSendSize(nominalDimensions: nominalDimensions, forceHd: forceHd || isPastedPhoto) // MARK: Regram
     guard let scaledImage = TGScaleImageToPixelSize(image, scaledSize) else {
         return nil
     }
@@ -112,7 +119,8 @@ func chatMediaSendRenderedImageMedia(image: UIImage, nominalDimensions: PixelDim
     defer {
         EngineTempBox.shared.dispose(tempFile)
     }
-    guard let scaledImageData = compressImageToJPEG(scaledImage, quality: 0.6, tempFilePath: tempFile.path) else {
+    // MARK: Regram — pasted photos keep maximum quality; other photos honor the stored preference.
+    guard let scaledImageData = compressImageToJPEG(scaledImage, quality: isPastedPhoto ? 1.0 : Float(RGSimpleSettings.shared.outgoingPhotoQuality) / 100.0, tempFilePath: tempFile.path) else {
         return nil
     }
     let _ = try? scaledImageData.write(to: URL(fileURLWithPath: tempFilePath))
@@ -292,8 +300,9 @@ private func chatMediaSendItemMedia(item: ChatMediaSendItem, forceHd: Bool, stor
         }
     case let .image(image):
         let sourceImage = item.renderedImage ?? image
-        let nominalDimensions = item.values.map(chatMediaEditorCroppedNominalDimensions(values:)) ?? PixelDimensions(sourceImage.size)
-        guard let media = chatMediaSendRenderedImageMedia(image: sourceImage, nominalDimensions: nominalDimensions, thumbnail: item.thumbnail, stickerFiles: item.stickers, forceHd: forceHd, storeResourceData: storeResourceData) else {
+        // MARK: Regram — UIImage.size is in points; send the clipboard's pixels up to the HD limit.
+        let nominalDimensions = item.values.map(chatMediaEditorCroppedNominalDimensions(values:)) ?? PixelDimensions(CGSize(width: sourceImage.size.width * sourceImage.scale, height: sourceImage.size.height * sourceImage.scale))
+        guard let media = chatMediaSendRenderedImageMedia(image: sourceImage, nominalDimensions: nominalDimensions, thumbnail: item.thumbnail, stickerFiles: item.stickers, forceHd: forceHd, isPastedPhoto: true, storeResourceData: storeResourceData) else {
             return nil
         }
         return (media, item.stickers)

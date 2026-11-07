@@ -12,6 +12,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//Regram/RGSimpleSettings:RGSimpleSettings",  # MARK: Regram — photo upload preferences.
         "//submodules/TelegramUI/Components/MediaEditor",
         "//submodules/TelegramUI/Components/Resources/FetchVideoMediaResource",
         "//submodules/LocalMediaResources",

@@ -183,7 +183,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
     override open func loadDisplayNode() {
         self.displayNode = TabBarControllerNode(theme: self.theme, strings: self.strings, itemSelected: { [weak self] index, longTap, itemNodes in
             if let strongSelf = self {
-                if longTap, let controller = strongSelf.controllers[index] as? TabBarContainedController {
+                // MARK: Regram — keep the target identity across reentrant layout and readiness callbacks.
+                guard strongSelf.controllers.indices.contains(index) else { return }
+                let controller = strongSelf.controllers[index]
+                if longTap, let controller = controller as? TabBarContainedController {
                     controller.presentTabBarPreviewingController(sourceNodes: itemNodes)
                     return
                 }
@@ -202,7 +205,7 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                 if strongSelf.debugTapCounter.1 >= 10 {
                     strongSelf.debugTapCounter.1 = 0
                     
-                    strongSelf.controllers[index].tabBarItemDebugTapAction?()
+                    controller.tabBarItemDebugTapAction?()
                 }
                 
                 if let validLayout = strongSelf.validLayout {
@@ -214,12 +217,14 @@ open class TabBarControllerImpl: ViewController, TabBarController {
                         updatedLayout.intrinsicInsets.bottom = bottomInset
                     }
 
-                    strongSelf.controllers[index].containerLayoutUpdated(updatedLayout, transition: .immediate)
+                    controller.containerLayoutUpdated(updatedLayout, transition: .immediate)
                 }
+                guard strongSelf.controllers.contains(where: { $0 === controller }) else { return }
                 let startTime = CFAbsoluteTimeGetCurrent()
-                strongSelf.pendingControllerDisposable.set((strongSelf.controllers[index].ready.get()
-                |> deliverOnMainQueue).start(next: { _ in
-                    if let strongSelf = self {
+                strongSelf.pendingControllerDisposable.set((controller.ready.get()
+                |> deliverOnMainQueue).start(next: { [weak controller] _ in
+                    if let strongSelf = self, let controller,
+                       let index = strongSelf.controllers.firstIndex(where: { $0 === controller }) {
                         let readyTime = CFAbsoluteTimeGetCurrent() - startTime
                         if readyTime > 0.5 {
                             print("TabBarController: controller took \(readyTime) to become ready")
@@ -243,7 +248,8 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             guard let self else {
                 return false
             }
-            if index >= 0 && index < self.tabBarControllerNode.tabBarItems.count {
+            // MARK: Regram — controller bounds are authoritative during a tab rebuild.
+            if self.controllers.indices.contains(index) {
                 return self.controllers[index].tabBarItemHasDoubleTapAction()
             }
             return false
@@ -251,21 +257,21 @@ open class TabBarControllerImpl: ViewController, TabBarController {
             guard let self else {
                 return
             }
-            if index >= 0 && index < self.tabBarControllerNode.tabBarItems.count {
+            if self.controllers.indices.contains(index) { // MARK: Regram
                 self.controllers[index].tabBarItemPerformDoubleTapAction()
             }
         }, contextAction: { [weak self] index, view, gesture in
             guard let strongSelf = self else {
                 return
             }
-            if index >= 0 && index < strongSelf.tabBarControllerNode.tabBarItems.count {
+            if strongSelf.controllers.indices.contains(index) { // MARK: Regram
                 strongSelf.controllers[index].tabBarItemContextAction(sourceView: view, gesture: gesture)
             }
         }, swipeAction: { [weak self] index, direction in
             guard let strongSelf = self else {
                 return
             }
-            if index >= 0 && index < strongSelf.tabBarControllerNode.tabBarItems.count {
+            if strongSelf.controllers.indices.contains(index) { // MARK: Regram
                 strongSelf.controllers[index].tabBarItemSwipeAction(direction: direction)
             }
         }, toolbarActionSelected: { [weak self] action in
@@ -538,6 +544,10 @@ open class TabBarControllerImpl: ViewController, TabBarController {
         
     public func setControllers(_ controllers: [ViewController], selectedIndex: Int?) {
         self.rgCancelInteractiveReturnToChats() // MARK: Regram
+        // MARK: Regram — changed tabs cancel pending selection; unrelated settings updates keep it.
+        if !self.controllers.elementsEqual(controllers, by: { $0 === $1 }) {
+            self.pendingControllerDisposable.set(nil)
+        }
         var updatedSelectedIndex: Int? = selectedIndex
         if updatedSelectedIndex == nil, let selectedIndex = self._selectedIndex, selectedIndex < self.controllers.count {
             if let index = controllers.firstIndex(where: { $0 === self.controllers[selectedIndex] }) {

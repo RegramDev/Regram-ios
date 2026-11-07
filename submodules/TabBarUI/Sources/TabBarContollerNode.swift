@@ -291,16 +291,23 @@ final class TabBarControllerNode: ASDisplayNode {
             guard let self else {
                 return nil
             }
+            // MARK: Regram — retained components and gesture timers outlive changes to the tab order.
+            let currentIndex: () -> Int? = { [weak self] in
+                return self?.tabBarItems.firstIndex(where: { $0.item === item.item })
+            }
             return TabBarComponent.Item(
                 content: .tabBarItem(item.item),
                 action: { [weak self] isLongTap in
-                    self?.itemSelected(index, isLongTap, [])
+                    guard let self, let index = currentIndex() else { return }
+                    self.itemSelected(index, isLongTap, [])
                 },
                 doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
-                    self?.itemDoubleTapped(index)
+                    guard let self, let index = currentIndex() else { return }
+                    self.itemDoubleTapped(index)
                 } : nil,
                 contextAction: { [weak self] gesture, sourceView in
-                    self?.contextAction(index, sourceView, gesture)
+                    guard let self, let index = currentIndex() else { return }
+                    self.contextAction(index, sourceView, gesture)
                 }
             )
         }

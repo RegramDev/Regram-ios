@@ -54,7 +54,7 @@ public final class ChatMediaSendDefaultRenderer: ChatMediaSendRendering {
             return .single(.result(nil))
         }
 
-        let maxOutputSide = chatMediaEditorImageMaxSide(forceHd: forceHd)
+        let maxOutputSide = chatMediaEditorImageMaxSide(forceHd: forceHd || rgChatMediaSendIsPastedPhoto(item)) // MARK: Regram
         return sourceImage
         |> deliverOnMainQueue
         |> mapToSignal { [self] event -> Signal<ChatMediaSendRenderEvent, NoError> in
@@ -381,9 +381,10 @@ func chatMediaSendPreparedRenderedImage(item: ChatMediaSendItem, image: UIImage,
     if let values = item.values {
         nominalDimensions = chatMediaEditorCroppedNominalDimensions(values: values)
     } else {
-        nominalDimensions = PixelDimensions(image.size)
+        // MARK: Regram — keep the rendered image's pixel resolution, including scaled pasteboard images.
+        nominalDimensions = PixelDimensions(CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale))
     }
-    return chatMediaSendRenderedImageMedia(image: image, nominalDimensions: nominalDimensions, thumbnail: image, stickerFiles: item.stickers, forceHd: forceHd, storeResourceData: storeResourceData)
+    return chatMediaSendRenderedImageMedia(image: image, nominalDimensions: nominalDimensions, thumbnail: image, stickerFiles: item.stickers, forceHd: forceHd, isPastedPhoto: rgChatMediaSendIsPastedPhoto(item), storeResourceData: storeResourceData) // MARK: Regram
 }
 
 func chatMediaSendMessages(items: [ChatMediaSendItem], global: ChatMediaSendGlobalOptions, renderer: ChatMediaSendRendering, gifConverter: ChatMediaSendGifConverting = ChatMediaSendGifConverter.shared, livePhotoPreparer: ChatMediaSendLivePhotoPreparing = ChatMediaSendLivePhotoPreparer.shared, makeGroupingKey: @escaping () -> Int64, storeResourceData: @escaping (EngineMediaResource.Id, Data) -> Void, buildMessages: @escaping ([ChatMediaSendItem], [ChatMediaSendPlannedItem], Bool, (EngineMediaResource.Id, Data) -> Void) -> (messages: [LegacyAssetPickerEnqueueMessage], skippedIndices: [Int]) = { items, plan, forceHd, storeResourceData in
