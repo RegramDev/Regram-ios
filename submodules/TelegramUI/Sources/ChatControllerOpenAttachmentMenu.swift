@@ -671,7 +671,7 @@ extension ChatControllerImpl {
                         let controller = strongSelf.context.sharedContext.makeAttachmentFileController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, audio: true, bannedSendMedia: bannedSendFiles, presentGallery: {
                         }, presentFiles: { [weak self, weak attachmentController] in
                             attachmentController?.dismiss(animated: true)
-                            self?.presentICloudFileGallery(documentTypes: ["public.audio", "org.xiph.ogg-audio", "org.xiph.opus", "org.xiph.flac"])
+                            self?.presentICloudFileGallery(documentTypes: ["public.audio", "org.xiph.ogg-audio", "org.xiph.opus", "org.xiph.flac"]) // MARK: Regram
                         }, presentDocumentScanner: nil, send: { [weak self] mediaReferences, silentPosting, scheduleTime, caption in
                             guard let self else {
                                 return

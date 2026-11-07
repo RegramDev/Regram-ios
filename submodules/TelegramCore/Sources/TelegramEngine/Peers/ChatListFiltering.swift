@@ -1189,10 +1189,10 @@ struct ChatListFiltersState: Codable, Equatable {
         self.displayTags = try container.decodeIfPresent(Bool.self, forKey: "displayTags") ?? false
         self.localDisplayTags = try container.decodeIfPresent(Bool.self, forKey: "regramDisplayTags")
         self.displayTags = self.localDisplayTags ?? self.displayTags
-        self.localTagColors = try container.decodeIfPresent([Int32: Int32].self, forKey: "regramTagColors") ?? Dictionary(uniqueKeysWithValues: self.filters.compactMap { filter in
-            guard let color = filter.data?.color else { return nil }
-            return (filter.id, color.rawValue)
-        })
+        self.localTagColors = try container.decodeIfPresent([Int32: Int32].self, forKey: "regramTagColors") ?? Dictionary(self.filters.compactMap { filter -> (Int32, Int32)? in
+            guard case let .filter(id, _, _, data) = filter, let color = data.color else { return nil }
+            return (id, color.rawValue)
+        }, uniquingKeysWith: { _, value in value })
         self.restoreLocalTagColors()
     }
     
@@ -1211,10 +1211,15 @@ struct ChatListFiltersState: Codable, Equatable {
     // MARK: Regram — record only user edits, then overlay them on every server update.
     mutating func recordLocalTagColors(in updatedFilters: [ChatListFilter]) {
         for filter in updatedFilters {
-            guard let data = filter.data else { continue }
-            let previous = self.filters.first(where: { $0.id == filter.id })
-            if previous?.data?.color != data.color {
-                self.localTagColors[filter.id] = data.color?.rawValue ?? -1
+            guard case let .filter(id, _, _, data) = filter else { continue }
+            let previousColor: PeerNameColor?
+            if let previous = self.filters.first(where: { $0.id == id }), case let .filter(_, _, _, previousData) = previous {
+                previousColor = previousData.color
+            } else {
+                previousColor = nil
+            }
+            if previousColor != data.color {
+                self.localTagColors[id] = data.color?.rawValue ?? -1
             }
         }
     }
