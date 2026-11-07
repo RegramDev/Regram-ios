@@ -261,6 +261,7 @@ final class TabBarControllerNode: ASDisplayNode {
         panelsBottomInset = tabBarFloatingBottomInset(bottomInset: panelsBottomInset)
 
         let sidePlacement = self.sidePlacement(for: params.layout)
+        let isCompact = tabBarIsCompact(layout: params.layout, sidePlacement: sidePlacement)
         // Where iOS 27 would switch its tab bar to the wide variant (a vertically compact phone, the bar at least
         // 568pt wide), the bar keeps its own horizontal layout; elsewhere a horizontal bar takes iOS 27's portrait one.
         let isWide = params.layout.size.width > params.layout.size.height && params.layout.size.width >= 568.0
@@ -316,7 +317,12 @@ final class TabBarControllerNode: ASDisplayNode {
                 return makeNativeComponentItem(index, item)
             }
             let anchor = tabBarItemsById[.chats] ?? tabBarItemsById[.settings]
-            let insertionIndex = anchor.flatMap { anchor in visibleComponentItems.firstIndex(where: { $0.id == AnyHashable(ObjectIdentifier(anchor.item.item)) }) } ?? visibleComponentItems.count
+            let insertionIndex = anchor.flatMap { anchor in
+                visibleComponentItems.firstIndex(where: { item in
+                    if case let .tabBarItem(nativeItem) = item.content { return nativeItem === anchor.item.item }
+                    return false
+                })
+            } ?? visibleComponentItems.count
             visibleComponentItems.insert(contentsOf: upstreamItems, at: insertionIndex)
         }
         let externalComponentItem: TabBarComponent.Item?
