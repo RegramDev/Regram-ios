@@ -1359,3 +1359,9 @@
 "GroupMembers.Hidden.Status" = "已在此群組封鎖";
 "GroupMembers.Reminders.Enabled" = "特別提醒已開啟";
 "GroupMembers.Reminders.Suppressed" = "已選擇提醒，傳送者封鎖優先生效";
+
+/* Local audio import */
+"VoiceImport.SendAsVoice" = "以語音訊息傳送";
+"VoiceImport.SendAsFile" = "以檔案傳送";
+"VoiceImport.InvalidAudio" = "無法讀取此音訊，請選擇 MP3、M4A、AAC、WAV、OGG、Opus、FLAC 或 AIFF 檔案。";
+"VoiceImport.TooLong" = "請選擇長度不超過 60 分鐘的音訊檔案。";

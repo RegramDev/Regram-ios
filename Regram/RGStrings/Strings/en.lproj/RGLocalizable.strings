@@ -1368,3 +1368,9 @@ Matching is case-insensitive.";
 "GroupMembers.Hidden.Status" = "Hidden only in this group";
 "GroupMembers.Reminders.Enabled" = "Member alerts enabled";
 "GroupMembers.Reminders.Suppressed" = "Alerts selected; sender hiding takes priority";
+
+/* Local audio import */
+"VoiceImport.SendAsVoice" = "Send as Voice Message";
+"VoiceImport.SendAsFile" = "Send as File";
+"VoiceImport.InvalidAudio" = "This audio file could not be read. Choose an MP3, M4A, AAC, WAV, OGG, Opus, FLAC or AIFF file.";
+"VoiceImport.TooLong" = "Choose an audio file up to 60 minutes long.";

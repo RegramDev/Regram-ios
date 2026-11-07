@@ -568,6 +568,13 @@ private final class CameraContext {
         self.session.session.beginConfiguration()
         f()
         self.session.session.commitConfiguration()
+        // MARK: Regram — maxPhotoDimensions validates the committed output connection's active format.
+        if let context = self.mainDeviceContext {
+            context.output.configurePhotoDimensions(session: self.session, device: context.device)
+        }
+        if let context = self.additionalDeviceContext {
+            context.output.configurePhotoDimensions(session: self.session, device: context.device)
+        }
         // A configuration that changes an input makes the previews' connections anew (the first input, camera flips,
         // dual and mode changes), and a new connection starts in portrait, which is not the body's orientation on
         // iPhone Duo's inner screen.

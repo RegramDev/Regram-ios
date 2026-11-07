@@ -1,4 +1,5 @@
 import RGSimpleSettings
+import RGCameraSupport // MARK: Regram
 
 import Foundation
 import AVFoundation
@@ -150,7 +151,15 @@ final class CameraOutput: NSObject {
             }
         }
         
-        if photo, case .photo = captureMode {
+        // MARK: Regram — photo dimensions are applied after commitConfiguration, once the graph is connected.
+    }
+
+    func configurePhotoDimensions(session: CameraSession, device: CameraDevice) {
+        guard session.session.outputs.contains(where: { $0 === self.photoOutput }), self.photoOutput.connection(with: .video) != nil else {
+            self.hasHighResolutionPhoto = false
+            return
+        }
+        if case .photo = self.captureMode {
             self.configureHighResolutionPhoto(session: session, device: device)
         } else if self.hasHighResolutionPhoto {
             self.resetHighResolutionPhoto(device: device)
@@ -166,9 +175,9 @@ final class CameraOutput: NSObject {
             let videoDimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
             let supported = format.supportedMaxPhotoDimensions
             if let matching = supported.first(where: { $0.width == videoDimensions.width && $0.height == videoDimensions.height }) {
-                self.photoOutput.maxPhotoDimensions = matching
+                _ = RGSetCameraPhotoDimensions(self.photoOutput, matching) // MARK: Regram
             } else if let smallest = supported.min(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) }) {
-                self.photoOutput.maxPhotoDimensions = smallest
+                _ = RGSetCameraPhotoDimensions(self.photoOutput, smallest) // MARK: Regram
             }
         } else {
             if self.photoOutput.isHighResolutionCaptureEnabled {
@@ -178,16 +187,23 @@ final class CameraOutput: NSObject {
     }
     
     private func configureHighResolutionPhoto(session: CameraSession, device: CameraDevice) {
+        self.hasHighResolutionPhoto = false // MARK: Regram — never carry a size across incompatible formats.
         guard session.session.outputs.contains(where: { $0 === self.photoOutput }) else {
             return
         }
         if #available(iOS 16.0, *) {
-            guard let photoDimensions = device.photoDimensions, let format = device.videoDevice?.activeFormat else {
+            // MARK: Regram — adding inputs can change the selected format; use its current supported sizes.
+            guard let format = device.videoDevice?.activeFormat else {
                 return
             }
-            if format.supportedMaxPhotoDimensions.contains(where: { $0.width == photoDimensions.width && $0.height == photoDimensions.height }) {
-                self.photoOutput.maxPhotoDimensions = photoDimensions
-                self.hasHighResolutionPhoto = true
+            let supported = format.supportedMaxPhotoDimensions
+            let preferred = supported.filter { $0.width <= cameraPhotoModeMaxPhotoDimensions.width && $0.height <= cameraPhotoModeMaxPhotoDimensions.height }
+                .max(by: { Int64($0.width) * Int64($0.height) < Int64($1.width) * Int64($1.height) })
+            if let preferred {
+                self.hasHighResolutionPhoto = RGSetCameraPhotoDimensions(self.photoOutput, preferred)
+                if !self.hasHighResolutionPhoto {
+                    Logger.shared.log("Camera", "Photo dimensions rejected; keeping the system capture size")
+                }
             }
         } else {
             if self.photoOutput.isHighResolutionCaptureEnabled == false {
@@ -272,7 +288,10 @@ final class CameraOutput: NSObject {
             let codecType: AVVideoCodecType = self.photoOutput.availablePhotoCodecTypes.contains(.hevc) ? .hevc : .jpeg
             settings = AVCapturePhotoSettings(format: [AVVideoCodecKey: codecType])
             if #available(iOS 16.0, *) {
-                settings.maxPhotoDimensions = self.photoOutput.maxPhotoDimensions
+                // MARK: Regram — retain default settings when the system rejected high resolution.
+                if self.hasHighResolutionPhoto {
+                    settings.maxPhotoDimensions = self.photoOutput.maxPhotoDimensions
+                }
             } else {
                 settings.isHighResolutionPhotoEnabled = self.photoOutput.isHighResolutionCaptureEnabled
             }

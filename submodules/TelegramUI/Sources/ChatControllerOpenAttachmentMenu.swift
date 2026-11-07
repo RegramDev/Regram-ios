@@ -671,7 +671,7 @@ extension ChatControllerImpl {
                         let controller = strongSelf.context.sharedContext.makeAttachmentFileController(context: strongSelf.context, updatedPresentationData: strongSelf.updatedPresentationData, audio: true, bannedSendMedia: bannedSendFiles, presentGallery: {
                         }, presentFiles: { [weak self, weak attachmentController] in
                             attachmentController?.dismiss(animated: true)
-                            self?.presentICloudFileGallery(documentTypes: ["public.mp3", "public.mpeg-4-audio", "public.aac-audio", "org.xiph.flac"])
+                            self?.presentICloudFileGallery(documentTypes: ["public.audio", "org.xiph.ogg-audio", "org.xiph.opus", "org.xiph.flac"])
                         }, presentDocumentScanner: nil, send: { [weak self] mediaReferences, silentPosting, scheduleTime, caption in
                             guard let self else {
                                 return
@@ -1431,111 +1431,118 @@ extension ChatControllerImpl {
             // Import mode has the system copy the file into our own Inbox first, which needs no
             // extension and works under any profile. The copy is removed once it has been uploaded.
             strongSelf.present(legacyICloudFilePicker(theme: strongSelf.presentationData.theme, mode: .import, hasMultiselection: !editingMessage, documentTypes: documentTypes, completion: { [weak self] urls in
-                if let strongSelf = self, !urls.isEmpty {
-                    var signals: [Signal<ICloudFileDescription?, NoError>] = []
-                    for url in urls {
-                        signals.append(iCloudFileDescription(url))
-                    }
-                    strongSelf.enqueueMediaMessageDisposable.set((combineLatest(signals)
-                    |> deliverOnMainQueue).startStrict(next: { results in
-                        if let strongSelf = self {
-                            let replyMessageSubject = strongSelf.presentationInterfaceState.interfaceState.replyMessageSubject
+                guard let self, !urls.isEmpty else { return }
+                // MARK: Regram — choose the wire format for a single imported audio file.
+                let sendFiles: () -> Void = { [weak self] in
+                    if let strongSelf = self, !urls.isEmpty {
+                        var signals: [Signal<ICloudFileDescription?, NoError>] = []
+                        for url in urls {
+                            signals.append(iCloudFileDescription(url))
+                        }
+                        strongSelf.enqueueMediaMessageDisposable.set((combineLatest(signals)
+                        |> deliverOnMainQueue).startStrict(next: { results in
+                            if let strongSelf = self {
+                                let replyMessageSubject = strongSelf.presentationInterfaceState.interfaceState.replyMessageSubject
 
-                            for item in results {
-                                if let item = item {
-                                    if item.fileSize > Int64(premiumLimits.maxUploadFileParts) * 512 * 1024 {
-                                        let controller = PremiumLimitScreen(context: strongSelf.context, subject: .files, count: 4, action: {
-                                            return true
-                                        })
-                                        strongSelf.push(controller)
-                                        return
-                                    } else if item.fileSize > Int64(limits.maxUploadFileParts) * 512 * 1024 && !isPremium {
-                                        let context = strongSelf.context
-                                        var replaceImpl: ((ViewController) -> Void)?
-                                        let controller = PremiumLimitScreen(context: context, subject: .files, count: 2, action: {
-                                            replaceImpl?(PremiumIntroScreen(context: context, source: .upload))
-                                            return true
-                                        })
-                                        replaceImpl = { [weak controller] c in
-                                            controller?.replace(with: c)
-                                        }
-                                        strongSelf.push(controller)
-                                        return
-                                    }
-                                }
-                            }
-
-                            var groupingKey: Int64?
-                            var fileTypes: (music: Bool, other: Bool) = (false, false)
-                            if results.count > 1 {
                                 for item in results {
                                     if let item = item {
-                                        let pathExtension = (item.fileName as NSString).pathExtension.lowercased()
-                                        if ["mp3", "m4a"].contains(pathExtension) {
-                                            fileTypes.music = true
-                                        } else {
-                                            fileTypes.other = true
-                                        }
-                                    }
-                                }
-                            }
-                            if fileTypes.music != fileTypes.other {
-                                groupingKey = Int64.random(in: Int64.min ... Int64.max)
-                            }
-
-                            var messages: [EnqueueMessage] = []
-                            for item in results {
-                                if let item = item {
-                                    let fileId = Int64.random(in: Int64.min ... Int64.max)
-                                    let mimeType = guessMimeTypeByFileExtension((item.fileName as NSString).pathExtension)
-                                    var previewRepresentations: [TelegramMediaImageRepresentation] = []
-                                    if mimeType.hasPrefix("image/") || mimeType == "application/pdf" || item.audioMetadata?.hasAudioArtwork == true {
-                                        previewRepresentations.append(TelegramMediaImageRepresentation(dimensions: PixelDimensions(width: 320, height: 320), resource: ICloudFileResource(urlData: item.urlData, thumbnail: true), progressiveSizes: [], immediateThumbnailData: nil, hasVideo: false, isPersonal: false))
-                                    }
-                                    var attributes: [TelegramMediaFileAttribute] = []
-                                    attributes.append(.FileName(fileName: item.fileName))
-                                    if let audioMetadata = item.audioMetadata {
-                                        attributes.append(.Audio(isVoice: false, duration: audioMetadata.duration, title: audioMetadata.title, performer: audioMetadata.performer, waveform: nil))
-                                    }
-
-                                    let file = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: fileId), partialReference: nil, resource: ICloudFileResource(urlData: item.urlData, thumbnail: false), previewRepresentations: previewRepresentations, videoThumbnails: [], immediateThumbnailData: nil, mimeType: mimeType, size: Int64(item.fileSize), attributes: attributes, alternativeRepresentations: [])
-                                    let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: strongSelf.chatLocation.threadId, replyToMessageId: replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: [])
-                                    messages.append(message)
-                                }
-                                if let _ = groupingKey, messages.count % 10 == 0 {
-                                    groupingKey = Int64.random(in: Int64.min ... Int64.max)
-                                }
-                            }
-
-                            if !messages.isEmpty {
-                                if editingMessage {
-                                    strongSelf.editMessageMediaWithMessages(messages)
-                                } else {
-                                    strongSelf.chatDisplayNode.setupSendActionOnViewUpdate({
-                                        if let strongSelf = self {
-                                            strongSelf.chatDisplayNode.collapseInput()
-
-                                            strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
-                                                $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil).withUpdatedSendMessageEffect(nil).withUpdatedPostSuggestionState(nil) }
+                                        if item.fileSize > Int64(premiumLimits.maxUploadFileParts) * 512 * 1024 {
+                                            let controller = PremiumLimitScreen(context: strongSelf.context, subject: .files, count: 4, action: {
+                                                return true
                                             })
-                                        }
-                                    }, nil)
-                                    strongSelf.presentPaidMessageAlertIfNeeded(completion: { [weak self] postpone in
-                                        guard let strongSelf = self else {
+                                            strongSelf.push(controller)
+                                            return
+                                        } else if item.fileSize > Int64(limits.maxUploadFileParts) * 512 * 1024 && !isPremium {
+                                            let context = strongSelf.context
+                                            var replaceImpl: ((ViewController) -> Void)?
+                                            let controller = PremiumLimitScreen(context: context, subject: .files, count: 2, action: {
+                                                replaceImpl?(PremiumIntroScreen(context: context, source: .upload))
+                                                return true
+                                            })
+                                            replaceImpl = { [weak controller] c in
+                                                controller?.replace(with: c)
+                                            }
+                                            strongSelf.push(controller)
                                             return
                                         }
-                                        strongSelf.sendMessages(messages, postpone: postpone)
-                                    })
+                                    }
+                                }
+
+                                var groupingKey: Int64?
+                                var fileTypes: (music: Bool, other: Bool) = (false, false)
+                                if results.count > 1 {
+                                    for item in results {
+                                        if let item = item {
+                                            let pathExtension = (item.fileName as NSString).pathExtension.lowercased()
+                                            if ["mp3", "m4a"].contains(pathExtension) {
+                                                fileTypes.music = true
+                                            } else {
+                                                fileTypes.other = true
+                                            }
+                                        }
+                                    }
+                                }
+                                if fileTypes.music != fileTypes.other {
+                                    groupingKey = Int64.random(in: Int64.min ... Int64.max)
+                                }
+
+                                var messages: [EnqueueMessage] = []
+                                for item in results {
+                                    if let item = item {
+                                        let fileId = Int64.random(in: Int64.min ... Int64.max)
+                                        let mimeType = guessMimeTypeByFileExtension((item.fileName as NSString).pathExtension)
+                                        var previewRepresentations: [TelegramMediaImageRepresentation] = []
+                                        if mimeType.hasPrefix("image/") || mimeType == "application/pdf" || item.audioMetadata?.hasAudioArtwork == true {
+                                            previewRepresentations.append(TelegramMediaImageRepresentation(dimensions: PixelDimensions(width: 320, height: 320), resource: ICloudFileResource(urlData: item.urlData, thumbnail: true), progressiveSizes: [], immediateThumbnailData: nil, hasVideo: false, isPersonal: false))
+                                        }
+                                        var attributes: [TelegramMediaFileAttribute] = []
+                                        attributes.append(.FileName(fileName: item.fileName))
+                                        if let audioMetadata = item.audioMetadata {
+                                            attributes.append(.Audio(isVoice: false, duration: audioMetadata.duration, title: audioMetadata.title, performer: audioMetadata.performer, waveform: nil))
+                                        }
+
+                                        let file = TelegramMediaFile(fileId: EngineMedia.Id(namespace: Namespaces.Media.LocalFile, id: fileId), partialReference: nil, resource: ICloudFileResource(urlData: item.urlData, thumbnail: false), previewRepresentations: previewRepresentations, videoThumbnails: [], immediateThumbnailData: nil, mimeType: mimeType, size: Int64(item.fileSize), attributes: attributes, alternativeRepresentations: [])
+                                        let message: EnqueueMessage = .message(text: "", attributes: [], inlineStickers: [:], mediaReference: .standalone(media: file), threadId: strongSelf.chatLocation.threadId, replyToMessageId: replyMessageSubject?.subjectModel, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: [])
+                                        messages.append(message)
+                                    }
+                                    if let _ = groupingKey, messages.count % 10 == 0 {
+                                        groupingKey = Int64.random(in: Int64.min ... Int64.max)
+                                    }
+                                }
+
+                                if !messages.isEmpty {
+                                    if editingMessage {
+                                        strongSelf.editMessageMediaWithMessages(messages)
+                                    } else {
+                                        strongSelf.chatDisplayNode.setupSendActionOnViewUpdate({
+                                            if let strongSelf = self {
+                                                strongSelf.chatDisplayNode.collapseInput()
+
+                                                strongSelf.updateChatPresentationInterfaceState(animated: true, interactive: false, {
+                                                    $0.updatedInterfaceState { $0.withUpdatedReplyMessageSubject(nil).withUpdatedSendMessageEffect(nil).withUpdatedPostSuggestionState(nil) }
+                                                })
+                                            }
+                                        }, nil)
+                                        strongSelf.presentPaidMessageAlertIfNeeded(completion: { [weak self] postpone in
+                                            guard let strongSelf = self else {
+                                                return
+                                            }
+                                            strongSelf.sendMessages(messages, postpone: postpone)
+                                        })
+                                    }
                                 }
                             }
-                        }
-                    }))
+                        }))
+                    }
+                }
+                if editingMessage || !self.rgOfferVoiceImport(urls: urls, sendAsFile: sendFiles) {
+                    sendFiles()
                 }
             }), in: .window(.root))
         })
     }
 
-    func presentFileMediaPickerOptions(editingMessage: Bool) {
+func presentFileMediaPickerOptions(editingMessage: Bool) {
         let actionSheet = ActionSheetController(presentationData: self.presentationData)
         actionSheet.setItemGroups([ActionSheetItemGroup(items: [
             ActionSheetButtonItem(title: self.presentationData.strings.Conversation_FilePhotoOrVideo, action: { [weak self, weak actionSheet] in

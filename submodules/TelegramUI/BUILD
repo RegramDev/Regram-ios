@@ -6,6 +6,7 @@ load(
 )
 
 rgdeps = [
+    "//Regram/RGVoiceMessages", # MARK: Regram
     "//Regram/RGLocalGifts", # MARK: Regram
     "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
     "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
@@ -34,6 +35,7 @@ rgdeps = [
 ]
 
 rgsrcs = [
+    "//Regram/RGVoiceMessages:ChatVoiceImport", # MARK: Regram
     "//Regram/RGAppIconSelection:RGAppIconSelection", # MARK: Regram
     "//Regram/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
     "//Regram/RGDBReset:RGDBReset",
