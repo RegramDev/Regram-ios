@@ -2297,7 +2297,7 @@ public final class ChatMessageInteractiveMediaNode: ASDisplayNode, GalleryItemTr
                             
                             if message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) {
                                 // MARK: Regram — automatic display must also permit inline playback.
-                                if RGSimpleSettings.shared.automaticallyRevealSpoilers && !isSecretMedia && !isExtendedMediaPreview && (!message.isSensitiveContent(platform: "ios") || strongSelf.showSensitiveContent) {
+                                if RGSimpleSettings.shared.automaticallyRevealSpoilers && !isSecretMedia && !isExtendedMediaPreview && (!message.isSensitiveContent(platform: "ios", contentSettings: context.currentContentSettings.with { $0 }) || strongSelf.showSensitiveContent) {
                                     strongSelf.internallyVisible = true
                                 } else if strongSelf.extendedMediaOverlayNode == nil {
                                     strongSelf.internallyVisible = false
