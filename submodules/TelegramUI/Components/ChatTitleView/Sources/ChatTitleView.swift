@@ -773,6 +773,8 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
     
     deinit {
         self.agentSelectionDisposable.dispose()
+        // MARK: Regram
+        if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
     }
     
     private func observeAgentSelection(peerId: EnginePeer.Id) {
@@ -881,11 +883,6 @@ public final class ChatTitleView: UIView, NavigationBarTitleView {
         self.button.view.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(self.longPressGesture(_:))))
     }
     
-    deinit {
-        // MARK: Regram
-        if let observer = self.rgGroupRemarkObserver { NotificationCenter.default.removeObserver(observer) }
-    }
-
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
