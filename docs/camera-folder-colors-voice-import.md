@@ -34,4 +34,19 @@ Apple 的 [`maxPhotoDimensions` 文档](https://developer.apple.com/documentatio
 - 生产语音转换器、FFmpeg Objective-C 绑定及 Opus 写入器处理 9 个实际文件，包括 8 种格式和短片段；检查输出可解码、Opus、48 kHz、单声道及近似时长。另检查原生写入器重新打开语音草稿、无效文件、缺失文件、远程 URL、转换前／中途取消及扩展名分流。主机使用本机 FFmpeg／Opus 库，不能代替 iOS 发行库的设备播放验收。
 - 三种语言资源及本地化检查通过。
 
-构建及最终检查结果在完成后补记。本轮没有在真机或真实账号中执行相机、标签重启和实际语音发送；完整设备流程仍需验证。崩溃日志、调试符号和本轮日志只保存在被忽略的 `build-input/camera-folders-voice/`。
+- Xcode **27.1（27A9275）** 完成 `//Telegram:Regram` 的完整 **arm64 Release**；主应用、六个扩展及 12 份 dSYM 保留。Bazel 退出码 **0**，耗时 **2174.764 秒**；含源码快照及构建输入备份的过程为 **2180.66 秒**。
+- 构建源码为 `1e8d73d05348772c59da055f151ddecd79e440e4`，构建前后 **38197** 个跟踪文件、子模块状态、兼容补丁及生成配置摘要一致。本次沿用 **13.2 / b34648** 做编译验证；构建日志和验证输入保存在本轮忽略目录。
+- 完整项目现有检查 **86 项通过**；以上文件夹、相机与语音专项回归另行执行。所有检查和构建均在本地执行。
+- 已关闭本轮闲置 Bazel 服务，退出码 **0**；保留 `/Users/yuki/Library/Caches/RegramBuild/upstream-13.1.1` 输出缓存及已有磁盘／模块缓存，没有执行 clean 或 expunge。
+
+专项检查可在仓库根目录执行：
+
+```sh
+python3 Regram/RGCameraSupport/Tests/run-camera-checks.py
+python3 Regram/RGChatListPlacement/Tests/run-folder-tags-checks.py
+python3 Regram/RGVoiceMessages/Tests/run-conversion-checks.py
+```
+
+语音主机检查需要 FFmpeg 命令行工具和 pkg-config 可找到的 FFmpeg／Opus 开发库；完整应用编译使用仓库自身的 iOS 库。构建后的本文件更新只补充验证记录，不改变应用源码。
+
+本轮没有在真机或真实账号中执行相机、标签重启和实际语音发送；完整设备流程仍需验证。崩溃日志、调试符号、编译产物和本轮日志只保存在被忽略的 `build-input/camera-folders-voice/`。
