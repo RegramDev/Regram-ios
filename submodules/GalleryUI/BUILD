@@ -15,7 +15,6 @@ swift_library(
         "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/UrlWhitelist",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/Postbox:Postbox",

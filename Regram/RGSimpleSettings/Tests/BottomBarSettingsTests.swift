@@ -62,7 +62,7 @@ import Foundation
             migrated.save(to: defaults)
             assert(RGBottomBarSettings.load(from: defaults) == migrated)
             let serialized = defaults.dictionary(forKey: RGBottomBarSettings.storageKey) as! [String: String]
-            assert(serialized["external"] == "" && serialized["items"] == "chats,settings")
+            assert(serialized["external"] == "" && migrated.visibleBottomItems == [.chats, .settings])
         }
         defaults.set(["items": "chats,settings", "hidden": "contacts,calls"], forKey: RGBottomBarSettings.storageKey)
         assert(!RGBottomBarSettings.load(from: defaults).isVisible(.search))
@@ -70,6 +70,39 @@ import Foundation
         assert(legacySearch.isVisible(.search) && !legacySearch.visibleBottomItems.contains(.search) && legacySearch.externalItem == nil)
         let hiddenSearch = RGBottomBarSettings(bottomItems: [.search, .chats, .settings], externalItem: .search, hiddenItems: [.search], searchMode: .button)
         assert(!hiddenSearch.isVisible(.search) && hiddenSearch.externalItem == nil)
+
+        // Toggling contacts and calls must restore their original slots, in either order and after restart.
+        for order: [RGBottomBarItemId] in [[.contacts, .calls, .chats, .settings], [.settings, .calls, .chats, .contacts]] {
+            for shownFirst: RGBottomBarItemId in [.contacts, .calls] {
+                var layout = RGBottomBarSettings(bottomItems: order)
+                layout.hide(.contacts); layout.hide(.calls)
+                layout.save(to: defaults)
+                layout = RGBottomBarSettings.load(from: defaults)
+                layout.show(shownFirst)
+                layout.show(shownFirst == .contacts ? .calls : .contacts)
+                assert(layout.visibleBottomItems == order)
+                for _ in 0..<20 {
+                    layout.toggleHidden(.contacts); layout.toggleHidden(.calls)
+                    layout.toggleHidden(.calls); layout.toggleHidden(.contacts)
+                    layout.setSearchMode(.button); layout.setSearchMode(.hidden)
+                    assert(layout.visibleBottomItems == order && Set(layout.visibleNavigationItems).count == 4)
+                }
+            }
+        }
+        var hiddenExternal = RGBottomBarSettings()
+        hiddenExternal.moveToExternal(.calls)
+        hiddenExternal.hide(.calls)
+        hiddenExternal.save(to: defaults)
+        hiddenExternal = RGBottomBarSettings.load(from: defaults)
+        assert(!hiddenExternal.isVisible(.calls) && !hiddenExternal.visibleNavigationItems.contains(.calls))
+        hiddenExternal.show(.calls)
+        assert(hiddenExternal.externalItem == .calls && hiddenExternal.visibleBottomItems == [.contacts, .chats, .settings])
+        var reorderVisible = RGBottomBarSettings()
+        reorderVisible.hide(.contacts)
+        reorderVisible.moveBottomItem(from: 0, to: 2)
+        assert(reorderVisible.visibleBottomItems == [.chats, .settings, .calls])
+        reorderVisible.show(.contacts)
+        assert(reorderVisible.visibleBottomItems == [.contacts, .chats, .settings, .calls])
 
         // Native search preserves navigation placement; it never becomes a reorderable controller tab.
         for item in RGBottomBarItemId.allCases where item.isNavigationItem {

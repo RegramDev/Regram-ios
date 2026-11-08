@@ -22,7 +22,6 @@ swift_library(
         "//Regram/RGSimpleSettings:RGSimpleSettings",
         "//Regram/RGInputToolbar:RGInputToolbar",
         "//submodules/Display",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/TelegramCore",
@@ -59,6 +58,7 @@ swift_library(
         "//submodules/TelegramUI/Components/Chat/ChatInputTextNode",
         "//submodules/TelegramUI/Components/Chat/ChatRichTextEditorComposer",
         "//submodules/TelegramUI/Components/Chat/ChatInputPanelNode",
+        "//submodules/TelegramUI/Components/Chat/ChatOverscrollIsland",
         "//submodules/TelegramNotices",
         "//submodules/AnimatedCountLabelNode",
         "//submodules/TelegramStringFormatting",
@@ -95,11 +95,13 @@ swift_library(
     ]),
     deps = [
         ":ChatTextInputPanelNode",
+        "//submodules/TelegramUI/Components/Chat/ChatInputPanelNode",
         "//submodules/TelegramUI/Components/Chat/ChatInputTextNode",
         "//submodules/TextFormat",
         "//submodules/TelegramUIPreferences",
         "//submodules/TelegramPresentationData",
         "//submodules/Display",
+        "//submodules/TelegramUI/Components/Chat/ChatTextInputActionButtonsNode",
     ],
 )
 

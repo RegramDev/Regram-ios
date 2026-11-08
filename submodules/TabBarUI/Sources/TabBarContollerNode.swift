@@ -228,6 +228,14 @@ final class TabBarControllerNode: ASDisplayNode {
     
     // MARK: Regram — map native controllers to stable configurable tab identities.
     private func rgItemId(for item: UITabBarItem) -> RGBottomBarItemId? {
+        // MARK: Regram — animation names are absent under Reduce Motion.
+        switch item.tag {
+        case 0x524701: return .contacts
+        case 0x524702: return .calls
+        case 0x524703: return .chats
+        case 0x524704: return .settings
+        default: break
+        }
         switch item.animationName {
         case "TabContacts":
             return .contacts
@@ -250,21 +258,24 @@ final class TabBarControllerNode: ASDisplayNode {
         if params.layout.metrics.widthClass == .regular, let inputHeight = params.layout.inputHeight, inputHeight != 0.0 {
             panelsBottomInset = inputHeight + 8.0
         }
-        if panelsBottomInset == 0.0 {
-            panelsBottomInset = 8.0
-        } else {
-            panelsBottomInset = max(panelsBottomInset, 8.0)
-        }
+        panelsBottomInset = tabBarFloatingBottomInset(bottomInset: panelsBottomInset)
 
-        var tabBarBottomInset: CGFloat = panelsBottomInset
+        let sidePlacement = self.sidePlacement(for: params.layout)
+        let isCompact = tabBarIsCompact(layout: params.layout, sidePlacement: sidePlacement)
+        // Where iOS 27 would switch its tab bar to the wide variant (a vertically compact phone, the bar at least
+        // 568pt wide), the bar keeps its own horizontal layout; elsewhere a horizontal bar takes iOS 27's portrait one.
+        let isWide = params.layout.size.width > params.layout.size.height && params.layout.size.width >= 568.0
+        let isSystemLayout = sidePlacement == nil && !isCompact && !isWide
+
+        var keyboardBottomInset: CGFloat = 0.0
         if let currentController = self.currentController {
             if let tabBarSearchState = currentController.tabBarSearchState, tabBarSearchState.isActive, let inputHeight = params.layout.inputHeight, inputHeight != 0.0 {
-                tabBarBottomInset = max(tabBarBottomInset, inputHeight + 8.0)
+                keyboardBottomInset = inputHeight + 8.0
             }
         }
 
         var sideInset: CGFloat = 12.0
-        if tabBarBottomInset <= 28.0 {
+        if max(panelsBottomInset, keyboardBottomInset) <= 28.0 {
             sideInset = 20.0
         }
         
@@ -276,29 +287,50 @@ final class TabBarControllerNode: ASDisplayNode {
             }
             return (id, (index, item))
         })
-        let makeComponentItem: (RGBottomBarItemId) -> TabBarComponent.Item? = { [weak self] id in
+        let makeNativeComponentItem: (Int, TabBarNodeItem) -> TabBarComponent.Item? = { [weak self] index, item in
             guard let self else {
                 return nil
             }
-            guard let item = tabBarItemsById[id] else {
-                return nil
+            // MARK: Regram — retained components and gesture timers outlive changes to the tab order.
+            let currentIndex: () -> Int? = { [weak self] in
+                return self?.tabBarItems.firstIndex(where: { $0.item === item.item })
             }
-            let index = item.index
             return TabBarComponent.Item(
-                content: .tabBarItem(item.item.item),
+                content: .tabBarItem(item.item),
                 action: { [weak self] isLongTap in
-                    self?.itemSelected(index, isLongTap, [])
+                    guard let self, let index = currentIndex() else { return }
+                    self.itemSelected(index, isLongTap, [])
                 },
                 doubleTapAction: self.itemHasDoubleTapAction(index) ? { [weak self] in
-                    self?.itemDoubleTapped(index)
+                    guard let self, let index = currentIndex() else { return }
+                    self.itemDoubleTapped(index)
                 } : nil,
                 contextAction: { [weak self] gesture, sourceView in
-                    self?.contextAction(index, sourceView, gesture)
+                    guard let self, let index = currentIndex() else { return }
+                    self.contextAction(index, sourceView, gesture)
                 }
             )
         }
 
-        let visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        let makeComponentItem: (RGBottomBarItemId) -> TabBarComponent.Item? = { id in
+            guard let item = tabBarItemsById[id] else { return nil }
+            return makeNativeComponentItem(item.index, item.item)
+        }
+        var visibleComponentItems: [TabBarComponent.Item] = bottomBarSettings.visibleBottomItems.compactMap { makeComponentItem($0) }
+        // MARK: Regram — retain new upstream tabs (13.2 News) when their native feature is enabled.
+        if bottomBarSettings.isBottomBarVisible {
+            let upstreamItems = self.tabBarItems.enumerated().compactMap { index, item -> TabBarComponent.Item? in
+                guard self.rgItemId(for: item.item) == nil else { return nil }
+                return makeNativeComponentItem(index, item)
+            }
+            let insertionIndex = [RGBottomBarItemId.chats, .settings].compactMap { tabBarItemsById[$0] }.compactMap { anchor in
+                visibleComponentItems.firstIndex(where: { item in
+                    if case let .tabBarItem(nativeItem) = item.content { return nativeItem === anchor.item.item }
+                    return false
+                })
+            }.first ?? visibleComponentItems.count
+            visibleComponentItems.insert(contentsOf: upstreamItems, at: insertionIndex)
+        }
         let externalComponentItem: TabBarComponent.Item?
         // MARK: Regram — search belongs to the main capsule; retain standalone navigation items.
         if bottomBarSettings.isBottomBarVisible, let externalItemId = bottomBarSettings.externalItem, externalItemId != .search, !bottomBarSettings.hiddenItems.contains(externalItemId) {
@@ -307,7 +339,20 @@ final class TabBarControllerNode: ASDisplayNode {
             externalComponentItem = nil
         }
 
-        let sidePlacement = self.sidePlacement(for: params.layout)
+
+        let tabBarBottomInset: CGFloat
+        let tabBarSideInset: CGFloat
+        if isSystemLayout {
+            // iOS 27 floats the bar at least 21pt above the bottom edge and from the sides (`minimumPlatterInsets`),
+            // and higher by as much as the safe area reaches past the home affordance's 21pt allowance in a 34pt
+            // portrait inset.
+            tabBarBottomInset = max(max(21.0, params.layout.insets(options: []).bottom - 13.0), keyboardBottomInset)
+            tabBarSideInset = 21.0
+        } else {
+            tabBarBottomInset = max(panelsBottomInset, keyboardBottomInset)
+            tabBarSideInset = sideInset
+        }
+
         let previousAppliedPlacement = self.tabBarView.view == nil ? nil : self.appliedPlacement
         let appliedPlacement = TabBarAppliedPlacement(placement: sidePlacement, containerSize: params.layout.size, isHidden: params.isTabBarHidden)
         self.appliedPlacement = appliedPlacement
@@ -387,13 +432,20 @@ final class TabBarControllerNode: ASDisplayNode {
                 rgWidthPercent: bottomBarSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(bottomBarSettings.buttonWidthFillRatio)
             )),
             environment: {},
-            containerSize: sidePlacement?.frame.size ?? CGSize(width: params.layout.size.width - sideInset * 2.0, height: 100.0)
+            containerSize: sidePlacement?.frame.size ?? CGSize(width: params.layout.size.width - tabBarSideInset * 2.0, height: 100.0)
         )
         let tabBarFrame: CGRect
         if let sidePlacement {
             tabBarFrame = params.isTabBarHidden ? sidePlacement.hiddenFrame(containerWidth: params.layout.size.width) : sidePlacement.frame
         } else {
-            tabBarFrame = CGRect(origin: CGPoint(x: floor((params.layout.size.width - tabBarSize.width) * 0.5), y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
+            let centeredX: CGFloat
+            if isSystemLayout {
+                // UIKit rounds the centered bar to pixels half away from zero.
+                centeredX = floor((params.layout.size.width - tabBarSize.width) * 0.5 * UIScreenScale + 0.5) / UIScreenScale
+            } else {
+                centeredX = floor((params.layout.size.width - tabBarSize.width) * 0.5)
+            }
+            tabBarFrame = CGRect(origin: CGPoint(x: centeredX, y: params.layout.size.height - (params.isTabBarHidden ? 0.0 : (tabBarSize.height + tabBarBottomInset))), size: tabBarSize)
         }
         
         if let tabBarComponentView = self.tabBarView.view {
@@ -422,6 +474,7 @@ final class TabBarControllerNode: ASDisplayNode {
             (tabBarComponentView.superview == nil ? viewTransition : tabBarFrameTransition).updateFrame(view: tabBarComponentView, frame: tabBarFrame)
             viewTransition.updateAlpha(layer: tabBarComponentView.layer, alpha: tabBarAlpha)
             tabBarComponentView.isUserInteractionEnabled = tabBarAlpha > 0.0 // MARK: Regram
+            tabBarComponentView.accessibilityElementsHidden = params.isTabBarHidden
         }
         
         tabBarFrameTransition.updateFrame(node: self.disabledOverlayNode, frame: tabBarFrame)
@@ -454,6 +507,7 @@ final class TabBarControllerNode: ASDisplayNode {
                             items: [GlassControlGroupComponent.Item(
                                 id: "left_" + value.title,
                                 content: .text(value.title),
+                                foregroundColor: value.customTitleColor,
                                 action: value.isEnabled ? { [weak self] in
                                     guard let self else {
                                         return
@@ -469,6 +523,7 @@ final class TabBarControllerNode: ASDisplayNode {
                             items: [GlassControlGroupComponent.Item(
                                 id: "right_" + value.title,
                                 content: .text(value.title),
+                                foregroundColor: value.customTitleColor,
                                 action: value.isEnabled ? { [weak self] in
                                     guard let self else {
                                         return
@@ -484,6 +539,7 @@ final class TabBarControllerNode: ASDisplayNode {
                             items: [GlassControlGroupComponent.Item(
                                 id: "right_" + value.title,
                                 content: .text(value.title),
+                                foregroundColor: value.customTitleColor,
                                 action: value.isEnabled ? { [weak self] in
                                     guard let self else {
                                         return

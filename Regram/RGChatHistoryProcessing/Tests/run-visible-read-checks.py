@@ -33,16 +33,18 @@ def method(text, signature):
 
 backends = [
     ('Legacy', 'submodules/Display/Source/ListView.swift', 'public func updateVisibleItemRange('),
-    ('CoreList', 'submodules/TelegramUI/Sources/CoreListChatHistoryBackend.swift', 'func updateVisibleItemRange('),
+    ('CoreList', 'submodules/TelegramUI/Components/Chat/ChatHistoryListViewBackend/Sources/CoreListChatHistoryBackend.swift', 'func updateVisibleItemRange('),
 ]
 for name, path, signature in backends:
     update = method(source(path), signature)
     program = r'''
 import Foundation
 typealias ListViewDisplayedItemRange = Int
+enum CoreListScrollTrace { static func log(_ text: String) {} }
 final class Settings { var mediaLoadingExperiment = false }
 enum RGSimpleSettings { static let shared = Settings() }
 final class Backend {
+    func traceLocation() -> String { "test" }
     var range = 0
     var displayedItemRange = 0
     var internalDisplayedItemRange: Int?

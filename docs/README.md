@@ -1,6 +1,6 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.1.2 / b34646** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34649** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 本分支为 `regram-beta`，统一使用 `dev.regram.ios`／`group.dev.regram.ios`，不包含应用内更新安装。主线历史构建与真机记录不代表 Beta 包已经验收。
 
@@ -30,8 +30,8 @@
 - [社群关联会话归档排查](community-archive-audit-20261022.md)：归档后回到主列表的原因，汇总、展开及异步补齐的修正和源码核对范围。
 - [设置横栏、图标与控件](settings-controls-34626.md)：b34626 的原生文件夹横栏、图标取舍和居中、深色开关与操作按钮颜色，包含构建与交付记录。
 - [过滤提及与设置层级](settings-navigation-34625.md)：b34625 的逐条隐藏提及处理、分类内设置与页内标签，包含构建及跳过测试的记录。
-- [完整功能清单](features.md)：九类设置、入口、默认行为、本机存储、容量和权限边界。
-- [近期更新记录](changelog.md)：b34638、b34637、b34636 及旧版本记录。
+- [完整功能清单](features.md)：十类设置、入口、默认行为、本机存储、容量和权限边界。
+- [近期更新记录](changelog.md)：b34649、b34648 及旧版本记录。
 - [b34624 界面与构建验证](settings-appearance.md)：设置与新增功能页样式、原生底栏搜索、构建来源、校验值及设备验收边界。
 - [翻译、语音、链接与设置](speech-links-settings.md)：独立总结接口、语音／圆视频识别、网页翻译、预览规则及设置导航。
 - [设置与兼容清理](settings-cleanup-34622.md)：b34622 的聊天功能移除、Inline 页面、盘古设置归组与 Swiftgram 兼容移除。
@@ -40,12 +40,19 @@
 
 ## 构建与维护
 
+- [Beta 同步 b34649](beta-sync-20261108.md)：Telegram 13.2、底栏与原生媒体、相机、标签颜色及本地语音导入，保留 Beta 安装身份和手动 TestFlight 流程。
 - [Beta 同步 b34646](beta-sync-20261104.md)：群成员管理、特别提醒、页面返回与状态、多视频时长及相册保存修正，保留 Beta 安装身份和 TestFlight 流程。
 - [Beta 同步 b34643 与 TestFlight 迁移](beta-sync-20261031.md)：13.1.2、顶部搜索修复、分支身份和检查范围。
 - [TestFlight 使用说明](../build-system/ci/TESTFLIGHT.md)：选择 regram-beta，构建、上传、外部分组与重试方式。
 - [Beta 同步主线 b34638](beta-sync-20261028.md)：历史同步范围、XChat 图标、分支约束和当时未构建的验证边界。
 
 - [上次 Beta 同步记录](beta-sync-20261023.md)：同步主线 13.1.1 / b34630，保留分支身份及无更新安装约定，记录本分支检查。
+
+- [相机、分组颜色与语音导入](camera-folder-colors-voice-import.md)：b34649 的相机异常边界、标签颜色持久化、本地音频作为语音草稿导入及发行包校验。
+
+- [b34648 底栏崩溃与原生媒体复查](crash-and-native-media-34648.md)：崩溃符号化、保留按钮回调的身份映射、新照片流程设置兼容及扩大回归范围。
+- [Telegram 13.2、底栏、文件组与缓存](upstream-sync/13.2.md)：官方上游同步、底栏顺序与搜索控件复用、文件组父容器及运行中缓存上限修复。
+
 - [Telegram 13.1.2 同步与全局搜索输入](upstream-sync/13.1.2.md)：基于 b34641 同步官方上游，合并快速输入查询并将日期解析移到后台，包含回归、模拟器输入夹具及完整 arm64 Release 编译记录。
 - [b34637 网络与启动崩溃修复](crash-fixes-20261025.md)：三份崩溃日志的符号化结果、CFStream 观察流清理及 Postbox 字典解码修正，包含回归和编译范围。
 - [Telegram 13.1.1 上游同步](upstream-sync-20261023.md)：同步范围、现有 UI 保留、功能兼容修正及 b34630 构建与交付记录。

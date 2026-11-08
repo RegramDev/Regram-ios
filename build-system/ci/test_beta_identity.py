@@ -24,7 +24,7 @@ class BetaIdentityTests(unittest.TestCase):
     def make_configuration(self, bundle, appstore):
         return BuildConfiguration(
             rg_config='{}', bundle_id=bundle, api_id='1', api_hash='0' * 32,
-            team_id='FIXTURE001', app_center_id='', is_internal_build='false',
+            team_id='FIXTURE001', is_internal_build='false',
             is_appstore_build=appstore, appstore_id='', app_specific_url_scheme='',
             premium_iap_product_id='', enable_siri=False, enable_icloud=False)
 

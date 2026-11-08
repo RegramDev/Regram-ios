@@ -29,6 +29,8 @@ tab = tab.replace('self.context.sharedContext.presentationData', '.single(Presen
 tab = tab.replace('context.engine.notices.getServerProvidedSuggestions()', 'suggestions.get()')
 row_inputs = re.search(r'combineLatest\(notificationExceptions,.*\),', data)[0][:-1]
 row_unpack = re.search(r'let \(notificationExceptions,.* = notifications', data)[0]
+row_inputs = row_inputs.replace('contactsPermissionWarning(context: context)', '.single(false)')
+row_unpack += '\n        _ = contactsWarning'
 model_args = between(data, 'notificationAuthorizationStatus: notificationsAuthorizationStatus,', 'notificationExceptions: notificationExceptions,')
 model_args = re.sub(r',\s*(?://[^\n]*)?\s*$', '\n', model_args)
 row_gate = between(items, 'let notificationsWarning: Bool', 'items[.advanced]!.append')
@@ -54,7 +56,7 @@ final class RGSimpleSettings {
 }
 struct UIImage {}
 struct PresentationData {
-    struct Strings { let Settings_Title = "Settings" }
+    struct Strings { let Settings_Title = "Settings", VoiceOver_TabBar_AttentionRequired = "Attention required" }
     struct DateTimeFormat { let decimalSeparator = "." }
     let strings = Strings(), dateTimeFormat = DateTimeFormat(), reduceMotion = false
 }

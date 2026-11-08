@@ -268,7 +268,7 @@ private final class RGBookmarksNativeController: ViewController, UITableViewData
             DispatchQueue.main.async { guard let self, let navigation else { return }; self.context.sharedContext.navigateToChatController(NavigateToChatControllerParams(navigationController: navigation, context: self.context, chatLocation: location, subject: .message(id: .id(messageId), highlight: nil, timecode: nil, setupReply: false), useExisting: false)) }
         }
         if let threadId = row.bookmark.threadId, case let .channel(channel) = peer, channel.flags.contains(.isForum) || channel.flags.contains(.isMonoforum), threadId > 0, threadId <= Int64(Int32.max) {
-            navigationRequest.set((context.engine.messages.fetchChannelReplyThreadMessage(messageId: MessageId(peerId: peer.id, namespace: Namespaces.Message.Cloud, id: Int32(threadId)), atMessageId: messageId) |> deliverOnMainQueue).start(next: { thread in navigate(.replyThread(thread)) }, error: { _ in navigate(.peer(peer)) }))
+            navigationRequest.set((context.engine.messages.fetchChannelReplyThreadMessage(messageId: MessageId(peerId: peer.id, namespace: Namespaces.Message.Cloud, id: Int32(threadId)), atMessageId: messageId.id) |> deliverOnMainQueue).start(next: { thread in navigate(.replyThread(thread)) }, error: { _ in navigate(.peer(peer)) }))
         } else { navigate(.peer(peer)) }
     }
 }

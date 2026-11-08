@@ -12,7 +12,6 @@ swift_library(
     deps = [
         "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/Display",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/TelegramPresentationData",
         "//submodules/ComponentFlow",
         "//submodules/Components/ViewControllerComponent",

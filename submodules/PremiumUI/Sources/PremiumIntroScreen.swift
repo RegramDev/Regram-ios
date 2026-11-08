@@ -1106,12 +1106,14 @@ final class SectionGroupComponent: Component {
     public final class Item: Equatable {
         public let content: AnyComponentWithIdentity<Empty>
         public let accessibilityLabel: String
+        public let isSelected: Bool
         public let isEnabled: Bool
         public let action: () -> Void
         
-        public init(_ content: AnyComponentWithIdentity<Empty>, accessibilityLabel: String, isEnabled: Bool = true, action: @escaping () -> Void) {
+        public init(_ content: AnyComponentWithIdentity<Empty>, accessibilityLabel: String, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
             self.content = content
             self.accessibilityLabel = accessibilityLabel
+            self.isSelected = isSelected
             self.isEnabled = isEnabled
             self.action = action
         }
@@ -1121,6 +1123,9 @@ final class SectionGroupComponent: Component {
                 return false
             }
             if lhs.accessibilityLabel != rhs.accessibilityLabel {
+                return false
+            }
+            if lhs.isSelected != rhs.isSelected {
                 return false
             }
             if lhs.isEnabled != rhs.isEnabled {
@@ -1216,6 +1221,13 @@ final class SectionGroupComponent: Component {
                     self.addSubview(buttonView)
                 }
                 buttonView.accessibilityLabel = item.accessibilityLabel
+                // The check mark beside the chosen option.
+                var buttonTraits: UIAccessibilityTraits = item.isSelected ? [.button, .selected] : .button
+                if !item.isEnabled {
+                    // A plan shorter than the current subscription cannot be chosen (dimmed).
+                    buttonTraits.insert(.notEnabled)
+                }
+                buttonView.accessibilityTraits = buttonTraits
                 
                 if let current = self.itemViews[item.content.id] {
                     itemView = current
@@ -1238,6 +1250,8 @@ final class SectionGroupComponent: Component {
                 buttonView.frame = CGRect(origin: itemFrame.origin, size: CGSize(width: availableSize.width, height: itemSize.height + UIScreenPixel))
                 itemView.frame = CGRect(origin: CGPoint(x: itemFrame.minX + sideInset, y: itemFrame.minY + floor((itemFrame.height - itemSize.height) / 2.0)), size: itemSize)
                 itemView.isUserInteractionEnabled = false
+                // The button over the row reads it (its label is the row's text).
+                itemView.accessibilityElementsHidden = true
                 
                 buttonView.highligthedChanged = { [weak buttonView] highlighted in
                     if highlighted {
@@ -2059,20 +2073,16 @@ private final class PremiumIntroScreenContentComponent: CombinedComponent {
                         }
                         
                         var subtitle = ""
-                        var accessibilitySubtitle = ""
                         var pricePerMonth = product.price
                         if product.months > 1 {
                             pricePerMonth = product.pricePerMonth
                             
                             if discountValue > 0 {
                                 subtitle = "**\(defaultPrice)** \(product.price)"
-                                accessibilitySubtitle = product.price
                                 if product.months == 24 {
                                     subtitle = environment.strings.Premium_PricePer2Years(subtitle).string
-                                    accessibilitySubtitle = environment.strings.Premium_PricePer2Years(accessibilitySubtitle).string
                                 } else if product.months == 12 {
                                     subtitle = environment.strings.Premium_PricePerYear(subtitle).string
-                                    accessibilitySubtitle = environment.strings.Premium_PricePerYear(accessibilitySubtitle).string
                                 }
                                 subtitle = "\(environment.strings.Gift_Options_Premium_Months(product.months)) • \(product.price)"
                             } else {
@@ -2081,7 +2091,6 @@ private final class PremiumIntroScreenContentComponent: CombinedComponent {
                         }
                         if product.isCurrent {
                             subtitle = environment.strings.Premium_CurrentPlan
-                            accessibilitySubtitle = subtitle
                         }
                         pricePerMonth = environment.strings.Premium_PricePerMonth(pricePerMonth).string
                                                 
@@ -2104,7 +2113,8 @@ private final class PremiumIntroScreenContentComponent: CombinedComponent {
                                         )
                                     )
                                 ),
-                                accessibilityLabel: "\(giftTitle). \(accessibilitySubtitle). \(pricePerMonth)",
+                                accessibilityLabel: [giftTitle, discount, subtitle, pricePerMonth].filter { !$0.isEmpty }.joined(separator: ", "),
+                                isSelected: !product.isCurrent && product.id == state.selectedProductId,
                                 isEnabled: product.months > currentProductMonths,
                                 action: {
                                     selectProduct(product.id)
@@ -2851,6 +2861,7 @@ private final class PremiumIntroScreenContentComponent: CombinedComponent {
                     )
                     context.add(infoTitle
                         .position(CGPoint(x: sideInset + environment.safeInsets.left + textSideInset + infoTitle.size.width / 2.0, y: size.height + infoTitle.size.height / 2.0))
+                        .accessibilityTraits(.header)
                     )
                     size.height += infoTitle.size.height
                     size.height += 3.0
@@ -3859,7 +3870,8 @@ private final class PremiumIntroScreenComponent: CombinedComponent {
             context.addWithExternalContainer(title
                 .position(CGPoint(x: bandCenterX, y: max(topInset + 160.0 - titleOffset, navigationTitleCenterY)))
                 .scale(titleScale)
-                .opacity(titleAlpha),
+                .opacity(titleAlpha)
+                .accessibilityTraits(.header),
                 container: context.component.overNavigationContainer
             )
             

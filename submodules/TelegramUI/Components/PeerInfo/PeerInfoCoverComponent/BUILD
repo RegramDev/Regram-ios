@@ -27,6 +27,7 @@ swift_library(
         "//submodules/AvatarNode",
         "//submodules/Components/BundleIconComponent",
         "//submodules/TelegramUI/Components/PeerInfo/PeerInfoPaneNode",
+        "//submodules/TelegramStringFormatting",
     ],
     visibility = [
         "//visibility:public",

@@ -11,7 +11,6 @@ import AccountContext
 import DeviceAccess
 import Display
 import AnimatedStickerNode
-import LottieSettings
 import WebPBinding
 import SaveToCameraRoll
 
@@ -28,7 +27,6 @@ public func rgSaveStickerToPhotos(context: AccountContext, fileReference: FileMe
         })
         return EmptyDisposable
     }
-    let settings = context.lottieRenderingSettings
     return authorized
     |> mapToSignal { allowed -> Signal<Bool, NoError> in
         guard allowed else { return .single(false) }
@@ -45,7 +43,7 @@ public func rgSaveStickerToPhotos(context: AccountContext, fileReference: FileMe
                 let cancelled = Atomic<Bool>(value: false)
                 stickerExportQueue.async {
                     guard !cancelled.with({ $0 }) else { return }
-                    guard let url = rgExportSticker(path: path, file: fileReference.media, settings: settings, cancelled: cancelled) else {
+                    guard let url = rgExportSticker(path: path, file: fileReference.media, cancelled: cancelled) else {
                         subscriber.putNext(false)
                         subscriber.putCompletion()
                         return
@@ -72,7 +70,7 @@ public func rgSaveStickerToPhotos(context: AccountContext, fileReference: FileMe
     }
 }
 
-private func rgExportSticker(path: String, file: TelegramMediaFile, settings: LottieRenderingSettings, cancelled: Atomic<Bool>) -> URL? {
+private func rgExportSticker(path: String, file: TelegramMediaFile, cancelled: Atomic<Bool>) -> URL? {
     guard let data = try? Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe), data.count <= 32 * 1024 * 1024 else { return nil }
     let animated = file.isAnimatedSticker || file.isVideoSticker
     let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("Regram-Sticker-\(UUID().uuidString).\(animated ? "gif" : "png")")
@@ -90,7 +88,8 @@ private func rgExportSticker(path: String, file: TelegramMediaFile, settings: Lo
         if file.isVideoSticker {
             return makeVideoStickerDirectFrameSource(queue: stickerExportQueue, path: path, hintVP9: true, width: width, height: height, cachePathPrefix: nil, unpremultiplyAlpha: false)
         }
-        return AnimatedStickerDirectFrameSource(queue: stickerExportQueue, data: data, width: width, height: height, cachePathPrefix: nil, fitzModifier: nil, lottieSettings: settings)
+        // MARK: Regram — 13.2 uses the shared tlottie renderer for sticker export.
+        return AnimatedStickerDirectFrameSource(queue: stickerExportQueue, data: data, width: width, height: height, cachePathPrefix: nil, fitzModifier: nil)
     }
     guard var frames = source() else { return nil }
     var frameCount = frames.frameCount

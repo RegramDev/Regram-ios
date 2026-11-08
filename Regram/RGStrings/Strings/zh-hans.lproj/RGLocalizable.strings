@@ -1272,3 +1272,9 @@
 "GroupMembers.Hidden.Status" = "已在此群屏蔽";
 "GroupMembers.Reminders.Enabled" = "特别提醒已开启";
 "GroupMembers.Reminders.Suppressed" = "已选择提醒，发送者屏蔽优先生效";
+
+/* Local audio import */
+"VoiceImport.SendAsVoice" = "以语音消息发送";
+"VoiceImport.SendAsFile" = "以文件发送";
+"VoiceImport.InvalidAudio" = "无法读取此音频，请选择 MP3、M4A、AAC、WAV、OGG、Opus、FLAC 或 AIFF 文件。";
+"VoiceImport.TooLong" = "请选择时长不超过 60 分钟的音频文件。";

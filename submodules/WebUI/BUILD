@@ -18,7 +18,6 @@ swift_library(
     ],
     deps = rgdeps + [
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
     	"//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",

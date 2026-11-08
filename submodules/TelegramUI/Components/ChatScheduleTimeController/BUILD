@@ -12,7 +12,6 @@ swift_library(
     deps = [
         "//Regram/RGStrings:RGStrings", # MARK: Regram
         "//submodules/SSignalKit/SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/TelegramCore",

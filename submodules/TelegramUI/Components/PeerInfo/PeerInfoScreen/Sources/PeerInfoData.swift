@@ -293,6 +293,9 @@ final class TelegramGlobalSettings {
     let notificationWarningSuppressed: Bool
     let hidePermissionWarnings: Bool // MARK: Regram
     let notificationExceptions: NotificationExceptionsList?
+    /// Contacts access is off while contacts sync is on, and the warning was not dismissed: Settings ▸ Contacts shows
+    /// "!" (`contactsPermissionWarning`).
+    let contactsWarning: Bool
     let inAppNotificationSettings: InAppNotificationSettings
     let privacySettings: AccountPrivacySettings?
     let unreadTrendingStickerPacks: Int
@@ -318,6 +321,7 @@ final class TelegramGlobalSettings {
         notificationWarningSuppressed: Bool,
         hidePermissionWarnings: Bool, // MARK: Regram
         notificationExceptions: NotificationExceptionsList?,
+        contactsWarning: Bool,
         inAppNotificationSettings: InAppNotificationSettings,
         privacySettings: AccountPrivacySettings?,
         unreadTrendingStickerPacks: Int,
@@ -342,6 +346,7 @@ final class TelegramGlobalSettings {
         self.notificationWarningSuppressed = notificationWarningSuppressed
         self.hidePermissionWarnings = hidePermissionWarnings // MARK: Regram
         self.notificationExceptions = notificationExceptions
+        self.contactsWarning = contactsWarning
         self.inAppNotificationSettings = inAppNotificationSettings
         self.privacySettings = privacySettings
         self.unreadTrendingStickerPacks = unreadTrendingStickerPacks
@@ -467,6 +472,9 @@ final class PeerInfoScreenData {
     /// The chat the shared media lists when it is not the profile's own chat: the channel whose
     /// direct messages the profile was opened from.
     let sharedMediaPeer: EnginePeer?
+    /// Set for a bot listed in `agent_bot_ids`: the provider keys its profile shows.
+    let agentSettingsContext: AgentSettingsContext?
+    let agentState: AgentSettingsContext.State?
     
     let _isContact: Bool
     var forceIsContact: Bool = false
@@ -529,7 +537,9 @@ final class PeerInfoScreenData {
         managedByBot: EnginePeer?,
         businessConnectedBot: EnginePeer?,
         sharedMediaPeer: EnginePeer? = nil,
-        walletBalance: Int64? = nil
+        walletBalance: Int64? = nil,
+        agentSettingsContext: AgentSettingsContext? = nil,
+        agentState: AgentSettingsContext.State? = nil
     ) {
         self.regDate = regDate
         self.channelCreationTimestamp = channelCreationTimestamp
@@ -581,6 +591,8 @@ final class PeerInfoScreenData {
         self.managedByBot = managedByBot
         self.businessConnectedBot = businessConnectedBot
         self.sharedMediaPeer = sharedMediaPeer
+        self.agentSettingsContext = agentSettingsContext
+        self.agentState = agentState
     }
 }
 
@@ -865,6 +877,27 @@ private func peerInfoPersonalOrLinkedChannel(context: AccountContext, peerId: En
     |> distinctUntilChanged
 }
 
+/// Whether Settings ▸ Contacts shows "!": contacts access is neither allowed nor limited while contacts sync is on,
+/// and the permission warning has not been dismissed (it was the Contacts tab's badge).
+private func contactsPermissionWarning(context: AccountContext) -> Signal<Bool, NoError> {
+    return combineLatest(
+        DeviceAccess.authorizationStatus(subject: .contacts),
+        context.sharedContext.accountManager.noticeEntry(key: ApplicationSpecificNotice.permissionWarningKey(permission: .contacts)!),
+        context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.contactsSettings))
+    )
+    |> map { status, noticeView, preferences -> Bool in
+        let settings: ContactsSettings = preferences?.get(ContactsSettings.self) ?? ContactsSettings.defaultSettings
+        if !settings.synchronizeContacts {
+            return false
+        }
+        if let timestamp = noticeView.value.flatMap({ ApplicationSpecificNotice.getTimestampValue($0) }), timestamp > 0 {
+            return false
+        }
+        return ![.allowed, .limited].contains(status)
+    }
+    |> distinctUntilChanged
+}
+
 func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, accountsAndPeers: Signal<[(AccountContext, EnginePeer, Int32)], NoError>, activeSessionsContextAndCount: Signal<(ActiveSessionsContext, Int, WebSessionsContext)?, NoError>, notificationExceptions: Signal<NotificationExceptionsList?, NoError>, privacySettings: Signal<AccountPrivacySettings?, NoError>, archivedStickerPacks: Signal<[ArchivedStickerPackItem]?, NoError>, hasPassport: Signal<Bool, NoError>, starsContext: StarsContext?, tonContext: StarsContext?) -> Signal<PeerInfoScreenData, NoError> {
     let preferences = context.sharedContext.accountManager.sharedData(keys: [
         SharedDataKeys.proxySettings,
@@ -1007,8 +1040,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
         activeSessionsContextAndCount,
         privacySettings,
         preferences,
-        // MARK: Regram — refresh the notification row when the permission-badge setting changes.
-        combineLatest(notificationExceptions, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)),
+        combineLatest(notificationExceptions, notificationsAuthorizationStatus.get(), notificationsWarningSuppressed.get(), contactsPermissionWarning(context: context), rgFeatureBoolSignal("features.hideTabBarPermissionWarnings", defaultValue: false)),
         combineLatest(context.account.viewTracker.featuredStickerPacks(), archivedStickerPacks),
         hasPassport,
         context.engine.data.subscribe(TelegramEngine.EngineData.Item.Configuration.ApplicationSpecificPreference(key: PreferencesKeys.appConfiguration)),
@@ -1033,7 +1065,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
     )
     |> map { peerView, accountsAndPeers, accountSessions, privacySettings, sharedPreferences, notifications, stickerPacks, hasPassport, accountPreferences, suggestions, limits, hasPassword, isPowerSavingEnabled, hasStories, bots, personalChannel, starsState, tonState, businessConnectedBot, walletBalanceAndLocal -> PeerInfoScreenData in
         let (walletBalance, localGifts) = walletBalanceAndLocal // MARK: Regram
-        let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, hidePermissionWarnings) = notifications // MARK: Regram
+        let (notificationExceptions, notificationsAuthorizationStatus, notificationsWarningSuppressed, contactsWarning, hidePermissionWarnings) = notifications // MARK: Regram
         let (featuredStickerPacks, archivedStickerPacks) = stickerPacks
         
         let proxySettings: ProxySettings = sharedPreferences.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) ?? ProxySettings.defaultSettings
@@ -1073,6 +1105,7 @@ func peerInfoScreenSettingsData(context: AccountContext, peerId: EnginePeer.Id, 
             notificationWarningSuppressed: notificationsWarningSuppressed,
             hidePermissionWarnings: hidePermissionWarnings, // MARK: Regram
             notificationExceptions: notificationExceptions,
+            contactsWarning: contactsWarning,
             inAppNotificationSettings: inAppNotificationSettings,
             privacySettings: privacySettings,
             unreadTrendingStickerPacks: unreadTrendingStickerPacks,
@@ -1160,7 +1193,8 @@ func peerInfoScreenData(
     sharedMediaFromForumTopic: (EnginePeer.Id, Int64)?,
     privacySettings: Signal<AccountPrivacySettings?, NoError>,
     forceHasGifts: Bool,
-    switchToUpgradableGifts: Bool
+    switchToUpgradableGifts: Bool,
+    hidesSavedMessagesChats: Bool
 ) -> Signal<PeerInfoScreenData, NoError> {
     return peerInfoScreenInputData(context: context, peerId: peerId, isSettings: isSettings)
     |> mapToSignal { inputData -> Signal<PeerInfoScreenData, NoError> in
@@ -1466,6 +1500,18 @@ func peerInfoScreenData(
             let starsRevenueContextAndState: Signal<(StarsRevenueStatsContext?, StarsRevenueStats?), NoError>
             let revenueContextAndState: Signal<(StarsRevenueStatsContext?, StarsRevenueStats?), NoError>
             let webAppPermissions: Signal<WebAppPermissionsState?, NoError>
+            var agentSettingsContext: AgentSettingsContext?
+            let agentState: Signal<AgentSettingsContext.State?, NoError>
+            // The provider rows run on the agent API, parked while `agentApiIsAvailable` is false (its requests would all
+            // fail); the agent chat's own composer does not need it.
+            if case .bot = kind, agentApiIsAvailable, isAgentBotPeer(appConfiguration: context.currentAppConfiguration.with({ $0 }), peerId: userPeerId) {
+                let agentSettingsContextValue = context.engine.agent.settingsContext()
+                agentSettingsContext = agentSettingsContextValue
+                agentState = agentSettingsContextValue.state
+                |> map(Optional.init)
+            } else {
+                agentState = .single(nil)
+            }
             if case .bot = kind {
                 recommendedBots = context.engine.peers.recommendedBots(peerId: userPeerId)
                 
@@ -1610,10 +1656,10 @@ func peerInfoScreenData(
                 premiumGiftOptions,
                 webAppPermissions,
                 savedMusicContext.state,
-                combineLatest(businessConnectedBot, walletBalance, rgLocalAppearanceState(context: context))
+                combineLatest(businessConnectedBot, walletBalance, rgLocalAppearanceState(context: context), agentState)
             )
             |> mapToSignal { regDate, peerView, availablePanes, globalNotificationSettings, encryptionKeyFingerprint, status, hasStories, hasStoryArchive, recommendedBots, accountIsPremium, savedMessagesPeer, hasSavedMessagesChats, hasSavedMessages, hasSavedMessageTags, hasBotPreviewItems, personalChannel, privacySettings, starsRevenueContextAndState, revenueContextAndState, premiumGiftOptions, webAppPermissions, savedMusicState, businessConnectedBotAndWalletBalance -> Signal<PeerInfoScreenData, NoError> in
-                let (businessConnectedBot, walletBalance, localGifts) = businessConnectedBotAndWalletBalance
+                let (businessConnectedBot, walletBalance, localGifts, agentState) = businessConnectedBotAndWalletBalance
                 var availablePanes = availablePanes
                 if isMyProfile {
                     availablePanes?.insert(.stories, at: 0)
@@ -1645,7 +1691,7 @@ func peerInfoScreenData(
                     
                     if case .peer = chatLocation {
                         if peerId == context.account.peerId {
-                            if hasSavedMessagesChats {
+                            if hasSavedMessagesChats && !hidesSavedMessagesChats {
                                 availablePanes?.insert(.savedMessagesChats, at: 0)
                             }
                         } else if hasSavedMessages && hasSavedMessagesChats {
@@ -1721,6 +1767,7 @@ func peerInfoScreenData(
                         notificationWarningSuppressed: false,
                         hidePermissionWarnings: false, // MARK: Regram
                         notificationExceptions: nil,
+                        contactsWarning: false,
                         inAppNotificationSettings: InAppNotificationSettings(playSounds: false, vibrate: false, displayPreviews: false, totalUnreadCountDisplayStyle: .filtered, totalUnreadCountDisplayCategory: .chats, totalUnreadCountIncludeTags: .all, displayNameOnLockscreen: false, displayNotificationsFromAllAccounts: false, customSound: nil),
                         privacySettings: privacySettings,
                         unreadTrendingStickerPacks: 0,
@@ -1815,7 +1862,9 @@ func peerInfoScreenData(
                         managedByBot: managedByBot,
                         businessConnectedBot: businessConnectedBot,
                         sharedMediaPeer: sharedMediaPeer,
-                        walletBalance: walletBalance
+                        walletBalance: walletBalance,
+                        agentSettingsContext: agentSettingsContext,
+                        agentState: agentState
                     )
                 }
             }
@@ -2727,6 +2776,18 @@ func peerInfoHeaderActionButtons(peer: EnginePeer?, isSecretChat: Bool, isContac
     return result
 }
 
+/// Whether a user's profile (or a secret chat's, which reports its user) offers Report. It is in the More menu, and
+/// where the header has no More (`peerInfoUserHeaderHasMore`) a list row offers it instead.
+func peerInfoCanReportUser(_ user: TelegramUser, accountPeerId: EnginePeer.Id) -> Bool {
+    return user.id != accountPeerId && !user.isDeleted && user.botInfo == nil && !user.flags.contains(.isSupport) && !EnginePeer.user(user).isService
+}
+
+/// Whether a user's (or a secret chat's) profile header has the More button. The profile's list offers what the menu
+/// would otherwise hold (Report) when it has none.
+func peerInfoUserHeaderHasMore(_ user: TelegramUser, isSecretChat: Bool, isContact: Bool) -> Bool {
+    return !(isSecretChat && !isContact) && !user.flags.contains(.isSupport)
+}
+
 func peerInfoHeaderButtons(peer: EnginePeer?, cachedData: EngineCachedPeerData?, isOpenedFromChat: Bool, isExpanded: Bool, videoCallsEnabled: Bool, isSecretChat: Bool, isContact: Bool, threadInfo: EngineMessageHistoryThread.Info?) -> [PeerInfoHeaderButtonKey] {
     var result: [PeerInfoHeaderButtonKey] = []
     if case let .user(user) = peer {
@@ -2759,8 +2820,7 @@ func peerInfoHeaderButtons(peer: EnginePeer?, cachedData: EngineCachedPeerData?,
             result.append(.stop)
         }
         
-        if (isSecretChat && !isContact) || user.flags.contains(.isSupport) {
-        } else {
+        if peerInfoUserHeaderHasMore(user, isSecretChat: isSecretChat, isContact: isContact) {
             result.append(.more)
         }
     } else if case let .channel(channel) = peer {

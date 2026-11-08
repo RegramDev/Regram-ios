@@ -50,7 +50,7 @@ public final class RGConfigurableTabBarComponent: Component {
                     return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
                 }
                 let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: 72, searchActive: search.isActive, naturalItemWidths: naturalWidths))
-                let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
+                let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
                 if let view = bar.view {
                     if view.superview == nil { addSubview(view) }
                     transition.setFrame(view: view, frame: CGRect(origin: .zero, size: size))
@@ -74,7 +74,7 @@ public final class RGConfigurableTabBarComponent: Component {
             var height: CGFloat = 0
             for (target, items, x, containerWidth) in [(bar, component.items, CGFloat(0), max(0, width - externalWidth)), (standalone, component.externalItem.map { [$0] } ?? [], max(0, width - 64), CGFloat(64))] {
                 guard !items.isEmpty else { target.view?.removeFromSuperview(); continue }
-                let size = target.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: nil, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles)), environment: {}, containerSize: CGSize(width: containerWidth, height: availableSize.height))
+                let size = target.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: nil, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false)), environment: {}, containerSize: CGSize(width: containerWidth, height: availableSize.height))
                 if let view = target.view { if view.superview == nil { addSubview(view) }; transition.setFrame(view: view, frame: CGRect(origin: CGPoint(x: x, y: 0), size: size)) }
                 height = max(height, size.height)
             }

@@ -1,10 +1,10 @@
 # Regram
 
-English · [简体中文](README.md)
+English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, and appearance customization.
 
-This is **regram-beta / 13.1.2 / b34646**, the TestFlight branch. It adds group-scoped member hiding, selected-member alerts, individual video durations in albums, and fixes for member-settings navigation, state refresh, and saving videos to Photos. See [TestFlight](build-system/ci/TESTFLIGHT.md), the [beta sync record](docs/beta-sync-20261104.md), [feature list](docs/features.md), and [changelog](docs/changelog.md). Sideload packages and GitHub Releases use `master`.
+This is **regram-beta / 13.2 / b34649**, the TestFlight branch. It integrates Telegram 13.2, tab and cache fixes, native photo quality, the camera crash fix, persistent folder-tag colors, and local audio sent as voice messages. See [TestFlight](build-system/ci/TESTFLIGHT.md), the [beta sync record](docs/beta-sync-20261108.md), [feature list](docs/features.md), and [changelog](docs/changelog.md). Sideload packages and GitHub Releases use `master`.
 
 ## Features
 
@@ -20,7 +20,7 @@ This is **regram-beta / 13.1.2 / b34646**, the TestFlight branch. It adds group-
 - Messages in common groups: open from a person’s profile More menu, browse searchable messages in native grouped lists, filter by group and load more. Returning preserves avatars and list state; opening a result highlights the original message. Search concurrency adapts to Low Power Mode and device temperature.
 - Locally observed edit history for text, captions, entities and replaced photos, including image previews, zoom and persistent storage of saved images.
 - Optional automatic spoiler reveal, disabled by default; group/channel message IDs, timestamp seconds and original forwarding timestamps.
-- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility survives restart.
+- Folder selection after joining groups/channels, remembered folders, and folder/list display options; local folder-tag visibility and colors are saved per account across restarts and synchronization.
 - Independent daily first-launch tasks in the scheduled-send repeat menu: configure once, then silently send on the first launch each day from the chosen date. Tasks stay on this device per account, support editing/deletion/Send Now, and skip missed days. Premium daily/weekly server schedules retain their existing behavior.
 
 The [implementation checklist](docs/chat-and-interface-tools.md) lists share-sheet folders, group management shortcuts, bulk invite revocation, search links and independent privacy options. The existing formatting toolbar is preserved.
@@ -54,6 +54,7 @@ Custom recognition is user initiated, excludes secret chats and view-once media,
 
 ### Media and links
 
+- Send local audio as a voice message: select one MP3, M4A, OGG, Opus or other supported audio file from chat attachments, choose Send as Voice Message, then preview before sending. Conversion can be cancelled; files may be up to 60 minutes long.
 - Preview repair for X/Twitter, Instagram, TikTok, Reddit, Bluesky, Pixiv and other supported rules, with caching, updates and configurable X/Instagram preview domains. Original message links are preserved.
 - Save static stickers as PNG and animated/video stickers as GIF to Photos.
 - Sticker-pack ZIP backups with original WebP/PNG, TGS and WebM files, ordering and emoji metadata. Limits: 500 files, 32 MiB per file and 256 MiB per pack.
@@ -126,11 +127,11 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-This branch integrates applicable **13.1.2 / b34646** changes and continues to exclude in-app IPA updates. All builds use `dev.regram.ios` / `group.dev.regram.ios`, shared by the main application and all six extensions. All 83 feature checks and 46 offline beta CI tests passed. See the [beta sync record](docs/beta-sync-20261104.md) for validation scope. Historical mainline package checks do not validate a beta package.
+This branch integrates applicable **13.2 / b34649** changes and continues to exclude in-app IPA updates. All builds use `dev.regram.ios` / `group.dev.regram.ios`, shared by the main application and all six extensions. All 86 feature checks, 48 offline CI tests, and dedicated camera, folder-color and voice-import checks passed. No complete beta package was rebuilt or uploaded. See the [beta sync record](docs/beta-sync-20261108.md) for validation scope. Historical mainline packages retain their own validation scope.
 
 ## Building
 
-Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.1.2 upstream integration record](docs/upstream-sync/13.1.2.md) for compatibility and verification scope.
+Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.2 upstream integration record](docs/upstream-sync/13.2.md) for compatibility and verification scope.
 
 ```sh
 git clone --branch regram-beta --recursive https://github.com/RegramDev/Regram-ios.git
@@ -191,4 +192,8 @@ Regram is not affiliated with the official Telegram project. Follow this reposit
 
 This branch uses `dev.regram.ios` and `group.dev.regram.ios`. The application and six extensions share the declared App Group. Application update downloads, certificate imports and IPA installation are excluded.
 
-The source baseline is [Telegram’s official master branch](https://github.com/TelegramMessenger/Telegram-iOS/tree/master), revision `279f89e4d4f63f17227bf877dc3d8990f22ecd58` (13.1.2), with Regram changes maintained on top. The `regram-beta` branch in this repository is a separate product branch.
+The source baseline follows Telegram’s official `release-13.2`, revision `24638bc69bd083981b178dd1e7f921eebbf7fc46`, with Regram changes maintained on top. The `regram-beta` branch in this repository is a separate product branch.
+
+## Community and acknowledgements
+
+Thanks to the [LINUX DO](https://linux.do/) community for providing a place to share and discuss open-source projects. Community members are welcome to share their experience with Regram and suggest improvements.

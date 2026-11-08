@@ -161,6 +161,7 @@ public struct PresentationResourcesSettings {
     public static let savedMessages = renderSettingsIcon(name: "Item List/Icons/SavedMessages", backgroundColors: [colorBlue])
     public static let messageBookmarks = renderMessageBookmarksArtwork() // MARK: Regram
     public static let recentCalls = renderSettingsIcon(name: "Item List/Icons/Phone", backgroundColors: [colorGreen])
+    public static let contacts = renderSettingsIcon(name: "Item List/Icons/Members", backgroundColors: [colorViolet])
     public static let devices = renderSettingsIcon(name: "Item List/Icons/Devices", backgroundColors: [colorOrange])
     public static let chatFolders = renderSettingsIcon(name: "Item List/Icons/Folder", backgroundColors: [colorLightBlue])
     public static let stickers = renderSettingsIcon(name: "Item List/Icons/Sticker", backgroundColors: [colorOrange])

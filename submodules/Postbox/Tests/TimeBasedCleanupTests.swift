@@ -119,7 +119,7 @@ final class TimeBasedCleanupTests: XCTestCase {
         return self.makeCleanupWithStorage(scanDelay: scanDelay).cleanup
     }
 
-    private func makeCleanupWithStorage(scanDelay: Double = 10.0) -> (cleanup: TimeBasedCleanup, storageBox: StorageBox, cacheStorageBox: StorageBox) {
+    private func makeCleanupWithStorage(scanDelay: Double = 10.0, sizeLimitRescanInterval: Double = 300.0) -> (cleanup: TimeBasedCleanup, storageBox: StorageBox, cacheStorageBox: StorageBox) { // MARK: Regram
         let storageBox = StorageBox(logger: StorageBox.Logger(impl: { _ in }), basePath: self.basePath + "/storage", isMainProcess: true)
         let cacheStorageBox = StorageBox(logger: StorageBox.Logger(impl: { _ in }), basePath: self.basePath + "/cache-storage", isMainProcess: true)
         let cleanup = TimeBasedCleanup(storageBox: storageBox, cacheStorageBox: cacheStorageBox, generalPaths: [
@@ -127,7 +127,7 @@ final class TimeBasedCleanupTests: XCTestCase {
             self.mediaPath + "/animation-cache"
         ], totalSizeBasedPath: self.mediaPath, shortLivedPaths: [
             self.mediaPath + "/short-cache"
-        ], scanDelay: scanDelay)
+        ], scanDelay: scanDelay, sizeLimitRescanInterval: sizeLimitRescanInterval)
         return (cleanup, storageBox, cacheStorageBox)
     }
 
@@ -345,6 +345,27 @@ final class TimeBasedCleanupTests: XCTestCase {
 
         XCTAssertFalse(self.exists(oldest))
         XCTAssertTrue(self.exists(middle))
+        XCTAssertTrue(self.exists(newest))
+        withExtendedLifetime(cleanup) {}
+    }
+
+    // MARK: Regram — downloads after the first scan must still obey an unchanged finite limit.
+    func testTheSizeLimitRescansNewDownloadsWithoutChangingSettings() {
+        let oldest = self.writeSparseFile("oldest", megabytes: 600)
+        self.setAge(oldest, seconds: 3 * 86_400)
+        let middle = self.writeSparseFile("middle", megabytes: 600)
+        self.setAge(middle, seconds: 2 * 86_400)
+        let cleanup = self.makeCleanupWithStorage(scanDelay: 0.01, sizeLimitRescanInterval: 0.03).cleanup
+        cleanup.setMaxStoreTimes(general: Int32.max, shortLived: 60 * 60, gigabytesLimit: 1)
+        self.waitForScan(timeout: 10.0)
+        XCTAssertFalse(self.exists(oldest))
+        XCTAssertTrue(self.exists(middle))
+
+        let newest = self.writeSparseFile("newest", megabytes: 600)
+        self.setAge(newest, seconds: 86_400)
+        let completed = self.scanEvents().filter({ $0.finished }).count
+        self.waitForScan(count: completed + 2, timeout: 10.0)
+        XCTAssertFalse(self.exists(middle))
         XCTAssertTrue(self.exists(newest))
         withExtendedLifetime(cleanup) {}
     }

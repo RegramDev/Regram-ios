@@ -15,8 +15,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = rgdeps + [
+        "//submodules/ShimmerEffect",
         "//submodules/AsyncDisplayKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/SSignalKit/SwiftSignalKit",
         "//submodules/Display",
         "//submodules/ComponentFlow",
@@ -50,6 +50,7 @@ swift_library(
         "//submodules/Utils/RangeSet",
         "//submodules/MediaResources",
         "//submodules/UIKitRuntimeUtils",
+        "//submodules/TelegramUI/Components/GlassBackgroundComponent",
     ],
     visibility = [
         "//visibility:public",

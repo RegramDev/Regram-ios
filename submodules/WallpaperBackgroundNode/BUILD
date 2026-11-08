@@ -63,7 +63,6 @@ swift_library(
     ],
     deps = rgdeps + [
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/Display:Display",
         "//submodules/GradientBackground:GradientBackground",
         "//submodules/TelegramPresentationData:TelegramPresentationData",

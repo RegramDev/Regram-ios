@@ -13,7 +13,6 @@ swift_library(
         "//Regram/RGStickerSave", # MARK: Regram
         "//Regram/RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
-        "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",
         "//submodules/TelegramCore:TelegramCore",

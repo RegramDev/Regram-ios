@@ -1166,6 +1166,8 @@ struct ChatListFiltersState: Codable, Equatable {
     var displayTags: Bool
     // MARK: Regram — a device choice must survive servers that do not store Premium tag settings.
     var localDisplayTags: Bool? = nil
+    // MARK: Regram — the server may reject local Premium colors; -1 means an explicit no-tag choice.
+    var localTagColors: [Int32: Int32] = [:]
     
     static var `default` = ChatListFiltersState(filters: [], remoteFilters: nil, updates: [], remoteDisplayTags: nil, displayTags: false)
     
@@ -1187,6 +1189,11 @@ struct ChatListFiltersState: Codable, Equatable {
         self.displayTags = try container.decodeIfPresent(Bool.self, forKey: "displayTags") ?? false
         self.localDisplayTags = try container.decodeIfPresent(Bool.self, forKey: "regramDisplayTags")
         self.displayTags = self.localDisplayTags ?? self.displayTags
+        self.localTagColors = try container.decodeIfPresent([Int32: Int32].self, forKey: "regramTagColors") ?? Dictionary(self.filters.compactMap { filter -> (Int32, Int32)? in
+            guard case let .filter(id, _, _, data) = filter, let color = data.color else { return nil }
+            return (id, color.rawValue)
+        }, uniquingKeysWith: { _, value in value })
+        self.restoreLocalTagColors()
     }
     
     func encode(to encoder: Encoder) throws {
@@ -1198,9 +1205,41 @@ struct ChatListFiltersState: Codable, Equatable {
         try container.encodeIfPresent(self.remoteDisplayTags, forKey: "remoteDisplayTags")
         try container.encode(self.displayTags, forKey: "displayTags")
         try container.encodeIfPresent(self.localDisplayTags, forKey: "regramDisplayTags")
+        try container.encode(self.localTagColors, forKey: "regramTagColors")
     }
     
+    // MARK: Regram — record only user edits, then overlay them on every server update.
+    mutating func recordLocalTagColors(in updatedFilters: [ChatListFilter]) {
+        for filter in updatedFilters {
+            guard case let .filter(id, _, _, data) = filter else { continue }
+            let previousColor: PeerNameColor?
+            if let previous = self.filters.first(where: { $0.id == id }), case let .filter(_, _, _, previousData) = previous {
+                previousColor = previousData.color
+            } else {
+                previousColor = nil
+            }
+            if previousColor != data.color {
+                self.localTagColors[id] = data.color?.rawValue ?? -1
+            }
+        }
+    }
+
+    mutating func restoreLocalTagColors() {
+        self.filters = self.filters.map { filter in
+            guard case let .filter(id, title, emoticon, data) = filter, let color = self.localTagColors[id] else {
+                return filter
+            }
+            var updatedData = data
+            updatedData.color = color == -1 ? nil : PeerNameColor(rawValue: color)
+            return .filter(id: id, title: title, emoticon: emoticon, data: updatedData)
+        }
+    }
+
     mutating func normalize() {
+        // MARK: Regram — drop deleted-folder choices before the server can reuse their ids.
+        let ids = Set(self.filters.map { $0.id })
+        self.localTagColors = self.localTagColors.filter { ids.contains($0.key) }
+        self.restoreLocalTagColors()
         if self.updates.isEmpty {
             return
         }
@@ -1225,6 +1264,7 @@ func _internal_updateChatListFiltersInteractively(postbox: Postbox, _ f: @escapi
             var state = entry?.get(ChatListFiltersState.self) ?? ChatListFiltersState.default
             let updatedFilters = f(state.filters)
             if updatedFilters != state.filters {
+                state.recordLocalTagColors(in: updatedFilters) // MARK: Regram
                 state.filters = updatedFilters
                 hasUpdates = true
             }
@@ -1257,9 +1297,10 @@ func _internal_updateChatListFiltersDisplayTagsInteractively(postbox: Postbox, d
                         case .allChats:
                             break
                         case let .filter(id, title, emoticon, data):
-                            if data.color == nil {
+                            if data.color == nil && state.localTagColors[id] != -1 { // MARK: Regram
                                 var data = data
                                 data.color = PeerNameColor(rawValue: Int32.random(in: 0 ... 7))
+                                state.localTagColors[id] = data.color?.rawValue // MARK: Regram
                                 state.filters[i] = .filter(id: id, title: title, emoticon: emoticon, data: data)
                             }
                         }
@@ -1286,6 +1327,7 @@ func _internal_updateChatListFiltersInteractively(transaction: Transaction, _ f:
         var state = entry?.get(ChatListFiltersState.self) ?? ChatListFiltersState.default
         let updatedFilters = f(state.filters)
         if updatedFilters != state.filters {
+            state.recordLocalTagColors(in: updatedFilters) // MARK: Regram
             state.filters = updatedFilters
             hasUpdates = true
         }
@@ -1713,6 +1755,7 @@ private func synchronizeChatListFilters(transaction: Transaction, accountPeerId:
                         state.filters = remoteFilters.map { remoteFilter in
                             return remoteFilter.withLocalOnlyPeers(from: currentFilters.first(where: { $0.id == remoteFilter.id }))
                         }
+                        state.restoreLocalTagColors() // MARK: Regram
                         state.remoteFilters = state.filters
                         // MARK: Regram — keep the user's local tag display choice on restart.
                         state.displayTags = state.localDisplayTags ?? remoteTagsEnabled
@@ -1818,6 +1861,7 @@ private func synchronizeChatListFilters(transaction: Transaction, accountPeerId:
                     let _ = updateChatListFiltersState(transaction: transaction, { state in
                         var state = state
                         state.filters = mergedFilters
+                        state.restoreLocalTagColors() // MARK: Regram — includes edits made while syncing.
                         state.remoteFilters = state.filters
                         state.remoteDisplayTags = state.displayTags
                         return state

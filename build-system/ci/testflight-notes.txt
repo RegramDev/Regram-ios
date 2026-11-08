@@ -1,9 +1,11 @@
-Regram Messenger 13.1.2
+Regram Messenger 13.2
 
-Synced mainline through b34646. This build adds group-scoped member hiding, alerts when selected group members speak, and individual durations for videos sent together. It also fixes member-settings navigation and state refresh, video saving to Photos, and retains the chat-list search improvements.
+Synced mainline through b34649, including Telegram 13.2, the native media picker and editor, HLS playback, chat and state synchronization, tab layout and cache fixes, and native photo quality improvements.
 
-Please test hiding someone in one group while their messages remain visible elsewhere. Add and remove selected-member alerts from group info and Regram Pro; check switches, counts, current group names, back, cancel, and returning to the list. Hidden or filtered messages should stay excluded from alerts.
+Please test opening the camera repeatedly, switching front/back cameras and photo/video modes, and returning from attachments. Folder-tag colors and an explicit no-tag choice should remain after force-quitting, restarting and synchronization; check multiple accounts independently.
 
-Send several videos as an album and check each duration during downloading and playback. Try saving videos to Photos and confirm the reported result matches what appears in the library, including videos that need format conversion.
+Select one local MP3, M4A, OGG, Opus or other supported audio file from chat attachments. Choose Send as Voice Message, preview it and send it. Check cancellation, invalid files and the regular Send as File option. Files may be up to 60 minutes long.
 
-Please also test sign-in, messaging, calls, push notifications, the share extension, widgets, search, and Regram settings. Report the steps to reproduce any issue and your iOS version. Avoid including private messages or account credentials in reports.
+Toggle, reorder, hide and restore bottom tabs, including Contacts and Calls. Check search-button toggles, grouped-file download controls, photo quality and clipboard image resolution. Change the cache-size limit and continue downloading media.
+
+Also test sign-in, messaging, calls, notifications, the share extension, widgets, group member hiding and selected-member alerts, video saving, search and Regram settings. Include reproduction steps and your iOS version in reports; avoid private messages and account credentials.

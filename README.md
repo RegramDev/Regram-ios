@@ -1,10 +1,10 @@
 # Regram
 
-[English](README.en.md) · 简体中文
+[English](README.en.md) · 简体中文 · [LINUX DO 社区](https://linux.do/)
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别和界面定制。
 
-当前分支为 **regram-beta / 13.1.2 / b34646**，用于 TestFlight。本次同步群内定向屏蔽、指定成员发言特别提醒、成员管理页面返回与状态修复、相册多视频时长及视频保存修复。使用方式见 [TestFlight](build-system/ci/TESTFLIGHT.md)，同步范围与验证见 [Beta 同步记录](docs/beta-sync-20261104.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。侧载与 GitHub Release 使用 `master`。
+当前分支为 **regram-beta / 13.2 / b34649**，用于 TestFlight。本次同步 Telegram 13.2、底栏与缓存修复、原生照片质量、相机闪退、分组标签颜色持久化，以及本地音频按语音消息发送。使用方式见 [TestFlight](build-system/ci/TESTFLIGHT.md)，同步范围与验证见 [Beta 同步记录](docs/beta-sync-20261108.md)、[功能清单](docs/features.md)及[更新记录](docs/changelog.md)。侧载与 GitHub Release 使用 `master`。
 
 ## 功能
 
@@ -20,7 +20,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 - 共同群组发言：从个人资料页「更多」进入，汇总对方在共同群组内的可搜索消息，采用原生分组列表，支持按群筛选、按需分页与原消息高亮；返回保留头像和列表状态，查询并发随低电量与温度状态调整。
 - 编辑历史：保存本机观察到的文本、说明、实体、结构化富文本和图片替换前的版本；补齐富文本缓存不产生虚假编辑，支持图片预览与持久存储。
 - 自动显示剧透文字、图片和视频，默认关闭；显示群组／频道消息 ID、时间秒数及转发消息原始时间。
-- 加入群组／频道后选择分组，记住上次分组，调整分组位置、标签及聊天列表显示；分组标签的本机开关跨重启保留。
+- 加入群组／频道后选择分组，记住上次分组，调整分组位置、标签及聊天列表显示；分组标签的本机开关及颜色按账号保存，重启和同步后保留。
 - 独立的「每日首次启动」任务：在定时发送的重复菜单选择一次，从所选日期起每天首次打开时静默发送，当天不重复；按账号保存在本机，支持编辑、删除和立即发送。会员原生每日／每周等服务端定时保持原有行为。
 
 本轮聊天、分组、搜索与界面增强的入口及逐项状态见[实现清单](docs/chat-and-interface-tools.md)。新增分享文件夹、群资料管理项、批量撤销邀请、搜索链接与独立隐私选项。格式工具栏保留原样。
@@ -54,6 +54,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 ### 媒体与链接
 
+- 本地音频按语音消息发送：从聊天附件选择单个 MP3／M4A／OGG／Opus 等音频，选择「以语音消息发送」后进入原生试听预览；支持取消，单个文件最长 60 分钟。
 - 链接预览修复：X／Twitter、Instagram、TikTok、Reddit、Bluesky、Pixiv 等域名规则，支持缓存、更新及自定义 X／Instagram 预览服务域名；保留消息原链接。
 - 静态贴纸保存为 PNG，动画／视频贴纸转为 GIF 后保存到相册。
 - 贴纸包 ZIP 备份：原始 WebP／PNG、TGS、WebM 文件及顺序、表情元数据；最多 500 个文件、32 MiB／文件、256 MiB／包。
@@ -126,11 +127,11 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-本分支同步主线 **13.1.2 / b34646** 的适用功能，保留无应用内更新安装的约定。本分支统一使用 `dev.regram.ios`／`group.dev.regram.ios`，主应用与六个扩展使用同一声明的 App Group。本轮完整功能检查 83 项及 Beta CI 离线检查 46 项通过；源码、配置与验证范围见 [Beta 同步记录](docs/beta-sync-20261104.md)，主线历史安装包验证不代表 Beta 包验收。
+本分支同步主线 **13.2 / b34649** 的适用功能，保留无应用内更新安装的约定。安装身份为 `dev.regram.ios`／`group.dev.regram.ios`，主应用与六个扩展共享声明的 App Group。本轮 86 项功能检查、48 项离线 CI 测试及相机、分组颜色、语音导入专项检查通过；没有重新构建或上传 Beta 整包。详细范围见 [Beta 同步记录](docs/beta-sync-20261108.md)，主线安装包的构建与发布记录各自保留其原有验证范围。
 
 ## 构建
 
-需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。13.1.2 上游同步及兼容检查范围见[同步记录](docs/upstream-sync/13.1.2.md)。
+需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。13.2 上游同步及兼容检查范围见[同步记录](docs/upstream-sync/13.2.md)。
 
 ```sh
 git clone --branch regram-beta --recursive https://github.com/RegramDev/Regram-ios.git
@@ -191,4 +192,8 @@ Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及
 
 本分支使用 `dev.regram.ios` 和 `group.dev.regram.ios`，主应用与六个扩展共享声明的 App Group，不包含应用更新下载、证书导入和 IPA 安装功能。
 
-源码基线采用 [Telegram 官方主线 master](https://github.com/TelegramMessenger/Telegram-iOS/tree/master) 的 `279f89e4d4f63f17227bf877dc3d8990f22ecd58`（13.1.2），在此基础上维护 Regram 功能；本仓库的 `regram-beta` 是独立产品分支名称。
+源码基线同步 Telegram 官方 `release-13.2`／`24638bc69bd083981b178dd1e7f921eebbf7fc46`，在此基础上维护 Regram 功能；本仓库的 `regram-beta` 是独立产品分支名称。
+
+## 社区与致谢
+
+感谢 [LINUX DO](https://linux.do/) 社区为开源项目提供交流与分享的平台，欢迎佬友交流 Regram 的使用体验与改进建议。
