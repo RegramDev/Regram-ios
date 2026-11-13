@@ -4383,22 +4383,9 @@ extension ChatControllerImpl {
                 return
             }
             let _ = updateTranslationSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
-                var updated = current
-                if var ignoredLanguages = updated.ignoredLanguages {
-                    if !ignoredLanguages.contains(langCode) {
-                        ignoredLanguages.append(langCode)
-                    }
-                    updated.ignoredLanguages = ignoredLanguages
-                } else {
-                    var ignoredLanguages = Set<String>()
-                    ignoredLanguages.insert(self.presentationData.strings.baseLanguageCode)
-                    for language in systemLanguageCodes() {
-                        ignoredLanguages.insert(language)
-                    }
-                    ignoredLanguages.insert(langCode)
-                    updated.ignoredLanguages = Array(ignoredLanguages)
-                }
-                return updated
+                var ignoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: self.presentationData.strings), ignoredLanguages: current.ignoredLanguages) // MARK: Regram
+                ignoredLanguages.insert(normalizeTranslationLanguage(langCode))
+                return current.withUpdatedIgnoredLanguages(ignoredLanguages.sorted())
             }).startStandalone()
             let _ = updateChatTranslationStateInteractively(engine: self.context.engine, peerId: peerId, threadId: self.chatLocation.threadId, { current in
                 return nil

@@ -47,6 +47,7 @@ final class RGSimpleSettings {
     static let shared = RGSimpleSettings()
     var customAppBadge = "RGConversationBadge"
 }
+enum RGAppBadgeNames { static let hiddenName = "hidden" }
 func getAppBundle() -> Bundle { Bundle.main }
 enum Probe {
     static weak var view: UIImageView?

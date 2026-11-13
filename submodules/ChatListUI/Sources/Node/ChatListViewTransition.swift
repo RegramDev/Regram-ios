@@ -50,7 +50,7 @@ public enum ChatListNodeViewScrollPosition {
     case index(index: EngineChatListIndex, position: ListViewScrollPosition, directionHint: ListViewScrollToItemDirectionHint, animated: Bool)
 }
 
-func preparedChatListNodeViewTransition(from fromView: ChatListNodeView?, to toView: ChatListNodeView, reason: ChatListNodeViewTransitionReason, previewing: Bool, disableAnimations: Bool, scrollPosition: ChatListNodeViewScrollPosition?, searchMode: Bool, forceAllUpdated: Bool) -> Signal<ChatListNodeViewTransition, NoError> {
+func preparedChatListNodeViewTransition(from fromView: ChatListNodeView?, to toView: ChatListNodeView, reason: ChatListNodeViewTransitionReason, previewing: Bool, disableAnimations: Bool, scrollPosition: ChatListNodeViewScrollPosition?, searchMode: Bool, forceAllUpdated: Bool, rgRevealItemId: ChatListNodeEntryId?) -> Signal<ChatListNodeViewTransition, NoError> {
     return Signal<ChatListNodeViewTransition, NoError> { subscriber in
         let (deleteIndices, indicesAndItems, updateIndices) = mergeListsStableWithUpdates(leftList: fromView?.filteredEntries ?? [], rightList: toView.filteredEntries, allUpdated: forceAllUpdated)
         
@@ -213,7 +213,14 @@ func preparedChatListNodeViewTransition(from fromView: ChatListNodeView?, to toV
             adjustScrollToFirstItem = true
         }
         
-        subscriber.putNext(ChatListNodeViewTransition(chatListView: toView, deleteItems: adjustedDeleteIndices, insertEntries: adjustedIndicesAndItems, updateEntries: adjustedUpdateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: nil, adjustScrollToFirstItem: adjustScrollToFirstItem, animateCrossfade: animateCrossfade))
+        // MARK: Regram — anchor the row on screen as conversations around it are inserted or moved.
+        var stationaryItemRange: (Int, Int)?
+        if scrollToItem == nil, !adjustScrollToFirstItem, let rgRevealItemId,
+           let index = toView.filteredEntries.firstIndex(where: { $0.stableId == rgRevealItemId }) {
+            let listIndex = updatedCount - 1 - index
+            stationaryItemRange = (listIndex, listIndex)
+        }
+        subscriber.putNext(ChatListNodeViewTransition(chatListView: toView, deleteItems: adjustedDeleteIndices, insertEntries: adjustedIndicesAndItems, updateEntries: adjustedUpdateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, adjustScrollToFirstItem: adjustScrollToFirstItem, animateCrossfade: animateCrossfade))
         subscriber.putCompletion()
         
         return EmptyDisposable

@@ -192,6 +192,13 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
 
     private func applyItemNodeAsCurrent(id: ChatListFilterTabEntryId, itemNode: ChatListContainerItemNode) {
         if let previousItemNode = self.currentItemNodeValue {
+            if previousItemNode !== itemNode { // MARK: Regram — release the swipe anchor when leaving a folder.
+                previousItemNode.listNode.updateState { state in
+                    var state = state
+                    state.peerIdWithRevealedOptions = nil
+                    return state
+                }
+            }
             previousItemNode.listNode.activateSearch = nil
             previousItemNode.listNode.presentAlert = nil
             previousItemNode.listNode.present = nil
@@ -1665,8 +1672,13 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                 }
 
                 // The folder tabs describe the main list: a forum open inline has no folder of its own.
+                // MARK: Regram — the tab data can arrive before the list finishes switching away from a removed folder.
+                let currentFilter = self.mainContainerNode.currentItemFilter
+                let selectedFilter = tabContainerData.0.contains(where: { $0.id == currentFilter })
+                    ? currentFilter
+                    : (tabContainerData.0.first(where: { $0.id == .all }) ?? tabContainerData.0[0]).id
                 let selectedTab: HorizontalTabsComponent.Tab.Id
-                switch self.mainContainerNode.currentItemFilter {
+                switch selectedFilter {
                 case .all:
                     selectedTab = AnyHashable(Int32.min)
                 case let .filter(id):
@@ -1784,7 +1796,8 @@ final class ChatListControllerNode: ASDisplayNode, ASGestureRecognizerDelegate {
                     selectedTab: selectedTab,
                     isEditing: isEditing,
                     layout: RGSimpleSettings.shared.chatListFolderTabsCompact ? .fit : .fill, // MARK: Regram
-                    liftWhileSwitching: layout.deviceMetrics.type != .tablet
+                    liftWhileSwitching: layout.deviceMetrics.type != .tablet,
+                    showsRestingSelectionFill: true // MARK: Regram
                 ))
             }
                 

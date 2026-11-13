@@ -20,8 +20,9 @@ struct ChatHistoryEntriesForViewState {
     // MARK: Regram — how many messages the content filter removed from the last pass. The loaded
     // window is a fixed message count, so dropping entries after the fact leaves the list too short
     // to fill the screen; the caller adds this back to the count it requests. See its use in
-    // ChatHistoryListNode.processDisplayedItemRangeChanged.
+    // ChatHistoryListNode.updateHistoryNavigation.
     var rgFilteredOutCount: Int = 0
+    var rgHasVisibleHistoryMessages = false // MARK: Regram
 
     init() {
     }
@@ -98,6 +99,8 @@ func chatHistoryEntriesForView(
     pinToTopStableId: EngineMessage.StableId?
 ) -> ([ChatHistoryEntry], ChatHistoryEntriesForViewState) {
     var currentState = currentState
+    currentState.rgFilteredOutCount = 0 // MARK: Regram
+    currentState.rgHasVisibleHistoryMessages = false
     
     if historyAppearsCleared {
         return ([], currentState)
@@ -179,12 +182,7 @@ func chatHistoryEntriesForView(
     // expensive to repeat per entry.
     let accountPeerId = context.account.peerId
     let rgContentFilter = RGContentFilterState(accountPeerId: accountPeerId)
-    // Reset per pass: the state is carried over from the previous call, so this would otherwise
-    // accumulate. Written directly rather than via a local + `defer`, because a `defer` runs after
-    // the return value has already been copied and would never be observed by the caller.
-    currentState.rgFilteredOutCount = 0
 
-    var count = 0
     loop: for entry in view.entries {
         var message = entry.message.withAppliedEphemeralReplacementMessage()
         var isRead = entry.isRead
@@ -198,13 +196,6 @@ func chatHistoryEntriesForView(
             continue
         }
         
-        // MARK: Regram — message filter and hidden senders.
-        // MARK: Regram — use the same rich-body projection as background verdict preparation.
-        if !rgContentFilter.isEmpty, rgContentFilter.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(accountPeerId)) {
-            currentState.rgFilteredOutCount += 1
-            continue loop
-        }
-
         if case let .replyThread(replyThreadMessage) = location, replyThreadMessage.isForumPost {
             if isUndisplayedForumTopicRoot(message, location: location, additionalData: view.additionalData) {
                 continue loop
@@ -226,8 +217,6 @@ func chatHistoryEntriesForView(
                 }
             }
         }
-        
-        count += 1
         
         if let customThreadOutgoingReadState = customThreadOutgoingReadState {
             isRead = customThreadOutgoingReadState >= message.id
@@ -268,6 +257,17 @@ func chatHistoryEntriesForView(
                         break
                 }
             }
+        }
+
+        // MARK: Regram — decide on each stored message before grouping it into a row.
+        if !rgContentFilter.isEmpty, rgContentFilter.shouldHide(message: entry.message) {
+            if message.adAttribute == nil {
+                currentState.rgFilteredOutCount += 1
+            }
+            continue loop
+        }
+        if message.adAttribute == nil {
+            currentState.rgHasVisibleHistoryMessages = true
         }
     
         var adminRank: CachedChannelAdminRank?
@@ -506,7 +506,8 @@ func chatHistoryEntriesForView(
     if case let .replyThread(replyThreadMessage) = location, !replyThreadMessage.isForumPost, view.earlierId == nil, !view.holeEarlier, !view.isLoading, !isMusicPlaylist {
         loop: for entry in view.additionalData {
             switch entry {
-            case let .message(id, messages) where id == replyThreadMessage.effectiveTopId:
+            case let .message(id, threadMessages) where id == replyThreadMessage.effectiveTopId:
+                let messages = rgContentFilter.isEmpty ? threadMessages : threadMessages.filter { !rgContentFilter.shouldHide(message: $0) } // MARK: Regram
                 if !messages.isEmpty {
                     let selection: ChatHistoryMessageSelection = .none
                     
@@ -542,7 +543,7 @@ func chatHistoryEntriesForView(
                     }
                     
                     addedThreadHead = true
-                    if messages.count > 1, let groupingKey = messages[0].groupingKey {
+                    if threadMessages.count > 1, let groupingKey = messages[0].groupingKey {
                         var groupMessages: [(Message, Bool, ChatHistoryMessageSelection, ChatMessageEntryAttributes, MessageHistoryEntryLocation?)] = []
                         for message in messages {
                             groupMessages.append((message, false, .none, ChatMessageEntryAttributes(rank: adminRank, isContact: false, contentTypeHint: contentTypeHint, updatingMedia: updatingMedia[message.id], isPlaying: false, isCentered: false, authorStoryStats: message.author.flatMap { view.peerStoryStats[$0.id] }, displayContinueThreadFooter: false, pinToTop: false), nil))
@@ -556,7 +557,7 @@ func chatHistoryEntriesForView(
                     
                     if !replyThreadMessage.isForumPost {
                         let replyCount = view.entries.isEmpty ? 0 : 1
-                        entries.insert(.ReplyCountEntry(messages[0].index, replyThreadMessage.isChannelPost, replyCount, presentationData), at: 1)
+                        entries.insert(.ReplyCountEntry(messages[0].index, replyThreadMessage.isChannelPost, replyCount, presentationData), at: min(1, entries.count)) // MARK: Regram
                     }
                 }
                 break loop
@@ -721,16 +722,20 @@ func chatHistoryEntriesForView(
             }
         }
         
-        if !dynamicAdMessages.isEmpty {
+        // MARK: Regram — ads have their own verdicts and are placed only in a window with visible history.
+        let rgShowAds = !RGSimpleSettings.shared.disableAllAds && (currentState.rgFilteredOutCount == 0 || currentState.rgHasVisibleHistoryMessages)
+        if rgShowAds, !dynamicAdMessages.isEmpty, let first = view.entries.first, let last = view.entries.last {
             assert(entries.sorted() == entries)
-            for message in dynamicAdMessages {
+            for message in dynamicAdMessages where message.timestamp >= first.message.timestamp && message.timestamp <= last.message.timestamp
+                && (rgContentFilter.isEmpty || !rgContentFilter.shouldHide(message: message)) {
                 entries.append(.MessageEntry(message, presentationData, false, nil, .none, ChatMessageEntryAttributes(rank: nil, isContact: false, contentTypeHint: .generic, updatingMedia: nil, isPlaying: false, isCentered: false, authorStoryStats: nil, displayContinueThreadFooter: false, pinToTop: false)))
             }
             entries.sort()
         }
 
-        if view.laterId == nil && !view.isLoading {
-            if !entries.isEmpty, case let .MessageEntry(lastMessage, _, _, _, _, _) = entries[entries.count - 1], let message = adMessage {
+        if rgShowAds, view.laterId == nil, !view.isLoading {
+            if case let .MessageEntry(lastMessage, _, _, _, _, _)? = entries.last, let message = adMessage,
+               rgContentFilter.isEmpty || !rgContentFilter.shouldHide(message: message) {
                 var nextAdMessageId: Int32 = 10000
                 let updatedMessage = Message(
                     stableId: ChatHistoryListNodeImpl.fixedAdMessageStableId,

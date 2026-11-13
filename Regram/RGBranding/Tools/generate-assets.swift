@@ -275,7 +275,7 @@ for design in Design.allCases {
 }
 
 // Raster alternatives retain their original artwork. Only Classic derives a gray-paper dark rendition.
-for iconName in ["RGClassic", "RGXChat"] {
+for iconName in ["RGClassic", "RGXChat", "RGTelegram"] {
     let source = branding.appendingPathComponent("Artwork/\(iconName)-original.png")
     let image = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithURL(source as CFURL, nil)!, 0, nil)!
     for (catalog, size) in [("AppIcons.xcassets/\(iconName).appiconset", 1024), ("Images.xcassets/\(iconName)Preview.imageset", 256)] {

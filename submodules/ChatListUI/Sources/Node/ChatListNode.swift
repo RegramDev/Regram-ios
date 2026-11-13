@@ -2625,7 +2625,27 @@ public final class ChatListNode: ListViewImpl {
             if isEmpty {
                 entries = [.HeaderEntry]
             }
-            
+
+            // MARK: Regram — keep the swiped chat's sort position while its actions are open.
+            // Its contents can still refresh, and it can still leave the list.
+            var rgRevealItemId: ChatListNodeEntryId?
+            if case .chatList = mode, let revealed = state.peerIdWithRevealedOptions, revealed.threadId == nil,
+               let previous = previousView.with({ $0 }), previous.filter?.id == filter?.id {
+                let id = ChatListNodeEntryId.PeerId(revealed.peerId.toInt64())
+                if let previousEntry = previous.filteredEntries.first(where: { $0.stableId == id }),
+                   case let .index(sortIndex) = previousEntry.sortIndex,
+                   let index = entries.firstIndex(where: { $0.stableId == id }),
+                   case var .PeerEntry(entry) = entries[index], entry.hasActiveRevealControls {
+                    rgRevealItemId = id
+                    if entry.index != sortIndex {
+                        entry.rgRevealSortIndex = sortIndex
+                        entries.remove(at: index)
+                        let insertionIndex = entries.firstIndex(where: { $0.sortIndex > .index(sortIndex) }) ?? entries.endIndex
+                        entries.insert(.PeerEntry(entry), at: insertionIndex)
+                    }
+                }
+            }
+
             let processedView = ChatListNodeView(originalList: update.list, filteredEntries: entries, isLoading: isLoading, filter: filter)
             let previousView = previousView.swap(processedView)
             let previousState = previousState.swap(state)
@@ -2808,7 +2828,7 @@ public final class ChatListNode: ListViewImpl {
             }
             let presentationData = state.presentationData
 
-            return preparedChatListNodeViewTransition(from: previousView, to: processedView, reason: reason, previewing: previewing, disableAnimations: disableAnimations, scrollPosition: updatedScrollPosition, searchMode: searchMode, forceAllUpdated: forceAllUpdated)
+            return preparedChatListNodeViewTransition(from: previousView, to: processedView, reason: reason, previewing: previewing, disableAnimations: disableAnimations, scrollPosition: updatedScrollPosition, searchMode: searchMode, forceAllUpdated: forceAllUpdated, rgRevealItemId: rgRevealItemId)
             |> map({ mappedChatListNodeViewListTransition(context: context, nodeInteraction: nodeInteraction, location: location, isPremium: accountIsPremium, filterData: filterData, chatListFilters: chatListFilters, mode: mode, isPeerEnabled: isPeerEnabled, presentationData: presentationData, transition: $0) })
             |> runOn(prepareOnMainQueue ? Queue.mainQueue() : viewProcessingQueue)
         }
@@ -2832,7 +2852,11 @@ public final class ChatListNode: ListViewImpl {
                     }
                     
                     if let location = location, location != strongSelf.currentLocation {
-                        strongSelf.setChatListLocation(location)
+                        // MARK: Regram — paging can evict the row while its actions are still in use.
+                        let revealId = strongSelf.currentState.peerIdWithRevealedOptions.map { ChatListNodeEntryId.PeerId($0.peerId.toInt64()) }
+                        if revealId.map({ id in !chatListView.filteredEntries.contains(where: { $0.stableId == id }) }) ?? true {
+                            strongSelf.setChatListLocation(location)
+                        }
                     }
                     
                     strongSelf.enqueueHistoryPreloadUpdate()
@@ -3798,12 +3822,31 @@ public final class ChatListNode: ListViewImpl {
             }
             // MARK: Regram — A row inserted above a first row that sits under the top inset (the search
             // bar is collapsed) goes above it, out of sight. Pin the first position where it is instead.
-            if scrollToItem == nil, let offset = self.restingTopContentOffsetForKeepingNewChatsVisible(transition: transition) {
+            // MARK: Regram — the diff can express a moved row as delete/insert even when its
+            // sort key is stable. Preserve its offset in that case as well.
+            var stationaryItemRange: (Int, Int)?
+            if scrollToItem == nil, let range = transition.stationaryItemRange,
+               let revealed = self.currentState.peerIdWithRevealedOptions, revealed.threadId == nil,
+               let previous = self.chatListView {
+                let stableId = ChatListNodeEntryId.PeerId(revealed.peerId.toInt64())
+                let entries = transition.chatListView.filteredEntries
+                if entries[entries.count - 1 - range.0].stableId == stableId,
+                   let previousIndex = previous.filteredEntries.firstIndex(where: { $0.stableId == stableId }),
+                   let node = self.itemNodeAtIndex(previous.filteredEntries.count - 1 - previousIndex),
+                   let offset = self.itemNodeRelativeOffset(node) {
+                    if transition.insertItems.contains(where: { $0.index == range.0 }) {
+                        scrollToItem = ListViewScrollToItem(index: range.0, position: .top(offset), animated: false, curve: .Default(duration: 0.0), directionHint: .Up)
+                    } else {
+                        stationaryItemRange = range
+                    }
+                }
+            }
+            if scrollToItem == nil, stationaryItemRange == nil, let offset = self.restingTopContentOffsetForKeepingNewChatsVisible(transition: transition) {
                 scrollToItem = ListViewScrollToItem(index: 0, position: .top(-offset), animated: false, curve: .Default(duration: 0.0), directionHint: .Up)
             }
             
             let updatedOpaqueState: Any? = ChatListOpaqueTransactionState(chatListView: transition.chatListView)
-            self.transaction(deleteIndices: transition.deleteItems, insertIndicesAndItems: transition.insertItems, updateIndicesAndItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: transition.stationaryItemRange, updateOpaqueState: updatedOpaqueState, completion: completion)
+            self.transaction(deleteIndices: transition.deleteItems, insertIndicesAndItems: transition.insertItems, updateIndicesAndItems: transition.updateItems, options: options, scrollToItem: scrollToItem, stationaryItemRange: stationaryItemRange, updateOpaqueState: updatedOpaqueState, completion: completion)
         }
     }
     

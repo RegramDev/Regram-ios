@@ -306,6 +306,7 @@ public final class HorizontalTabsComponent: Component {
     public let isEditing: Bool
     public let layout: Layout
     public let liftWhileSwitching: Bool
+    private let showsRestingSelectionFill: Bool // MARK: Regram
     
     public init(
         context: AccountContext?,
@@ -314,7 +315,8 @@ public final class HorizontalTabsComponent: Component {
         selectedTab: Tab.Id?,
         isEditing: Bool,
         layout: Layout = .fill,
-        liftWhileSwitching: Bool = true
+        liftWhileSwitching: Bool = true,
+        showsRestingSelectionFill: Bool = false
     ) {
         self.context = context
         self.theme = theme
@@ -323,6 +325,7 @@ public final class HorizontalTabsComponent: Component {
         self.isEditing = isEditing
         self.layout = layout
         self.liftWhileSwitching = liftWhileSwitching
+        self.showsRestingSelectionFill = showsRestingSelectionFill
     }
     
     public static func ==(lhs: HorizontalTabsComponent, rhs: HorizontalTabsComponent) -> Bool {
@@ -342,6 +345,9 @@ public final class HorizontalTabsComponent: Component {
             return false
         }
         if lhs.liftWhileSwitching != rhs.liftWhileSwitching {
+            return false
+        }
+        if lhs.showsRestingSelectionFill != rhs.showsRestingSelectionFill { // MARK: Regram
             return false
         }
         return true
@@ -405,6 +411,9 @@ public final class HorizontalTabsComponent: Component {
     
     public final class View: UIView, UIScrollViewDelegate, HeaderPanelContainerChildView {
         private let lensView: LiquidLensView
+        // MARK: Regram — a resting fill under the lens survives nested glass compositing.
+        private let selectionClip = UIView()
+        private let selectionFill = UIView()
         private let scrollView: ScrollView
         private let selectedScrollView: UIView
         private var itemViews: [Tab.Id: ItemView] = [:]
@@ -813,7 +822,26 @@ public final class HorizontalTabsComponent: Component {
                 isLifted = false
             }
             let lensSize = layoutData.lensSize
-            self.lensView.update(size: lensSize, selectionOrigin: CGPoint(x:  -self.scrollView.contentOffset.x + layoutData.selectedItemFrame.minX, y: 0.0), selectionSize: CGSize(width: layoutData.selectedItemFrame.width, height: lensSize.height), inset: 0.0, liftedInset: 6.0, isDark: component.theme.overallDarkAppearance, isLifted: isLifted, isCollapsed: layoutData.isSelectionHidden, transition: transition)
+            let selectionFrame = CGRect(x: layoutData.selectedItemFrame.minX - self.scrollView.contentOffset.x, y: 0.0, width: layoutData.selectedItemFrame.width, height: lensSize.height)
+            self.lensView.update(size: lensSize, selectionOrigin: selectionFrame.origin, selectionSize: selectionFrame.size, inset: 0.0, liftedInset: 6.0, isDark: component.theme.overallDarkAppearance, isLifted: isLifted, isCollapsed: layoutData.isSelectionHidden, transition: transition)
+
+            if #available(iOS 26.0, *), component.showsRestingSelectionFill { // MARK: Regram
+                if self.selectionClip.superview == nil {
+                    self.selectionClip.isUserInteractionEnabled = false
+                    self.selectionClip.clipsToBounds = true
+                    self.selectionClip.addSubview(self.selectionFill)
+                    self.insertSubview(self.selectionClip, belowSubview: self.lensView)
+                }
+                let isDark = component.theme.overallDarkAppearance
+                self.selectionFill.backgroundColor = UIColor(white: isDark ? 1.0 : 0.0, alpha: isDark ? 0.10 : 0.08)
+                self.selectionFill.layer.cornerRadius = lensSize.height * 0.5
+                self.selectionClip.layer.cornerRadius = lensSize.height * 0.5
+                transition.setFrame(view: self.selectionClip, frame: CGRect(origin: CGPoint(x: lensInset, y: lensInset), size: lensSize))
+                transition.setFrame(view: self.selectionFill, frame: selectionFrame)
+                transition.setAlpha(view: self.selectionFill, alpha: layoutData.isSelectionHidden || isLifted ? 0.0 : 1.0)
+            } else {
+                self.selectionClip.removeFromSuperview()
+            }
             
             transition.setPosition(view: self.selectedScrollView, position: CGRect(origin: CGPoint(), size: lensSize).center)
             transition.setBounds(view: self.selectedScrollView, bounds: CGRect(origin: CGPoint(x: self.scrollView.contentOffset.x, y: 0.0), size: lensSize))

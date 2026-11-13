@@ -188,7 +188,7 @@ func _internal_translateTexts(network: Network, texts: [(String, [MessageTextEnt
         apiTexts.append(.textWithEntities(.init(text: text.0, entities: apiEntitiesFromMessageTextEntities(text.1, associatedPeers: SimpleDictionary()))))
     }
 
-    return network.request(Api.functions.messages.translateText(flags: flags, peer: nil, id: nil, text: apiTexts, toLang: toLang, tone: tone.rawValue))
+    return network.request(Api.functions.messages.translateText(flags: flags, peer: nil, id: nil, text: apiTexts, toLang: rgTranslationLangFix(toLang), tone: tone.rawValue)) // MARK: Regram
     |> mapError { error -> TranslationError in
         if error.errorDescription.hasPrefix("FLOOD_WAIT") {
             return .limitExceeded
@@ -244,7 +244,7 @@ func _internal_translateRichMessages(account: Account, inputPeer: Api.InputPeer,
     if tone != .neutral {
         flags |= (1 << 2)
     }
-    return account.network.request(Api.functions.messages.translateRichMessage(flags: flags, peer: inputPeer, id: messageIds.map { $0.id }, text: nil, toLang: toLang, tone: tone != .neutral ? tone.rawValue : nil))
+    return account.network.request(Api.functions.messages.translateRichMessage(flags: flags, peer: inputPeer, id: messageIds.map { $0.id }, text: nil, toLang: rgTranslationLangFix(toLang), tone: tone != .neutral ? tone.rawValue : nil)) // MARK: Regram
     |> mapError { error -> TranslationError in
         if error.errorDescription.hasPrefix("FLOOD_WAIT") {
             return .limitExceeded
@@ -922,6 +922,7 @@ extension TelegramComposeAIMessageMode.CloudStyle.Reference {
 public enum TelegramAIComposeMessageError {
     case generic
     case nonPremiumFlood
+    case invalidLanguage // MARK: Regram
 }
 
 func _internal_composeAIMessage(account: Account, text: ComposedRichMessage, mode: TelegramComposeAIMessageMode) -> Signal<TelegramAIComposeMessageResult, TelegramAIComposeMessageError> {
@@ -930,7 +931,7 @@ func _internal_composeAIMessage(account: Account, text: ComposedRichMessage, mod
     var changeTone: Api.InputAiComposeTone?
     switch mode {
     case let .translate(toLanguage, emojify, style):
-        translateToLang = toLanguage
+        translateToLang = rgTranslationLangFix(toLanguage) // MARK: Regram
         flags |= (1 << 1)
         
         if emojify {
@@ -991,6 +992,8 @@ func _internal_composeAIMessage(account: Account, text: ComposedRichMessage, mod
         |> `catch` { error -> Signal<Api.messages.ComposedMessageWithAI, TelegramAIComposeMessageError> in
             if error.errorDescription == "AICOMPOSE_FLOOD_PREMIUM" {
                 return .fail(.nonPremiumFlood)
+            } else if error.errorDescription == "TO_LANG_INVALID" { // MARK: Regram
+                return .fail(.invalidLanguage)
             } else {
                 return .fail(.generic)
             }

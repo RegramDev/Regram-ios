@@ -348,6 +348,13 @@ private final class TabBarBadgeView: UIView {
 }
 
 public final class TabBarComponent: Component {
+    // MARK: Regram — keep a 44-point hit area when the icon is the only visible content.
+    private static let rgIconOnlyItemThickness: CGFloat = 44.0
+
+    static func rgHorizontalBarHeight(showItemTitles: Bool) -> CGFloat {
+        return (showItemTitles ? tabBarItemLength : Self.rgIconOnlyItemThickness) + tabBarInnerInset * 2.0
+    }
+
     public final class Item: Equatable {
         public enum Content: Equatable {
             public struct CustomItem: Equatable {
@@ -872,7 +879,6 @@ public final class TabBarComponent: Component {
         }
         
         func update(component: TabBarComponent, availableSize: CGSize, state: EmptyComponentState, environment: Environment<Empty>, transition: ComponentTransition) -> CGSize {
-            let innerInset: CGFloat = 4.0
             let isSystemLayout = component.axis == .horizontal && !component.isCompact && component.usesSystemLayout
             let availableSize = CGSize(width: isSystemLayout ? availableSize.width : min(500.0, availableSize.width), height: availableSize.height)
 
@@ -907,7 +913,7 @@ public final class TabBarComponent: Component {
             } else if component.isCompact {
                 barHeight = tabBarCompactBarThickness
             } else {
-                barHeight = 56.0 + innerInset * 2.0
+                barHeight = TabBarComponent.rgHorizontalBarHeight(showItemTitles: component.axis != .horizontal || component.showItemTitles) // MARK: Regram
             }
 
             // Each item's title width at the unselected font, as `-[_UITabButton sizeThatFits:]` measures it.
@@ -951,7 +957,9 @@ public final class TabBarComponent: Component {
             if isSystemLayout {
                 itemsLayout = tabBarSystemItemsLayout(fittedItemWidths: titleWidths, availableLength: availableLength, hasAccessory: search != nil)
             } else {
-                itemsLayout = tabBarItemsLayout(axis: component.axis, isCompact: component.isCompact, unboundItemWidths: titleWidths.map { $0 + 10.0 * 2.0 }, availableLength: availableLength)
+                // MARK: Regram — use the same height for the items, lens and search button.
+                let itemThickness = component.axis == .horizontal && !component.isCompact && !component.showItemTitles ? TabBarComponent.rgIconOnlyItemThickness : nil
+                itemsLayout = tabBarItemsLayout(axis: component.axis, isCompact: component.isCompact, unboundItemWidths: titleWidths.map { $0 + 10.0 * 2.0 }, availableLength: availableLength, itemThickness: itemThickness)
             }
             let tabsSize = itemsLayout.size
 

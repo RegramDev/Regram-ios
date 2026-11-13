@@ -11,9 +11,11 @@ public struct RGSettingsTextEditor: UIViewRepresentable {
     @Binding private var text: String
     @Environment(\.rgSettingsColors) private var colors
     @Environment(\.isEnabled) private var isEnabled
+    private let autocorrection: Bool
 
-    public init(text: Binding<String>) {
+    public init(text: Binding<String>, autocorrection: Bool = true) {
         self._text = text
+        self.autocorrection = autocorrection
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -25,6 +27,13 @@ public struct RGSettingsTextEditor: UIViewRepresentable {
         view.backgroundColor = .clear
         view.adjustsFontForContentSizeCategory = true
         view.delegate = context.coordinator
+        if !self.autocorrection {
+            view.autocorrectionType = .no
+            view.autocapitalizationType = .none
+            view.spellCheckingType = .no
+            view.smartDashesType = .no
+            view.smartQuotesType = .no
+        }
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return view
     }

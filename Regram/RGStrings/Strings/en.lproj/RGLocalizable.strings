@@ -299,6 +299,13 @@ Matching is case-insensitive.";
 "HiddenUsers.Notice" = "Messages from these users and bots are hidden everywhere. Swipe left to unhide; tap to open the profile.";
 "HiddenUsers.Empty" = "No hidden users yet. Open a user's or bot's profile and turn on \"Hide This User's Messages\".";
 "MessageFilter.CopyAsKeyword" = "Copy & Add to Filter";
+"MessageFilter.Selection.Title" = "Filter by Keyword";
+"MessageFilter.Selection.Add" = "Add Keyword";
+"MessageFilter.Selection.Submit" = "Save";
+"MessageFilter.Selection.Original" = "Original message";
+"MessageFilter.Selection.Count" = "Selected keywords (%d/%d)";
+"MessageFilter.Selection.Remove" = "Remove %@";
+"MessageFilter.Selection.TranslationFailed" = "Translation unavailable.";
 "Repeat.WithReply" = "Repeat (Forward)";
 "Repeat.Plain" = "Repeat (Copy)";
 "Repeat.ForwardNoQuote" = "Send Copy to Another Chat";
@@ -1247,6 +1254,7 @@ Matching is case-insensitive.";
 
 "AppIcon.Name.nebula" = "Nebula";
 "AppIcon.Name.xchat" = "XChat";
+"AppIcon.Name.telegram" = "Telegram Classic";
 
 "AppBadge.Name.nebula" = "Nebula";
 
@@ -1259,6 +1267,7 @@ Matching is case-insensitive.";
 "AppBadge.Name.regram" = "Regram";
 
 "AppBadge.Name.zhiqiu" = "Zhiqiu";
+"AppBadge.Name.hidden" = "Hidden";
 
 "features.HideTabBarPermissionWarnings.Notice" = "Hide exclamation badges caused by disabled notification or contacts access. Unread counts and other account reminders remain visible.";
 

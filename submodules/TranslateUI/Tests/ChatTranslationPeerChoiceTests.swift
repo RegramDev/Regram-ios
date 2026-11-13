@@ -3,6 +3,22 @@ import TelegramCore
 @testable import TranslateUI
 
 final class ChatTranslationPeerChoiceTests: XCTestCase {
+    func testChineseTranslationKeepsTheOtherScriptAvailable() {
+        let simplified = effectiveIgnoredTranslationLanguages(interfaceLanguage: "zh-hans-raw", ignoredLanguages: ["zh", "en-US"])
+        XCTAssertTrue(isIgnoredTranslationLanguage("zh-hans", ignoredLanguages: simplified))
+        XCTAssertFalse(isIgnoredTranslationLanguage("zh-hant", ignoredLanguages: simplified))
+
+        let traditional = effectiveIgnoredTranslationLanguages(interfaceLanguage: "zh-HK", ignoredLanguages: ["zh"])
+        XCTAssertFalse(isIgnoredTranslationLanguage("zh-hans", ignoredLanguages: traditional))
+        XCTAssertTrue(isIgnoredTranslationLanguage("zh-hant", ignoredLanguages: traditional))
+        XCTAssertEqual(normalizeTranslationTargetLanguage("zhcncc"), "zh-hans")
+        XCTAssertEqual(normalizeTranslationTargetLanguage("zh-Hant-TW"), "zh-hant")
+
+        let topic = ChatTranslationState(baseLang: "zh-hant", fromLang: "zh-hans", timestamp: nil, toLang: nil, isEnabled: false)
+        XCTAssertTrue(effectiveChatTranslationState(topic, peerChoice: ChatTranslationPeerChoice(isEnabled: true, toLang: "zh-hant")).isEnabled)
+        XCTAssertFalse(effectiveChatTranslationState(topic, peerChoice: ChatTranslationPeerChoice(isEnabled: true, toLang: "zh-CN")).isEnabled)
+    }
+
     private func channel(id: Int64 = 1234, flags: TelegramChannelFlags) -> EnginePeer {
         return .channel(TelegramChannel(id: EnginePeer.Id(namespace: Namespaces.Peer.CloudChannel, id: EnginePeer.Id.Id._internalFromInt64Value(id)), accessHash: nil, title: "Forum", username: nil, photo: [], creationDate: 0, version: 0, participationStatus: .member, info: .group(TelegramChannelGroupInfo(flags: [])), flags: flags, restrictionInfo: nil, adminRights: nil, bannedRights: nil, defaultBannedRights: nil, usernames: [], storiesHidden: nil, nameColor: nil, backgroundEmojiId: nil, profileColor: nil, profileBackgroundEmojiId: nil, emojiStatus: nil, approximateBoostLevel: nil, subscriptionUntilDate: nil, verificationIconFileId: nil, sendPaidMessageStars: nil, linkedMonoforumId: nil))
     }

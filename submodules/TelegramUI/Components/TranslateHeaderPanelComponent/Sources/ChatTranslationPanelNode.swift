@@ -302,18 +302,9 @@ final class ChatTranslationPanelNode: ASDisplayNode {
                 var addedLanguages = Set<String>()
                 
                 var topLanguages: [String] = []
-                let langCode = normalizeTranslationLanguage(languageCode)
-                
-                var selectedLanguages: Set<String>
-                if let ignoredLanguages = settings.ignoredLanguages {
-                    selectedLanguages = Set(ignoredLanguages)
-                } else {
-                    selectedLanguages = Set([langCode])
-                    for language in systemLanguageCodes() {
-                        selectedLanguages.insert(language)
-                    }
-                }
-                for code in supportedTranslationLanguages {
+                let langCode = normalizeTranslationTargetLanguage(languageCode) // MARK: Regram
+                let selectedLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: languageCode, ignoredLanguages: settings.ignoredLanguages)
+                for code in supportedTranslationLanguages where code != "zh" { // MARK: Regram — offer the two scripts as targets.
                     if selectedLanguages.contains(code) {
                         topLanguages.append(code)
                     }
@@ -337,7 +328,7 @@ final class ChatTranslationPanelNode: ASDisplayNode {
                     }
                 }
                 
-                for code in supportedTranslationLanguages {
+                for code in supportedTranslationLanguages where code != "zh" {
                     if !addedLanguages.contains(code) {
                         let displayTitle = languageLocale.localizedString(forLanguageCode: code) ?? ""
                         let value = (code, displayTitle)

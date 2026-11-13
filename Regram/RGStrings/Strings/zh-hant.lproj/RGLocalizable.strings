@@ -263,6 +263,13 @@
 "HiddenUsers.Notice" = "這些使用者與機器人的訊息會在所有對話中隱藏。左滑可取消封鎖,點擊可查看資料。";
 "HiddenUsers.Empty" = "尚未封鎖任何使用者。打開使用者或機器人的資料頁,開啟「隱藏此使用者的訊息」即可。";
 "MessageFilter.CopyAsKeyword" = "複製並加入過濾器";
+"MessageFilter.Selection.Title" = "選詞封鎖";
+"MessageFilter.Selection.Add" = "加入關鍵詞";
+"MessageFilter.Selection.Submit" = "提交";
+"MessageFilter.Selection.Original" = "原始訊息";
+"MessageFilter.Selection.Count" = "選取的關鍵詞（%d/%d）";
+"MessageFilter.Selection.Remove" = "移除 %@";
+"MessageFilter.Selection.TranslationFailed" = "暫時無法翻譯。";
 "Repeat.WithReply" = "複讀";
 "Repeat.Plain" = "無引用複讀";
 "Repeat.ForwardNoQuote" = "無引用轉發";
@@ -1238,6 +1245,7 @@
 
 "AppIcon.Name.nebula" = "星河";
 "AppIcon.Name.xchat" = "XChat";
+"AppIcon.Name.telegram" = "Telegram 原版";
 
 "AppBadge.Name.nebula" = "星河";
 
@@ -1250,6 +1258,7 @@
 "AppBadge.Name.regram" = "Regram";
 
 "AppBadge.Name.zhiqiu" = "知秋";
+"AppBadge.Name.hidden" = "隱藏";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隱藏因系統通知或通訊錄權限關閉而顯示的驚嘆號。未讀數量及其他帳號提醒保留。";
 

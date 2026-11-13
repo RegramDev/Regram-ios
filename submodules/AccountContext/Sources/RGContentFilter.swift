@@ -18,23 +18,24 @@ import RGSimpleSettings
 /// not a byte compare — or a regex match, so repeating that per rebuild for a window of hundreds of
 /// messages is what made scrolling a filtered chat drop frames.
 ///
-/// A verdict stays valid until either the rules or the message itself change. Rule changes are
-/// caught by `RGSimpleSettings.contentFilterGeneration`, which discards the whole table; message
-/// changes are caught by Postbox's `stableVersion`, which it increments on every update of a message
-/// (`MessageHistoryTable`: `stableVersion = previousMessage.stableVersion + 1`). That makes an edit
-/// exact rather than heuristic — comparing text length instead would serve a stale verdict for an
-/// edit that happened to preserve it, and a stale *hide* means a message the user never sees.
-///
-/// `stableVersion` also moves for updates that leave the text alone — view counts, reactions, read
-/// markers — which in a channel arrive continuously for exactly the posts on screen. The filter only
-/// reads the text, so each entry also remembers a hash of it, and a new version with the same text
-/// keeps its verdict instead of being matched against every rule again.
+/// A verdict depends on the rules and the message's filter inputs. A replacement body or an
+/// updated sender can arrive without a new version of the original message. Reactions and view
+/// counts can change its version without changing any of those inputs.
+private struct RGContentFilterInput: Equatable {
+    let text: String
+    let authorId: EnginePeer.Id?
+    let isIncoming: Bool
+
+    static func ==(lhs: Self, rhs: Self) -> Bool {
+        return lhs.authorId == rhs.authorId && lhs.isIncoming == rhs.isIncoming && lhs.text.utf8.elementsEqual(rhs.text.utf8)
+    }
+}
+
 private final class RGContentFilterVerdictCache {
     static let shared = RGContentFilterVerdictCache()
 
     private struct Entry {
-        var stableVersion: UInt32
-        let textHash: Int
+        let input: RGContentFilterInput
         let shouldHide: Bool
     }
 
@@ -55,36 +56,17 @@ private final class RGContentFilterVerdictCache {
     private var insertionOrder: [Key] = []
     private var nextEviction = 0
 
-    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32) -> Bool? {
+    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, input: RGContentFilterInput) -> Bool? {
         self.lock.lock()
         defer { self.lock.unlock() }
         let key = Key(accountPeerId: accountPeerId, messageId: id)
-        guard self.generation == generation, let entry = self.entries[key], entry.stableVersion == stableVersion else {
+        guard self.generation == generation, let entry = self.entries[key], entry.input == input else {
             return nil
         }
         return entry.shouldHide
     }
 
-    /// Same as above, but also accepts an entry for an older version of the message whose text is
-    /// unchanged, and records the new version so the plain lookup hits from now on.
-    func verdict(for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32, textHash: Int) -> Bool? {
-        self.lock.lock()
-        defer { self.lock.unlock() }
-        let key = Key(accountPeerId: accountPeerId, messageId: id)
-        guard self.generation == generation, var entry = self.entries[key] else {
-            return nil
-        }
-        if entry.stableVersion != stableVersion {
-            guard entry.textHash == textHash else {
-                return nil
-            }
-            entry.stableVersion = stableVersion
-            self.entries[key] = entry
-        }
-        return entry.shouldHide
-    }
-
-    func store(_ shouldHide: Bool, for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, stableVersion: UInt32, textHash: Int) {
+    func store(_ shouldHide: Bool, for id: EngineMessage.Id, accountPeerId: EnginePeer.Id, generation: Int, input: RGContentFilterInput) {
         self.lock.lock()
         defer { self.lock.unlock() }
         if generation < self.generation {
@@ -108,7 +90,7 @@ private final class RGContentFilterVerdictCache {
                 self.insertionOrder.append(key)
             }
         }
-        self.entries[key] = Entry(stableVersion: stableVersion, textHash: textHash, shouldHide: shouldHide)
+        self.entries[key] = Entry(input: input, shouldHide: shouldHide)
     }
 
     /// The candidates without a verdict for their current version, found under one lock.
@@ -122,7 +104,7 @@ private final class RGContentFilterVerdictCache {
             guard let entry = self.entries[Key(accountPeerId: accountPeerId, messageId: candidate.id)] else {
                 return true
             }
-            return entry.stableVersion != candidate.stableVersion
+            return entry.input != candidate.input
         }
     }
 }
@@ -131,18 +113,25 @@ private final class RGContentFilterVerdictCache {
 /// can be handed to a background queue.
 public struct RGContentFilterCandidate {
     public let id: EngineMessage.Id
-    public let stableVersion: UInt32
-    public let text: String
-    public let authorId: EnginePeer.Id?
-    public let isIncoming: Bool
+    public var text: String { self.input.text }
+    public var authorId: EnginePeer.Id? { self.input.authorId }
+    public var isIncoming: Bool { self.input.isIncoming }
+    fileprivate let input: RGContentFilterInput
+    private let isSponsored: Bool
 
-    public init(id: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool) {
+    public init(id: EngineMessage.Id, text: String, authorId: EnginePeer.Id?, isIncoming: Bool, isSponsored: Bool = false) {
         self.id = id
-        self.stableVersion = stableVersion
-        self.text = text
-        self.authorId = authorId
-        self.isIncoming = isIncoming
+        self.isSponsored = isSponsored
+        self.input = RGContentFilterInput(text: text, authorId: authorId, isIncoming: isIncoming)
     }
+
+    public init(message: EngineRawMessage, accountPeerId: EnginePeer.Id) {
+        let isSponsored = message.adAttribute != nil
+        let message = message.withAppliedEphemeralReplacementMessage()
+        self.init(id: message.id, text: message.rgTextContent, authorId: message.author?.id, isIncoming: isSponsored || message.effectivelyIncoming(accountPeerId), isSponsored: isSponsored)
+    }
+
+    fileprivate var canCache: Bool { !self.isSponsored }
 }
 
 public struct RGContentFilterState {
@@ -168,13 +157,13 @@ public struct RGContentFilterState {
     /// every rebuild, where the decoded values are already cached behind one lock.
     public init(accountPeerId: EnginePeer.Id) {
         let settings = RGSimpleSettings.shared
+        self.generation = settings.contentFilterGeneration
         self.rules = settings.messageFilterRules
         self.hiddenSenderIds = settings.blockedPeerIds
         self.groupHiddenSenders = settings.groupHiddenSenders // MARK: Regram
         self.filterDisabledPeerIds = settings.messageFilterDisabledPeerIds
         self.accountPeerId = accountPeerId
         self.temporarilyVisiblePeerIds = settings.temporarilyVisiblePeerIds(accountId: accountPeerId.toInt64())
-        self.generation = settings.contentFilterGeneration
     }
 
     public var isEmpty: Bool {
@@ -204,22 +193,26 @@ public struct RGContentFilterState {
     /// Prefer this over the plain `shouldHide` wherever a message id is at hand: it is the same
     /// predicate, but a window that was already examined costs one dictionary lookup per entry
     /// rather than a Unicode-folding search per entry per rule.
-    public func shouldHide(messageId: EngineMessage.Id, stableVersion: UInt32, text: String, authorId: EnginePeer.Id?, isIncoming: Bool) -> Bool {
+    public func shouldHide(_ candidate: RGContentFilterCandidate) -> Bool {
+        // Sponsored cards reuse synthetic IDs. Match each one independently.
+        guard candidate.canCache else {
+            return self.shouldHide(text: candidate.text, authorId: candidate.authorId, peerId: candidate.id.peerId, isIncoming: candidate.isIncoming)
+        }
         let cache = RGContentFilterVerdictCache.shared
-        if let cached = cache.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion) {
+        if let cached = cache.verdict(for: candidate.id, accountPeerId: self.accountPeerId, generation: self.generation, input: candidate.input) {
             return cached
         }
-        let textHash = text.hashValue
-        if let cached = cache.verdict(for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion, textHash: textHash) {
-            return cached
-        }
-        let result = self.shouldHide(text: text, authorId: authorId, peerId: messageId.peerId, isIncoming: isIncoming)
-        cache.store(result, for: messageId, accountPeerId: self.accountPeerId, generation: self.generation, stableVersion: stableVersion, textHash: textHash)
+        let result = self.shouldHide(text: candidate.text, authorId: candidate.authorId, peerId: candidate.id.peerId, isIncoming: candidate.isIncoming)
+        cache.store(result, for: candidate.id, accountPeerId: self.accountPeerId, generation: self.generation, input: candidate.input)
         return result
     }
 
     public func shouldHide(message: EngineMessage) -> Bool {
-        return self.shouldHide(messageId: message.id, stableVersion: message.stableVersion, text: message.rgTextContent, authorId: message.author?.id, isIncoming: message.effectivelyIncoming(self.accountPeerId))
+        return self.shouldHide(message: message._asMessage())
+    }
+
+    public func shouldHide(message: EngineRawMessage) -> Bool {
+        return self.shouldHide(RGContentFilterCandidate(message: message, accountPeerId: self.accountPeerId))
     }
 }
 
@@ -266,7 +259,7 @@ public func rgPrepareContentFilter(candidates: [RGContentFilterCandidate], accou
     return Signal { subscriber in
         queue.async {
             for candidate in missing {
-                let _ = filter.shouldHide(messageId: candidate.id, stableVersion: candidate.stableVersion, text: candidate.text, authorId: candidate.authorId, isIncoming: candidate.isIncoming)
+                let _ = filter.shouldHide(candidate)
             }
             subscriber.putNext(Void())
             subscriber.putCompletion()

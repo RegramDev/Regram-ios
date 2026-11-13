@@ -187,9 +187,13 @@ enum ChatListNodeEntry: Comparable, Identifiable {
         
         /// The chat side list's "All Messages" row (`ChatListItemContent.PeerData.isSideListAllThreadsItem`).
         var isSideListAllThreadsItem: Bool = false
+        var rgRevealSortIndex: EngineChatList.Item.Index? // MARK: Regram
         
         static func ==(lhs: PeerEntryData, rhs: PeerEntryData) -> Bool {
             if lhs.index != rhs.index {
+                return false
+            }
+            if lhs.rgRevealSortIndex != rhs.rgRevealSortIndex { // MARK: Regram
                 return false
             }
             if lhs.isSideListAllThreadsItem != rhs.isSideListAllThreadsItem {
@@ -439,7 +443,7 @@ enum ChatListNodeEntry: Comparable, Identifiable {
         case .HeaderEntry:
             return .index(.chatList(.absoluteUpperBound))
         case let .PeerEntry(peerEntry):
-            return .index(peerEntry.index)
+            return .index(peerEntry.rgRevealSortIndex ?? peerEntry.index) // MARK: Regram
         case let .HoleEntry(holeIndex, _):
             return .index(.chatList(EngineChatList.Item.Index.ChatList(pinningIndex: nil, messageIndex: holeIndex)))
         case let .GroupReferenceEntry(groupReferenceEntry):

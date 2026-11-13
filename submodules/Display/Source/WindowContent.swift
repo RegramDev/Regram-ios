@@ -959,16 +959,17 @@ public class Window1 {
         }
     }
     
+    private var shouldHideAppBadge: Bool { // MARK: Regram — hidden artwork also disables the overlay window.
+        return self.badgeView.image == nil || !self.deviceMetrics.showAppBadge || self.forceBadgeHidden || self.windowLayout.size.width > self.windowLayout.size.height
+    }
+
     private func updateBadgeVisibility() {
-        let badgeIsHidden = !self.deviceMetrics.showAppBadge || self.forceBadgeHidden || self.windowLayout.size.width > self.windowLayout.size.height
+        let badgeIsHidden = self.shouldHideAppBadge
         if badgeIsHidden != self.badgeView.isHidden && !badgeIsHidden {
-            Queue.mainQueue().after(0.4) {
-                let badgeShouldBeHidden = !self.deviceMetrics.showAppBadge || self.forceBadgeHidden || self.windowLayout.size.width > self.windowLayout.size.height
-                if badgeShouldBeHidden == badgeIsHidden {
-                    self.badgeView.isHidden = badgeIsHidden
-                    // MARK: Regram
-                    self.updateBadgePresentation()
-                }
+            Queue.mainQueue().after(0.4) { [weak self] in
+                guard let self, !self.shouldHideAppBadge else { return }
+                self.badgeView.isHidden = false
+                self.updateBadgePresentation()
             }
         } else {
             self.badgeView.isHidden = badgeIsHidden
@@ -982,7 +983,7 @@ public class Window1 {
         if #available(iOS 27.0, *) {
             let imageSize = self.badgeView.image?.size ?? .zero
             let badgeFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - imageSize.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: imageSize)
-            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, badgeFrame: badgeFrame, enabled: self.deviceMetrics.hasDynamicIsland && !self.forceBadgeHidden, userInterfaceStyle: (self.badgeView as? RGAppBadgeImageView)?.artworkUserInterfaceStyle)
+            self.badgeOverlay.update(hostWindow: self.hostView.eventView as? UIWindow, fallbackView: self.hostView.containerView, badgeFrame: badgeFrame, enabled: self.deviceMetrics.hasDynamicIsland && !self.shouldHideAppBadge, userInterfaceStyle: (self.badgeView as? RGAppBadgeImageView)?.artworkUserInterfaceStyle)
         }
     }
 
@@ -995,9 +996,8 @@ public class Window1 {
     // MARK: Regram — image changes need layout even when the cached window geometry is unchanged.
     public func updateAppBadgeLayout() {
         (self.badgeView as? RGAppBadgeImageView)?.reloadArtwork()
-        guard let image = self.badgeView.image else { return }
         // MARK: Regram — the visibility update also lays out the overlay; do it once per pass.
-        if self.badgeView.superview == nil || self.badgeView.superview === self.hostView.containerView {
+        if let image = self.badgeView.image, self.badgeView.superview == nil || self.badgeView.superview === self.hostView.containerView {
             let frame = CGRect(origin: CGPoint(x: floorToScreenPixels((self.windowLayout.size.width - image.size.width) / 2.0), y: self.deviceMetrics.rgAppBadgeOffset()), size: image.size)
             if self.badgeView.frame != frame { self.badgeView.frame = frame }
         }

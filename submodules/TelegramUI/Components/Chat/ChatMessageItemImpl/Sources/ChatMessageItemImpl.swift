@@ -31,6 +31,7 @@ private final class RGQuickTranslateAvailabilityCache {
     private struct Key: Hashable {
         let messageId: EngineMessage.Id
         let stableVersion: UInt32
+        let interfaceLanguage: String // MARK: Regram
         let ignoredLanguages: [String]?
     }
 
@@ -39,7 +40,8 @@ private final class RGQuickTranslateAvailabilityCache {
     private var entries: [Key: Bool] = [:]
 
     func canTranslate(context: AccountContext, message: EngineRawMessage, ignoredLanguages: [String]?) -> Bool {
-        let key = Key(messageId: message.id, stableVersion: message.stableVersion, ignoredLanguages: ignoredLanguages)
+        let interfaceLanguage = translationInterfaceLanguage(strings: context.sharedContext.currentPresentationData.with { $0 }.strings)
+        let key = Key(messageId: message.id, stableVersion: message.stableVersion, interfaceLanguage: interfaceLanguage, ignoredLanguages: ignoredLanguages)
         self.lock.lock()
         let cached = self.entries[key]
         self.lock.unlock()

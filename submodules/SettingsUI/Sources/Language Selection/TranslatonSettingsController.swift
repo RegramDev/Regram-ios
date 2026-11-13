@@ -72,21 +72,7 @@ private func translationSettingsControllerEntries(theme: PresentationTheme, stri
     var entries: [TranslationSettingsControllerEntry] = []
     
     var index: Int32 = 0
-    var selectedLanguages: Set<String>
-    if let ignoredLanguages = settings.ignoredLanguages {
-        selectedLanguages = Set(ignoredLanguages)
-    } else {
-        var activeLanguage = strings.baseLanguageCode
-        let rawSuffix = "-raw"
-        if activeLanguage.hasSuffix(rawSuffix) {
-            activeLanguage = String(activeLanguage.dropLast(rawSuffix.count))
-        }
-        activeLanguage = normalizeTranslationLanguage(activeLanguage)
-        selectedLanguages = Set([activeLanguage])
-        for language in systemLanguageCodes() {
-            selectedLanguages.insert(language)
-        }
-    }
+    let selectedLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: strings), ignoredLanguages: settings.ignoredLanguages) // MARK: Regram
     
     var addedLanguages = Set<String>()
     
@@ -113,40 +99,24 @@ public func translationSettingsController(context: AccountContext) -> ViewContro
     let actionsDisposable = DisposableSet()
     
     let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-    var interfaceLanguageCode = presentationData.strings.baseLanguageCode
-    let rawSuffix = "-raw"
-    if interfaceLanguageCode.hasSuffix(rawSuffix) {
-        interfaceLanguageCode = String(interfaceLanguageCode.dropLast(rawSuffix.count))
-    }
+    let interfaceLanguageCode = translationInterfaceLanguage(strings: presentationData.strings) // MARK: Regram
     
     let arguments = TranslationSettingsControllerArguments(context: context, updateLanguageSelected: { code, value in
         let _ = updateTranslationSettingsInteractively(accountManager: context.sharedContext.accountManager, { current in
-            var updated = current
-            var updatedIgnoredLanguages = updated.ignoredLanguages ?? []
-            if current.ignoredLanguages == nil {
-                updatedIgnoredLanguages.append(interfaceLanguageCode)
-                for language in systemLanguageCodes() {
-                    if !updatedIgnoredLanguages.contains(language) {
-                        updatedIgnoredLanguages.append(language)
-                    }
-                }
-            }
+            var updatedIgnoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: interfaceLanguageCode, ignoredLanguages: current.ignoredLanguages)
             if value {
-                if !updatedIgnoredLanguages.contains(code) {
-                    updatedIgnoredLanguages.append(code)
-                }
+                updatedIgnoredLanguages.insert(code)
             } else {
-                updatedIgnoredLanguages.removeAll(where: { $0 == code })
+                updatedIgnoredLanguages.remove(code)
             }
-            updated = updated.withUpdatedIgnoredLanguages(updatedIgnoredLanguages)
-            return updated
+            return current.withUpdatedIgnoredLanguages(updatedIgnoredLanguages.sorted())
         }).start()
     })
     
     let enLocale = Locale(identifier: "en")
     var languages: [(String, String, String)] = []
     var addedLanguages = Set<String>()
-    for code in popularTranslationLanguages {
+    for code in popularTranslationLanguages where code != "zh" || !interfaceLanguageCode.hasPrefix("zh-") { // MARK: Regram
         if let title = enLocale.localizedString(forLanguageCode: code) {
             let languageLocale = Locale(identifier: code)
             let subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
@@ -160,13 +130,10 @@ public func translationSettingsController(context: AccountContext) -> ViewContro
         }
     }
 
-    for code in supportedTranslationLanguages + ["zh-hans", "zh-hant"] {
+    for code in supportedTranslationLanguages where code != "zh" || !interfaceLanguageCode.hasPrefix("zh-") {
         if !addedLanguages.contains(code), let title = enLocale.localizedString(forLanguageCode: code) {
             let languageLocale = Locale(identifier: code)
-            var subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
-            if code == "zh-hans" || code == "zh-hant" {
-                subtitle += " \(code)"
-            }
+            let subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
             let value = (code, title.capitalized, subtitle.capitalized)
             if code == interfaceLanguageCode {
                 languages.insert(value, at: 0)
@@ -187,21 +154,7 @@ public func translationSettingsController(context: AccountContext) -> ViewContro
             if let current {
                 return current
             } else {
-                var selectedLanguages: Set<String>
-                if let ignoredLanguages = settings.ignoredLanguages {
-                    selectedLanguages = Set(ignoredLanguages)
-                } else {
-                    var activeLanguage = presentationData.strings.baseLanguageCode
-                    let rawSuffix = "-raw"
-                    if activeLanguage.hasSuffix(rawSuffix) {
-                        activeLanguage = String(activeLanguage.dropLast(rawSuffix.count))
-                    }
-                    selectedLanguages = Set([activeLanguage])
-                    for language in systemLanguageCodes() {
-                        selectedLanguages.insert(language)
-                    }
-                }
-                return selectedLanguages
+                return effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: presentationData.strings), ignoredLanguages: settings.ignoredLanguages)
             }
         })
     

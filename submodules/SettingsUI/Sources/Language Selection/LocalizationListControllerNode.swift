@@ -490,39 +490,14 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
             
             var showTranslate = false
             var translateChats = false
-            var ignoredLanguages: [String] = []
+            let ignoredLanguages: [String] // MARK: Regram
             if let translationSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.translationSettings]?.get(TranslationSettings.self) {
                 showTranslate = translationSettings.showTranslate
                 translateChats = translationSettings.translateChats
-                if let languages = translationSettings.ignoredLanguages {
-                    ignoredLanguages = languages
-                } else {
-                    if var activeLanguage = activeLanguageCode {
-                        let rawSuffix = "-raw"
-                        if activeLanguage.hasSuffix(rawSuffix) {
-                            activeLanguage = String(activeLanguage.dropLast(rawSuffix.count))
-                        }
-                        if supportedTranslationLanguages.contains(activeLanguage) {
-                            ignoredLanguages = [activeLanguage]
-                        }
-                    }
-                    let systemLanguages = systemLanguageCodes()
-                    for systemLanguage in systemLanguages {
-                        if !ignoredLanguages.contains(systemLanguage) {
-                            ignoredLanguages.append(systemLanguage)
-                        }
-                    }
-                }
+                ignoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: presentationData.strings), ignoredLanguages: translationSettings.ignoredLanguages).sorted()
             } else {
                 translateChats = isPremium || true
-                if let activeLanguage = activeLanguageCode, supportedTranslationLanguages.contains(activeLanguage) {
-                    ignoredLanguages = [activeLanguage]
-                }
-                for systemLanguageCode in systemLanguageCodes() {
-                    if !ignoredLanguages.contains(systemLanguageCode) {
-                        ignoredLanguages.append(systemLanguageCode)
-                    }
-                }
+                ignoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: presentationData.strings), ignoredLanguages: nil).sorted()
             }
             
             if !localizationListState.availableOfficialLocalizations.isEmpty {

@@ -4,10 +4,10 @@ import Foundation
 public enum RGAppIconNames {
     public static let primaryName = "RGConversation"
     public static let alternateName = "RGGathering"
-    public static let alternateNames = ["RGAzure", "RGIris", "RGMint", alternateName, "RGAmber", "RGNebula", "RGJade", "RGClassic", "RGXChat"]
+    public static let alternateNames = ["RGAzure", "RGIris", "RGMint", alternateName, "RGAmber", "RGNebula", "RGJade", "RGClassic", "RGXChat", "RGTelegram"]
     public static let allNames = [primaryName] + alternateNames
 
-    private static let titleNames = [primaryName: "conversation", "RGAzure": "azure", "RGIris": "iris", "RGMint": "mint", alternateName: "gathering", "RGAmber": "amber", "RGNebula": "nebula", "RGJade": "jade", "RGClassic": "classic", "RGXChat": "xchat"]
+    private static let titleNames = [primaryName: "conversation", "RGAzure": "azure", "RGIris": "iris", "RGMint": "mint", alternateName: "gathering", "RGAmber": "amber", "RGNebula": "nebula", "RGJade": "jade", "RGClassic": "classic", "RGXChat": "xchat", "RGTelegram": "telegram"]
     public static func titleKey(_ name: String) -> String { "AppIcon.Name." + (titleNames[name] ?? "conversation") }
 
     /// UIKit represents the primary icon with nil. Retired artwork falls back to it.
@@ -28,10 +28,11 @@ public enum RGAppIconNames {
 public enum RGAppBadgeNames {
     public static let defaultName = "RGConversationBadge"
     public static let alternateName = "RGGatheringBadge"
+    public static let hiddenName = "hidden"
     public static let allNames = [defaultName, "RGAzureBadge", "RGIrisBadge", "RGMintBadge", alternateName, "RGAmberBadge", "RGNebulaBadge", "RGJadeBadge", "RegramAppBadge", "ZhiqiuAppBadge"]
 
     /// Empty preferences, removed artwork and old backups all resolve to current artwork.
     public static func canonicalName(_ name: String) -> String {
-        allNames.contains(name) ? name : defaultName
+        name == hiddenName || allNames.contains(name) ? name : defaultName
     }
 }

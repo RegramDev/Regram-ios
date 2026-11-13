@@ -49,7 +49,8 @@ public final class RGConfigurableTabBarComponent: Component {
                     switch item.content { case let .tabBarItem(value): title = value.title ?? ""; case let .customItem(value): title = value.title }
                     return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
                 }
-                let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: 72, searchActive: search.isActive, naturalItemWidths: naturalWidths))
+                let searchButtonWidth = TabBarComponent.rgHorizontalBarHeight(showItemTitles: component.showItemTitles) + 8.0
+                let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: Double(searchButtonWidth), searchActive: search.isActive, naturalItemWidths: naturalWidths))
                 let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
                 if let view = bar.view {
                     if view.superview == nil { addSubview(view) }

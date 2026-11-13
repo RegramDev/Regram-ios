@@ -265,6 +265,13 @@
 "HiddenUsers.Notice" = "这些用户和机器人的消息会在所有对话中隐藏。左滑可取消屏蔽,点击可查看资料。";
 "HiddenUsers.Empty" = "还没有屏蔽任何用户。打开用户或机器人的资料页,开启「隐藏此用户的消息」即可。";
 "MessageFilter.CopyAsKeyword" = "复制并添加到过滤器";
+"MessageFilter.Selection.Title" = "选词屏蔽";
+"MessageFilter.Selection.Add" = "添加关键词";
+"MessageFilter.Selection.Submit" = "提交";
+"MessageFilter.Selection.Original" = "原消息";
+"MessageFilter.Selection.Count" = "选中关键词（%d/%d）";
+"MessageFilter.Selection.Remove" = "移除 %@";
+"MessageFilter.Selection.TranslationFailed" = "暂时无法翻译。";
 "Repeat.WithReply" = "复读";
 "Repeat.Plain" = "无引用复读";
 "Repeat.ForwardNoQuote" = "无引用转发";
@@ -1240,6 +1247,7 @@
 
 "AppIcon.Name.nebula" = "星河";
 "AppIcon.Name.xchat" = "XChat";
+"AppIcon.Name.telegram" = "Telegram 原版";
 
 "AppBadge.Name.nebula" = "星河";
 
@@ -1252,6 +1260,7 @@
 "AppBadge.Name.regram" = "Regram";
 
 "AppBadge.Name.zhiqiu" = "知秋";
+"AppBadge.Name.hidden" = "隐藏";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隐藏因系统通知或通讯录权限关闭而显示的感叹号。未读数量及其他账号提醒保留。";
 

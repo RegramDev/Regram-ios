@@ -2164,18 +2164,25 @@ public extension TelegramEngine {
         
         // MARK: Regram — route plain-text translation in the new processing sheet to the chosen backend.
         public func composeAIMessage(text: ComposedRichMessage, mode: TelegramComposeAIMessageMode, sourceMessageId: EngineMessage.Id? = nil) -> Signal<TelegramAIComposeMessageResult, TelegramAIComposeMessageError> {
-            if case let .translate(toLanguage, _, _) = mode,
-               case let .plain(value, entities) = text,
-               RGSimpleSettings.shared.translationBackendIsExternal {
+            let request = _internal_composeAIMessage(account: self.account, text: text, mode: mode)
+            if case let .translate(toLanguage, emojify, style) = mode, case let .plain(value, entities) = text {
+                let external = RGSimpleSettings.shared.translationBackendIsExternal
+                let canFallback: Bool
+                if case .neutral = style, !emojify, toLanguage == "zh-hans" || toLanguage == "zh-hant" {
+                    canFallback = true
+                } else {
+                    canFallback = false
+                }
+                guard external || canFallback else { return request }
                 let contextSignal: Signal<[String], NoError>
-                if let sourceMessageId {
+                if external, let sourceMessageId {
                     contextSignal = self.account.postbox.transaction { transaction in
                         rgTranslationContext(transaction: transaction, messageId: sourceMessageId)
                     }
                 } else {
                     contextSignal = .single([])
                 }
-                return contextSignal
+                let externalRequest = contextSignal
                 |> castError(TelegramAIComposeMessageError.self)
                 |> mapToSignal { context in
                     rgExternalTranslateWithLinks(value, entities: entities, toLang: toLanguage, context: context)
@@ -2184,8 +2191,14 @@ public extension TelegramEngine {
                         TelegramAIComposeMessageResult(text: .plain(text: translated.0, entities: translated.1), diffRanges: [])
                     }
                 }
+                if external { return externalRequest }
+                // Some Telegram endpoints reject script-specific targets. Use the existing text fallback for plain translation.
+                return request |> `catch` { error -> Signal<TelegramAIComposeMessageResult, TelegramAIComposeMessageError> in
+                    if case .invalidLanguage = error { return externalRequest }
+                    return .fail(error)
+                }
             }
-            return _internal_composeAIMessage(account: self.account, text: text, mode: mode)
+            return request
         }
         
         public func requestAIMessageStylePreview(reference: TelegramComposeAIMessageMode.CloudStyle.Reference, index: Int) -> Signal<AIMessageStylePreview?, NoError> {

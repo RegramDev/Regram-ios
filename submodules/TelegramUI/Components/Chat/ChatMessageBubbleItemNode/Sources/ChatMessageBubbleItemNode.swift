@@ -8241,8 +8241,8 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                 Queue.mainQueue().async {
                     self.updateParentMessageIsTranslating(true)
                 }
-                // TODO(regram): pass fromLang
-                let _ = translateMessageIds(context: item.context, messageIds: [item.message.id], fromLang: nil, toLang: translateToLanguage, viaText: !item.context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal, forQuickTranslate: true).startStandalone(completed: { [weak self] in
+                let fromLanguage = recognizedTranslationLanguage(in: String(item.message.text.prefix(128)), supportedLanguages: supportedTranslationLanguages) // MARK: Regram
+                let _ = translateMessageIds(context: item.context, messageIds: [item.message.id], fromLang: fromLanguage, toLang: translateToLanguage, viaText: !item.context.isPremium || RGSimpleSettings.shared.translationBackendIsExternal, forQuickTranslate: true).startStandalone(completed: { [weak self] in
                     if let strongSelf = self, let item = strongSelf.item {
                         let _ = (item.context.account.postbox.transaction { transaction in
                             transaction.updateMessage(item.message.id, update: { currentMessage in

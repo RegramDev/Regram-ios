@@ -1,7 +1,6 @@
 // MARK: Regram
 import RGSimpleSettings
 import Foundation
-import NaturalLanguage
 import UIKit
 import SwiftSignalKit
 import Display
@@ -16,8 +15,6 @@ import TooltipComponent
 import Markdown
 import PlainButtonComponent
 import TextFieldComponent
-
-private let languageRecognizer = NLLanguageRecognizer()
 
 enum LocalizedLanguageNameKind {
     case neutral
@@ -350,16 +347,7 @@ final class TextProcessingTranslateContentComponent: Component {
                     plainText = instantPage.plainText
                 }
 
-                languageRecognizer.processString(plainText)
-                let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 3)
-                languageRecognizer.reset()
-                        
-                let filteredLanguages = hypotheses.sorted(by: { $0.value > $1.value })
-                if let first = filteredLanguages.first {
-                    component.externalState.sourceLanguage = normalizeTranslationLanguage(first.key.rawValue)
-                } else {
-                    component.externalState.sourceLanguage = "en"
-                }
+                component.externalState.sourceLanguage = recognizedTranslationLanguage(in: plainText) ?? "en" // MARK: Regram
             }
             
             self.component = component
@@ -368,32 +356,13 @@ final class TextProcessingTranslateContentComponent: Component {
             if component.externalState.result == nil {
                 switch component.mode {
                 case let .translate(ignoredLanguages):
-                    var baseLang = component.strings.baseLanguageCode
-                    let rawSuffix = "-raw"
-                    if baseLang.hasSuffix(rawSuffix) {
-                        baseLang = String(baseLang.dropLast(rawSuffix.count))
-                    }
-                    // MARK: Regram — the target language has to be normalized the same way the source
-                    // language above already is. Stripping only "-raw" leaves script/region suffixes
-                    // behind, and the Chinese packs are the ones that carry them: "zh-hans-raw" became
-                    // "zh-hans", which is in no supported-language list, so the request came back
-                    // TO_LANG_INVALID and the translation silently produced nothing. Picking a language
-                    // by hand supplied a bare "zh" and worked, which is why it only failed until then.
-                    baseLang = normalizeTranslationLanguage(baseLang)
+                    let baseLang = translationInterfaceLanguage(strings: component.strings) // MARK: Regram
                     var toLanguage = baseLang
 
                     let fromLanguage = component.externalState.sourceLanguage ?? ""
                     if toLanguage == fromLanguage {
                         if fromLanguage == "en" {
-                            var dontTranslateLanguages = Set<String>()
-                            if !ignoredLanguages.isEmpty {
-                                dontTranslateLanguages = Set(ignoredLanguages)
-                            } else {
-                                dontTranslateLanguages.insert(baseLang)
-                                for language in systemLanguageCodes() {
-                                    dontTranslateLanguages.insert(language)
-                                }
-                            }
+                            let dontTranslateLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: baseLang, ignoredLanguages: ignoredLanguages.isEmpty ? nil : ignoredLanguages)
                             toLanguage = dontTranslateLanguages.first(where: { $0 != "en" }) ?? "en"
                         } else {
                             toLanguage = "en"

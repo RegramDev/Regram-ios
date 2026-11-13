@@ -1807,17 +1807,31 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 f(.default)
                 rgImportMessageFilterRules(context: context, message: rgFilterExport.message, file: rgFilterExport.file, displayUndo: controllerInteraction.displayUndo)
             })))
-        // MARK: Regram — send the referenced message's text to the message filter. The filter
-        // screen opens with the text prefilled rather than committing it blind: a whole message
-        // body is rarely the keyword you want, so the user trims it and taps add.
-        } else if !message.rgTextContent.isEmpty, message.effectivelyIncoming(context.account.peerId) {
-            let prefill = String(message.rgTextContent.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
-            rgCollect(.addFilter, .action(ContextMenuActionItem(text: "MessageFilter.AddToFilter".i18n(chatPresentationInterfaceState.strings.baseLanguageCode), icon: { theme in
+        // MARK: Regram — select individual keywords from the complete message.
+        } else if message.effectivelyIncoming(context.account.peerId), !message.rgTextContent.isEmpty {
+            let allowsTranslation = !isCopyProtected && !message.flags.contains(.CopyProtected)
+                && !message.containsSecretMedia && message.id.peerId.namespace != Namespaces.Peer.SecretChat
+            rgCollect(.addFilter, .action(ContextMenuActionItem(text: "MessageFilter.Selection.Title".i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
                 return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Tip"), color: theme.contextMenu.primaryColor)
-            }, action: { _, f in
-                let presentationData = context.sharedContext.currentPresentationData.with { $0 }
-                controllerInteraction.navigationController()?.pushViewController(rgMessageFilterController(context: context, presentationData: presentationData, initialKeyword: prefill))
-                f(.default)
+            }, action: { controller, dismiss in
+                let presentSelection = {
+                    DispatchQueue.main.async {
+                        guard var presenter = controllerInteraction.navigationController()?.view.window?.rootViewController
+                                ?? context.sharedContext.mainWindow?.viewController?.view.window?.rootViewController else { return }
+                        while let next = presenter.presentedViewController { presenter = next }
+                        rgPresentMessageFilterKeywordSelection(from: presenter, context: context, text: message.rgTextContent, allowsTranslation: allowsTranslation, completion: { count in
+                            let presentation = context.sharedContext.currentPresentationData.with { $0 }
+                            let text = (count > 0 ? "MessageFilter.Added" : "MessageFilter.AlreadyExists").i18n(presentation.strings.rgLanguageCode)
+                            controllerInteraction.displayUndo(.info(title: nil, text: text, timeout: nil, customUndoText: nil))
+                        })
+                    }
+                }
+                if let controller {
+                    controller.dismiss(completion: presentSelection)
+                } else {
+                    dismiss(.default)
+                    presentSelection()
+                }
             })))
             // "Copy & Add to Filter" is deliberately *not* offered here: it belongs to a text
             // selection (see TextSelectionNode), because a rule built from an entire message body

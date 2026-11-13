@@ -828,12 +828,27 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
         
         if case .chatList(.root) = self.location {
+            var rgPreviousFolder = self.chatListDisplayNode.mainContainerNode.currentItemFilter // MARK: Regram
             self.chatListDisplayNode.mainContainerNode.currentItemFilterUpdated = { [weak self] filter, fraction, transition, force in
                 guard let strongSelf = self else {
                     return
                 }
                 
-                if let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View, let headerPanelsView = navigationBarView.headerPanels as? HeaderPanelContainerComponent.View, let tabsView = headerPanelsView.tabs as? HorizontalTabsComponent.View {
+                // MARK: Regram — update the selected id when the active list changes, even when layout and scroll offset are identical.
+                let foldersAtBottom = strongSelf.tabContainerData?.1 ?? false
+                if rgPreviousFolder != filter {
+                    rgPreviousFolder = filter
+                    if foldersAtBottom {
+                        strongSelf.requestLayout(transition: transition)
+                    } else {
+                        strongSelf.chatListDisplayNode.requestNavigationBarLayout(transition: ComponentTransition(transition))
+                    }
+                }
+                let navigationBarView = strongSelf.chatListDisplayNode.navigationBarView.view as? ChatListNavigationBar.View
+                let headerPanelsView = foldersAtBottom
+                    ? strongSelf.chatListDisplayNode.rgFoldersView.view as? HeaderPanelContainerComponent.View
+                    : navigationBarView?.headerPanels as? HeaderPanelContainerComponent.View
+                if let tabsView = headerPanelsView?.tabs as? HorizontalTabsComponent.View {
                     tabsView.updateTabSwitchFraction(fraction: fraction, isDragging: strongSelf.chatListDisplayNode.mainContainerNode.isSwitchingCurrentItemFilterByDragging, transition: ComponentTransition(transition))
                 }
                 // MARK: Regram

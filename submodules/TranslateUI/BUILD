@@ -5,6 +5,7 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 
 rgdeps = [
     "//Regram/RGGTranslate:RGGTranslate",
+    "//Regram/RGTranslationLangFix", # MARK: Regram
     "//Regram/RGSimpleSettings:RGSimpleSettings"
 ]
 

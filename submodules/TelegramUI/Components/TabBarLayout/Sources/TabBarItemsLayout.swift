@@ -38,9 +38,9 @@ public struct TabBarItemsLayout: Equatable {
 /// that a horizontal compact bar hugging them within `tabBarCompactFillThreshold` of `availableLength`
 /// (or beyond it) takes `availableLength`, its items sharing it equally. The widths are unused outside
 /// horizontal regular, and `availableLength` on the vertical axis.
-public func tabBarItemsLayout(axis: TabBarAxis, isCompact: Bool, unboundItemWidths: [CGFloat], availableLength: CGFloat) -> TabBarItemsLayout {
+public func tabBarItemsLayout(axis: TabBarAxis, isCompact: Bool, unboundItemWidths: [CGFloat], availableLength: CGFloat, itemThickness: CGFloat? = nil) -> TabBarItemsLayout {
     let count = unboundItemWidths.count
-    let thickness = isCompact ? tabBarCompactItemThickness : tabBarItemLength
+    let thickness = itemThickness ?? (isCompact ? tabBarCompactItemThickness : tabBarItemLength) // MARK: Regram
 
     let lengths: [CGFloat]
     if axis == .horizontal && !isCompact && count != 0 {

@@ -34,6 +34,7 @@ func getAvailableAppBadges() -> [AppBadge] {
         .init(displayName: "Jade", assetName: "RGJadeBadge"),
         .init(displayName: "Regram", assetName: "RegramAppBadge"),
         .init(displayName: "Zhiqiu", assetName: "ZhiqiuAppBadge"),
+        .init(displayName: "Hidden", assetName: RGAppBadgeNames.hiddenName),
     ]
 }
     
@@ -140,7 +141,8 @@ struct AppBadgeSettingsView: View {
     }
 
     private func artwork(_ name: String) -> UIImage? {
-        UIImage(named: name, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: self.colorScheme == .dark ? .dark : .light))
+        guard name != RGAppBadgeNames.hiddenName else { return nil }
+        return UIImage(named: name, in: getAppBundle(), compatibleWith: UITraitCollection(userInterfaceStyle: self.colorScheme == .dark ? .dark : .light))
     }
 
     private var accentColor: Color {

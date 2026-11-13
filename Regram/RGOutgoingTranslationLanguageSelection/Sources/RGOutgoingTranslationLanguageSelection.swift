@@ -86,7 +86,7 @@ private func rgOutgoingTranslationLanguageSelectionEntries(theme: PresentationTh
     for code in popularTranslationLanguages {
         addLanguage(code)
     }
-    for code in supportedTranslationLanguages + ["zh-hans", "zh-hant"] {
+    for code in supportedTranslationLanguages {
         addLanguage(code)
     }
     return entries

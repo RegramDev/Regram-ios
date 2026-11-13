@@ -5,11 +5,13 @@ import SwiftSignalKit
 import AccountContext
 import NaturalLanguage
 import TelegramCore
+import TelegramPresentationData // MARK: Regram
 import SwiftUI
 import Translation
 import Combine
 import RGGTranslate
 import RGSimpleSettings
+import RGTranslationLangFix // MARK: Regram
 
 // Incuding at least one Objective-C class in a swift file ensures that it doesn't get stripped by the linker
 private final class LinkHelperClass: NSObject {
@@ -30,6 +32,8 @@ public var supportedTranslationLanguages = [
     "ca",
     "ceb",
     "zh",
+    "zh-hans", // MARK: Regram
+    "zh-hant",
     "co",
     "hr",
     "cs",
@@ -143,51 +147,74 @@ public var popularTranslationLanguages = [
 
 @available(iOS 12.0, *)
 private let languageRecognizer = NLLanguageRecognizer()
+private let languageRecognizerLock = NSLock() // MARK: Regram
 
 public func effectiveIgnoredTranslationLanguages(context: AccountContext, ignoredLanguages: [String]?) -> Set<String> {
-    var baseLang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
-    let rawSuffix = "-raw"
-    if baseLang.hasSuffix(rawSuffix) {
-        baseLang = String(baseLang.dropLast(rawSuffix.count))
-    }
-    // MARK: Regram — this set is matched against codes that have been through
-    // normalizeTranslationLanguage, so it has to hold the normalized form too. Unnormalized,
-    // "zh-hans" never matched a detected "zh" and the app offered to translate Chinese text into
-    // Chinese. It only stayed hidden while the device language happened to match the app language,
-    // because systemLanguageCodes() below already strips the suffix.
-    baseLang = normalizeTranslationLanguage(baseLang)
+    let strings = context.sharedContext.currentPresentationData.with { $0 }.strings
+    return effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: strings), ignoredLanguages: ignoredLanguages)
+}
 
-    var dontTranslateLanguages = Set<String>()
-    if let ignoredLanguages = ignoredLanguages {
-        dontTranslateLanguages = Set(ignoredLanguages)
-    } else {
-        dontTranslateLanguages.insert(baseLang)
-        for language in systemLanguageCodes() {
-            dontTranslateLanguages.insert(language)
+// MARK: Regram — keep Chinese scripts distinct in detection, preferences and target selection.
+public func translationInterfaceLanguage(strings: PresentationStrings) -> String {
+    return rgChineseTranslationScript(strings.primaryComponent.languageCode) ?? normalizeTranslationTargetLanguage(strings.baseLanguageCode)
+}
+
+public func effectiveIgnoredTranslationLanguages(interfaceLanguage: String, ignoredLanguages: [String]?) -> Set<String> {
+    let baseLanguage = normalizeTranslationTargetLanguage(interfaceLanguage)
+    let baseIsChinese = baseLanguage == "zh-hans" || baseLanguage == "zh-hant"
+    if let ignoredLanguages {
+        return Set(ignoredLanguages.map {
+            let language = normalizeTranslationLanguage($0)
+            // Older versions stored the interface's Chinese script as plain "zh".
+            return language == "zh" && baseIsChinese ? baseLanguage : language
+        })
+    }
+    var result: Set<String> = [baseLanguage]
+    for language in systemLanguageCodes() {
+        if !baseIsChinese || !language.hasPrefix("zh") {
+            result.insert(language)
         }
     }
-    return dontTranslateLanguages
+    return result
+}
+
+func isIgnoredTranslationLanguage(_ language: String, ignoredLanguages: Set<String>) -> Bool {
+    if ignoredLanguages.contains(language) { return true }
+    switch language {
+    case "zh-hans", "zh-hant":
+        return ignoredLanguages.contains("zh")
+    case "zh":
+        return ignoredLanguages.contains("zh-hans") || ignoredLanguages.contains("zh-hant")
+    default:
+        return false
+    }
 }
 
 public func normalizeTranslationLanguage(_ code: String) -> String {
-    var code = code
-    if code.contains("-") {
-        code = code.components(separatedBy: "-").first ?? code
-    }
-    if code == "nb" {
-        code = "no"
-    }
-    return code
+    // MARK: Regram — NaturalLanguage and language packs use both script and region identifiers.
+    if let script = rgChineseTranslationScript(code) { return script }
+    let components = code.replacingOccurrences(of: "_", with: "-").split(separator: "-")
+    guard let language = components.first?.lowercased() else { return "" }
+    return language == "nb" ? "no" : String(language)
 }
 
-/// Target selection is separate from source recognition and the ignored-language set. Both
-/// Chinese scripts still compare as "zh" for button availability, while Google needs the script
-/// for its request and translated-message cache. Telegram and system targets keep their codes.
 public func normalizeTranslationTargetLanguage(_ code: String) -> String {
-    if RGSimpleSettings.shared.translationBackendIsExternal, getGTranslateLang(code) == "zh-TW" {
-        return "zh-hant"
-    }
-    return normalizeTranslationLanguage(code)
+    let language = normalizeTranslationLanguage(code)
+    return language == "zh" ? "zh-hans" : language
+}
+
+@available(iOS 12.0, *)
+public func recognizedTranslationLanguage(in text: String, supportedLanguages: [String]? = nil) -> String? {
+    languageRecognizerLock.lock()
+    languageRecognizer.processString(text)
+    let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 4)
+    languageRecognizer.reset()
+    languageRecognizerLock.unlock()
+
+    return hypotheses
+        .sorted(by: { $0.value > $1.value })
+        .lazy.map { normalizeTranslationLanguage($0.key.rawValue) }
+        .first(where: { supportedLanguages?.contains($0) ?? true })
 }
 
 public func canTranslateChats(context: AccountContext) -> Bool {
@@ -234,20 +261,13 @@ public func canTranslateText(context: AccountContext, text: String, showTranslat
                 
         let dontTranslateLanguages = effectiveIgnoredTranslationLanguages(context: context, ignoredLanguages: ignoredLanguages)
         
-        let text = String(text.prefix(64))
-        languageRecognizer.processString(text)
-        let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 3)
-        languageRecognizer.reset()
-        
         var supportedTranslationLanguages = supportedTranslationLanguages
         if !showTranslate && showTranslateIfTopical {
             supportedTranslationLanguages = ["uk", "ru"]
         }
                 
-        let filteredLanguages = hypotheses.filter { supportedTranslationLanguages.contains(normalizeTranslationLanguage($0.key.rawValue)) }.sorted(by: { $0.value > $1.value })
-        if let language = filteredLanguages.first {
-            let languageCode = normalizeTranslationLanguage(language.key.rawValue)
-            return (!dontTranslateLanguages.contains(languageCode), languageCode)
+        if let language = recognizedTranslationLanguage(in: String(text.prefix(128)), supportedLanguages: supportedTranslationLanguages) {
+            return (!isIgnoredTranslationLanguage(language, ignoredLanguages: dontTranslateLanguages), language)
         } else {
             return (false, nil)
         }
@@ -259,8 +279,7 @@ public func canTranslateText(context: AccountContext, text: String, showTranslat
 public func systemLanguageCodes() -> [String] {
     var languages: [String] = []
     for language in Locale.preferredLanguages.prefix(2) {
-        let language = language.components(separatedBy: "-").first ?? language
-        languages.append(language)
+        languages.append(normalizeTranslationLanguage(language)) // MARK: Regram
     }
     if languages.count == 2 && languages != ["en", "ru"] {
         languages = Array(languages.prefix(1))
@@ -296,7 +315,8 @@ private struct TranslationViewImpl: View {
             }
             
             if let firstTaskLanguagePair {
-                if let configuration = self.configuration, configuration.source?.languageCode?.identifier == firstTaskLanguagePair.0, configuration.target?.languageCode?.identifier == firstTaskLanguagePair.1 {
+                // MARK: Regram — the script is part of an Apple Translation session's identity.
+                if let configuration = self.configuration, configuration.source == Locale.Language(identifier: firstTaskLanguagePair.0), configuration.target == Locale.Language(identifier: firstTaskLanguagePair.1) {
                     self.configuration?.invalidate()
                 } else {
                     self.configuration = .init(
@@ -353,7 +373,7 @@ private struct TranslationViewImpl: View {
             }
             
             if let firstTaskLanguagePair {
-                if let configuration = self.configuration, configuration.source?.languageCode?.identifier == firstTaskLanguagePair.0, configuration.target?.languageCode?.identifier == firstTaskLanguagePair.1 {
+                if let configuration = self.configuration, configuration.source == Locale.Language(identifier: firstTaskLanguagePair.0), configuration.target == Locale.Language(identifier: firstTaskLanguagePair.1) {
                     self.configuration?.invalidate()
                 } else {
                     self.configuration = .init(
@@ -463,25 +483,17 @@ func alternativeTranslateText(text: String, fromLang: String?, toLang: String) -
             if let fromLang {
                 effectiveFromLang = fromLang
             } else {
-                languageRecognizer.processString(text)
-                let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 3)
-                languageRecognizer.reset()
-                
-                let filteredLanguages = hypotheses.filter { supportedTranslationLanguages.contains(normalizeTranslationLanguage($0.key.rawValue)) }.sorted(by: { $0.value > $1.value })
-                if let language = filteredLanguages.first {
-                    let languageCode = normalizeTranslationLanguage(language.key.rawValue)
-                    effectiveFromLang = languageCode
-                } else {
-                    effectiveFromLang = "en"
-                }
+                effectiveFromLang = recognizedTranslationLanguage(in: text, supportedLanguages: supportedTranslationLanguages) ?? "en"
             }
+            let source = effectiveFromLang.hasPrefix("zh") ? getGTranslateLang(effectiveFromLang) : effectiveFromLang
+            let target = toLang.hasPrefix("zh") ? getGTranslateLang(toLang) : toLang
             
             var uri = "https://translate.goo"
             uri += "gleapis.com/transl"
             uri += "ate_a"
             uri += "/singl"
-            uri += "e?client=gtx&sl=\(effectiveFromLang.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-            uri += "&tl=\(toLang.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            uri += "e?client=gtx&sl=\(source.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+            uri += "&tl=\(target.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
             uri += "&dt=t&ie=UTF-8&oe=UTF-8&otf=1&ssel=0&tsel=0&kc=7&dt=at&dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&q="
             uri += text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             

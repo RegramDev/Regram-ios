@@ -77,27 +77,6 @@ final class MessageFilterEditingState: NSObject, ObservableObject {
 }
 
 @available(iOS 13.0, *)
-struct MessageFilterKeywordInputFieldModifier: ViewModifier {
-    @Binding var newKeyword: String
-    let onAdd: () -> Void
-
-    func body(content: Content) -> some View {
-        if #available(iOS 15.0, *) {
-            content
-                .submitLabel(.return)
-                .submitScope(false) // TODO(regram): Keyboard still closing
-                .interactiveDismissDisabled()
-                .onSubmit {
-                    onAdd()
-                }
-        } else {
-            content
-        }
-    }
-}
-
-
-@available(iOS 13.0, *)
 struct MessageFilterKeywordInputView: View {
     @Environment(\.rgSettingsColors) private var colors
     @Environment(\.lang) var lang: String
@@ -119,21 +98,31 @@ struct MessageFilterKeywordInputView: View {
     }
 
     var body: some View {
-        HStack {
-            TextField(isRegex ? "MessageFilter.InputPlaceholderRegex".i18n(lang) : "MessageFilter.InputPlaceholder".i18n(lang), text: $newKeyword)
-                .autocorrectionDisabled(true)
-                .autocapitalization(.none)
-                .keyboardType(.default)
-                .modifier(MessageFilterKeywordInputFieldModifier(newKeyword: $newKeyword, onAdd: onAdd))
-
+        let placeholder = (isRegex ? "MessageFilter.InputPlaceholderRegex" : "MessageFilter.InputPlaceholder").i18n(lang)
+        HStack(alignment: .top, spacing: 8) {
+            ZStack(alignment: .topLeading) {
+                RGSettingsTextEditor(text: $newKeyword, autocorrection: false)
+                    .frame(height: 112)
+                    .accessibilityLabel(placeholder)
+                if newKeyword.isEmpty {
+                    Text(placeholder)
+                        .foregroundColor(colors.secondary)
+                        .padding(.leading, 5)
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
 
             Button(action: onAdd) {
                 Image(systemName: "plus.circle.fill")
                     .foregroundColor(canAdd ? colors.accent : colors.secondary)
                     .imageScale(.large)
+                    .frame(width: 44, height: 44)
             }
             .disabled(!canAdd)
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel("MessageFilter.Selection.Add".i18n(lang))
         }
     }
 }

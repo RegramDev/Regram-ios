@@ -222,17 +222,18 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                         // against the raw peer id.
                         let canEditFolderMembership = peerId.namespace != Namespaces.Peer.SecretChat
 
-                        var hasRemoveFromFolder = false
+                        var currentFolderId: Int32? // MARK: Regram
                         if canEditFolderMembership, case let .chatList(currentFilter) = source {
-                            if let currentFilter = currentFilter, case let .filter(id, title, emoticon, data) = currentFilter {
+                            if let currentFilter = currentFilter, case let .filter(id, title, _, _) = currentFilter {
+                                currentFolderId = id
                                 items.append(.action(ContextMenuActionItem(text: strings.ChatList_Context_RemoveFromFolder, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/RemoveFromFolder"), color: theme.contextMenu.primaryColor) }, action: { c, _ in
                                     let _ = (context.engine.peers.updateChatListFiltersInteractively { filters in
                                         var filters = filters
                                         for i in 0 ..< filters.count {
-                                            if filters[i].id == currentFilter.id {
+                                            if case let .filter(filterId, filterTitle, emoticon, data) = filters[i], filterId == id {
                                                 var updatedData = data
                                                 let _ = updatedData.addExcludePeer(peerId: peer.id)
-                                                filters[i] = .filter(id: id, title: title, emoticon: emoticon, data: updatedData)
+                                                filters[i] = .filter(id: filterId, title: filterTitle, emoticon: emoticon, data: updatedData)
                                                 break
                                             }
                                         }
@@ -246,27 +247,22 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                         })
                                     })
                                 })))
-                                hasRemoveFromFolder = true
                             }
                         }
                         
-                        if canEditFolderMembership && !hasRemoveFromFolder && peerGroup != nil {
-                            var hasFolders = false
-                            
-                            for case let .filter(_, _, _, data) in filters {
+                        // MARK: Regram — a chat can be added to another folder from its current one.
+                        if canEditFolderMembership, let peerGroup {
+                            let destinations = filters.filter { filter in
+                                guard case let .filter(id, _, _, data) = filter, id != currentFolderId else { return false }
                                 let predicate = chatListFilterPredicate(filter: data, accountPeerId: context.account.peerId)
-                                if predicate.includes(peer: peer._asPeer(), groupId: .root, isRemovedFromTotalUnreadCount: isMuted, isUnread: isUnread, isContact: isContact, messageTagSummaryResult: false) {
-                                    continue
+                                if predicate.includes(peer: peer._asPeer(), groupId: peerGroup._asGroup(), isRemovedFromTotalUnreadCount: isMuted, isUnread: isUnread, isContact: isContact, messageTagSummaryResult: false) {
+                                    return false
                                 }
-                                
-                                var data = data
-                                if data.addIncludePeer(peerId: peer.id) {
-                                    hasFolders = true
-                                    break
-                                }
+                                var updatedData = data
+                                return updatedData.addIncludePeer(peerId: peer.id)
                             }
                             
-                            if hasFolders {
+                            if !destinations.isEmpty {
                                 items.append(.action(ContextMenuActionItem(text: strings.ChatList_Context_AddToFolder, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Folder"), color: theme.contextMenu.primaryColor) }, action: { c, _ in
                                     var updatedItems: [ContextMenuItem] = []
                                     
@@ -277,18 +273,8 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                     })))
                                     updatedItems.append(.separator)
                                     
-                                    for filter in filters {
+                                    for filter in destinations {
                                         if case let .filter(_, title, _, data) = filter {
-                                            let predicate = chatListFilterPredicate(filter: data, accountPeerId: context.account.peerId)
-                                            if predicate.includes(peer: peer._asPeer(), groupId: .root, isRemovedFromTotalUnreadCount: isMuted, isUnread: isUnread, isContact: isContact, messageTagSummaryResult: false) {
-                                                continue
-                                            }
-                                            
-                                            var data = data
-                                            if !data.addIncludePeer(peerId: peer.id) {
-                                                continue
-                                            }
-                                            
                                             let filterType = chatListFilterType(data)
                                             updatedItems.append(.action(ContextMenuActionItem(text: title.text, entities: title.entities, enableEntityAnimations: title.enableAnimations, icon: { theme in
                                                 let imageName: String
@@ -319,7 +305,7 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                                     let limit = limits.maxFolderChatsCount
                                                     let premiumLimit = premiumLimits.maxFolderChatsCount
                                                     
-                                                    let count = data.includePeers.peers.count - 1
+                                                    let count = data.includePeers.peers.count
                                                     if count >= premiumLimit {
                                                         let controller = PremiumLimitScreen(context: context, subject: .chatsPerFolder, count: Int32(count), action: {
                                                             return true
@@ -343,20 +329,23 @@ func chatContextMenuItems(context: AccountContext, peerId: EnginePeer.Id, promoI
                                                     let _ = (context.engine.peers.updateChatListFiltersInteractively { filters in
                                                         var filters = filters
                                                         for i in 0 ..< filters.count {
-                                                            if filters[i].id == filter.id {
-                                                                if case let .filter(id, title, emoticon, data) = filter {
-                                                                    var updatedData = data
-                                                                    let _ = updatedData.addIncludePeer(peerId: peer.id)
-                                                                    filters[i] = .filter(id: id, title: title, emoticon: emoticon, data: updatedData)
-                                                                }
-                                                                break
+                                                            guard case let .filter(id, title, emoticon, data) = filters[i], id == filter.id else { continue }
+                                                            var updatedData = data
+                                                            if updatedData.includePeers.peers.count < (isPremium ? premiumLimit : limit),
+                                                               updatedData.addIncludePeer(peerId: peer.id) {
+                                                                filters[i] = .filter(id: id, title: title, emoticon: emoticon, data: updatedData)
                                                             }
+                                                            break
                                                         }
                                                         return filters
-                                                    }).startStandalone()
-                                                    chatListController?.present(UndoOverlayController(presentationData: presentationData, content: .chatAddedToFolder(context: context, chatTitle: peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder), folderTitle: title.rawAttributedString), elevatedLayout: false, animateInAsReplacement: true, action: { _ in
-                                                        return false
-                                                    }), in: .current)
+                                                    } |> deliverOnMainQueue).startStandalone(next: { filters in
+                                                        guard let updated = filters.first(where: { $0.id == filter.id }),
+                                                              case let .filter(_, updatedTitle, _, updatedData) = updated,
+                                                              updatedData.includePeers.peers.contains(peer.id) || updatedData.includePeers.pinnedPeers.contains(peer.id) else { return }
+                                                        chatListController?.present(UndoOverlayController(presentationData: presentationData, content: .chatAddedToFolder(context: context, chatTitle: peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder), folderTitle: updatedTitle.rawAttributedString), elevatedLayout: false, animateInAsReplacement: true, action: { _ in
+                                                            return false
+                                                        }), in: .current)
+                                                    })
                                                 })
                                             })))
                                         }

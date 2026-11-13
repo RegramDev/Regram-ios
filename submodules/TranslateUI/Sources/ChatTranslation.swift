@@ -1,18 +1,21 @@
 import TextFormat
 import Foundation
-import NaturalLanguage
 import SwiftSignalKit
 import TelegramCore
 import AccountContext
 import TelegramUIPreferences
 
 public struct ChatTranslationState: Codable, Equatable {
+    // MARK: Regram — old recognizer results collapsed both Chinese scripts.
+    fileprivate static let currentDetectionVersion: Int32 = 1
+
     enum CodingKeys: String, CodingKey {
         case baseLang
         case fromLang
         case timestamp
         case toLang
         case isEnabled
+        case detectionVersion
     }
     
     public let baseLang: String
@@ -20,6 +23,7 @@ public struct ChatTranslationState: Codable, Equatable {
     public let timestamp: Int32?
     public let toLang: String?
     public let isEnabled: Bool
+    fileprivate let detectionVersion: Int32
     
     public init(
         baseLang: String,
@@ -28,11 +32,23 @@ public struct ChatTranslationState: Codable, Equatable {
         toLang: String?,
         isEnabled: Bool
     ) {
+        self.init(baseLang: baseLang, fromLang: fromLang, timestamp: timestamp, toLang: toLang, isEnabled: isEnabled, detectionVersion: Self.currentDetectionVersion)
+    }
+
+    private init(
+        baseLang: String,
+        fromLang: String,
+        timestamp: Int32?,
+        toLang: String?,
+        isEnabled: Bool,
+        detectionVersion: Int32
+    ) {
         self.baseLang = baseLang
         self.fromLang = fromLang
         self.timestamp = timestamp
         self.toLang = toLang
         self.isEnabled = isEnabled
+        self.detectionVersion = detectionVersion
     }
     
     public init(from decoder: Decoder) throws {
@@ -43,6 +59,7 @@ public struct ChatTranslationState: Codable, Equatable {
         self.timestamp = try container.decodeIfPresent(Int32.self, forKey: .timestamp)
         self.toLang = try container.decodeIfPresent(String.self, forKey: .toLang)
         self.isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        self.detectionVersion = try container.decodeIfPresent(Int32.self, forKey: .detectionVersion) ?? 0
     }
     
     public func encode(to encoder: Encoder) throws {
@@ -53,6 +70,7 @@ public struct ChatTranslationState: Codable, Equatable {
         try container.encodeIfPresent(self.timestamp, forKey: .timestamp)
         try container.encodeIfPresent(self.toLang, forKey: .toLang)
         try container.encode(self.isEnabled, forKey: .isEnabled)
+        try container.encode(self.detectionVersion, forKey: .detectionVersion)
     }
 
     public func withFromLang(_ fromLang: String) -> ChatTranslationState {
@@ -61,7 +79,8 @@ public struct ChatTranslationState: Codable, Equatable {
             fromLang: fromLang,
             timestamp: self.timestamp,
             toLang: self.toLang,
-            isEnabled: self.isEnabled
+            isEnabled: self.isEnabled,
+            detectionVersion: self.detectionVersion
         )
     }
     public func withToLang(_ toLang: String?) -> ChatTranslationState {
@@ -70,7 +89,8 @@ public struct ChatTranslationState: Codable, Equatable {
             fromLang: self.fromLang,
             timestamp: self.timestamp,
             toLang: toLang,
-            isEnabled: self.isEnabled
+            isEnabled: self.isEnabled,
+            detectionVersion: self.detectionVersion
         )
     }
     
@@ -80,7 +100,8 @@ public struct ChatTranslationState: Codable, Equatable {
             fromLang: self.fromLang,
             timestamp: self.timestamp,
             toLang: self.toLang,
-            isEnabled: isEnabled
+            isEnabled: isEnabled,
+            detectionVersion: self.detectionVersion
         )
     }
 }
@@ -153,7 +174,7 @@ public func effectiveChatTranslationState(_ locationState: ChatTranslationState,
     guard let peerChoice else {
         return locationState
     }
-    let toLang = normalizeTranslationLanguage(peerChoice.toLang ?? locationState.baseLang)
+    let toLang = normalizeTranslationTargetLanguage(peerChoice.toLang ?? locationState.baseLang) // MARK: Regram
     if toLang == normalizeTranslationLanguage(locationState.fromLang) {
         return locationState.withToLang(nil).withIsEnabled(false)
     }
@@ -243,9 +264,6 @@ public func updateChatTranslationStateInteractively(engine: TelegramEngine, peer
 }
 
 
-@available(iOS 12.0, *)
-private let languageRecognizer = NLLanguageRecognizer()
-
 public func translateMessageIds(context: AccountContext, messageIds: [EngineMessage.Id], fromLang: String?, toLang: String, viaText: Bool = false, forQuickTranslate: Bool = false) -> Signal<Never, NoError> {
     return context.account.postbox.transaction { transaction -> Signal<Never, NoError> in
         var messageDictToTranslate: [EngineMessage.Id: String] = [:]
@@ -321,7 +339,8 @@ public func translateMessageIds(context: AccountContext, messageIds: [EngineMess
         default:
             break
         }
-        if viaText {
+        // MARK: Regram — when Apple translation has both languages, use it before any text fallback.
+        if viaText && (!enableLocalIfPossible || fromLang == nil) {
         return context.engine.messages.translateMessagesViaText(messagesDict: messageDictToTranslate, fromLang: fromLang, toLang: toLang, generateEntitiesFunction: { text in
             generateTextEntities(text, enabledTypes: .all)
         }, enableLocalIfPossible: enableLocalIfPossible) //context.sharedContext.immediateExperimentalUISettings.enableLocalTranslation)
@@ -376,11 +395,7 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
     let loggingEnabled = context.sharedContext.immediateExperimentalUISettings.logLanguageRecognition
     
     if #available(iOS 12.0, *) {
-        var baseLang = context.sharedContext.currentPresentationData.with { $0 }.strings.baseLanguageCode
-        let rawSuffix = "-raw"
-        if baseLang.hasSuffix(rawSuffix) {
-            baseLang = String(baseLang.dropLast(rawSuffix.count))
-        }
+        let baseLang = translationInterfaceLanguage(strings: context.sharedContext.currentPresentationData.with { $0 }.strings) // MARK: Regram
 
         return combineLatest(
             context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.translationSettings])
@@ -394,21 +409,15 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                 return .single(nil)
             }
             
-            var dontTranslateLanguages = Set<String>()
-            if let ignoredLanguages = settings.ignoredLanguages {
-                dontTranslateLanguages = Set(ignoredLanguages)
-            } else {
-                dontTranslateLanguages.insert(baseLang)
-                for language in systemLanguageCodes() {
-                    dontTranslateLanguages.insert(language)
-                }
-            }
+            let dontTranslateLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: baseLang, ignoredLanguages: settings.ignoredLanguages) // MARK: Regram
             
             return cachedChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId)
             |> mapToSignal { cached in
                 let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
-                if let cached, let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
-                    if !dontTranslateLanguages.contains(cached.fromLang) || forcePredict {
+                // MARK: Regram — re-detect older cached Chinese verdicts that lost the script.
+                if let cached, cached.fromLang != "zh" || cached.detectionVersion == ChatTranslationState.currentDetectionVersion,
+                   let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
+                    if !isIgnoredTranslationLanguage(cached.fromLang, ignoredLanguages: dontTranslateLanguages) || forcePredict {
                         return .single(cached)
                     } else {
                         return .single(nil)
@@ -431,8 +440,8 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                             var count = 0
                             for message in messages {
                                 if message.effectivelyIncoming(context.account.peerId), message.text.count >= 10 {
-                                    if let summaryAttribute = message.attributes.first(where: { $0 is SummarizationMessageAttribute }) as? SummarizationMessageAttribute, !summaryAttribute.fromLang.isEmpty {
-                                        let fromLang = normalizeTranslationLanguage(summaryAttribute.fromLang)
+                                    let summaryLanguage = (message.attributes.first(where: { $0 is SummarizationMessageAttribute }) as? SummarizationMessageAttribute).map { normalizeTranslationLanguage($0.fromLang) }
+                                    if let fromLang = summaryLanguage, !fromLang.isEmpty, fromLang != "zh" { // MARK: Regram
                                         if supportedTranslationLanguages.contains(fromLang) {
                                             fromLangs[fromLang] = (fromLangs[fromLang] ?? 0) + message.text.count
                                             count += 1
@@ -466,16 +475,10 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                                             continue
                                         }
                                         
-                                        languageRecognizer.processString(text)
-                                        let hypotheses = languageRecognizer.languageHypotheses(withMaximum: 4)
-                                        languageRecognizer.reset()
-                                        
-                                        let filteredLanguages = hypotheses.filter { supportedTranslationLanguages.contains(normalizeTranslationLanguage($0.key.rawValue)) }.sorted(by: { $0.value > $1.value })
-                                        if let language = filteredLanguages.first {
-                                            let fromLang = normalizeTranslationLanguage(language.key.rawValue)
-                                            if loggingEnabled && !["en", "ru"].contains(fromLang) && !dontTranslateLanguages.contains(fromLang) {
+                                        if let fromLang = recognizedTranslationLanguage(in: text, supportedLanguages: supportedTranslationLanguages) { // MARK: Regram
+                                            if loggingEnabled && !["en", "ru"].contains(fromLang) && !isIgnoredTranslationLanguage(fromLang, ignoredLanguages: dontTranslateLanguages) {
                                                 Logger.shared.log("ChatTranslation", "\(text)")
-                                                Logger.shared.log("ChatTranslation", "Recognized as: \(fromLang), other hypotheses: \(hypotheses.map { $0.key.rawValue }.joined(separator: ",")) ")
+                                                Logger.shared.log("ChatTranslation", "Recognized as: \(fromLang)")
                                             }
                                             fromLangs[fromLang] = (fromLangs[fromLang] ?? 0) + message.text.count
                                             count += 1
@@ -519,7 +522,7 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                                 isEnabled: isEnabled
                             )
                             let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId, state: state).start()
-                            if !dontTranslateLanguages.contains(fromLang) || forcePredict {
+                            if !isIgnoredTranslationLanguage(fromLang, ignoredLanguages: dontTranslateLanguages) || forcePredict {
                                 return state
                             } else {
                                 return nil

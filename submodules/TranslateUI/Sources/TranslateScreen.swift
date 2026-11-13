@@ -43,18 +43,20 @@ public func presentTranslateScreen(
 }
 
 private func presentSystemTranslateScreen(context: AccountContext, text: String) {
-    if #available(iOS 18.0, *), let rootViewController = context.sharedContext.mainWindow?.viewController?.view.window?.rootViewController {
+    if #available(iOS 18.0, *), var presenter = context.sharedContext.mainWindow?.viewController?.view.window?.rootViewController {
+        // MARK: Regram — selected text can come from a sheet presented over the chat.
+        while let next = presenter.presentedViewController { presenter = next }
         var dismissImpl: (() -> Void)?
-        let pickerView = TranslateScreenHostingView(text: text, completionHandler: { [weak rootViewController] in
+        let pickerView = TranslateScreenHostingView(text: text, completionHandler: { [weak presenter] in
             DispatchQueue.main.async(execute: {
-                guard let presentedController = rootViewController?.presentedViewController, presentedController.isBeingDismissed == false else { return }
+                guard let presentedController = presenter?.presentedViewController, presentedController.isBeingDismissed == false else { return }
                 dismissImpl?()
             })
         })
         let hostingController = UIHostingController(rootView: pickerView)
         hostingController.view.isHidden = true
         hostingController.modalPresentationStyle = .overCurrentContext
-        rootViewController.present(hostingController, animated: true)
+        presenter.present(hostingController, animated: true)
         dismissImpl = { [weak hostingController] in
             Queue.mainQueue().after(0.4, {
                 hostingController?.dismiss(animated: false)
