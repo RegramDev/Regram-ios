@@ -1,6 +1,6 @@
 # Regram 功能清单
 
-本文以 **13.2 / b34649** 为基础，包含当前待构建的聊天与外观改动。功能概要见[中文 README](../README.md)／[English README](../README.en.md)，已发布版本见[近期更新记录](changelog.md)。
+本文按 **13.2 / b34651** 整理当前功能和入口。功能概要见[中文 README](../README.md)／[English README](../README.en.md)，逐版改动见[近期更新记录](changelog.md)。
 
 ## 设置与导航
 
