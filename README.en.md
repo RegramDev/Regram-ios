@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.2 / b34651** adds the original Telegram app icon and a screenshot badge switch, and improves Chinese translation, message filtering, and chat folder actions. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34651) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
+**13.2 / b34652** fixes a profile crash and the selected chat folder highlight on older iOS versions. It adds two tab bar heights, optional dimming for revoked messages, and scrolling to the latest message after repeating. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34652) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 
