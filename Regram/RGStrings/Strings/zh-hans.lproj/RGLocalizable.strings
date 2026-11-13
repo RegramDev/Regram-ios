@@ -777,6 +777,8 @@
 "RG.BottomBarLayout.SearchStyle.BarDisabled" = "聊天和设置保持显示，搜索使用独立按钮。";
 "RG.BottomBarLayout.EmptyBottom" = "所有按钮均隐藏";
 "RG.BottomBarLayout.ShowLabels" = "显示标签文字";
+"RG.BottomBarLayout.Height" = "底栏高度";
+"RG.BottomBarLayout.Height.Value" = "%d 点";
 "RG.BottomBarLayout.ButtonWidth" = "底栏按钮宽度";
 "RG.BottomBarLayout.Width" = "底栏宽度";
 "RG.BottomBarLayout.Width.full" = "占满";
@@ -1005,6 +1007,7 @@
 "RevokedMarker.Style.none" = "不显示";
 "RevokedMarker.Text" = "标记文字";
 "RevokedMarker.DefaultText" = "已撤回";
+"RevokedMarker.DimMessages" = "半透明显示已撤回消息";
 "RevokedMarker.Color" = "标记颜色";
 "RevokedMarker.InvalidColor" = "请输入 #RRGGBB，留空使用时间文字的颜色。";
 "RevokedMarker.Preview" = "预览";
@@ -1214,7 +1217,7 @@
 "Settings.Editor.messageFilter.Description" = "关键词、正则与会话范围";
 "Settings.Editor.networkPolicy.Description" = "DNS 解析、IP 策略与代理连接";
 "Settings.Editor.diagnostics.Description" = "数据中心连接、解析与传输诊断";
-"Settings.Editor.bottomBarLayout.Description" = "显示项目、顺序、标签与宽度";
+"Settings.Editor.bottomBarLayout.Description" = "显示项目、顺序、标签、高度和宽度";
 "Settings.Editor.llmTranslationSettings.Description" = "接口地址、模型、密钥与提示词";
 "Settings.Editor.contextMenuOrder.Description" = "显示项目、拖动排序与分组";
 

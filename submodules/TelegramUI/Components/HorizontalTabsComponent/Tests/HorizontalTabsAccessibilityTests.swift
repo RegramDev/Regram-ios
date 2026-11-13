@@ -40,6 +40,37 @@ final class HorizontalTabsAccessibilityTests: XCTestCase {
             XCTAssertFalse(view.isAccessibilityElement)
         }
     }
+
+    // MARK: Regram — the resting fill is ordinary UIKit content outside the lens.
+    func testFolderFillFollowsTheSelectionAndClears() throws {
+        let host = ComponentView<Empty>()
+        let tabs = ["All", "Forums", "Unread"].enumerated().map { index, title in
+            HorizontalTabsComponent.Tab(id: AnyHashable(index), content: .title(.init(text: title, entities: [], enableAnimations: false)), badge: nil, action: {})
+        }
+        func update(_ selectedIndex: Int?, dark: Bool, showsFill: Bool = true) throws -> HorizontalTabsComponent.View {
+            _ = host.update(
+                transition: .immediate,
+                component: AnyComponent(HorizontalTabsComponent(context: nil, theme: dark ? defaultDarkPresentationTheme : defaultPresentationTheme, tabs: tabs, selectedTab: selectedIndex.map(AnyHashable.init), isEditing: false, showsRestingSelectionFill: showsFill)),
+                environment: {},
+                containerSize: CGSize(width: 370.0, height: 44.0)
+            )
+            return try XCTUnwrap(host.view as? HorizontalTabsComponent.View)
+        }
+        let view = try update(0, dark: false)
+        let clip = try XCTUnwrap(view.subviews.first(where: { $0.clipsToBounds && $0.isUserInteractionEnabled == false }))
+        let fill = try XCTUnwrap(clip.subviews.first)
+        XCTAssertEqual(fill.alpha, 1.0)
+        XCTAssertEqual(fill.backgroundColor, UIColor(white: 0.0, alpha: 0.08))
+        XCTAssertGreaterThan(fill.frame.width, 0.0)
+        let firstFrame = fill.frame
+        _ = try update(2, dark: true)
+        XCTAssertGreaterThan(fill.frame.midX, firstFrame.midX)
+        XCTAssertEqual(fill.backgroundColor, UIColor(white: 1.0, alpha: 0.10))
+        _ = try update(nil, dark: true)
+        XCTAssertEqual(fill.alpha, 0.0)
+        _ = try update(0, dark: false, showsFill: false)
+        XCTAssertNil(clip.superview)
+    }
     
     func testTabsAreExposedOnceInOrder() {
         let (host, view) = self.makeView(titles: ["All", "Forums", "Unread"], selectedIndex: 1)

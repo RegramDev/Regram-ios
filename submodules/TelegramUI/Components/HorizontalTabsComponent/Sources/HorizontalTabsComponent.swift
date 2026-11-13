@@ -823,12 +823,14 @@ public final class HorizontalTabsComponent: Component {
             }
             let lensSize = layoutData.lensSize
             let selectionFrame = CGRect(x: layoutData.selectedItemFrame.minX - self.scrollView.contentOffset.x, y: 0.0, width: layoutData.selectedItemFrame.width, height: lensSize.height)
-            self.lensView.update(size: lensSize, selectionOrigin: selectionFrame.origin, selectionSize: selectionFrame.size, inset: 0.0, liftedInset: 6.0, isDark: component.theme.overallDarkAppearance, isLifted: isLifted, isCollapsed: layoutData.isSelectionHidden, transition: transition)
+            self.lensView.update(size: lensSize, selectionOrigin: selectionFrame.origin, selectionSize: selectionFrame.size, inset: 0.0, liftedInset: 6.0, isDark: component.theme.overallDarkAppearance, isLifted: isLifted, isCollapsed: layoutData.isSelectionHidden, drawsLegacySelectionFill: !component.showsRestingSelectionFill, transition: transition)
 
-            if #available(iOS 26.0, *), component.showsRestingSelectionFill { // MARK: Regram
+            // MARK: Regram — the folder highlight also needs a backing fill on the older lens.
+            if component.showsRestingSelectionFill {
                 if self.selectionClip.superview == nil {
                     self.selectionClip.isUserInteractionEnabled = false
                     self.selectionClip.clipsToBounds = true
+                    self.selectionFill.alpha = 0.0
                     self.selectionClip.addSubview(self.selectionFill)
                     self.insertSubview(self.selectionClip, belowSubview: self.lensView)
                 }

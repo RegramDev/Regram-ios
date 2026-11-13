@@ -86,12 +86,18 @@ struct MessageReference { init(_ message: Message) {} }
 struct AnyMediaReference { static func message(message: MessageReference, media: Media) -> Self { Self() } }
 final class AccountContext { let account = 1 }
 struct EnqueueMessage {
+ enum Grouping { case auto }
  let text: String; let attributes: [MessageAttribute]; let group: Int64?
  static func message(text: String, attributes: [MessageAttribute], inlineStickers: [MediaId: Media], mediaReference: AnyMediaReference?, threadId: Int64?, replyToMessageId: Int?, replyToStoryId: Int?, localGroupingKey: Int64?, correlationId: Int64?, bubbleUpEmojiOrStickersets: [Int]) -> Self { Self(text: text, attributes: attributes, group: localGroupingKey) }
+ static func forward(source: MessageId, threadId: Int64?, grouping: Grouping, attributes: [MessageAttribute], correlationId: Int64?) -> Self { Self(text: "", attributes: attributes, group: nil) }
 }
 var sent: [EnqueueMessage] = []
-struct Start { func startStandalone() {} }
+var respondToEnqueue: (([MessageId?]) -> Void)?
+struct Start { func startStandalone(next: @escaping ([MessageId?]) -> Void) { respondToEnqueue = next } }
 func enqueueMessages(account: Int, peerId: EnginePeer.Id, messages: [EnqueueMessage]) -> Start { sent = messages; return Start() }
+func deliverOnMainQueue(_ start: Start) -> Start { start }
+infix operator |>
+func |> (start: Start, transform: (Start) -> Start) -> Start { transform(start) }
 extension TextEntitiesMessageAttribute { convenience init(entities: [MessageTextEntity]) { self.init(entities) } }
 '''
 source = models
@@ -102,7 +108,7 @@ source += between('submodules/TelegramCore/Sources/SyncCore/SyncCore_RichText.sw
 source += read('submodules/TelegramCore/Sources/Utils/RGMessageText.swift').replace('import Postbox', '')
 source += between('submodules/AccountContext/Sources/RGContentFilter.swift', 'private struct RGContentFilterInput', '/// Emits on every message-filter')
 source += between('submodules/TelegramUI/Sources/RGRepeatMessages.swift', 'private func rgRepeatableMedia', '/// Re-sends the messages')
-source += between('submodules/TelegramUI/Sources/RGRepeatMessages.swift', 'private func rgEnqueueRepeatCopy', '/// 复读:')
+source += between('submodules/TelegramUI/Sources/RGRepeatMessages.swift', 'private func rgEnqueueRepeatCopy', 'extension ChatControllerImpl')
 source += between('submodules/TelegramCore/Sources/Utils/RGEditHistory.swift', 'func rgCarryOverLocalMessageAttributes', '// MARK: Regram — preserve already downloaded')
 summary = next(line for line in read('Regram/RGProUI/Sources/RGMessageSummaryController.swift').splitlines() if 'let messages = messages.sorted' in line)
 bookmark = next(line for line in read('Regram/RGProUI/Sources/RGBookmarksController.swift').splitlines() if 'let preview = row.message.map' in line)
@@ -129,10 +135,20 @@ source += r'''
   precondition(summary([rich, plain]).count == 2 && bookmark(rich).contains("old cell"))
   precondition(!bookmark(rich).contains("spoiler secret"))
   precondition(rgRepeatCopyItems([rich])?.count == 1 && rgRepeatCopyItems([message("")]) == nil)
-  rgEnqueueRepeatCopy(context: AccountContext(), peerId: peer, threadId: 42, items: [(rich, nil), (plain, nil)], richPages: [rich.id: RichTextMessageAttribute(instantPage: page)])
+  var repeatsEnqueued = 0
+  rgEnqueueRepeatCopy(context: AccountContext(), peerId: peer, threadId: 42, items: [(rich, nil), (plain, nil)], richPages: [rich.id: RichTextMessageAttribute(instantPage: page)], completion: { repeatsEnqueued += 1 })
   precondition(sent.count == 2 && sent[0].text.isEmpty && sent[1].text == "plain control" && sent[0].group == sent[1].group && sent[0].group != nil)
   precondition(sent[0].attributes.compactMap { $0 as? RichTextMessageAttribute }.first?.instantPage == page, "Copy-repeat must enqueue the structured payload, not only become eligible")
   precondition(sent[1].attributes.isEmpty)
+  precondition(repeatsEnqueued == 0, "A repeat must wait for its enqueue result before scrolling")
+  respondToEnqueue?([rich.id, plain.id])
+  precondition(repeatsEnqueued == 1, "An album must scroll once")
+  rgSendRepeatForward(context: AccountContext(), peerId: peer, threadId: 42, messageIds: [rich.id], enqueued: { repeatsEnqueued += 1 })
+  respondToEnqueue?([nil])
+  precondition(repeatsEnqueued == 1, "A failed enqueue must not scroll")
+  rgSendRepeatForward(context: AccountContext(), peerId: peer, threadId: 42, messageIds: [rich.id], enqueued: { repeatsEnqueued += 1 })
+  respondToEnqueue?([rich.id])
+  precondition(repeatsEnqueued == 2, "Forward-repeat must also scroll on successful enqueue")
   let changed = RichTextMessageAttribute(instantPage: .init(blocks: [.heading(text: .plain("NEW heading"), level: 1)]))
   let attrs = rgCarryOverLocalMessageAttributes(previousMessage: rich, updatedText: "", updatedAttributes: [changed, EditedMessageAttribute(20)], updatedMedia: [], mediaBox: MediaBox())
   let history = attrs.compactMap { $0 as? RGEditHistoryMessageAttribute }.first!

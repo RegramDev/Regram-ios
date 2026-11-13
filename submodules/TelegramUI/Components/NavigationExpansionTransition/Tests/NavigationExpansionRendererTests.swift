@@ -80,6 +80,7 @@ private final class FakeDestination: NavigationExpansionDestinationProviding {
     /// The rest of the background, landing with the page (the profile's gifts around its avatar).
     var landingViews: [UIView] = []
     var path: ExpansionPath = .origin
+    var labelCount = 2 // MARK: Regram
     var screenCornerRadii = makeExpansionGeometry().screenCornerRadii
     /// The avatar's corner radius over its side (a forum's is a rounded square).
     var avatarCornerFraction: CGFloat = 0.5
@@ -111,10 +112,11 @@ private final class FakeDestination: NavigationExpansionDestinationProviding {
         self.lends += 1
         let g = makeExpansionGeometry()
         // On the photo path its avatar view is the expanded photo, as the profile's is.
-        return NavigationExpansionDestinationLoan(avatar: g.avatar, photo: g.photo, avatarView: self.avatarView, avatarRestFrame: self.path == .photo ? g.photo! : g.avatar!, labels: [
+        let labels = [
             NavigationExpansionLabel(view: self.titleView, textCenter: CGPoint(x: 79.0, y: 17.0), textSize: CGSize(width: 158.0, height: 34.0), screenCenter: g.labels[0].destinationCenter, coloring: .multiply([self.titleView.layer], .white)),
             NavigationExpansionLabel(view: self.statusView, textCenter: CGPoint(x: 65.0, y: 10.0), textSize: CGSize(width: 130.0, height: 20.0), screenCenter: g.labels[1].destinationCenter, coloring: .multiply([self.statusView.layer], .white), followers: self.statusFollowers)
-        ], labelColors: [.white, .white], carriedEdge: g.carriedEdge, appearingViews: self.buttons, appearingCompanions: self.platters.map { [$0] }, overlayViews: self.overlays, backgroundViews: [self.background], listViews: [self.list], pageViews: self.pageViews, pageEdgeViews: self.pageEdgeViews, landingViews: self.landingViews, patternViews: [], glassTint: .purple, screenCornerRadii: self.screenCornerRadii, backButtonFrame: CGRect(x: 16.0, y: 64.0, width: 44.0, height: 44.0), avatarCornerFraction: self.avatarCornerFraction)
+        ]
+        return NavigationExpansionDestinationLoan(avatar: g.avatar, photo: g.photo, avatarView: self.avatarView, avatarRestFrame: self.path == .photo ? g.photo! : g.avatar!, labels: Array(labels.prefix(self.labelCount)), labelColors: Array(repeating: .white, count: self.labelCount), carriedEdge: g.carriedEdge, appearingViews: self.buttons, appearingCompanions: self.platters.map { [$0] }, overlayViews: self.overlays, backgroundViews: [self.background], listViews: [self.list], pageViews: self.pageViews, pageEdgeViews: self.pageEdgeViews, landingViews: self.landingViews, patternViews: [], glassTint: .purple, screenCornerRadii: self.screenCornerRadii, backButtonFrame: CGRect(x: 16.0, y: 64.0, width: 44.0, height: 44.0), avatarCornerFraction: self.avatarCornerFraction)
     }
 
     func returnExpansionDestination() {
@@ -669,6 +671,24 @@ final class NavigationExpansionRendererTests: XCTestCase {
         XCTAssertEqual(hosts[1].alpha, 1.0, accuracy: 1e-6)
         XCTAssertEqual(hosts[1].layer.position.x, g.labels[1].destinationCenter.x, accuracy: 0.1)
         XCTAssertEqual(hosts[1].layer.position.y, g.labels[1].destinationCenter.y, accuracy: 0.1)
+    }
+
+    // MARK: Regram — a profile can lend fewer labels than the chat header.
+    func test_fewerDestinationLabels_canAnimateAndReturnViews() {
+        for labelCount in 0 ... 1 {
+            for opening in [true, false] {
+                let (renderer, _, top, source, destination) = self.make(opening: opening, configure: { $0.labelCount = labelCount })
+                XCTAssertEqual(renderer.destinationLabelHostsForTesting.count, labelCount)
+                renderer.animate(timeline: self.timeline(from: opening ? 0.0 : 1.0, to: opening ? 1.0 : 0.0, opening: opening))
+                renderer.end(atTop: opening)
+                XCTAssertNil(top.layer.mask)
+                XCTAssertEqual(source.returns, 1)
+                XCTAssertEqual(destination.returns, 1)
+                XCTAssertTrue(source.titleView.superview === source.home)
+                XCTAssertTrue(source.statusView.superview === source.home)
+                XCTAssertTrue(destination.titleView.superview === destination.home)
+            }
+        }
     }
 
     // The chat's avatar (live, animated avatars included) rides the flying circle above the profile's: at the open's

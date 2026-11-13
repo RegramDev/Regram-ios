@@ -67,7 +67,7 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
 
     private final class LabelHost {
         let source: NavigationExpansionLabel?
-        let destination: NavigationExpansionLabel?
+        let destination: NavigationExpansionLabel
         let sourceHost = UIView()
         let destinationHost = UIView()
         /// The chat label's group: the label and a colour layer composited source-atop over it, rendered on their own
@@ -83,13 +83,13 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
             if case let .multiply(sourceLayers, _)? = self.source?.coloring {
                 layers.append(contentsOf: sourceLayers)
             }
-            if case let .multiply(destinationLayers, _)? = self.destination?.coloring {
+            if case let .multiply(destinationLayers, _) = self.destination.coloring {
                 layers.append(contentsOf: destinationLayers)
             }
             return layers
         }
 
-        init(source: NavigationExpansionLabel?, destination: NavigationExpansionLabel?, destinationColor: UIColor) {
+        init(source: NavigationExpansionLabel?, destination: NavigationExpansionLabel, destinationColor: UIColor) {
             self.source = source
             self.destination = destination
             self.destinationColor = destinationColor
@@ -219,18 +219,16 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
         }
 
         var labels: [ExpansionLabelGeometry] = []
-        for (index, sourceLabel) in sourceLoan.labels.enumerated() where index < destinationLoan.labels.count {
-            let destinationLabel = destinationLoan.labels[index]
+        for (sourceLabel, destinationLabel) in zip(sourceLoan.labels, destinationLoan.labels) {
             labels.append(ExpansionLabelGeometry(sourceCenter: sourceLabel.screenCenter, sourceSize: sourceLabel.textSize, destinationCenter: destinationLabel.screenCenter, destinationSize: destinationLabel.textSize, photoCenter: destinationLabel.screenCenter, photoSize: destinationLabel.textSize))
         }
         // A label the lower screen does not show (a channel's title without a status line) comes from where it would
         // stand there: under the label above it, at that label's scale. It fades in as the labels cross; without a place
         // it was never shown until the upper screen had it back.
-        for index in labels.count ..< destinationLoan.labels.count {
+        for destinationLabel in destinationLoan.labels.dropFirst(labels.count) {
             guard let above = labels.last else {
                 break
             }
-            let destinationLabel = destinationLoan.labels[index]
             let scale = above.sourceSize.height / max(1.0, above.destinationSize.height)
             let size = CGSize(width: destinationLabel.textSize.width * scale, height: destinationLabel.textSize.height * scale)
             let center = CGPoint(x: above.sourceCenter.x, y: above.sourceCenter.y + (above.sourceSize.height + size.height) * 0.5)
@@ -328,23 +326,15 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
             originContent.isUserInteractionEnabled = false
             self.view.addSubview(originContent)
         }
-        for (index, label) in sourceLoan.labels.enumerated() {
-            let destinationLabel = index < destinationLoan.labels.count ? destinationLoan.labels[index] : nil
-            let destinationColor = index < destinationLoan.labelColors.count ? destinationLoan.labelColors[index] : .white
-            let host = LabelHost(source: label, destination: destinationLabel, destinationColor: destinationColor)
-            self.mount(label, in: host.sourceHost, group: host.sourceGroup, colorLayer: host.sourceColorLayer)
-            self.view.addSubview(host.sourceHost)
-            if let destinationLabel {
-                self.mount(destinationLabel, in: host.destinationHost, group: nil, colorLayer: nil)
-                self.cardContentView.addSubview(host.destinationHost)
-            }
-            self.labelHosts.append(host)
-        }
-        // The upper screen's labels the lower screen does not show, on the places measured for them above.
-        for index in sourceLoan.labels.count ..< destinationLoan.labels.count {
+        // MARK: Regram — mount one host per measured label, even when either screen omits its status.
+        for index in labels.indices {
+            let sourceLabel = sourceLoan.labels.indices.contains(index) ? sourceLoan.labels[index] : nil
             let destinationLabel = destinationLoan.labels[index]
             let destinationColor = index < destinationLoan.labelColors.count ? destinationLoan.labelColors[index] : .white
-            let host = LabelHost(source: nil, destination: destinationLabel, destinationColor: destinationColor)
+            let host = LabelHost(source: sourceLabel, destination: destinationLabel, destinationColor: destinationColor)
+            if let sourceLabel {
+                self.mount(sourceLabel, in: host.sourceHost, group: host.sourceGroup, colorLayer: host.sourceColorLayer)
+            }
             self.view.addSubview(host.sourceHost)
             self.mount(destinationLabel, in: host.destinationHost, group: nil, colorLayer: nil)
             self.cardContentView.addSubview(host.destinationHost)
@@ -905,7 +895,7 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
                 view.layer.transform = CATransform3DIdentity
             }
             for host in self.labelHosts {
-                if case let .multiply(layers, color)? = host.destination?.coloring {
+                if case let .multiply(layers, color) = host.destination.coloring {
                     for layer in layers {
                         layer.layerTintColor = color.cgColor
                     }
@@ -931,7 +921,7 @@ public final class NavigationExpansionRendererImpl: NavigationExpansionRenderer 
             for accessory in host.source?.accessories ?? [] {
                 accessory.view.removeFromSuperview()
             }
-            host.destination?.view.removeFromSuperview()
+            host.destination.view.removeFromSuperview()
             host.sourceHost.removeFromSuperview()
             host.destinationHost.removeFromSuperview()
         }

@@ -143,8 +143,9 @@ public final class LiquidLensView: UIView {
         var isDark: Bool
         var isLifted: Bool
         var isCollapsed: Bool
+        var drawsLegacySelectionFill: Bool // MARK: Regram
 
-        init(size: CGSize, cornerRadius: CGFloat?, selectionOrigin: CGPoint, selectionSize: CGSize, inset: CGFloat, liftedInset: CGFloat, isDark: Bool, isLifted: Bool, isCollapsed: Bool) {
+        init(size: CGSize, cornerRadius: CGFloat?, selectionOrigin: CGPoint, selectionSize: CGSize, inset: CGFloat, liftedInset: CGFloat, isDark: Bool, isLifted: Bool, isCollapsed: Bool, drawsLegacySelectionFill: Bool) {
             self.size = size
             self.cornerRadius = cornerRadius
             self.selectionOrigin = selectionOrigin
@@ -154,6 +155,7 @@ public final class LiquidLensView: UIView {
             self.isLifted = isLifted
             self.isDark = isDark
             self.isCollapsed = isCollapsed
+            self.drawsLegacySelectionFill = drawsLegacySelectionFill
         }
     }
 
@@ -420,8 +422,8 @@ public final class LiquidLensView: UIView {
         lensView.perform(NSSelectorFromString("setLiftedContainerView:"), with: view)
     }
 
-    public func update(size: CGSize, cornerRadius: CGFloat? = nil, selectionOrigin: CGPoint, selectionSize: CGSize, inset: CGFloat, liftedInset: CGFloat = 4.0, isDark: Bool, isLifted: Bool, isCollapsed: Bool = false, transition: ComponentTransition) {
-        let params = Params(size: size, cornerRadius: cornerRadius, selectionOrigin: selectionOrigin, selectionSize: selectionSize, inset: inset, liftedInset: liftedInset, isDark: isDark, isLifted: isLifted, isCollapsed: isCollapsed)
+    public func update(size: CGSize, cornerRadius: CGFloat? = nil, selectionOrigin: CGPoint, selectionSize: CGSize, inset: CGFloat, liftedInset: CGFloat = 4.0, isDark: Bool, isLifted: Bool, isCollapsed: Bool = false, drawsLegacySelectionFill: Bool = true, transition: ComponentTransition) {
+        let params = Params(size: size, cornerRadius: cornerRadius, selectionOrigin: selectionOrigin, selectionSize: selectionSize, inset: inset, liftedInset: liftedInset, isDark: isDark, isLifted: isLifted, isCollapsed: isCollapsed, drawsLegacySelectionFill: drawsLegacySelectionFill)
         if self.params == params {
             return
         }
@@ -797,7 +799,7 @@ public final class LiquidLensView: UIView {
             
             legacySelectionView.tintColor = UIColor(white: params.isDark ? 1.0 : 0.0, alpha: params.isDark ? 0.1 : 0.075)
             transition.setFrame(view: legacySelectionView, frame: effectiveLensFrame)
-            transition.setAlpha(view: legacySelectionView, alpha: params.isCollapsed ? 0.0 : 1.0)
+            transition.setAlpha(view: legacySelectionView, alpha: params.isCollapsed || !params.drawsLegacySelectionFill ? 0.0 : 1.0) // MARK: Regram
         }
 
         transition.setFrame(view: self.restingBackgroundView, frame: CGRect(origin: CGPoint(), size: params.size))

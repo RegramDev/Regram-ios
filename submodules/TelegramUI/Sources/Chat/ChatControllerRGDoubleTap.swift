@@ -29,10 +29,7 @@ extension ChatControllerImpl {
         guard self.isNodeLoaded, let action = RGSimpleSettings.MessageDoubleTapActionV2(rawValue: actionRawValue) else {
             return
         }
-        var threadId: Int64?
-        if case let .replyThread(replyThreadMessage) = self.chatLocation {
-            threadId = replyThreadMessage.threadId
-        }
+        let threadId = self.chatLocation.threadId
         switch action {
         case .disabled, .sendReaction, .showReactions:
             break
@@ -41,19 +38,23 @@ extension ChatControllerImpl {
                 controllerInteraction.setupReply(message.id)
             }
         case .repeatMessage:
-            guard message.id.namespace == Namespaces.Message.Cloud, canSendMessagesToChat(self.presentationInterfaceState), !message.isCopyProtected() else {
+            guard let peerId = self.chatLocation.peerId, message.id.namespace == Namespaces.Message.Cloud, canSendMessagesToChat(self.presentationInterfaceState), !message.isCopyProtected() else {
                 return
             }
             // Local content-saving overrides cannot change the server's forwarding permission.
             if message.flags.contains(.CopyProtected) { return }
             if let channel = message.peers[message.id.peerId] as? TelegramChannel, channel.flags.contains(.copyProtectionEnabled) { return }
             if let group = message.peers[message.id.peerId] as? TelegramGroup, group.flags.contains(.copyProtectionEnabled) { return }
-            rgSendRepeatForward(context: self.context, peerId: message.id.peerId, threadId: threadId, messageIds: [message.id])
+            rgSendRepeatForward(context: self.context, peerId: peerId, threadId: threadId, messageIds: [message.id], enqueued: { [weak self] in
+                self?.rgScrollAfterRepeat(peerId: peerId, threadId: threadId)
+            })
         case .repeatWithoutQuote:
-            guard canSendMessagesToChat(self.presentationInterfaceState), let items = rgRepeatCopyItems([message]) else {
+            guard let peerId = self.chatLocation.peerId, canSendMessagesToChat(self.presentationInterfaceState), let items = rgRepeatCopyItems([message]) else {
                 return
             }
-            rgSendRepeatCopy(context: self.context, peerId: message.id.peerId, threadId: threadId, items: items, failed: { [weak self] in
+            rgSendRepeatCopy(context: self.context, peerId: peerId, threadId: threadId, items: items, enqueued: { [weak self] in
+                self?.rgScrollAfterRepeat(peerId: peerId, threadId: threadId)
+            }, failed: { [weak self] in
                 guard let self else { return }
                 self.controllerInteraction?.displayUndo(.info(title: nil, text: self.presentationData.strings.Login_UnknownError, timeout: nil, customUndoText: nil))
             })

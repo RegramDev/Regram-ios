@@ -23,6 +23,15 @@ public enum RGBottomBarWidthMode: String {
     case adaptive
 }
 
+public enum RGBottomBarHeight: Int, CaseIterable {
+    case regular = 64
+    case compact = 52
+
+    public var points: CGFloat {
+        return CGFloat(self.rawValue)
+    }
+}
+
 public enum RGBottomBarSlotMode: String {
     case visibleOnly
     case preserveHidden
@@ -62,6 +71,7 @@ public struct RGBottomBarSettings: Equatable {
     public var hiddenItems: Set<RGBottomBarItemId>
     public var topSearchVisible: Bool
     public var showLabels: Bool
+    public var height: RGBottomBarHeight
     public var widthMode: RGBottomBarWidthMode
     public var slotMode: RGBottomBarSlotMode
     public var buttonWidthFillRatio: Int32
@@ -76,6 +86,7 @@ public struct RGBottomBarSettings: Equatable {
         hiddenItems: Set<RGBottomBarItemId> = [],
         topSearchVisible: Bool = true,
         showLabels: Bool = true,
+        height: RGBottomBarHeight = .regular,
         widthMode: RGBottomBarWidthMode = .full,
         slotMode: RGBottomBarSlotMode = .visibleOnly,
         buttonWidthFillRatio: Int32 = 100,
@@ -89,6 +100,7 @@ public struct RGBottomBarSettings: Equatable {
         self.hiddenItems = hiddenItems
         self.topSearchVisible = topSearchVisible
         self.showLabels = showLabels
+        self.height = height
         self.widthMode = widthMode
         self.slotMode = slotMode
         self.buttonWidthFillRatio = buttonWidthFillRatio
@@ -275,9 +287,11 @@ public extension RGBottomBarSettings {
 
     static func load(from defaults: UserDefaults = .standard) -> RGBottomBarSettings {
         guard let values = defaults.dictionary(forKey: storageKey) as? [String: String] else {
+            let showLabels = defaults.object(forKey: "showTabNames") as? Bool ?? true
             return RGBottomBarSettings(
                 isBottomBarVisible: !defaults.bool(forKey: "hideTabBar"),
-                showLabels: defaults.object(forKey: "showTabNames") as? Bool ?? true,
+                showLabels: showLabels,
+                height: showLabels ? .regular : .compact,
                 buttonWidthFillRatio: (defaults.object(forKey: "tabBarWidthPercent") as? NSNumber)?.int32Value ?? 100
             )
         }
@@ -285,6 +299,9 @@ public extension RGBottomBarSettings {
     }
 
     init(storedValues values: [String: String]) {
+        let showLabels = values["labels"] != "false"
+        // Older layouts derived their height from label visibility.
+        let height = values["height"].flatMap(Int.init).flatMap(RGBottomBarHeight.init(rawValue:)) ?? (showLabels ? .regular : .compact)
         self.init(
             automaticWidth: values["automaticWidth"] != "false",
             isBottomBarVisible: values["visible"] != "false",
@@ -292,7 +309,8 @@ public extension RGBottomBarSettings {
             externalItem: values["external"].flatMap(RGBottomBarItemId.init(rawValue:)),
             hiddenItems: Set((values["hidden"] ?? "").split(separator: ",").compactMap { RGBottomBarItemId(rawValue: String($0)) }),
             topSearchVisible: values["topSearch"] != "false",
-            showLabels: values["labels"] != "false",
+            showLabels: showLabels,
+            height: height,
             widthMode: values["width"].flatMap(RGBottomBarWidthMode.init(rawValue:)) ?? .full,
             slotMode: values["slots"].flatMap(RGBottomBarSlotMode.init(rawValue:)) ?? .visibleOnly,
             buttonWidthFillRatio: values["fill"].flatMap(Int32.init) ?? 100,
@@ -308,6 +326,7 @@ public extension RGBottomBarSettings {
             "automaticWidth": String(value.automaticWidth), "visible": String(value.isBottomBarVisible), "items": value.bottomItems.map(\.rawValue).joined(separator: ","),
             "external": value.externalItem?.rawValue ?? "", "hidden": RGBottomBarItemId.allCases.filter { value.hiddenItems.contains($0) }.map(\.rawValue).joined(separator: ","),
             "topSearch": String(value.topSearchVisible), "labels": String(value.showLabels),
+            "height": String(value.height.rawValue),
             "width": value.widthMode.rawValue, "slots": value.slotMode.rawValue, "fill": String(value.buttonWidthFillRatio),
             "alignment": value.alignment.rawValue, "search": value.searchMode.rawValue
         ]

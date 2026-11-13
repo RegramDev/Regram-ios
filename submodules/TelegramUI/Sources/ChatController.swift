@@ -7284,7 +7284,10 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             var messageIds = Set<MessageId>()
             self.chatDisplayNode.historyNode.forEachItemNode { node in
                 guard let node = node as? ChatMessageItemView, let item = node.item else { return }
-                for message in item.content { messageIds.insert(message.0.id) }
+                // MARK: Regram — refresh a revoked album once even when several items are revoked.
+                if let (message, _) = item.content.first(where: { $0.0.rgIsRevoked }) {
+                    messageIds.insert(message.id)
+                }
             }
             for id in messageIds { self.chatDisplayNode.historyNode.requestMessageUpdate(id) }
         }

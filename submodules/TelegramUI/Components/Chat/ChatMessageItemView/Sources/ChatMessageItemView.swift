@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -679,6 +680,7 @@ open class ChatMessageItemView: ListViewItemNode, ChatMessageItemNodeProtocol {
     
     public var playedEffectAnimation: Bool = false
     public var effectAnimationNodes: [ChatMessageTransitionNode.DecorationItemNode] = []
+    private var rgIsDimmed = false // MARK: Regram
     
     public required init(rotated: Bool) {
         super.init(layerBacked: false, rotated: rotated)
@@ -698,6 +700,7 @@ open class ChatMessageItemView: ListViewItemNode, ChatMessageItemNodeProtocol {
     override open func reuse() {
         super.reuse()
         
+        self.rgUpdateRevokedOpacity(isDimmed: false)
         self.item = nil
         self.scrollTiltProvider = nil
         self.frame = CGRect()
@@ -705,6 +708,18 @@ open class ChatMessageItemView: ListViewItemNode, ChatMessageItemNodeProtocol {
     
     open func setupItem(_ item: ChatMessageItem, synchronousLoad: Bool) {
         self.item = item
+        // MARK: Regram — dim a shared row only when all of its messages have been revoked.
+        self.rgUpdateRevokedOpacity(isDimmed: RGSimpleSettings.shared.revokedMarkerDimMessages
+            && item.content.firstMessage.rgIsRevoked
+            && item.content.allSatisfy { $0.0.rgIsRevoked })
+    }
+
+    private func rgUpdateRevokedOpacity(isDimmed: Bool) {
+        guard self.rgIsDimmed != isDimmed else {
+            return
+        }
+        self.rgIsDimmed = isDimmed
+        self.alpha = isDimmed ? CGFloat(RGRevokedMarker.dimmedOpacity) : 1.0
     }
     
     open func updateAccessibilityData(_ accessibilityData: ChatMessageAccessibilityData) {

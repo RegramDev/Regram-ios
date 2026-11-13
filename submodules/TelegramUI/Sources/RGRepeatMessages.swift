@@ -46,7 +46,7 @@ func rgRepeatCopyItems(_ messages: [EngineRawMessage]) -> [(message: EngineRawMe
 
 /// Re-sends the messages' own content into `peerId` under your name. Unlike a forward this produces
 /// an ordinary message with no link back to the original, which is the point of 无引用复读.
-func rgSendRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], failed: @escaping () -> Void) {
+func rgSendRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], enqueued: @escaping () -> Void, failed: @escaping () -> Void) {
     guard !items.isEmpty else { return }
     let signals: [Signal<RichTextMessageAttribute?, NoError>] = items.map { item in
         guard let rich = item.message.attributes.first(where: { $0 is RichTextMessageAttribute }) as? RichTextMessageAttribute else { return .single(nil) }
@@ -61,11 +61,11 @@ func rgSendRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: 
             guard let rich = pages[index], (rich.fullInstantPage ?? rich.instantPage).isComplete else { failed(); return }
             resolved[item.message.id] = rich
         }
-        rgEnqueueRepeatCopy(context: context, peerId: peerId, threadId: threadId, items: items, richPages: resolved)
+        rgEnqueueRepeatCopy(context: context, peerId: peerId, threadId: threadId, items: items, richPages: resolved, completion: enqueued)
     })
 }
 
-private func rgEnqueueRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], richPages: [EngineMessage.Id: RichTextMessageAttribute]) {
+private func rgEnqueueRepeatCopy(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, items: [(message: EngineRawMessage, media: EngineRawMedia?)], richPages: [EngineMessage.Id: RichTextMessageAttribute], completion: @escaping () -> Void) {
     var enqueued: [EnqueueMessage] = []
     let groupingKey: Int64? = items.count > 1 ? Int64.random(in: Int64.min ... Int64.max) : nil
     for item in items {
@@ -91,19 +91,38 @@ private func rgEnqueueRepeatCopy(context: AccountContext, peerId: EnginePeer.Id,
         let mediaReference: AnyMediaReference? = item.media.flatMap { AnyMediaReference.message(message: MessageReference(item.message), media: $0) }
         enqueued.append(.message(text: item.message.text, attributes: attributes, inlineStickers: inlineStickers, mediaReference: mediaReference, threadId: threadId, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: groupingKey, correlationId: nil, bubbleUpEmojiOrStickersets: []))
     }
-    if enqueued.isEmpty {
-        return
-    }
-    let _ = enqueueMessages(account: context.account, peerId: peerId, messages: enqueued).startStandalone()
+    rgEnqueueRepeatedMessages(context: context, peerId: peerId, messages: enqueued, completion: completion)
 }
 
 /// 复读: a plain forward straight back into `peerId`, attribution intact.
-func rgSendRepeatForward(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, messageIds: [EngineMessage.Id]) {
+func rgSendRepeatForward(context: AccountContext, peerId: EnginePeer.Id, threadId: Int64?, messageIds: [EngineMessage.Id], enqueued completion: @escaping () -> Void) {
     let enqueued: [EnqueueMessage] = messageIds.map { id in
         return .forward(source: id, threadId: threadId, grouping: .auto, attributes: [], correlationId: nil)
     }
-    if enqueued.isEmpty {
+    rgEnqueueRepeatedMessages(context: context, peerId: peerId, messages: enqueued, completion: completion)
+}
+
+private func rgEnqueueRepeatedMessages(context: AccountContext, peerId: EnginePeer.Id, messages: [EnqueueMessage], completion: @escaping () -> Void) {
+    guard !messages.isEmpty else {
         return
     }
-    let _ = enqueueMessages(account: context.account, peerId: peerId, messages: enqueued).startStandalone()
+    let _ = (enqueueMessages(account: context.account, peerId: peerId, messages: messages)
+    |> deliverOnMainQueue).startStandalone(next: { ids in
+        if ids.contains(where: { $0 != nil }) {
+            completion()
+        }
+    })
+}
+
+extension ChatControllerImpl {
+    func rgScrollAfterRepeat(peerId: EnginePeer.Id, threadId: Int64?) {
+        guard self.isNodeLoaded, self.chatLocation.peerId == peerId, self.chatLocation.threadId == threadId else {
+            return
+        }
+        if case .known = self.chatDisplayNode.historyNode.visibleContentOffset() {
+            self.chatDisplayNode.historyNode.scrollToEndOfHistory()
+        } else {
+            self.scrollToEndOfHistory()
+        }
+    }
 }

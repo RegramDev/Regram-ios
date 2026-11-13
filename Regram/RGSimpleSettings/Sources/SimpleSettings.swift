@@ -300,6 +300,7 @@ public class RGSimpleSettings {
         case antiRevoke
         case antiRevokeIgnoreBots
         case revokedMarkerStyle, revokedMarkerText, revokedMarkerColor // MARK: Regram
+        case revokedMarkerDimMessages
         case antiAutoDelete
         case antiSelfDestruct
         case antiScreenshotNotification
@@ -547,6 +548,7 @@ public class RGSimpleSettings {
         Keys.antiRevoke.rawValue: false,
         Keys.antiRevokeIgnoreBots.rawValue: false,
         Keys.revokedMarkerStyle.rawValue: "icon", Keys.revokedMarkerText.rawValue: "", Keys.revokedMarkerColor.rawValue: "",
+        Keys.revokedMarkerDimMessages.rawValue: false,
         Keys.antiAutoDelete.rawValue: false,
         Keys.antiSelfDestruct.rawValue: false,
         Keys.antiScreenshotNotification.rawValue: false,
@@ -719,6 +721,14 @@ public class RGSimpleSettings {
     @UserDefault(key: Keys.revokedMarkerStyle.rawValue) public var revokedMarkerStyle: String
     @UserDefault(key: Keys.revokedMarkerText.rawValue) public var revokedMarkerText: String
     @UserDefault(key: Keys.revokedMarkerColor.rawValue) public var revokedMarkerColor: String
+    @UserDefault(key: Keys.revokedMarkerDimMessages.rawValue)
+    public var revokedMarkerDimMessages: Bool {
+        didSet {
+            if self.revokedMarkerDimMessages != oldValue {
+                NotificationCenter.default.post(name: Self.revokedMarkerDidChange, object: nil)
+            }
+        }
+    }
 
 
     @UserDefault(key: Keys.antiAutoDelete.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
@@ -904,7 +914,7 @@ public class RGSimpleSettings {
         if touches("defaultVideoQuality") { center.post(name: RGVideoQualityPreference.settingsChanged, object: nil) }
         if touches("mediaLoadingExperiment") { center.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil) }
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
-        if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
+        if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "revokedMarkerDimMessages", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
         if touches(RGNotificationExperiment.key) { center.post(name: RGNotificationExperiment.changed, object: nil) }
         if touches("features.enablePanguOnReceiving") || touches(Keys.hideMessageForwardButton.rawValue) { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }

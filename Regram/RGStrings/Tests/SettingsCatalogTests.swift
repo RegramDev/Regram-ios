@@ -59,6 +59,8 @@ extension String {
         assert(contains("底栏 搜索", "bottomBar", "visibility"))
         assert(contains("独立搜索", "bottomBar", "visibility"))
         assert(contains("右下角", "bottomBar", "visibility"))
+        assert(contains("底栏高度 52", "bottomBar", "height"))
+        assert(contains("半透明", "revokedMarker", "dimMessages"))
         assert(RGSettingsCatalog.results(query: "书签", language: "zh-hans").isEmpty, "Bookmarks belong on outer Settings, not the Pro catalog")
         assert(contains("总结", "pro.messages", "summarySettings"))
         assert(contains("定向屏蔽", "pro.privacy", "groupHiddenMembers"))

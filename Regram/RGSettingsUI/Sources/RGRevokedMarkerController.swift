@@ -13,6 +13,7 @@ private struct RGRevokedMarkerView: View {
     @Environment(\.rgSettingsColors) private var colors
     @Environment(\.lang) private var lang
     @State private var marker = RGSimpleSettings.shared.revokedMarker
+    @State private var dimMessages = RGSimpleSettings.shared.revokedMarkerDimMessages
     let saved: () -> Void
     private var invalidColor: Bool { marker.style != .none && !marker.color.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && RGRevokedMarker.rgb(marker.color) == nil }
     var body: some View {
@@ -31,13 +32,18 @@ private struct RGRevokedMarkerView: View {
                     if invalidColor { Text("RevokedMarker.InvalidColor".i18n(lang)).font(.footnote).rgSecondaryText() }
                 }
             }
+            RGSettingsSection {
+                Toggle("RevokedMarker.DimMessages".i18n(lang), isOn: $dimMessages)
+                    .onChange(of: dimMessages) { RGSimpleSettings.shared.revokedMarkerDimMessages = $0 }
+                    .rgSettingsLink("dimMessages")
+            }
             RGSettingsSection(header: Text("RevokedMarker.Preview".i18n(lang))) {
                 HStack(spacing: 4) {
                     if let label = marker.label(defaultText: "RevokedMarker.DefaultText".i18n(lang)) {
                         Text(label).foregroundColor(RGRevokedMarker.rgb(marker.color).map { Color(uiColor: UIColor(rgb: $0)) } ?? colors.secondary)
                     }
                     Text("12:34").rgSecondaryText()
-                }.font(.footnote)
+                }.font(.footnote).opacity(dimMessages ? RGRevokedMarker.dimmedOpacity : 1.0)
             }
             Button("NetworkPolicy.Apply".i18n(lang)) { RGSimpleSettings.shared.revokedMarker = marker; saved() }.disabled(invalidColor).rgSettingsLink("apply")
         }

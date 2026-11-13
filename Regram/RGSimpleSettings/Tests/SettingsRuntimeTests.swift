@@ -95,6 +95,8 @@ extension UserDefaults {
             }
         }
         expect(RGNetworkPolicy.IPVersion.ipv4.rawValue == 4 && RGNetworkPolicy.IPVersion.ipv6.rawValue == 6, "Existing preferred-mode values must retain their meaning")
+        expect(!settings.revokedMarkerDimMessages, "Dimming is opt-in")
+        settings.revokedMarkerDimMessages = true
         settings.revokedMarker = RGRevokedMarker(style: .text, text: "  test\n撤回  ", color: "aabbCC")
         expect(settings.revokedMarker == RGRevokedMarker(style: .text, text: "test撤回", color: "#AABBCC"), "Marker text and color must normalize before storage")
         expect(RGRevokedMarker(style: .text).label(defaultText: "Deleted") == "Deleted" && RGRevokedMarker(style: .none).label(defaultText: "Deleted") == nil, "Blank text uses localization; hidden marker adds no prefix")
@@ -106,11 +108,13 @@ extension UserDefaults {
         expect(backup.values["api_hash"] == nil && backup.values["status"] == nil && backup.values["primaryUserId"] == nil, "Export must include allowlisted preferences only")
         expect(backup.selectedValues(categories: [.messages])["automaticallyRevealSpoilers"] == .bool(true), "Spoiler display must persist in message settings backups")
         expect(backup.selectedValues(categories: [.privacy])["antiRevokeIgnoreBots"] == .bool(true), "Bot exclusion belongs in privacy backups")
+        expect(backup.selectedValues(categories: [.privacy])["revokedMarkerDimMessages"] == .bool(true), "Revoked opacity belongs in privacy backups")
         let decoded = try RGSettingsBackup.decode(backup.encoded())
         expect(decoded.values == backup.values, "All exported defaults must round-trip with correct types")
         settings.fontFamily = "lora"
         settings.automaticallyRevealSpoilers = false
         settings.antiRevokeIgnoreBots = false
+        settings.revokedMarkerDimMessages = false
         settings.panguSpacing = true
         settings.messageFilterRules = [RGMessageFilterRule(pattern: "different")]
         _ = settings.messageFilterRules; _ = settings.fontFamily
@@ -119,7 +123,7 @@ extension UserDefaults {
         expect(settings.automaticallyRevealSpoilers, "Restore must immediately reload the spoiler display preference")
         expect(settings.antiRevokeIgnoreBots && UserDefaults(suiteName: suite + "-group")!.bool(forKey: "antiRevokeIgnoreBots"), "Restore must update bot exclusion in shared preferences")
         expect(settings.messageSummaryEnabled && settings.summaryLLMModel == "independent-model", "Summary preferences must round-trip")
-        expect(settings.revokedMarker.text == "test撤回" && settings.revokedMarker.color == "#AABBCC", "Marker preferences must restore from backups")
+        expect(settings.revokedMarker.text == "test撤回" && settings.revokedMarker.color == "#AABBCC" && settings.revokedMarkerDimMessages, "Marker preferences must restore from backups")
         expect(settings.fontFamily == "inter" && !settings.panguSpacing, "Restore must invalidate cached wrappers immediately")
         expect(settings.messageFilterRules.count == 1 && !settings.messageFilterRules[0].isEnabled && settings.contentFilterGeneration > generation, "Restore must invalidate derived filter caches")
         settings.setChatPreferences(RGChatPreferences(formatting: "bold", panguSpacing: true), accountId: 1, peerId: 5)
@@ -144,7 +148,7 @@ extension UserDefaults {
         expect(!settings.networkPolicy.dohEnabled && RGNetworkPolicy(defaults: UserDefaults(suiteName: suite + "-group")!).ipVersion == .automatic, "Transport reset must update the extension too")
         settings.applyPreferences([:], resetCategories: [.privacy])
         expect(!settings.antiRevokeIgnoreBots && !UserDefaults(suiteName: suite + "-group")!.bool(forKey: "antiRevokeIgnoreBots"), "Privacy reset must restore bot retention in the app and extension")
-        expect(settings.revokedMarker == RGRevokedMarker(), "Reset restores the original icon marker")
+        expect(settings.revokedMarker == RGRevokedMarker() && !settings.revokedMarkerDimMessages, "Reset restores the original icon marker at full opacity")
         Self.checkIconSwitching()
         let hide = RGMessageFilterRule(pattern: "spam")
         let keep = RGMessageFilterRule(pattern: "approved", isException: true)
@@ -361,16 +365,16 @@ extension UserDefaults {
     }
 
     static func checkPortableBackups(_ settings: RGSimpleSettings) throws {
-        let phone = RGBottomBarSettings(automaticWidth: false, bottomItems: [.settings, .chats], hiddenItems: [.contacts, .calls], showLabels: false, buttonWidthFillRatio: 65, searchMode: .button)
+        let phone = RGBottomBarSettings(automaticWidth: false, bottomItems: [.settings, .chats], hiddenItems: [.contacts, .calls], showLabels: true, height: .compact, buttonWidthFillRatio: 65, searchMode: .button)
         let source = RGSettingsBackup(values: [
             "bottomBarLayout": .dictionary(phone.storedValues), "hideTabBar": .bool(true),
-            "showTabNames": .bool(true), "native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)
+            "showTabNames": .bool(false), "native.showContactsTab": .bool(true), "native.showCallsTab": .bool(true)
         ])
         let decoded = try RGSettingsBackup.decode(source.encoded())
-        expect(decoded.values["hideTabBar"] == .bool(false) && decoded.values["showTabNames"] == .bool(false), "Portable layout must override contradictory legacy UI flags")
+        expect(decoded.values["hideTabBar"] == .bool(false) && decoded.values["showTabNames"] == .bool(true), "Portable layout must override contradictory legacy UI flags")
         expect(decoded.values["native.showContactsTab"] == .bool(false) && decoded.values["native.showCallsTab"] == .bool(false), "Native controllers must match the imported layout")
         settings.applyPreferences(decoded.values)
-        expect(settings.bottomBarSettings == phone && !settings.hideTabBar && !settings.showTabNames, "Restoring on another device must use one coherent navigation state")
+        expect(settings.bottomBarSettings == phone && !settings.hideTabBar && settings.showTabNames, "Restoring on another device must use one coherent navigation state")
         expect(RGTabBarLayoutPolicy.width(containerWidth: 1024, itemCount: 2, percent: 65) > RGTabBarLayoutPolicy.width(containerWidth: 390, itemCount: 2, percent: 65), "The restored percentage must adapt to destination geometry")
 
         final class Counts: @unchecked Sendable { var layout = 0; var fonts = 0; var network = 0; var media = 0 }

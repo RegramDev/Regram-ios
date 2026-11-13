@@ -429,6 +429,7 @@ final class TabBarControllerNode: ASDisplayNode {
                 selectedId: selectedId,
                 outerInsets: UIEdgeInsets(top: 0.0, left: sideInset, bottom: tabBarBottomInset, right: sideInset),
                 showItemTitles: bottomBarSettings.showLabels,
+                height: bottomBarSettings.height, // MARK: Regram
                 rgWidthPercent: bottomBarSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(bottomBarSettings.buttonWidthFillRatio)
             )),
             environment: {},

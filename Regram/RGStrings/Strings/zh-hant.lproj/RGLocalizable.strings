@@ -755,6 +755,8 @@
 "RG.BottomBarLayout.SearchStyle.BarDisabled" = "對話和設定保持顯示，搜尋使用獨立按鈕。";
 "RG.BottomBarLayout.EmptyBottom" = "所有按鈕均隱藏";
 "RG.BottomBarLayout.ShowLabels" = "顯示標籤文字";
+"RG.BottomBarLayout.Height" = "底欄高度";
+"RG.BottomBarLayout.Height.Value" = "%d 點";
 "RG.BottomBarLayout.ButtonWidth" = "底欄按鈕寬度";
 "RG.BottomBarLayout.Width" = "底欄寬度";
 "RG.BottomBarLayout.Width.full" = "佔滿";
@@ -1003,6 +1005,7 @@
 "RevokedMarker.Style.none" = "不顯示";
 "RevokedMarker.Text" = "標記文字";
 "RevokedMarker.DefaultText" = "已撤回";
+"RevokedMarker.DimMessages" = "半透明顯示已撤回訊息";
 "RevokedMarker.Color" = "標記顏色";
 "RevokedMarker.InvalidColor" = "請輸入 #RRGGBB，留空使用時間文字的顏色。";
 "RevokedMarker.Preview" = "預覽";
@@ -1212,7 +1215,7 @@
 "Settings.Editor.messageFilter.Description" = "關鍵字、正則與對話範圍";
 "Settings.Editor.networkPolicy.Description" = "DNS 解析、IP 策略與代理連線";
 "Settings.Editor.diagnostics.Description" = "資料中心連線、解析與傳輸診斷";
-"Settings.Editor.bottomBarLayout.Description" = "顯示項目、順序、標籤與寬度";
+"Settings.Editor.bottomBarLayout.Description" = "顯示項目、順序、標籤、高度與寬度";
 "Settings.Editor.llmTranslationSettings.Description" = "介面位址、模型、金鑰與提示詞";
 "Settings.Editor.contextMenuOrder.Description" = "顯示項目、拖移排序與分組";
 

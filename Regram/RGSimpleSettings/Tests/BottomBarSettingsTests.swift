@@ -10,6 +10,7 @@ import Foundation
         defaults.set(72, forKey: "tabBarWidthPercent")
         var settings = RGBottomBarSettings.load(from: defaults)
         assert(settings.automaticWidth && !settings.isBottomBarVisible && !settings.showLabels)
+        assert(settings.height == .compact)
         settings.isBottomBarVisible = true
         settings.moveBottomItem(from: 0, to: 3)
         assert(settings.visibleBottomItems == [.calls, .chats, .settings, .contacts])
@@ -37,14 +38,27 @@ import Foundation
         let previous = defaults.dictionary(forKey: RGBottomBarSettings.storageKey) as! [String: String]
         var legacy = previous
         legacy.removeValue(forKey: "automaticWidth")
+        legacy.removeValue(forKey: "height")
         legacy["hidden"] = "chats,settings,contacts,calls"
         legacy["items"] = "contacts,calls"
         legacy["alignment"] = "spaceBetween"
         defaults.set(legacy, forKey: RGBottomBarSettings.storageKey)
         let restored = RGBottomBarSettings.load(from: defaults)
         assert(restored.automaticWidth && restored.alignment == .center)
+        assert(restored.height == .compact)
         assert(restored.isVisible(.chats) && restored.isVisible(.settings))
         assert(restored.visibleNavigationItems.count >= 2)
+        assert(RGBottomBarSettings().height == .regular)
+        assert(RGBottomBarSettings(storedValues: ["labels": "true"]).height == .regular)
+        assert(RGBottomBarSettings(storedValues: ["labels": "false", "height": "55"]).height == .compact)
+        for height in RGBottomBarHeight.allCases {
+            for showLabels in [true, false] {
+                let layout = RGBottomBarSettings(showLabels: showLabels, height: height)
+                layout.save(to: defaults)
+                let reloaded = RGBottomBarSettings.load(from: defaults)
+                assert(reloaded == layout && reloaded.height.points == CGFloat(height.rawValue))
+            }
+        }
         let invalid = RGBottomBarSettings(bottomItems: [.calls, .calls, .search], hiddenItems: [.contacts, .settings], buttonWidthFillRatio: 200)
         assert(Set(invalid.bottomItems).count == invalid.bottomItems.count)
         assert(!invalid.bottomItems.contains(.search) && invalid.visibleBottomItems.contains(.chats) && invalid.visibleBottomItems.contains(.settings))

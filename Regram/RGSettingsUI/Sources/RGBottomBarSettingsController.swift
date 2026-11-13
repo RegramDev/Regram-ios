@@ -20,10 +20,12 @@ import UIKit
 
 private final class RGBottomBarArguments {
     let update: ((inout RGBottomBarSettings) -> Void) -> Void
+    let selectHeight: () -> Void
     let reset: () -> Void
 
-    init(update: @escaping ((inout RGBottomBarSettings) -> Void) -> Void, reset: @escaping () -> Void) {
+    init(update: @escaping ((inout RGBottomBarSettings) -> Void) -> Void, selectHeight: @escaping () -> Void, reset: @escaping () -> Void) {
         self.update = update
+        self.selectHeight = selectHeight
         self.reset = reset
     }
 }
@@ -40,6 +42,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
     case header(stableId: Int32, section: Int32, text: String)
     case toggle(stableId: Int32, section: Int32, title: String, value: Bool, option: RGBottomBarSwitchOption)
     case visibility(stableId: Int32, section: Int32, title: String, settings: RGBottomBarSettings, itemTitles: [RGBottomBarItemId: String])
+    case height(stableId: Int32, section: Int32, title: String, value: String)
     case slider(stableId: Int32, section: Int32, title: String, value: Int32)
     case reset(stableId: Int32, section: Int32, title: String)
     case footer(stableId: Int32, section: Int32, text: String)
@@ -54,7 +57,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
             return section
         case let .visibility(_, section, _, _, _):
             return section
-        case let .slider(_, section, _, _):
+        case let .height(_, section, _, _), let .slider(_, section, _, _):
             return section
         case let .reset(_, section, _):
             return section
@@ -73,7 +76,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
             return stableId
         case let .visibility(stableId, _, _, _, _):
             return stableId
-        case let .slider(stableId, _, _, _):
+        case let .height(stableId, _, _, _), let .slider(stableId, _, _, _):
             return stableId
         case let .reset(stableId, _, _):
             return stableId
@@ -104,6 +107,11 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                 return lId == rId && lSection == rSection && lTitle == rTitle && lSettings == rSettings && lItemTitles == rItemTitles
             }
             return false
+        case let .height(lId, lSection, lTitle, lValue):
+            if case let .height(rId, rSection, rTitle, rValue) = rhs {
+                return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue
+            }
+            return false
         case let .slider(lId, lSection, lTitle, lValue):
             if case let .slider(rId, rSection, rTitle, rValue) = rhs {
                 return lId == rId && lSection == rSection && lTitle == rTitle && lValue == rValue
@@ -130,6 +138,7 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
         switch self {
         case let .toggle(_, _, _, _, option): return String(describing: option)
         case .visibility: return "visibility"
+        case .height: return "height"
         case .slider: return "width"
         case .reset: return "reset"
         default: return nil
@@ -196,6 +205,8 @@ private enum RGBottomBarEntry: ItemListNodeEntry {
                     }
                 }
             })
+        case let .height(_, section, title, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: value, sectionId: section, style: .blocks, action: arguments.selectHeight, tag: self.tag)
         case let .slider(_, section, title, value):
             return RGSliderItem(theme: presentationData.theme, minValue: 50, maxValue: 100, value: value, title: title, sectionId: section, updated: { value in
                 arguments.update { settings in
@@ -219,6 +230,10 @@ private func rgBottomBarSettings(_ settings: RGBottomBarSettings, applyingShowCa
     result.setVisible(.calls, visible: showCallsTab)
     result.setVisible(.contacts, visible: showContactsTab)
     return result
+}
+
+private func rgBottomBarHeightTitle(_ height: RGBottomBarHeight, language: String) -> String {
+    return String(format: i18n("RG.BottomBarLayout.Height.Value", language), Int32(height.rawValue))
 }
 
 public func rgBottomBarSettingsController(context: AccountContext, focusSetting: String? = nil) -> ViewController {
@@ -253,11 +268,32 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
         }
     }
 
-    let arguments = RGBottomBarArguments(update: { update in
+    let updateSettings: ((inout RGBottomBarSettings) -> Void) -> Void = { update in
         var settings = rgBottomBarSettings(RGSimpleSettings.shared.bottomBarSettings, applyingShowCallsTab: currentShowCallsTab, showContactsTab: currentShowContactsTab)
         update(&settings)
         saveSettings(settings)
         bump()
+    }
+    var presentController: ((ViewController) -> Void)?
+    let arguments = RGBottomBarArguments(update: updateSettings, selectHeight: {
+        let data = context.sharedContext.currentPresentationData.with { $0 }
+        let currentHeight = RGSimpleSettings.shared.bottomBarSettings.height
+        let sheet = ActionSheetController(presentationData: data)
+        let choices: [ActionSheetItem] = RGBottomBarHeight.allCases.map { height in
+            ActionSheetCheckboxItem(title: rgBottomBarHeightTitle(height, language: data.strings.rgLanguageCode), label: "", value: height == currentHeight, style: .alignRight, action: { [weak sheet] _ in
+                sheet?.dismissAnimated()
+                if height != currentHeight {
+                    updateSettings { $0.height = height }
+                }
+            })
+        }
+        sheet.setItemGroups([
+            ActionSheetItemGroup(items: choices),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: data.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in sheet?.dismissAnimated() })
+            ])
+        ])
+        presentController?(sheet)
     }, reset: {
         saveSettings(RGBottomBarSettings())
         bump()
@@ -314,12 +350,13 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
             .header(stableId: 6, section: 2, text: i18n("RG.BottomBarLayout.Options", lang)),
             .toggle(stableId: 7, section: 2, title: i18n("Settings.Tabs.Width.Automatic", lang), value: settings.automaticWidth, option: .automaticWidth),
             .toggle(stableId: 8, section: 2, title: i18n("RG.BottomBarLayout.ShowLabels", lang), value: settings.showLabels, option: .labels),
-            .reset(stableId: 10, section: 3, title: i18n("RG.BottomBarLayout.Reset", lang)),
-            .footer(stableId: 11, section: 3, text: i18n("RG.BottomBarLayout.Footer", lang))
+            .height(stableId: 9, section: 2, title: i18n("RG.BottomBarLayout.Height", lang), value: rgBottomBarHeightTitle(settings.height, language: lang)),
+            .reset(stableId: 11, section: 3, title: i18n("RG.BottomBarLayout.Reset", lang)),
+            .footer(stableId: 12, section: 3, text: i18n("RG.BottomBarLayout.Footer", lang))
         ]
 
         if !settings.automaticWidth {
-            entries.insert(.slider(stableId: 9, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
+            entries.insert(.slider(stableId: 10, section: 2, title: i18n("RG.BottomBarLayout.Width", lang), value: settings.buttonWidthFillRatio), at: entries.count - 2)
         }
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(i18n("RG.BottomBarLayout", lang)), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks, initialScrollToItem: rgSettingsScrollTarget(entries, item: focusSetting == "bottomSearch" || focusSetting == "searchMode" ? "visibility" : focusSetting == "width" && settings.automaticWidth ? "automaticWidth" : focusSetting), animateChanges: false)
@@ -329,6 +366,9 @@ public func rgBottomBarSettingsController(context: AccountContext, focusSetting:
     let controller = RGSettingsListController(context: context, state: signal)
     controller.focusSetting = focusSetting == "bottomSearch" || focusSetting == "searchMode" ? "visibility" : focusSetting == "width" && RGSimpleSettings.shared.bottomBarSettings.automaticWidth ? "automaticWidth" : focusSetting
     controller.navigationPresentation = .default
+    presentController = { [weak controller] sheet in
+        controller?.present(sheet, in: .window(.root), with: nil)
+    }
     return controller
 }
 
@@ -831,13 +871,14 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
         let selectedId = self.componentIdsByItemId[.chats] ?? visibleBottomItems.compactMap { self.componentIdsByItemId[$0] }.first ?? previewSettings.externalItem.flatMap { self.componentIdsByItemId[$0] }
         let previewSideInset: CGFloat = 12.0
         let availableWidth = max(120.0, contentWidth - previewSideInset * 2.0)
+        let barHeight = previewSettings.height.points
         let allButtonsHidden = visibleComponentItems.isEmpty && externalComponentItem == nil
         if allButtonsHidden {
             self.emptyBottomLabel.isHidden = false
-            self.emptyBottomLabel.frame = CGRect(x: previewSideInset, y: 130.0, width: availableWidth, height: 64.0)
+            self.emptyBottomLabel.frame = CGRect(x: previewSideInset, y: 130.0, width: availableWidth, height: barHeight)
             self.tabBarComponentView.view?.isHidden = true
             self.bottomFrame = self.emptyBottomLabel.frame
-            self.externalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: 130.0, width: 64.0, height: 64.0)
+            self.externalFrame = CGRect(x: previewSideInset + availableWidth - barHeight, y: 130.0, width: barHeight, height: barHeight)
             self.externalDropView.isHidden = true
             return
         } else {
@@ -854,6 +895,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 selectedId: selectedId,
                 outerInsets: .zero,
                 showItemTitles: previewSettings.showLabels,
+                height: previewSettings.height,
                 rgWidthPercent: previewSettings.automaticWidth ? 0 : RGTabBarLayoutPolicy.normalizedPercent(previewSettings.buttonWidthFillRatio)
             )),
             environment: {},
@@ -884,10 +926,10 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
                 return partialResult.isNull ? frame : partialResult.union(frame)
             }
             if self.bottomFrame.isNull {
-                self.bottomFrame = CGRect(x: tabBarFrame.minX, y: tabBarFrame.minY, width: max(48.0, tabBarFrame.width - 72.0), height: 64.0)
+                self.bottomFrame = CGRect(x: tabBarFrame.minX, y: tabBarFrame.minY, width: max(48.0, tabBarFrame.width - barHeight - 8.0), height: barHeight)
             }
 
-            let fixedExternalFrame = CGRect(x: previewSideInset + availableWidth - 64.0, y: tabBarFrame.minY, width: 64.0, height: 64.0)
+            let fixedExternalFrame = CGRect(x: previewSideInset + availableWidth - barHeight, y: tabBarFrame.minY, width: barHeight, height: barHeight)
             if let externalItem = previewSettings.externalItem, let frame = self.itemFrames[externalItem] {
                 self.externalFrame = frame
 
@@ -898,7 +940,7 @@ private final class RGBottomBarPreviewItemNode: ListViewItemNode, ItemListItemNo
             let hasExternalSlotContent = externalComponentItem != nil
             self.externalDropView.isHidden = true
             self.externalDropView.frame = self.externalFrame
-            self.externalDropView.layer.cornerRadius = 32.0
+            self.externalDropView.layer.cornerRadius = barHeight * 0.5
             self.externalDropView.layer.borderWidth = 1.0
             self.externalDropView.layer.borderColor = theme.list.itemBlocksSeparatorColor.cgColor
             self.externalDropView.backgroundColor = theme.list.itemInputField.backgroundColor.withAlphaComponent(0.55)

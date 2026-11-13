@@ -9,6 +9,8 @@ public struct RGRevokedMarker: Equatable {
     public var style: Style
     public var text: String
     public var color: String
+    public static let dimmedOpacity = 0.5
+
     public init(style: Style = .icon, text: String = "", color: String = "") { self.style = style; self.text = text; self.color = color }
     public static func normalizedText(_ value: String) -> String {
         var cleaned = String(value.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) && ![0x202a, 0x202b, 0x202c, 0x202d, 0x202e, 0x2066, 0x2067, 0x2068, 0x2069].contains($0.value) }.prefix(256).map(String.init).joined().prefix(24)).trimmingCharacters(in: .whitespacesAndNewlines)

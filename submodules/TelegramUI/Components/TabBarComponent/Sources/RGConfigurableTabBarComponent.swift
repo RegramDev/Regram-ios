@@ -15,12 +15,14 @@ public final class RGConfigurableTabBarComponent: Component {
     public let selectedId: AnyHashable?
     public let outerInsets: UIEdgeInsets
     public let showItemTitles: Bool
+    public let height: RGBottomBarHeight
     public let rgWidthPercent: Int32?
-    public init(theme: PresentationTheme, strings: PresentationStrings, items: [TabBarComponent.Item], externalItem: TabBarComponent.Item?, search: TabBarComponent.Search?, selectedId: AnyHashable?, outerInsets: UIEdgeInsets, showItemTitles: Bool, rgWidthPercent: Int32?) {
+    public init(theme: PresentationTheme, strings: PresentationStrings, items: [TabBarComponent.Item], externalItem: TabBarComponent.Item?, search: TabBarComponent.Search?, selectedId: AnyHashable?, outerInsets: UIEdgeInsets, showItemTitles: Bool, height: RGBottomBarHeight, rgWidthPercent: Int32?) {
         self.theme = theme; self.strings = strings; self.items = items; self.externalItem = externalItem; self.search = search; self.selectedId = selectedId; self.outerInsets = outerInsets; self.showItemTitles = showItemTitles; self.rgWidthPercent = rgWidthPercent
+        self.height = height
     }
     public static func ==(lhs: RGConfigurableTabBarComponent, rhs: RGConfigurableTabBarComponent) -> Bool {
-        lhs.theme === rhs.theme && lhs.strings === rhs.strings && lhs.items == rhs.items && lhs.externalItem == rhs.externalItem && lhs.search == rhs.search && lhs.selectedId == rhs.selectedId && lhs.outerInsets == rhs.outerInsets && lhs.showItemTitles == rhs.showItemTitles && lhs.rgWidthPercent == rhs.rgWidthPercent
+        lhs.theme === rhs.theme && lhs.strings === rhs.strings && lhs.items == rhs.items && lhs.externalItem == rhs.externalItem && lhs.search == rhs.search && lhs.selectedId == rhs.selectedId && lhs.outerInsets == rhs.outerInsets && lhs.showItemTitles == rhs.showItemTitles && lhs.height == rhs.height && lhs.rgWidthPercent == rhs.rgWidthPercent
     }
     public final class View: UIView {
         private let bar = ComponentView<Empty>()
@@ -35,6 +37,8 @@ public final class RGConfigurableTabBarComponent: Component {
             return convert(frame, from: view)
         }
         fileprivate func update(component: RGConfigurableTabBarComponent, availableSize: CGSize, transition: ComponentTransition) -> CGSize {
+            let barHeight = component.height.points
+            let accessoryWidth = barHeight + 8.0
             // MARK: Regram — use upstream search glass and its expanded field, not a second tab lens.
             // Keep an independently placed navigation tab in the capsule while search needs the right slot.
             if let search = component.search {
@@ -49,9 +53,8 @@ public final class RGConfigurableTabBarComponent: Component {
                     switch item.content { case let .tabBarItem(value): title = value.title ?? ""; case let .customItem(value): title = value.title }
                     return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
                 }
-                let searchButtonWidth = TabBarComponent.rgHorizontalBarHeight(showItemTitles: component.showItemTitles) + 8.0
-                let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: Double(searchButtonWidth), searchActive: search.isActive, naturalItemWidths: naturalWidths))
-                let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
+                let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: items.count, percent: component.rgWidthPercent ?? 0, searchButtonWidth: Double(accessoryWidth), searchActive: search.isActive, naturalItemWidths: naturalWidths))
+                let size = bar.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: search, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false, rgBarHeight: component.height)), environment: {}, containerSize: CGSize(width: width, height: availableSize.height))
                 if let view = bar.view {
                     if view.superview == nil { addSubview(view) }
                     transition.setFrame(view: view, frame: CGRect(origin: .zero, size: size))
@@ -70,12 +73,12 @@ public final class RGConfigurableTabBarComponent: Component {
                 return component.showItemTitles ? Double((title as NSString).size(withAttributes: [.font: Font.semibold(10)]).width) + 20 : 64
             }
             let percent = component.rgWidthPercent ?? 0
-            let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: component.items.count, percent: percent, searchButtonWidth: component.externalItem == nil ? 0 : 72, naturalItemWidths: naturalWidths))
-            let externalWidth: CGFloat = component.externalItem == nil ? 0 : 72
+            let externalWidth = component.externalItem == nil ? 0.0 : accessoryWidth
+            let width = CGFloat(RGTabBarLayoutPolicy.width(containerWidth: Double(availableSize.width), itemCount: component.items.count, percent: percent, searchButtonWidth: Double(externalWidth), naturalItemWidths: naturalWidths))
             var height: CGFloat = 0
-            for (target, items, x, containerWidth) in [(bar, component.items, CGFloat(0), max(0, width - externalWidth)), (standalone, component.externalItem.map { [$0] } ?? [], max(0, width - 64), CGFloat(64))] {
+            for (target, items, x, containerWidth) in [(bar, component.items, CGFloat(0), max(0, width - externalWidth)), (standalone, component.externalItem.map { [$0] } ?? [], max(0, width - barHeight), barHeight)] {
                 guard !items.isEmpty else { target.view?.removeFromSuperview(); continue }
-                let size = target.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: nil, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false)), environment: {}, containerSize: CGSize(width: containerWidth, height: availableSize.height))
+                let size = target.update(transition: transition, component: AnyComponent(TabBarComponent(theme: component.theme, strings: component.strings, items: items, search: nil, selectedId: component.selectedId, outerInsets: component.outerInsets, showItemTitles: component.showItemTitles, usesSystemLayout: false, rgBarHeight: component.height)), environment: {}, containerSize: CGSize(width: containerWidth, height: availableSize.height))
                 if let view = target.view { if view.superview == nil { addSubview(view) }; transition.setFrame(view: view, frame: CGRect(origin: CGPoint(x: x, y: 0), size: size)) }
                 height = max(height, size.height)
             }

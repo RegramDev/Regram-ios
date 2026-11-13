@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import RGSimpleSettings // MARK: Regram
 import Display
 import TelegramPresentationData
 import ComponentFlow
@@ -348,13 +349,6 @@ private final class TabBarBadgeView: UIView {
 }
 
 public final class TabBarComponent: Component {
-    // MARK: Regram — keep a 44-point hit area when the icon is the only visible content.
-    private static let rgIconOnlyItemThickness: CGFloat = 44.0
-
-    static func rgHorizontalBarHeight(showItemTitles: Bool) -> CGFloat {
-        return (showItemTitles ? tabBarItemLength : Self.rgIconOnlyItemThickness) + tabBarInnerInset * 2.0
-    }
-
     public final class Item: Equatable {
         public enum Content: Equatable {
             public struct CustomItem: Equatable {
@@ -495,6 +489,7 @@ public final class TabBarComponent: Component {
     /// A horizontal regular bar takes iOS 27's portrait tab bar layout (`tabBarSystemItemsLayout`); without it, its
     /// items share the available width (`tabBarItemsLayout`), as where iOS would switch to its wide bar.
     public let usesSystemLayout: Bool
+    public let rgBarHeight: RGBottomBarHeight // MARK: Regram
 
     public init(
         theme: PresentationTheme,
@@ -508,7 +503,8 @@ public final class TabBarComponent: Component {
         showItemTitles: Bool = true,
         axis: Axis = .horizontal,
         isCompact: Bool = false,
-        usesSystemLayout: Bool = true
+        usesSystemLayout: Bool = true,
+        rgBarHeight: RGBottomBarHeight = .regular
     ) {
         self.theme = theme
         self.tintSelectedItem = tintSelectedItem
@@ -522,6 +518,7 @@ public final class TabBarComponent: Component {
         self.axis = axis
         self.isCompact = isCompact
         self.usesSystemLayout = usesSystemLayout
+        self.rgBarHeight = rgBarHeight
     }
     
     public static func ==(lhs: TabBarComponent, rhs: TabBarComponent) -> Bool {
@@ -557,6 +554,9 @@ public final class TabBarComponent: Component {
             return false
         }
         if lhs.usesSystemLayout != rhs.usesSystemLayout {
+            return false
+        }
+        if lhs.rgBarHeight != rhs.rgBarHeight {
             return false
         }
         return true
@@ -912,8 +912,10 @@ public final class TabBarComponent: Component {
                 barHeight = tabBarSystemBarThickness
             } else if component.isCompact {
                 barHeight = tabBarCompactBarThickness
+            } else if component.axis == .horizontal {
+                barHeight = component.rgBarHeight.points // MARK: Regram
             } else {
-                barHeight = TabBarComponent.rgHorizontalBarHeight(showItemTitles: component.axis != .horizontal || component.showItemTitles) // MARK: Regram
+                barHeight = tabBarItemLength + tabBarInnerInset * 2.0
             }
 
             // Each item's title width at the unselected font, as `-[_UITabButton sizeThatFits:]` measures it.
@@ -958,7 +960,7 @@ public final class TabBarComponent: Component {
                 itemsLayout = tabBarSystemItemsLayout(fittedItemWidths: titleWidths, availableLength: availableLength, hasAccessory: search != nil)
             } else {
                 // MARK: Regram — use the same height for the items, lens and search button.
-                let itemThickness = component.axis == .horizontal && !component.isCompact && !component.showItemTitles ? TabBarComponent.rgIconOnlyItemThickness : nil
+                let itemThickness = component.axis == .horizontal && !component.isCompact ? barHeight - tabBarInnerInset * 2.0 : nil
                 itemsLayout = tabBarItemsLayout(axis: component.axis, isCompact: component.isCompact, unboundItemWidths: titleWidths.map { $0 + 10.0 * 2.0 }, availableLength: availableLength, itemThickness: itemThickness)
             }
             let tabsSize = itemsLayout.size
@@ -1349,11 +1351,12 @@ private final class ItemComponent: Component {
             let title: String
             let badgeValue: String?
 
-            // Compact items have no title, so the icon is centered; the badge moves with it.
-            var badgeOffsetY: CGFloat = 0.0
+            // MARK: Regram — share the tighter vertical padding between the icon and its label.
+            let verticalReduction = component.showsTitle && !component.isSystemLayout ? max(0.0, (tabBarItemLength - availableSize.height) * 0.5) : 0.0
+            var badgeOffsetY = -min(2.0, verticalReduction)
             func iconY(regular: CGFloat, height: CGFloat) -> CGFloat {
                 if component.showsTitle {
-                    return regular
+                    return regular - verticalReduction
                 }
                 let y = floor((availableSize.height - height) * 0.5)
                 badgeOffsetY = y - regular
@@ -1559,7 +1562,7 @@ private final class ItemComponent: Component {
                 containerSize: CGSize(width: availableSize.width, height: 100.0)
             )
             // A system item's title starts 35pt below its top: 7pt above the bottom of a 54pt item, for a 12pt line.
-            let titleBottomInset: CGFloat = component.isSystemLayout ? 7.0 : 8.0
+            let titleBottomInset: CGFloat = component.isSystemLayout ? 7.0 : 8.0 - verticalReduction
             let titleFrame = CGRect(origin: CGPoint(x: floor((availableSize.width - titleSize.width) * 0.5), y: availableSize.height - titleBottomInset - titleSize.height), size: titleSize)
             if let titleView = self.title.view {
                 if titleView.superview == nil {

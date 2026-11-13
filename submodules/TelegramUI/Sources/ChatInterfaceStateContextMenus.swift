@@ -1840,12 +1840,20 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
 
         // MARK: Regram — 复读 / 无引用复读. Both send into *this* conversation, so both need send
         // permission here.
-        if message.id.namespace == Namespaces.Message.Cloud {
+        if message.id.namespace == Namespaces.Message.Cloud, let peerId = chatPresentationInterfaceState.chatLocation.peerId {
             let rgLang = chatPresentationInterfaceState.strings.baseLanguageCode
             let rgCanSendHere = canSendMessagesToChat(chatPresentationInterfaceState)
-            var rgThreadId: Int64?
-            if case let .replyThread(replyThreadMessage) = chatPresentationInterfaceState.chatLocation {
-                rgThreadId = replyThreadMessage.threadId
+            let rgThreadId = chatPresentationInterfaceState.chatLocation.threadId
+            let scrollAfterRepeat: () -> Void = { [weak chatController = interfaceInteraction.chatController() as? ChatControllerImpl] in
+                chatController?.rgScrollAfterRepeat(peerId: peerId, threadId: rgThreadId)
+            }
+            func repeatAfterDismissingMenu(_ controller: ContextControllerProtocol?, dismiss: (ContextMenuActionResult) -> Void, send: @escaping () -> Void) {
+                if let controller {
+                    controller.dismiss(result: .dismissWithoutContent, completion: send)
+                } else {
+                    dismiss(.dismissWithoutContent)
+                    send()
+                }
             }
 
             // The context menu is handed the whole album when one of its items is long-pressed, so
@@ -1854,7 +1862,7 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             let rgCanRepeat = rgRepeatItems != nil
             let rgSendCopy: () -> Void = {
                 if let rgRepeatItems {
-                    rgSendRepeatCopy(context: context, peerId: message.id.peerId, threadId: rgThreadId, items: rgRepeatItems, failed: {
+                    rgSendRepeatCopy(context: context, peerId: peerId, threadId: rgThreadId, items: rgRepeatItems, enqueued: scrollAfterRepeat, failed: {
                         controllerInteraction.displayUndo(.info(title: nil, text: chatPresentationInterfaceState.strings.Login_UnknownError, timeout: nil, customUndoText: nil))
                     })
                 }
@@ -1872,18 +1880,18 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             if rgCanSendHere, !rgForwardSources.isEmpty, !rgForwardRestricted {
                 rgCollect(.repeatForward, .action(ContextMenuActionItem(text: "Repeat.WithReply".i18n(rgLang), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.contextMenu.primaryColor)
-                }, action: { _, f in
-                    rgSendRepeatForward(context: context, peerId: message.id.peerId, threadId: rgThreadId, messageIds: rgForwardSources)
-                    f(.dismissWithoutContent)
+                }, action: { controller, dismiss in
+                    repeatAfterDismissingMenu(controller, dismiss: dismiss) {
+                        rgSendRepeatForward(context: context, peerId: peerId, threadId: rgThreadId, messageIds: rgForwardSources, enqueued: scrollAfterRepeat)
+                    }
                 })))
             }
             // 无引用复读: the same content re-sent here as your own message.
             if rgCanSendHere, rgCanRepeat {
                 rgCollect(.repeatCopy, .action(ContextMenuActionItem(text: "Repeat.Plain".i18n(rgLang), icon: { theme in
                     return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/AddCircle"), color: theme.contextMenu.primaryColor)
-                }, action: { _, f in
-                    rgSendCopy()
-                    f(.dismissWithoutContent)
+                }, action: { controller, dismiss in
+                    repeatAfterDismissingMenu(controller, dismiss: dismiss, send: rgSendCopy)
                 })))
             }
         }

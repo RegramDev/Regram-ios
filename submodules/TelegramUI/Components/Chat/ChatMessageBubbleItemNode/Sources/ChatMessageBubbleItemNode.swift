@@ -5936,6 +5936,8 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
         var shouldClipOnTransitions = true
         var unsupportedZones: [CGRect] = []
         var contentNodeIndex = 0
+        // MARK: Regram — in a mixed album, dim only the tiles or content belonging to revoked messages.
+        let dimIndividualMessages = RGSimpleSettings.shared.revokedMarkerDimMessages && !item.content.allSatisfy { $0.0.rgIsRevoked }
         for (relativeFrame, properties, useContentOrigin, apply) in contentNodeFramesPropertiesAndApply {
             apply(animation, synchronousLoads, applyInfo)
             
@@ -5944,6 +5946,10 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
             }
             
             let contentNode = strongSelf.contentNodes[contentNodeIndex]
+            let contentAlpha: CGFloat = dimIndividualMessages && contentNode.item?.message.rgIsRevoked == true ? CGFloat(RGRevokedMarker.dimmedOpacity) : 1.0
+            if contentNode.alpha != contentAlpha {
+                contentNode.alpha = contentAlpha
+            }
             
             if contentNode.disablesClipping {
                 shouldClipOnTransitions = false
@@ -6014,7 +6020,7 @@ public class ChatMessageBubbleItemNode: ChatMessageItemView, ChatMessagePreviewI
                         contentNode.animateClippingTransition(offset: positionOffset * contentNodeFrame.height, animation: animation)
                         
                         contentNode.alpha = 0.0
-                        animation.animator.updateAlpha(layer: contentNode.layer, alpha: 1.0, completion: nil)
+                        animation.animator.updateAlpha(layer: contentNode.layer, alpha: contentAlpha, completion: nil) // MARK: Regram
                     } else if animateTextAndWebpagePositionSwap != nil, let contentNode = contentNode as? ChatMessageWebpageBubbleContentNode {
                         if let statusNode = contentNode.contentNode.statusNode, let contentSuperview = contentNode.view.superview, statusNode.view.isDescendant(of: contentSuperview), let bottomStatusNodeAnimationSourcePosition {
                             let localSourcePosition = statusNode.view.convert(bottomStatusNodeAnimationSourcePosition, from: contentSuperview)
