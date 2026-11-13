@@ -513,24 +513,9 @@ final class LocalizationListControllerNode: ViewControllerTracingNode {
                         entries.append(.translateEntire(text: presentationData.strings.Localization_TranslateEntireChat, value: translateChats, locked: !(isPremium || true)))
                     }
                     
-                    var value = ""
-                    if ignoredLanguages.count > 1 {
-                        var ignoredLanguagesSet = Set<String>()
-                        var filteredIgnoredLanguages: [String] = []
-                        for language in ignoredLanguages {
-                            if ignoredLanguagesSet.contains(language) {
-                                continue
-                            }
-                            ignoredLanguagesSet.insert(language)
-                            filteredIgnoredLanguages.append(language)
-                        }
-                        value = filteredIgnoredLanguages.joined(separator: ", ")
-                    } else if let code = ignoredLanguages.first {
-                        let enLocale = Locale(identifier: "en")
-                        if let title = enLocale.localizedString(forLanguageCode: code) {
-                            value = title
-                        }
-                    }
+                    // MARK: Regram — keep the script visible in the settings summary as well.
+                    let locale = Locale(identifier: translationInterfaceLanguage(strings: presentationData.strings))
+                    let value = ignoredLanguages.map { translationLanguageDisplayName($0, locale: locale) ?? $0 }.joined(separator: ", ")
                     
                     if showTranslate || translateChats {
                         entries.append(.doNotTranslate(text: presentationData.strings.Localization_DoNotTranslate, value: value))

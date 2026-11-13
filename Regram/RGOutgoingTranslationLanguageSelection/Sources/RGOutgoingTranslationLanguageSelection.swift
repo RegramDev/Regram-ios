@@ -62,20 +62,16 @@ private enum RGOutgoingTranslationLanguageSelectionEntry: ItemListNodeEntry {
 
 private func rgOutgoingTranslationLanguageSelectionEntries(theme: PresentationTheme, selectedLanguage: String?) -> [RGOutgoingTranslationLanguageSelectionEntry] {
     let enLocale = Locale(identifier: "en")
+    let selectedLanguage = selectedLanguage == "zh" ? "zh-hans" : selectedLanguage
     var entries: [RGOutgoingTranslationLanguageSelectionEntry] = []
     var addedLanguages = Set<String>()
     var index: Int32 = 0
     
     func addLanguage(_ code: String) {
-        guard !addedLanguages.contains(code), let title = enLocale.localizedString(forLanguageCode: code) else {
+        guard code != "zh", addedLanguages.insert(code).inserted, let title = translationLanguageDisplayName(code, locale: enLocale) else {
             return
         }
-        addedLanguages.insert(code)
-        let languageLocale = Locale(identifier: code)
-        var subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
-        if code == "zh-hans" || code == "zh-hant" {
-            subtitle += " \(code)"
-        }
+        let subtitle = translationLanguageDisplayName(code, locale: Locale(identifier: code)) ?? title
         entries.append(.language(index, theme, title.capitalized, subtitle.capitalized, code == selectedLanguage, code))
         index += 1
     }

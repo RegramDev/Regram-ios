@@ -6,8 +6,8 @@ import AccountContext
 import TelegramUIPreferences
 
 public struct ChatTranslationState: Codable, Equatable {
-    // MARK: Regram — old recognizer results collapsed both Chinese scripts.
-    fileprivate static let currentDetectionVersion: Int32 = 1
+    // MARK: Regram — refresh cached Chinese detections made before checking the actual characters.
+    fileprivate static let currentDetectionVersion: Int32 = 2
 
     enum CodingKeys: String, CodingKey {
         case baseLang
@@ -414,8 +414,8 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
             return cachedChatTranslationState(engine: context.engine, peerId: peerId, threadId: threadId)
             |> mapToSignal { cached in
                 let currentTime = Int32(CFAbsoluteTimeGetCurrent() + kCFAbsoluteTimeIntervalSince1970)
-                // MARK: Regram — re-detect older cached Chinese verdicts that lost the script.
-                if let cached, cached.fromLang != "zh" || cached.detectionVersion == ChatTranslationState.currentDetectionVersion,
+                // MARK: Regram — old Chinese detections could guess a script from shared characters.
+                if let cached, !cached.fromLang.hasPrefix("zh") || cached.detectionVersion == ChatTranslationState.currentDetectionVersion,
                    let timestamp = cached.timestamp, cached.baseLang == baseLang && currentTime - timestamp < 60 * 60 {
                     if !isIgnoredTranslationLanguage(cached.fromLang, ignoredLanguages: dontTranslateLanguages) || forcePredict {
                         return .single(cached)
@@ -441,7 +441,7 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                             for message in messages {
                                 if message.effectivelyIncoming(context.account.peerId), message.text.count >= 10 {
                                     let summaryLanguage = (message.attributes.first(where: { $0 is SummarizationMessageAttribute }) as? SummarizationMessageAttribute).map { normalizeTranslationLanguage($0.fromLang) }
-                                    if let fromLang = summaryLanguage, !fromLang.isEmpty, fromLang != "zh" { // MARK: Regram
+                                    if let fromLang = summaryLanguage, !fromLang.isEmpty, !fromLang.hasPrefix("zh") { // MARK: Regram
                                         if supportedTranslationLanguages.contains(fromLang) {
                                             fromLangs[fromLang] = (fromLangs[fromLang] ?? 0) + message.text.count
                                             count += 1
@@ -490,6 +490,21 @@ private func chatTranslationLocationState(context: AccountContext, peerId: Engin
                                 }
                             }
                                                         
+                            // MARK: Regram — count shared characters towards Chinese without using them to choose a script.
+                            let simplifiedCount = fromLangs.removeValue(forKey: "zh-hans") ?? 0
+                            let traditionalCount = fromLangs.removeValue(forKey: "zh-hant") ?? 0
+                            let chineseCount = simplifiedCount + traditionalCount + (fromLangs.removeValue(forKey: "zh") ?? 0)
+                            if chineseCount > 0 {
+                                let script: String
+                                if simplifiedCount > traditionalCount {
+                                    script = "zh-hans"
+                                } else if traditionalCount > simplifiedCount {
+                                    script = "zh-hant"
+                                } else {
+                                    script = "zh"
+                                }
+                                fromLangs[script] = chineseCount
+                            }
                             var mostFrequent: (String, Int)?
                             for (lang, count) in fromLangs {
                                 if let current = mostFrequent {

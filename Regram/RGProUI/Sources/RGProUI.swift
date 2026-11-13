@@ -189,7 +189,6 @@ private func RGProControllerEntries(presentationData: PresentationData, page: RG
     entries.append(.disclosure(id: id.count, section: .appearance, link: .fonts, text: "Fonts.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))
     entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))
-    entries.append(.notice(id: id.count, section: .appearance, text: "AppBadge.Notice".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .footer, link: .backup, text: "Backup.Title".i18n(lang)))
     entries.append(.disclosure(id: id.count, section: .network, link: .diagnostics, text: "Diagnostics.Title".i18n(lang)))
 

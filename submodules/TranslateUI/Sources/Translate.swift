@@ -133,7 +133,8 @@ public var supportedTranslationLanguages = [
 public var popularTranslationLanguages = [
     "en",
     "ar",
-    "zh",
+    "zh-hans", // MARK: Regram
+    "zh-hant",
     "fr",
     "de",
     "it",
@@ -162,32 +163,30 @@ public func translationInterfaceLanguage(strings: PresentationStrings) -> String
 public func effectiveIgnoredTranslationLanguages(interfaceLanguage: String, ignoredLanguages: [String]?) -> Set<String> {
     let baseLanguage = normalizeTranslationTargetLanguage(interfaceLanguage)
     let baseIsChinese = baseLanguage == "zh-hans" || baseLanguage == "zh-hant"
-    if let ignoredLanguages {
-        return Set(ignoredLanguages.map {
-            let language = normalizeTranslationLanguage($0)
-            // Older versions stored the interface's Chinese script as plain "zh".
-            return language == "zh" && baseIsChinese ? baseLanguage : language
-        })
-    }
-    var result: Set<String> = [baseLanguage]
-    for language in systemLanguageCodes() {
-        if !baseIsChinese || !language.hasPrefix("zh") {
-            result.insert(language)
+    let languages = ignoredLanguages ?? ([baseLanguage] + systemLanguageCodes().filter { !baseIsChinese || !$0.hasPrefix("zh") })
+    var result = Set(languages.map(normalizeTranslationLanguage))
+    if result.remove("zh") != nil {
+        // A legacy Chinese choice followed the interface script when it used Chinese.
+        if baseIsChinese {
+            result.insert(baseLanguage)
+        } else {
+            result.formUnion(["zh-hans", "zh-hant"])
         }
     }
     return result
 }
 
 func isIgnoredTranslationLanguage(_ language: String, ignoredLanguages: Set<String>) -> Bool {
-    if ignoredLanguages.contains(language) { return true }
-    switch language {
-    case "zh-hans", "zh-hant":
-        return ignoredLanguages.contains("zh")
-    case "zh":
-        return ignoredLanguages.contains("zh-hans") || ignoredLanguages.contains("zh-hant")
-    default:
-        return false
+    return ignoredLanguages.contains(language)
+        || (language == "zh" && (ignoredLanguages.contains("zh-hans") || ignoredLanguages.contains("zh-hant")))
+}
+
+public func translationLanguageDisplayName(_ code: String, locale: Locale) -> String? {
+    if let script = rgChineseTranslationScript(code) {
+        // Locale's language-only lookup returns the same name for both scripts.
+        return locale.localizedString(forIdentifier: script) ?? (script == "zh-hans" ? "Simplified Chinese" : "Traditional Chinese")
     }
+    return locale.localizedString(forLanguageCode: code)
 }
 
 public func normalizeTranslationLanguage(_ code: String) -> String {
@@ -211,9 +210,14 @@ public func recognizedTranslationLanguage(in text: String, supportedLanguages: [
     languageRecognizer.reset()
     languageRecognizerLock.unlock()
 
+    // MARK: Regram — a Chinese hypothesis alone cannot distinguish shared characters.
+    lazy var chineseScript = rgChineseTranslationScript(in: text) ?? "zh"
     return hypotheses
         .sorted(by: { $0.value > $1.value })
-        .lazy.map { normalizeTranslationLanguage($0.key.rawValue) }
+        .lazy.map { hypothesis -> String in
+            let language = normalizeTranslationLanguage(hypothesis.key.rawValue)
+            return language.hasPrefix("zh") ? chineseScript : language
+        }
         .first(where: { supportedLanguages?.contains($0) ?? true })
 }
 

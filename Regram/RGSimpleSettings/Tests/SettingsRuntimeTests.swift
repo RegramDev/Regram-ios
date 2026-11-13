@@ -8,9 +8,12 @@ extension UserDefaults {
 @main enum SettingsRuntimeTests {
     static func expect(_ value: @autoclosure () -> Bool, _ message: String) { if !value() { fatalError(message) } }
     static func main() throws {
-        // An installed three-line value must migrate before the singleton caches its wrappers.
+        // Installed preferences must migrate before the singleton caches its wrappers.
         UserDefaults.rgTestStandard.set("3", forKey: "chatListLines")
+        UserDefaults.rgTestStandard.set("hidden", forKey: "customAppBadge")
         let settings = RGSimpleSettings.shared
+        expect(!settings.screenshotBadgeEnabled && settings.customAppBadge == RGAppBadgeNames.defaultName, "An installed hidden badge migrates to the disabled switch")
+        expect(UserDefaults.rgTestStandard.string(forKey: "customAppBadge") == RGAppBadgeNames.defaultName, "The retired badge value is removed from storage")
         expect(!settings.hideMessageForwardButton && !settings.autoSelectDeleteModerationActions, "New chat action settings are opt-in")
         final class MessageChanges: @unchecked Sendable { var count = 0 }
         let messageChanges = MessageChanges()
@@ -394,20 +397,36 @@ extension UserDefaults {
     }
     static func checkIconSwitching() {
         expect(RGAppIconNames.canonicalName("SGSilver") == nil && RGAppIconNames.canonicalName("RGAnime") == nil && RGAppIconNames.canonicalName("RGGathering") == "RGGathering", "Removed artwork falls back to primary while the new alternate survives")
-        let originalBadge = RGSimpleSettings.shared.customAppBadge
-        RGSimpleSettings.shared.customAppBadge = "SkyAppBadge"
-        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.defaultName, "Removed badge selections fall back immediately")
-        RGSimpleSettings.shared.customAppBadge = RGAppBadgeNames.alternateName
-        expect(RGSimpleSettings.shared.customAppBadge == RGAppBadgeNames.alternateName, "The new alternate badge persists")
+        let settings = RGSimpleSettings.shared
+        let originalBadge = settings.customAppBadge
+        let originalBadgeEnabled = settings.screenshotBadgeEnabled
+        settings.customAppBadge = "SkyAppBadge"
+        expect(settings.customAppBadge == RGAppBadgeNames.defaultName, "Removed badge selections fall back immediately")
+        settings.customAppBadge = RGAppBadgeNames.alternateName
+        expect(settings.customAppBadge == RGAppBadgeNames.alternateName, "The new alternate badge persists")
         let oldBadgeBackup = RGSettingsBackup(values: ["customAppBadge": .string("Components/AppBadge")])
         expect(oldBadgeBackup.values["customAppBadge"] == .string(RGAppBadgeNames.defaultName), "Legacy badge backups normalize to current artwork")
+        expect(oldBadgeBackup.values["screenshotBadgeEnabled"] == .bool(true), "Visible styles in older backups enable the badge")
         for name in ["RegramAppBadge", "ZhiqiuAppBadge", "RGAzureBadge", "RGJadeBadge"] {
             RGSimpleSettings.shared.customAppBadge = name
             expect(RGSimpleSettings.shared.customAppBadge == name, "Retained and recolored badges persist")
             let backup = RGSettingsBackup(values: ["customAppBadge": .string(name)])
             expect(backup.values["customAppBadge"] == .string(name), "Backups retain available badge styles")
         }
-        RGSimpleSettings.shared.customAppBadge = originalBadge
+        settings.screenshotBadgeEnabled = false
+        let disabledBadgeValues = settings.exportPreferences(categories: [.appearance]).values.filter {
+            $0.key == "screenshotBadgeEnabled" || $0.key == "customAppBadge"
+        }
+        settings.screenshotBadgeEnabled = true
+        settings.customAppBadge = RGAppBadgeNames.defaultName
+        settings.applyPreferences(disabledBadgeValues)
+        expect(!settings.screenshotBadgeEnabled && settings.customAppBadge == "RGJadeBadge", "Backup restores both visibility and the last style")
+        settings.screenshotBadgeEnabled = true
+        expect(settings.customAppBadge == "RGJadeBadge", "Turning the badge back on preserves the last style")
+        settings.applyPreferences(["customAppBadge": .string("hidden")])
+        expect(!settings.screenshotBadgeEnabled && settings.customAppBadge == RGAppBadgeNames.defaultName, "An old hidden backup restores as disabled")
+        settings.customAppBadge = originalBadge
+        settings.screenshotBadgeEnabled = originalBadgeEnabled
         var actual: String?; var applies: [(String?, (Bool) -> Void)] = []; var timeouts: [() -> Void] = []; var updates = 0; var results: [Bool] = []
         let coordinator = RGAppIconSwitchCoordinator(current: { actual }, apply: { applies.append(($0, $1)) }, changed: { updates += 1 }, schedule: { _, action in timeouts.append(action) })
         coordinator.request("RGBlack") { results.append($0) }

@@ -116,30 +116,15 @@ public func translationSettingsController(context: AccountContext) -> ViewContro
     let enLocale = Locale(identifier: "en")
     var languages: [(String, String, String)] = []
     var addedLanguages = Set<String>()
-    for code in popularTranslationLanguages where code != "zh" || !interfaceLanguageCode.hasPrefix("zh-") { // MARK: Regram
-        if let title = enLocale.localizedString(forLanguageCode: code) {
-            let languageLocale = Locale(identifier: code)
-            let subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
-            let value = (code, title.capitalized, subtitle.capitalized)
-            if code == interfaceLanguageCode {
-                languages.insert(value, at: 0)
-            } else {
-                languages.append(value)
-            }
-            addedLanguages.insert(code)
-        }
-    }
-
-    for code in supportedTranslationLanguages where code != "zh" || !interfaceLanguageCode.hasPrefix("zh-") {
-        if !addedLanguages.contains(code), let title = enLocale.localizedString(forLanguageCode: code) {
-            let languageLocale = Locale(identifier: code)
-            let subtitle = languageLocale.localizedString(forLanguageCode: code) ?? title
-            let value = (code, title.capitalized, subtitle.capitalized)
-            if code == interfaceLanguageCode {
-                languages.insert(value, at: 0)
-            } else {
-                languages.append(value)
-            }
+    // MARK: Regram — show each Chinese script as a separate choice with its native name.
+    for code in popularTranslationLanguages + supportedTranslationLanguages where code != "zh" {
+        guard addedLanguages.insert(code).inserted, let title = translationLanguageDisplayName(code, locale: enLocale) else { continue }
+        let subtitle = translationLanguageDisplayName(code, locale: Locale(identifier: code)) ?? title
+        let value = (code, title.capitalized, subtitle.capitalized)
+        if code == interfaceLanguageCode {
+            languages.insert(value, at: 0)
+        } else {
+            languages.append(value)
         }
     }
     

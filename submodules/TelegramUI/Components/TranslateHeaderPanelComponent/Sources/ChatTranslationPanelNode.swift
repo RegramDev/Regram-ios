@@ -135,14 +135,14 @@ final class ChatTranslationPanelNode: ASDisplayNode {
                 languageCode = String(languageCode.dropLast(rawSuffix.count))
             }
             
-            let toLang = info.toLang ?? languageCode
+            let toLang = normalizeTranslationTargetLanguage(info.toLang ?? translationInterfaceLanguage(strings: strings)) // MARK: Regram
             let key = "Translation.Language.\(toLang)"
             let translateTitle: String
             if let string = strings.primaryComponent.dict[key] {
                 translateTitle = strings.Conversation_Translation_TranslateTo(string).string
             } else {
                 let languageLocale = Locale(identifier: languageCode)
-                let toLanguage = languageLocale.localizedString(forLanguageCode: toLang) ?? ""
+                let toLanguage = translationLanguageDisplayName(toLang, locale: languageLocale) ?? "" // MARK: Regram
                 translateTitle = strings.Conversation_Translation_TranslateToOther(toLanguage).string
             }
             
@@ -277,7 +277,7 @@ final class ChatTranslationPanelNode: ASDisplayNode {
             doNotTranslateTitle = presentationData.strings.Conversation_Translation_DoNotTranslate(string).string
         } else {
             let languageLocale = Locale(identifier: languageCode)
-            let fromLanguage = languageLocale.localizedString(forLanguageCode: fromLang) ?? ""
+            let fromLanguage = translationLanguageDisplayName(fromLang, locale: languageLocale) ?? "" // MARK: Regram
             doNotTranslateTitle = presentationData.strings.Conversation_Translation_DoNotTranslateOther(fromLanguage).string
         }
         
@@ -317,7 +317,7 @@ final class ChatTranslationPanelNode: ASDisplayNode {
                 
                 for code in topLanguages {
                     if !addedLanguages.contains(code) {
-                        let displayTitle = languageLocale.localizedString(forLanguageCode: code) ?? ""
+                        let displayTitle = translationLanguageDisplayName(code, locale: languageLocale) ?? "" // MARK: Regram
                         let value = (code, displayTitle)
                         if code == languageCode {
                             languages.insert(value, at: 0)
@@ -330,7 +330,7 @@ final class ChatTranslationPanelNode: ASDisplayNode {
                 
                 for code in supportedTranslationLanguages where code != "zh" {
                     if !addedLanguages.contains(code) {
-                        let displayTitle = languageLocale.localizedString(forLanguageCode: code) ?? ""
+                        let displayTitle = translationLanguageDisplayName(code, locale: languageLocale) ?? "" // MARK: Regram
                         let value = (code, displayTitle)
                         if code == languageCode {
                             languages.insert(value, at: 0)

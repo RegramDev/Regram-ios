@@ -28,11 +28,17 @@ public enum RGAppIconNames {
 public enum RGAppBadgeNames {
     public static let defaultName = "RGConversationBadge"
     public static let alternateName = "RGGatheringBadge"
-    public static let hiddenName = "hidden"
+    static let legacyHiddenName = "hidden"
     public static let allNames = [defaultName, "RGAzureBadge", "RGIrisBadge", "RGMintBadge", alternateName, "RGAmberBadge", "RGNebulaBadge", "RGJadeBadge", "RegramAppBadge", "ZhiqiuAppBadge"]
+
+    public static func titleKey(_ name: String) -> String {
+        let style = canonicalName(name)
+        let title = style.hasSuffix("AppBadge") ? style.dropLast("AppBadge".count) : style.dropFirst(2).dropLast("Badge".count)
+        return "AppBadge.Name." + title.lowercased()
+    }
 
     /// Empty preferences, removed artwork and old backups all resolve to current artwork.
     public static func canonicalName(_ name: String) -> String {
-        name == hiddenName || allNames.contains(name) ? name : defaultName
+        allNames.contains(name) ? name : defaultName
     }
 }

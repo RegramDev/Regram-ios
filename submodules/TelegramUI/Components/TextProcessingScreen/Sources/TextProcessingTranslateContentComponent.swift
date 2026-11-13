@@ -46,7 +46,7 @@ func localizedLanguageName(strings: PresentationStrings, language: String, kind:
     }
     if result == nil {
         let languageLocale = Locale(identifier: language)
-        result = languageLocale.localizedString(forLanguageCode: language)?.capitalized
+        result = translationLanguageDisplayName(language, locale: languageLocale)?.capitalized // MARK: Regram
     }
     return result ?? ""
 }

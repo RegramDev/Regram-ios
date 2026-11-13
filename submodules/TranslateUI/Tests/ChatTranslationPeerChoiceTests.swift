@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 import TelegramCore
 @testable import TranslateUI
@@ -17,6 +18,25 @@ final class ChatTranslationPeerChoiceTests: XCTestCase {
         let topic = ChatTranslationState(baseLang: "zh-hant", fromLang: "zh-hans", timestamp: nil, toLang: nil, isEnabled: false)
         XCTAssertTrue(effectiveChatTranslationState(topic, peerChoice: ChatTranslationPeerChoice(isEnabled: true, toLang: "zh-hant")).isEnabled)
         XCTAssertFalse(effectiveChatTranslationState(topic, peerChoice: ChatTranslationPeerChoice(isEnabled: true, toLang: "zh-CN")).isEnabled)
+    }
+
+    // MARK: Regram
+    func testChineseScriptNamesAndUnmarkedText() {
+        let en = Locale(identifier: "en")
+        XCTAssertNotEqual(translationLanguageDisplayName("zh-hans", locale: en), translationLanguageDisplayName("zh-hant", locale: en))
+        XCTAssertEqual(translationLanguageDisplayName("zh-hans", locale: Locale(identifier: "zh-hans")), "简体中文")
+        XCTAssertEqual(translationLanguageDisplayName("zh-hant", locale: Locale(identifier: "zh-hant")), "繁體中文")
+
+        let simplified = effectiveIgnoredTranslationLanguages(interfaceLanguage: "en", ignoredLanguages: ["zh-hans"])
+        let traditional = effectiveIgnoredTranslationLanguages(interfaceLanguage: "en", ignoredLanguages: ["zh-hant"])
+        XCTAssertEqual(effectiveIgnoredTranslationLanguages(interfaceLanguage: "en", ignoredLanguages: ["zh"]), ["zh-hans", "zh-hant"])
+        XCTAssertEqual(recognizedTranslationLanguage(in: "心情很好"), "zh")
+        XCTAssertEqual(recognizedTranslationLanguage(in: "这条消息包含简体中文"), "zh-hans")
+        XCTAssertEqual(recognizedTranslationLanguage(in: "這條訊息包含繁體中文"), "zh-hant")
+        XCTAssertTrue(isIgnoredTranslationLanguage("zh", ignoredLanguages: simplified))
+        XCTAssertTrue(isIgnoredTranslationLanguage("zh", ignoredLanguages: traditional))
+        XCTAssertFalse(isIgnoredTranslationLanguage("zh-hant", ignoredLanguages: simplified))
+        XCTAssertFalse(isIgnoredTranslationLanguage("zh-hans", ignoredLanguages: traditional))
     }
 
     private func channel(id: Int64 = 1234, flags: TelegramChannelFlags) -> EnginePeer {

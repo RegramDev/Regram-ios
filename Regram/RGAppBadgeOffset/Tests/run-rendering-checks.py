@@ -46,8 +46,8 @@ import ObjectiveC
 final class RGSimpleSettings {
     static let shared = RGSimpleSettings()
     var customAppBadge = "RGConversationBadge"
+    var screenshotBadgeEnabled = true
 }
-enum RGAppBadgeNames { static let hiddenName = "hidden" }
 func getAppBundle() -> Bundle { Bundle.main }
 enum Probe {
     static weak var view: UIImageView?
@@ -138,6 +138,14 @@ final class Scene: UIResponder, UIWindowSceneDelegate {
         results["hidden_badge_hides_overlay"] = overlayWindow.isHidden
         badge.isHidden = false; overlay.updateVisibility()
         results["visible_badge_restores_overlay"] = !overlayWindow.isHidden
+        RGSimpleSettings.shared.screenshotBadgeEnabled = false
+        badge.reloadArtwork()
+        overlay.updateVisibility()
+        results["disabled_preference_clears_artwork_and_hides_overlay"] = badge.image == nil && overlayWindow.isHidden
+        RGSimpleSettings.shared.screenshotBadgeEnabled = true
+        badge.reloadArtwork()
+        overlay.updateVisibility()
+        results["reenabled_preference_restores_selected_artwork"] = RGSimpleSettings.shared.customAppBadge == "RGGatheringBadge" && background(badge.image, matches: [36, 36, 38]) && !overlayWindow.isHidden
         overlay.update(hostWindow: window, fallbackView: fallback, badgeFrame: moved, enabled: false)
         results["fallback_reattaches_without_window"] = badge.superview === fallback && overlayWindow.isHidden && overlayWindow.rootViewController == nil
         window!.overrideUserInterfaceStyle = .light

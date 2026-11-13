@@ -39,6 +39,10 @@ public class RGSimpleSettings {
         if self.translationBackend == "gtranslate" { self.translationBackend = TranslationBackend.google.rawValue }
         // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
         if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
+        if self.storedCustomAppBadge == RGAppBadgeNames.legacyHiddenName {
+            self.screenshotBadgeEnabled = false
+            self.customAppBadge = RGAppBadgeNames.defaultName
+        }
         // MARK: Regram — persist the supported mode when upgrading an old three-line setting.
         if storedChatListLines != chatListLines { self.chatListLines = chatListLines }
         UserDefaults.standard.removeObject(forKey: "nsfwEnabled")
@@ -284,6 +288,7 @@ public class RGSimpleSettings {
         case translationLLMPrompt
         case translationLLMUseContext
         case translationLLMTemperatureTenths
+        case screenshotBadgeEnabled
         case customAppBadge
         case canUseNY
         case nyStyle
@@ -530,6 +535,7 @@ public class RGSimpleSettings {
         Keys.translationLLMUseContext.rawValue: false,
         Keys.translationLLMTemperatureTenths.rawValue: Int32(2),
         Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
+        Keys.screenshotBadgeEnabled.rawValue: true,
         Keys.customAppBadge.rawValue: RGAppBadgeNames.defaultName,
         Keys.canUseNY.rawValue: false,
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
@@ -1705,6 +1711,9 @@ public class RGSimpleSettings {
 
     @UserDefault(key: Keys.translationBackend.rawValue)
     public var translationBackend: String
+
+    @UserDefault(key: Keys.screenshotBadgeEnabled.rawValue)
+    public var screenshotBadgeEnabled: Bool
 
     @UserDefault(key: Keys.customAppBadge.rawValue)
     private var storedCustomAppBadge: String

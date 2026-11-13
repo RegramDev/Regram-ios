@@ -809,7 +809,8 @@
 "Diagnostics.DC.Failed" = "失败";
 "Browser.Translation.SystemUnavailable" = "Apple 网页翻译需要 iOS 18 或更高版本。请在本机选择其他翻译服务。";
 
-"AppBadge.Notice" = "点按样式即可应用，标记随界面自动切换深浅色。预览已放大，截图中的标记保持正常大小。";
+"AppBadge.Enable" = "显示截图标记";
+"AppBadge.Notice" = "标记随应用外观切换浅色或深色。";
 "AppBadge.Title" = "截图标记";
 "Common.KnowWhatYouDo" = "请在了解这些选项的作用后再修改。";
 "LocalPremium.Notice" = "在本机启用会员界面与客户端选项。贴纸、回应等需要 Telegram 服务端验证的权益仍需有效订阅。";
@@ -1220,7 +1221,7 @@
 "Settings.Folders.AllChatsTitle.shortText" = "对话";
 "Settings.Folders.AllChatsTitle.longText" = "所有对话";
 
-"AppBadge.Current" = "当前标记";
+"AppBadge.Preview" = "预览";
 "AppBadge.Choose" = "选择样式";
 
 "AppIcon.Name.conversation" = "絮语";
@@ -1260,7 +1261,6 @@
 "AppBadge.Name.regram" = "Regram";
 
 "AppBadge.Name.zhiqiu" = "知秋";
-"AppBadge.Name.hidden" = "隐藏";
 
 "features.HideTabBarPermissionWarnings.Notice" = "隐藏因系统通知或通讯录权限关闭而显示的感叹号。未读数量及其他账号提醒保留。";
 

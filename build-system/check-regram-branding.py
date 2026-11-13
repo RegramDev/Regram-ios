@@ -134,7 +134,7 @@ for lang in ('en', 'zh-hans', 'zh-hant'):
     strings = (ROOT / f'Regram/RGStrings/Strings/{lang}.lproj/RGLocalizable.strings').read_text()
     for kind in ('conversation', 'azure', 'iris', 'mint', 'gathering', 'amber', 'nebula', 'jade'):
         assert f'"AppIcon.Name.{kind}"' in strings and f'"AppBadge.Name.{kind}"' in strings
-    for key in ('AppIcon.Name.classic', 'AppIcon.Name.xchat', 'AppIcon.Name.telegram', 'AppBadge.Name.regram', 'AppBadge.Name.zhiqiu', 'AppBadge.Name.hidden'):
+    for key in ('AppIcon.Name.classic', 'AppIcon.Name.xchat', 'AppIcon.Name.telegram', 'AppBadge.Name.regram', 'AppBadge.Name.zhiqiu', 'AppBadge.Enable', 'AppBadge.Preview'):
         assert f'"{key}"' in strings
     assert '"AppBadge.Name.default"' not in strings
 

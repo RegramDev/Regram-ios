@@ -27,13 +27,14 @@ final class RGAppBadgeImageView: UIImageView {
     }
 
     func reloadArtwork() {
-        let name = RGSimpleSettings.shared.customAppBadge
-        if name == RGAppBadgeNames.hiddenName {
+        let settings = RGSimpleSettings.shared
+        guard settings.screenshotBadgeEnabled else {
             if self.image != nil { self.image = nil }
             self.loadedName = nil
             self.loadedTraits = nil
             return
         }
+        let name = settings.customAppBadge
         // Telegram's selected theme can differ from the window's system appearance.
         let traits = UITraitCollection(traitsFrom: [self.traitCollection, UITraitCollection(userInterfaceStyle: self.artworkUserInterfaceStyle)])
         if self.loadedName == name, self.loadedTraits?.isEqual(traits) == true { return }

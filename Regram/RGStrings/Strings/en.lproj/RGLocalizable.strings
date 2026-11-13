@@ -251,8 +251,9 @@ Matching is case-insensitive.";
 "PayWall.ValidationError.TryAgain" = "Something went wrong during purchase validation. No worries! Try to Restore Purchases a bit later.";
 "PayWall.ValidationError.Expired" = "Your subscription expired. Subscribe again to regain access to Pro features.";
 
-"AppBadge.Title" = "App Badge";
-"AppBadge.Notice" = "Choose a style once; the badge follows the interface's light or dark appearance. Previews are enlarged; screenshots use the normal size.";
+"AppBadge.Title" = "Screenshot Badge";
+"AppBadge.Enable" = "Show Screenshot Badge";
+"AppBadge.Notice" = "The badge follows the app’s light or dark appearance.";
 
 "Settings.NY.Header" = "HOLIDAY EFFECTS";
 "Settings.NY.Style" = "Style";
@@ -1227,7 +1228,7 @@ Matching is case-insensitive.";
 "Settings.Folders.AllChatsTitle.shortText" = "Chats";
 "Settings.Folders.AllChatsTitle.longText" = "All Chats";
 
-"AppBadge.Current" = "Current badge";
+"AppBadge.Preview" = "Preview";
 "AppBadge.Choose" = "Choose a style";
 
 "AppIcon.Name.conversation" = "Whisper";
@@ -1267,7 +1268,6 @@ Matching is case-insensitive.";
 "AppBadge.Name.regram" = "Regram";
 
 "AppBadge.Name.zhiqiu" = "Zhiqiu";
-"AppBadge.Name.hidden" = "Hidden";
 
 "features.HideTabBarPermissionWarnings.Notice" = "Hide exclamation badges caused by disabled notification or contacts access. Unread counts and other account reminders remain visible.";
 

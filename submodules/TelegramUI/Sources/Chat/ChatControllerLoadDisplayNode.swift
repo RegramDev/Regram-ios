@@ -4383,8 +4383,15 @@ extension ChatControllerImpl {
                 return
             }
             let _ = updateTranslationSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
-                var ignoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: translationInterfaceLanguage(strings: self.presentationData.strings), ignoredLanguages: current.ignoredLanguages) // MARK: Regram
-                ignoredLanguages.insert(normalizeTranslationLanguage(langCode))
+                // MARK: Regram — store the same script choices shown in the language settings.
+                let interfaceLanguage = translationInterfaceLanguage(strings: self.presentationData.strings)
+                var ignoredLanguages = effectiveIgnoredTranslationLanguages(interfaceLanguage: interfaceLanguage, ignoredLanguages: current.ignoredLanguages)
+                let language = normalizeTranslationLanguage(langCode)
+                if language == "zh" {
+                    ignoredLanguages.formUnion(["zh-hans", "zh-hant"])
+                } else {
+                    ignoredLanguages.insert(language)
+                }
                 return current.withUpdatedIgnoredLanguages(ignoredLanguages.sorted())
             }).startStandalone()
             let _ = updateChatTranslationStateInteractively(engine: self.context.engine, peerId: peerId, threadId: self.chatLocation.threadId, { current in
@@ -4398,7 +4405,7 @@ extension ChatControllerImpl {
                 languageCode = String(languageCode.dropLast(rawSuffix.count))
             }
             let locale = Locale(identifier: languageCode)
-            let fromLanguage: String = locale.localizedString(forLanguageCode: langCode) ?? ""
+            let fromLanguage = translationLanguageDisplayName(langCode, locale: locale) ?? "" // MARK: Regram
             
             self.present(UndoOverlayController(presentationData: presentationData, content: .image(image: generateTintedImage(image: UIImage(bundleImageName: "Chat/Title Panels/Translate"), color: .white)!, title: nil, text: presentationData.strings.Conversation_Translation_AddedToDoNotTranslateText(fromLanguage).string, round: false, undoText: presentationData.strings.Conversation_Translation_Settings), elevatedLayout: false, animateInAsReplacement: false, action: { [weak self] action in
                 if case .undo = action, let self {
