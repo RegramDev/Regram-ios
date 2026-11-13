@@ -55,6 +55,8 @@ public struct Message {
  var textEntitiesAttribute: TextEntitiesMessageAttribute? { attributes.first { $0 is TextEntitiesMessageAttribute } as? TextEntitiesMessageAttribute }
  var associatedMedia: [MediaId: Media] { [:] }
  var index: Int32 { id.id }; var containsSecretMedia: Bool { false }; func isCopyProtected() -> Bool { false }
+ var adAttribute: Never? { nil }
+ func withAppliedEphemeralReplacementMessage() -> Message { self }
  func effectivelyIncoming(_ account: EnginePeer.Id) -> Bool { author?.id != account }
 }
 public typealias EngineRawMessage = Message
@@ -64,6 +66,7 @@ public struct EngineMessage {
  let raw: Message
  var id: Id { raw.id }; var stableVersion: UInt32 { raw.stableVersion }; var text: String { raw.text }; var attributes: [MessageAttribute] { raw.attributes }; var author: EnginePeer? { raw.author }
  func effectivelyIncoming(_ account: EnginePeer.Id) -> Bool { raw.effectivelyIncoming(account) }
+ func _asMessage() -> Message { raw }
 }
 public struct MediaBox {}
 public struct RGEditHistoryEntry { let text: String; let entities: [MessageTextEntity]; let date: Int32; let image: TelegramMediaImage?; let imageData: Data?; let imageHasSpoiler: Bool; let richText: RichTextMessageAttribute? }
@@ -97,7 +100,7 @@ source += enum('submodules/TelegramCore/Sources/SyncCore/SyncCore_InstantPage.sw
 source += enum('submodules/TelegramCore/Sources/SyncCore/SyncCore_InstantPage.swift', 'public indirect enum InstantPageListItem:')
 source += between('submodules/TelegramCore/Sources/SyncCore/SyncCore_RichText.swift', 'public extension RichText {', '\nextension RichText {')
 source += read('submodules/TelegramCore/Sources/Utils/RGMessageText.swift').replace('import Postbox', '')
-source += between('submodules/AccountContext/Sources/RGContentFilter.swift', 'private final class RGContentFilterVerdictCache', '/// Emits on every message-filter')
+source += between('submodules/AccountContext/Sources/RGContentFilter.swift', 'private struct RGContentFilterInput', '/// Emits on every message-filter')
 source += between('submodules/TelegramUI/Sources/RGRepeatMessages.swift', 'private func rgRepeatableMedia', '/// Re-sends the messages')
 source += between('submodules/TelegramUI/Sources/RGRepeatMessages.swift', 'private func rgEnqueueRepeatCopy', '/// 复读:')
 source += between('submodules/TelegramCore/Sources/Utils/RGEditHistory.swift', 'func rgCarryOverLocalMessageAttributes', '// MARK: Regram — preserve already downloaded')
