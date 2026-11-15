@@ -148,6 +148,25 @@ final class AdFilterTests: XCTestCase {
         XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).buttons, input.buttons)
     }
 
+    func testRetainedButtonCorrectionAppliesToLaterMessagesInSameChannel() throws {
+        for label in [RGAdLabel.normal, .uncertain] {
+            let storage = try store()
+            let button = RGAdButton(id: "a", title: "保留入口", target: "https://t.me/promotion_user")
+            let input = RGAdInput(text: ad, peerId: 9, entities: [entity(ad, "@promotion_user")], buttons: [[button]])
+            var sample = try storage.draft(input: input, messageKey: "9:1", mediaKinds: [], mediaIdentity: "")
+            try sample.mark(NSRange(location: 0, length: ad.utf16.count), as: .ad)
+            sample.buttonLabels[button.id] = label; try storage.save(sample)
+            let text = "新的正常介绍\n" + ad
+            let later = RGAdInput(text: text, peerId: 9, entities: [entity(text, "@promotion_user")], buttons: [[RGAdButton(id: "1:1", title: button.title, target: button.target)]])
+            let knowledge = try RGAdPolicy.Knowledge(samples: storage.load())
+            let projected = try knowledge.project(later, sourceGroup: sample.sourceGroup)
+            XCTAssertEqual(projected.text, "新的正常介绍\n")
+            XCTAssertEqual(projected.buttons, later.buttons)
+            XCTAssertTrue(projected.removedButtonIds.isEmpty)
+            XCTAssertTrue(try knowledge.project(later, sourceGroup: "other").buttons.isEmpty)
+        }
+    }
+
     func testAccountIsolationExportAndCorruptionFailClosed() throws {
         let first = try store(), second = try store(), input = RGAdInput(text: "正常消息", peerId: 123456789)
         let a = try first.draft(input: input, messageKey: "m", mediaKinds: [], mediaIdentity: "")

@@ -92,12 +92,17 @@ public enum RGAdPolicy {
                     start = NSMaxRange(match)
                 }
             }
-            let removedButtons = input.buttons.flatMap { $0 }.filter { button in
-                guard let key = ButtonKey(button) else { return false }
-                if let label = buttons[sourceGroup]?[key] { return label == .ad }
-                return RGAdPolicy.cooperation.contains(button.title.trimmingCharacters(in: .whitespacesAndNewlines))
-            }.map(\.id)
-            return try RGAdFilter.project(input, suggestedRanges: ranges, confirmedButtonIds: Set(removedButtons))
+            var removedButtons = Set<String>(), preservedButtons = Set<String>()
+            for button in input.buttons.flatMap({ $0 }) {
+                guard let key = ButtonKey(button) else { continue }
+                if let label = buttons[sourceGroup]?[key] {
+                    if label == .ad { removedButtons.insert(button.id) }
+                    else { preservedButtons.insert(button.id) }
+                } else if RGAdPolicy.cooperation.contains(button.title.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    removedButtons.insert(button.id)
+                }
+            }
+            return try RGAdFilter.project(input, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons)
         }
     }
 

@@ -2,9 +2,9 @@ import Foundation
 
 /// Pure, account-free projection. The source message/database are never modified.
 public enum RGAdFilter {
-    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], inferButtons: Bool = true) throws -> RGAdProjection {
+    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], preservedButtonIds: Set<String> = [], inferButtons: Bool = true) throws -> RGAdProjection {
         guard input.text.utf16.count <= 65_536, input.entities.count <= 2048, rules.count <= 128,
-              predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
+              predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, preservedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.05
         let boundaries = rgAdBoundaries(input.text)
         let allButtons = input.buttons.flatMap { $0 }
@@ -95,6 +95,8 @@ public enum RGAdFilter {
         for button in allButtons {
             if inferButtons, let target = normalizedTarget(button.target), removedTargets.contains(target) { removedButtons.insert(button.id) }
         }
+        // Reviewed normal/uncertain button preferences override automatic target inference.
+        removedButtons.subtract(preservedButtonIds)
         let buttons = input.buttons.map { $0.filter { !removedButtons.contains($0.id) } }.filter { !$0.isEmpty }
         let hidePreview = normalizedTarget(input.previewTarget).map { removedTargets.contains($0) } ?? false
         let changed = !ranges.isEmpty || !removedButtons.isEmpty || hidePreview
