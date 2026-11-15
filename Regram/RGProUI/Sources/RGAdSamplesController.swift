@@ -109,7 +109,7 @@ private class RGAdTableController: ViewController, UITableViewDataSource, UITabl
         if let popover = controller.popoverPresentationController { popover.sourceView = presenter.view; popover.sourceRect = CGRect(x: presenter.view.bounds.midX, y: presenter.view.bounds.midY, width: 1, height: 1) }
         presenter.present(controller, animated: true)
     }
-    func push(_ controller: ViewController) { (navigationController as? NavigationController)?.pushViewController(controller) }
+    func pushAdController(_ controller: ViewController) { (navigationController as? NavigationController)?.pushViewController(controller) }
 }
 
 private final class RGAdAlbumController: RGAdTableController {
@@ -126,7 +126,7 @@ private final class RGAdAlbumController: RGAdTableController {
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         super.tableView(tableView, didSelectRowAt: indexPath)
-        if let editor = rgAdSampleController(context: context, message: messages[indexPath.row]) { push(editor) }
+        if let editor = rgAdSampleController(context: context, message: messages[indexPath.row]) { pushAdController(editor) }
     }
 }
 
@@ -177,7 +177,7 @@ private final class RGAdLibraryController: RGAdTableController {
         super.tableView(tableView, didSelectRowAt: indexPath)
         guard !loading else { return }
         if indexPath.section == 1 {
-            if failed { reload() } else if samples.indices.contains(indexPath.row) { push(RGAdEditorController(context: context, sample: samples[indexPath.row])) }
+            if failed { reload() } else if samples.indices.contains(indexPath.row) { pushAdController(RGAdEditorController(context: context, sample: samples[indexPath.row])) }
         } else if indexPath.section == 2, !samples.isEmpty, !failed { confirmExport() }
     }
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
@@ -362,7 +362,7 @@ private final class RGAdEditorController: RGAdTableController, UITextViewDelegat
             if value == .ad, !sample.input.text.isEmpty { try? sample.mark(NSRange(location: 0, length: sample.input.text.utf16.count), as: .ad) }
             sample.buttonLabels = sample.buttonLabels.mapValues { _ in value }; sample.mediaLabel = value
             self.sample = sample; refresh()
-        } else if indexPath.section == 3 { push(RGAdPreviewController(context: context, sample: sample)) }
+        } else if indexPath.section == 3 { pushAdController(RGAdPreviewController(context: context, sample: sample)) }
     }
     @objc private func save() {
         guard let sample, !busy else { return }; busy = true; refresh(); table.isUserInteractionEnabled = false

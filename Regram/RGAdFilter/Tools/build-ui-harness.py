@@ -66,6 +66,7 @@ class ViewController: UIViewController {
     required init(coder: NSCoder) { fatalError() }
     func loadDisplayNode() {}
     func displayNodeDidLoad() {}
+    final func push(_ controller: ViewController) { (navigationController as? NavigationController)?.pushViewController(controller) }
     override func loadView() { loadDisplayNode(); view = displayNode.view }
     func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {}
     func navigationLayout(layout: ContainerViewLayout) -> NavigationLayout { NavigationLayout(navigationFrame: CGRect(x: 0, y: 0, width: layout.size.width, height: layout.safe.top)) }
