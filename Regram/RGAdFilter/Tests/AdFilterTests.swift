@@ -23,6 +23,18 @@ final class AdFilterTests: XCTestCase {
         XCTAssertEqual(result.buttons.flatMap { $0 }.map(\.id), ["0:0"])
     }
 
+    func testEntireAdvertisingCaptionHidesItsAttachment() throws {
+        let input = RGAdInput(text: ad, entities: [entity(ad, "@promotion_user")], hasMedia: true)
+        XCTAssertEqual(try RGAdPolicy.project(input).disposition, .hide)
+        let normalButton = RGAdInput(text: ad, entities: input.entities, buttons: [[RGAdButton(id: "search", title: "电影搜索", target: "https://t.me/search_helper")]], hasMedia: true)
+        XCTAssertEqual(try RGAdPolicy.project(normalButton).disposition, .trim)
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: "", hasMedia: true)).disposition, .keep)
+        let mixed = "正常影片介绍\n" + ad
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: mixed, entities: [entity(mixed, "@promotion_user")], hasMedia: true)).disposition, .trim)
+        let semantic = RGAdSemanticResult(predictions: [RGAdPrediction(range: RGAdRange(0, ad.utf16.count), confidence: 1)], threshold: 0.996)
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: ad, hasMedia: true), semantic: semantic).disposition, .hide)
+    }
+
     func testWarningAndQuotedPromotionArePreserved() throws {
         for text in ["警惕骗局：" + ad, "新闻报道：" + ad] {
             XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text, entities: [entity(text, "@promotion_user")])).disposition, .keep)
@@ -30,6 +42,33 @@ final class AdFilterTests: XCTestCase {
         for kind in [RGAdEntity.Kind.code, .quote] {
             let input = RGAdInput(text: ad, entities: [entity(ad, "@promotion_user"), RGAdEntity(range: RGAdRange(0, ad.utf16.count), kind: kind)])
             XCTAssertEqual(try RGAdPolicy.project(input).disposition, .keep)
+        }
+    }
+
+    func testDecorativeGapOnlyDisappearsBetweenAds() throws {
+        for gap in ["\n🤩🤩\n", "\n正常说明\n", "\n@resource\n"] {
+            let text = "推广内容甲\n" + gap + "推广内容乙\n正常正文"
+            let first = (text as NSString).range(of: "推广内容甲\n"), second = (text as NSString).range(of: "推广内容乙\n")
+            let cuts = [first, second].map { RGAdRange($0.location, NSMaxRange($0)) }
+            let result = try RGAdFilter.project(RGAdInput(text: text), confirmedRanges: cuts)
+            XCTAssertEqual(result.text, gap.contains("🤩") ? "正常正文" : gap + "正常正文")
+        }
+        let text = "推广内容甲\n🤩🤩\n推广内容乙"
+        let emoji = entity(text, "🤩🤩", kind: .link, value: "https://example.org/resource")
+        let cuts = [RGAdRange(0, 6), RGAdRange(text.utf16.count - 5, text.utf16.count)]
+        XCTAssertTrue(try RGAdFilter.project(RGAdInput(text: text, entities: [emoji]), confirmedRanges: cuts).text.contains("🤩"))
+    }
+
+    func testInlineDividerKeepsNormalPrefixAndCouponCodeNeedsWholeAd() throws {
+        let text = "正常搜索入口 @resource================\n\n" + ad
+        let input = RGAdInput(text: text, entities: [entity(text, "@resource"), entity(text, "@promotion_user")])
+        XCTAssertEqual(try RGAdPolicy.project(input).text, "正常搜索入口 @resource")
+        for code in ["SAVE20", "print(20)", "let value = 20"] {
+            let card = "注册优惠，立即下单\n优惠码：" + code
+            let input = RGAdInput(text: card, entities: [entity(card, code, kind: .code)])
+            let prediction = RGAdPrediction(range: RGAdRange(0, card.utf16.count), confidence: 1)
+            XCTAssertEqual(try RGAdFilter.project(input, predictions: [prediction], entireMessageIsAd: true).disposition, code == "SAVE20" ? .hide : .keep)
+            XCTAssertEqual(try RGAdFilter.project(input, predictions: [prediction]).disposition, .keep)
         }
     }
 
@@ -60,6 +99,8 @@ final class AdFilterTests: XCTestCase {
         let input = RGAdInput(text: "新闻：今天讨论广告合作招商。", buttons: [[RGAdButton(id: "a", title: "广告合作招商", target: "https://example.org/sponsor")]])
         let output = try RGAdPolicy.project(input)
         XCTAssertEqual(output.text, input.text); XCTAssertTrue(output.buttons.isEmpty)
+        let buttons = [RGAdButton(id: "ad", title: "8G.COM 新人注册送38U", target: "https://example.org/invite"), RGAdButton(id: "normal", title: "警惕8G.COM 新人注册送38U骗局", target: "https://example.org/news")]
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: "正常文章", buttons: [buttons])).buttons, [[buttons[1]]])
     }
 
     func testEmojiBannerAndIndependentInviteButton() throws {
@@ -276,10 +317,22 @@ final class AdFilterTests: XCTestCase {
         try sample.mark(NSRange(location: 0, length: input.text.utf16.count), as: .ad)
         try storage.save(sample)
         XCTAssertFalse(try storage.load()[0].isTrainingReady)
-        XCTAssertNotEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .hide)
+        XCTAssertNotEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup, sampleId: sample.id).disposition, .hide)
         sample.mediaLabel = .ad
         try storage.save(sample)
-        XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .hide)
+        XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup, sampleId: sample.id).disposition, .hide)
         XCTAssertTrue(try storage.load()[0].isTrainingReady)
     }
+    func testMediaOnlyReviewIsBoundToOneSnapshot() throws {
+        let storage = try store(), input = RGAdInput(text: "", peerId: 42, hasMedia: true)
+        var sample = try storage.draft(input: input, messageKey: "42:1", mediaKinds: ["image"], mediaIdentity: "ad-image")
+        sample.mediaLabel = .ad; try storage.save(sample)
+        let other = try storage.draft(input: input, messageKey: "42:2", mediaKinds: ["image"], mediaIdentity: "normal-image")
+        let knowledge = RGAdPolicy.Knowledge(samples: try storage.load())
+        XCTAssertEqual(try knowledge.project(input, sourceGroup: sample.sourceGroup, sampleId: sample.id).disposition, .hide)
+        XCTAssertEqual(try knowledge.project(input, sourceGroup: sample.sourceGroup, sampleId: other.id).disposition, .keep)
+        XCTAssertEqual(try knowledge.project(input, sourceGroup: sample.sourceGroup).disposition, .keep)
+        XCTAssertEqual(sample.id, try RGAdSampleStore.sampleId(input: input, salt: storage.salt(), messageKey: "42:1", mediaIdentity: "ad-image"))
+    }
+
 }

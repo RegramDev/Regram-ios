@@ -7935,15 +7935,16 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 var rgPinnedSources = pinnedMessages.messages.map(\.message)
                 if let topMessage { rgPinnedSources.append(topMessage.message) }
                 rgAdFilter.prepare(rgPinnedSources, accountPeerId: context.account.peerId, scope: .pinned)
+                let rgHiddenPinnedAds = rgAdFilter.hiddenMessageIds(in: rgPinnedSources, accountPeerId: context.account.peerId, scope: .pinned) // MARK: Regram — keep album decisions consistent.
                 pinnedMessages.messages = pinnedMessages.messages.compactMap { entry in
-                    if rgAdFilter.shouldHide(entry.message, accountPeerId: context.account.peerId) { return nil }
+                    if rgHiddenPinnedAds.contains(entry.message.id) { return nil }
                     var entry = entry
-                    entry.message = rgAdFilter.display(entry.message, accountPeerId: context.account.peerId)
+                    entry.message = rgAdFilter.display(entry.message, accountPeerId: context.account.peerId, scope: .pinned)
                     return entry
                 }
                 if let value = topMessage {
-                    if rgAdFilter.shouldHide(value.message, accountPeerId: context.account.peerId) { topMessage = nil }
-                    else { topMessage?.message = rgAdFilter.display(value.message, accountPeerId: context.account.peerId) }
+                    if rgHiddenPinnedAds.contains(value.message.id) { topMessage = nil }
+                    else { topMessage?.message = rgAdFilter.display(value.message, accountPeerId: context.account.peerId, scope: .pinned) }
                 }
                 let rgContentFilter = RGContentFilterState(accountPeerId: context.account.peerId)
                 if !rgContentFilter.isEmpty {

@@ -134,13 +134,18 @@ public final class RGAdSampleStore {
     public static func digest(_ text: String) -> String { SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined() }
     public static func sourceGroup(salt: String, peerId: Int64) -> String { digest(salt + ":source:" + String(peerId)) }
 
+    public static func sampleId(input: RGAdInput, salt: String, messageKey: String, mediaIdentity: String) throws -> String {
+        let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        let content = try encoder.encode(sanitized)
+        return digest(salt + ":message:" + messageKey + ":" + content.base64EncodedString() + ":" + mediaIdentity)
+    }
+
     public func draft(input: RGAdInput, messageKey: String, mediaKinds: [String], mediaIdentity: String) throws -> RGAdSample {
         let salt = try self.salt()
         let source = Self.sourceGroup(salt: salt, peerId: input.peerId ?? 0)
         let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
-        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
-        let content = try encoder.encode(sanitized)
-        let id = Self.digest(salt + ":message:" + messageKey + ":" + content.base64EncodedString() + ":" + mediaIdentity)
+        let id = try Self.sampleId(input: input, salt: salt, messageKey: messageKey, mediaIdentity: mediaIdentity)
         let file = directory.appendingPathComponent(id + ".json")
         if FileManager.default.fileExists(atPath: file.path) { return try read(file) }
         let sample = RGAdSample(schemaVersion: 1, offsetUnit: "utf16", id: id, sourceGroup: source, input: sanitized, mediaKinds: mediaKinds,

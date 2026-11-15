@@ -17,6 +17,7 @@ from transformers import BertForSequenceClassification, BertTokenizer
 ap = argparse.ArgumentParser()
 ap.add_argument('--training', required=True)
 ap.add_argument('--output', required=True)
+ap.add_argument('--weight-bits', type=int, choices=[16, 32], default=16)
 args = ap.parse_args()
 source, output = Path(args.training), Path(args.output)
 output.mkdir(parents=True, exist_ok=True)
@@ -38,7 +39,8 @@ traced = torch.jit.trace(wrapper, example)
 converted = ct.convert(traced, convert_to='neuralnetwork', minimum_deployment_target=ct.target.iOS14,
     inputs=[ct.TensorType(name='input_ids', shape=(1,length), dtype=np.int32), ct.TensorType(name='attention_mask', shape=(1,length), dtype=np.int32)],
     outputs=[ct.TensorType(name='probabilities')])
-converted = quantize_weights(converted, nbits=16)
+if args.weight_bits == 16:
+    converted = quantize_weights(converted, nbits=16)
 converted.author = 'Regram; MiniRBT encoder by HIT and iFLYTEK Research'
 converted.short_description = 'Local Chinese Telegram promotional-segment classifier. Preserve uncertain content.'
 converted.version = '1'
@@ -60,6 +62,7 @@ assert max_error < 0.01, max_error
 (source/'conversion-vectors.json').write_text(json.dumps(vectors, ensure_ascii=False))
 (output/'RGAdVocabulary.txt').write_bytes((source/'checkpoint/vocab.txt').read_bytes())
 manifest = dict(version=1, architecture='MiniRBT-H256-6L', sequenceLength=length,
+    weightBits=args.weight_bits,
     threshold=record['selected']['validation']['threshold'], modelSHA256=hashlib.sha256(destination.read_bytes()).hexdigest(),
     vocabularySHA256=hashlib.sha256((output/'RGAdVocabulary.txt').read_bytes()).hexdigest(),
     labels=['content', 'promotion'], maxConversionError=max_error)

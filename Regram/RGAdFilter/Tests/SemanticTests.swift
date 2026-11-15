@@ -63,6 +63,18 @@ final class SemanticTests: XCTestCase {
         XCTAssertThrowsError(try classifier.probability("本机检测测试文本"))
         XCTAssertTrue(classifier.predict(RGAdInput(text: "普通内容")).predictions.isEmpty)
     }
+    func testOverlappingBareDestinationEntitiesPreserveNormalSharing() throws {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
+        let classifier = RGAdSemanticClassifier(resourceDirectory: directory)
+        XCTAssertTrue(classifier.prepareModel())
+        let text = "这是一份正常的开源项目说明。\nhttps://example.org/project\n使用方法和代码仓库都在文档中。"
+        let range = (text as NSString).range(of: "https://example.org/project")
+        let link = RGAdEntity(range: RGAdRange(range.location, NSMaxRange(range)), kind: .link, value: "https://example.org/project")
+        for entities in [[link], [link, link]] {
+            let input = RGAdInput(text: text, entities: entities)
+            XCTAssertEqual(try RGAdPolicy.project(input, semantic: classifier.predict(input)).text, text)
+        }
+    }
     func testLinkedDividerOnlyFollowsTheRemovedSponsor() throws {
         let text = "普通正文\n======\n推广段落\n"
         let divider = RGAdRange(5, 11), ad = RGAdRange(12, 17)

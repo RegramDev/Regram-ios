@@ -57,18 +57,28 @@ enum RGAdSemanticChecks {
                 let semantic = classifier.predict(post.input)
                 let projection = try RGAdPolicy.project(post.input, semantic: semantic)
                 let predictionMilliseconds = (ProcessInfo.processInfo.systemUptime - predictionStarted) * 1000
-                var retainedNormal = 0, removedAds = 0, removedNormal = 0, retainedAds = 0
+                var retainedNormal = 0, removedAds = 0, removedNormal = 0, retainedAds = 0, partialAds = 0
                 var segments: [[String: Any]] = []
+                let source = post.input.text as NSString
                 for segment in post.segments {
-                    let cut = projection.removedRanges.contains { $0.intersects(segment.range) }
+                    var cursor = segment.range.lower, kept = "", removed = ""
+                    for range in projection.removedRanges where range.intersects(segment.range) {
+                        let lower = max(segment.range.lower, range.lower), upper = min(segment.range.upper, range.upper)
+                        if cursor < lower { kept += source.substring(with: NSRange(location: cursor, length: lower - cursor)) }
+                        removed += source.substring(with: NSRange(location: lower, length: upper - lower))
+                        cursor = max(cursor, upper)
+                    }
+                    if cursor < segment.range.upper { kept += source.substring(with: NSRange(location: cursor, length: segment.range.upper - cursor)) }
+                    let cut = !removed.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    let fullyRemoved = kept.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     if segment.label == 0 { if cut { removedNormal += 1 } else { retainedNormal += 1 } }
-                    else { if cut { removedAds += 1 } else { retainedAds += 1 } }
-                    segments.append(["label": segment.label, "probability": try score(segment.text), "cut": cut, "range": [segment.range.lower, segment.range.upper]])
+                    else { if fullyRemoved { removedAds += 1 } else { retainedAds += 1; if cut { partialAds += 1 } } }
+                    segments.append(["label": segment.label, "probability": try score(segment.text), "cut": cut, "fullyRemoved": fullyRemoved, "range": [segment.range.lower, segment.range.upper]])
                 }
                 let contextScores = try RGAdFilter.contextRanges(post.input.text).map { range -> [String: Any] in
                     ["range": [range.lower, range.upper], "probability": try score((post.input.text as NSString).substring(with: range.nsRange))]
                 }
-                rows.append(["id": post.id, "kind": post.kind, "disposition": projection.disposition.rawValue, "semanticWhole": semantic.entireMessage, "wholeProbability": try score(post.input.text), "contextScores": contextScores, "normalKept": retainedNormal, "normalCut": removedNormal, "adCut": removedAds, "adKept": retainedAds, "segments": segments, "buttonsKept": projection.buttons.flatMap { $0 }.map(\.id), "projection": projection.text, "predictionMilliseconds": predictionMilliseconds])
+                rows.append(["id": post.id, "kind": post.kind, "disposition": projection.disposition.rawValue, "semanticWhole": semantic.entireMessage, "wholeProbability": try score(post.input.text), "contextScores": contextScores, "normalKept": retainedNormal, "normalCut": removedNormal, "adCut": removedAds, "adKept": retainedAds, "adPartial": partialAds, "segments": segments, "buttonsKept": projection.buttons.flatMap { $0 }.map(\.id), "projection": projection.text, "predictionMilliseconds": predictionMilliseconds])
             }
             report["posts"] = rows
         }

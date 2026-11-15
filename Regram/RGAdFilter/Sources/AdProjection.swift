@@ -58,7 +58,11 @@ public enum RGAdFilter {
             return !input.entities.contains { entity in
                 guard entity.range.intersects(range) else { return false }
                 switch entity.kind {
-                case .code: return !confirmedRanges.contains(where: { $0.contains(range) })
+                case .code:
+                    // Coupon/identifier formatting alone does not make a complete commercial
+                    // card normal content. Actual code and partial paragraph cuts stay protected.
+                    let wholeCard = entireMessageIsAd && range == RGAdRange(0, source.length) && isInlineCodeLabel(entity, source: source)
+                    return !wholeCard && !confirmedRanges.contains(where: { $0.contains(range) })
                 case .quote:
                     // Promotional cards also use quote formatting for price lists. Only a
                     // complete-message semantic decision may override that formatting guard.
@@ -71,10 +75,15 @@ public enum RGAdFilter {
         }
         ranges = merge(ranges)
         // Only remove separator lines adjacent to a confirmed removed block. Keep other content.
-        for (index, paragraph) in paragraphs.enumerated() where isSeparator(source.substring(with: paragraph.nsRange)) {
+        for (index, paragraph) in paragraphs.enumerated() {
+            let line = source.substring(with: paragraph.nsRange)
+            let suffix = String(line.trimmingCharacters(in: .whitespacesAndNewlines).reversed().prefix { "-=─━═_—".contains($0) }.reversed())
+            guard suffix.count >= 3 else { continue }
+            let suffixRange = (line as NSString).range(of: suffix, options: .backwards)
+            let lower = paragraph.lower + suffixRange.location
             var next = index + 1
             while next < paragraphs.count && source.substring(with: paragraphs[next].nsRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { next += 1 }
-            let separatorBlock = RGAdRange(paragraph.lower, next < paragraphs.count ? paragraphs[next].lower : paragraph.upper)
+            let separatorBlock = RGAdRange(lower, next < paragraphs.count ? paragraphs[next].lower : paragraph.upper)
             if next < paragraphs.count && ranges.contains(where: { $0.contains(paragraphs[next]) }) {
                 // Formatting on a decorative divider is harmless; links/quotes remain protected.
                 let protected = input.entities.contains { entity in
@@ -88,13 +97,13 @@ public enum RGAdFilter {
             }
         }
         ranges = merge(ranges)
-        // Blank lines between removed paragraphs belong to the same ad block. Do not leave
-        // multiple empty rows where a footer used to be, or consume any intervening body text.
+        // Whitespace and decorative emoji bounded by two removed paragraphs belong to that
+        // ad block. Preserve intervening words, destinations, quotations and code.
         let blocks = ranges
         for (previous, next) in zip(blocks, blocks.dropFirst()) where previous.upper < next.lower {
             let gap = RGAdRange(previous.upper, next.lower)
-            if source.substring(with: gap.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               !input.entities.contains(where: { $0.kind != .format && $0.range.intersects(gap) }) { ranges.append(gap) }
+            if !source.substring(with: gap.nsRange).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }),
+               !input.entities.contains(where: { ![.format, .customEmoji].contains($0.kind) && $0.range.intersects(gap) }) { ranges.append(gap) }
         }
         ranges = merge(ranges)
         let remaining = complement(ranges, length: source.length)
@@ -126,7 +135,7 @@ public enum RGAdFilter {
         let buttons = input.buttons.map { $0.filter { !removedButtons.contains($0.id) } }.filter { !$0.isEmpty }
         let hidePreview = normalizedTarget(input.previewTarget).map { removedTargets.contains($0) } ?? false
         let changed = !ranges.isEmpty || !removedButtons.isEmpty || hidePreview
-        let hide = changed && (!input.hasMedia || entireMessageIsAd) && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && buttons.isEmpty
+        let hide = (changed || entireMessageIsAd) && (!input.hasMedia || entireMessageIsAd) && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && buttons.isEmpty
         guard ProcessInfo.processInfo.systemUptime < deadline else { throw RGAdFilterError.budgetExceeded }
         return RGAdProjection(disposition: hide ? .hide : (changed ? .trim : .keep), text: text, entities: mappedEntities, buttons: buttons,
                               removedRanges: ranges, removedButtonIds: allButtons.map(\.id).filter { removedButtons.contains($0) }, hideLinkPreview: hidePreview)
@@ -199,6 +208,14 @@ public enum RGAdFilter {
     static func isSeparator(_ text: String) -> Bool {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.count >= 3 && value.unicodeScalars.allSatisfy { "-=─━═_—".unicodeScalars.contains($0) }
+    }
+
+    static func isInlineCodeLabel(_ entity: RGAdEntity, source: NSString) -> Bool {
+        guard entity.kind == .code, entity.range.lower >= 0, entity.range.upper <= source.length,
+              (1...32).contains(entity.range.upper - entity.range.lower) else { return false }
+        return source.substring(with: entity.range.nsRange).unicodeScalars.allSatisfy {
+            $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "_-".unicodeScalars.contains($0))
+        }
     }
 
     private static func entityTarget(_ entity: RGAdEntity, text: NSString) -> String? {

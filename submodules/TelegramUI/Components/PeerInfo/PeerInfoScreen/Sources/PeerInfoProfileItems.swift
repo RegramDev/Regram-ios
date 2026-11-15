@@ -1164,7 +1164,9 @@ func infoItems(
         }))
 
         // MARK: Regram — ad segment cleaning is independent of whole-message keyword hiding.
-        if case let .channel(channel)? = data.peer, case .broadcast = channel.info {
+        let rgAdFilteringPeer: Bool
+        switch data.peer { case .channel?, .legacyGroup?: rgAdFilteringPeer = true; default: rgAdFilteringPeer = false }
+        if rgAdFilteringPeer {
             let accountId = context.account.peerId.toInt64()
             let preferences = RGSimpleSettings.shared.chatPreferences(accountId: accountId, peerId: rgFilterPeerId)
             items[.messageFilters]!.append(PeerInfoScreenSwitchItem(id: 9513, text: "AdSamples.PerChat.Title".i18n(rgLang), value: preferences.adFiltering != false, isLocked: false, toggled: { value in

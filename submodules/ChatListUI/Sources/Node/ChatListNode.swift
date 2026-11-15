@@ -2026,6 +2026,7 @@ public final class ChatListNode: ListViewImpl {
         // visible. Results are cached per (peer, top message) inside the helper, and every update is
         // passed through before any lookup runs, so the list is never waiting on Postbox to render.
         let rgPreviewSubstitution = RGChatListPreviewSubstitution(context: context, queue: viewProcessingQueue)
+        let rgAdPreview = RGChatListAdPreview(context: context, queue: viewProcessingQueue) // MARK: Regram
         let chatListDataUpdate = self.chatListLocation.get()
         |> distinctUntilChanged
         |> mapToSignal { listLocation -> Signal<(ChatListNodeViewUpdate, ChatListFilter?), NoError> in
@@ -2036,11 +2037,13 @@ public final class ChatListNode: ListViewImpl {
             |> deliverOn(viewProcessingQueue)
             |> mapToSignal { update -> Signal<ChatListNodeViewUpdate, NoError> in
                 return rgPreviewSubstitution.apply(to: update)
+                |> mapToSignal { rgAdPreview.apply(to: $0) } // MARK: Regram — clean full messages before preview rendering.
                 |> then(
                     rgContentFiltersDidChange()
                     |> deliverOn(viewProcessingQueue)
                     |> mapToSignal { _ -> Signal<ChatListNodeViewUpdate, NoError> in
                         return rgPreviewSubstitution.apply(to: update)
+                        |> mapToSignal { rgAdPreview.apply(to: $0) } // MARK: Regram
                     }
                 )
             }

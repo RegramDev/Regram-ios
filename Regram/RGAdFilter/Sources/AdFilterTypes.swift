@@ -73,6 +73,11 @@ public struct RGAdProjection: Codable, Equatable {
     public let removedRanges: [RGAdRange]
     public let removedButtonIds: [String]
     public let hideLinkPreview: Bool
+
+    public init(disposition: Disposition, text: String, entities: [RGAdEntity], buttons: [[RGAdButton]], removedRanges: [RGAdRange], removedButtonIds: [String], hideLinkPreview: Bool) {
+        self.disposition = disposition; self.text = text; self.entities = entities; self.buttons = buttons
+        self.removedRanges = removedRanges; self.removedButtonIds = removedButtonIds; self.hideLinkPreview = hideLinkPreview
+    }
 }
 
 public enum RGAdFilterError: Error, Equatable {

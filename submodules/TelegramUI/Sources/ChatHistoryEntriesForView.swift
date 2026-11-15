@@ -184,6 +184,7 @@ func chatHistoryEntriesForView(
     let accountPeerId = context.account.peerId
     let rgContentFilter = RGContentFilterState(accountPeerId: accountPeerId)
     let rgAdFilter = RGAdFilterSession.get(context) // MARK: Regram
+    let rgHiddenAdMessages = rgAdFilter.hiddenMessageIds(in: view.entries.map(\.message), accountPeerId: accountPeerId) // MARK: Regram — include captionless ad album attachments.
 
     loop: for entry in view.entries {
         var message = entry.message.withAppliedEphemeralReplacementMessage()
@@ -269,7 +270,7 @@ func chatHistoryEntriesForView(
             continue loop
         }
         // MARK: Regram — pure promotional text disappears without a replacement notice.
-        if rgAdFilter.shouldHide(message, accountPeerId: accountPeerId) {
+        if rgHiddenAdMessages.contains(message.id) {
             currentState.rgFilteredOutCount += 1
             continue loop
         }

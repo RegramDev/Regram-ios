@@ -1,6 +1,6 @@
 {
-  "modelVersion": "2026-11-16.1",
-  "purpose": "Chinese promotional intent in channel text; not multilingual, OCR, or a guarantee of ad-free content.",
+  "modelVersion": "2026-11-16.2",
+  "purpose": "Chinese commercial promotions in channel and group text. Preserve normal sharing and official benefits. Not multilingual OCR or a guarantee of ad-free content.",
   "base": {
     "repository": "https://huggingface.co/hfl/minirbt-h256",
     "revision": "446e1b4012b10946f479563005700c54c9db3f7c",
@@ -49,36 +49,169 @@
       "contextCalibration": 4
     },
     "selectedContextEpoch": 4,
-    "finalAuthoredRows": 614,
-    "examplesSHA256": "b1cb0c8249e50d31f45ab304cc9309673552d7fd2662c1dbb543fa0a7d41306f",
     "domainValidationSHA256": "0c2f91f448457bd676c73638045dd6f5105824548a75a2e367c3d6ff93c5b841",
     "checkpointSelection": "Public validation precision >= .985 and FPR <= .005, then domain false positives, domain recall, public recall. Test labels never fitted.",
-    "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split."
+    "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split.",
+    "deviceAdaptation": {
+      "exportedRecords": 223,
+      "sourceGroups": 16,
+      "normalPosts": 82,
+      "pureAdPosts": 44,
+      "mixedPosts": 95,
+      "manualMediaOnly": 2,
+      "developmentHoldoutPosts": 24,
+      "developmentHoldoutSourceGroups": 6,
+      "automaticLabelsUsedAsTruth": false,
+      "stages": [
+        {
+          "name": "normal-sharing-boundary",
+          "epochs": 6,
+          "selectedEpoch": 6
+        },
+        {
+          "name": "full-window-adaptation",
+          "epochs": 4,
+          "selectedEpoch": 1
+        },
+        {
+          "name": "commercial-context",
+          "epochs": 4,
+          "selectedEpoch": 1
+        }
+      ],
+      "additionalRejectedStage": {
+        "epochs": 4,
+        "reason": "Authored domain validation recall regressed; not selected for shipping"
+      },
+      "finalAugmentedRows": 6988,
+      "replayRows": 7899,
+      "samplingWeights": {
+        "content": 18.0,
+        "promotion": 72.0
+      },
+      "examplesSHA256": "36ac4c4d2a5d2e2d446ca5da5f557cd70f7760e1ab086fb38c2da39d20b0b897",
+      "exportSHA256": "27157de936e22510c7e1531ad62576e0a617e005d22d299fd67aa60335f559be",
+      "policy": "Normal software sharing, open source recommendations, official free credits and benefits retained; commercial promotion spans reviewed independently.",
+      "trainingPartitionRecords": 199,
+      "textTrainingPosts": 197
+    },
+    "thresholdCalibration": {
+      "previousThreshold": 0.9995,
+      "validation": {
+        "threshold": 0.99919,
+        "precision": 0.9858803986710963,
+        "recall": 0.3401146131805158,
+        "f1": 0.5057520238602471,
+        "tn": 3496,
+        "fp": 17,
+        "fn": 2303,
+        "tp": 1187,
+        "false_positive_rate": 0.004839168801594079
+      },
+      "domainValidation": {
+        "threshold": 0.99919,
+        "precision": 1.0,
+        "recall": 0.88,
+        "f1": 0.9361702127659575,
+        "tn": 30,
+        "fp": 0,
+        "fn": 3,
+        "tp": 22,
+        "false_positive_rate": 0.0
+      },
+      "test": {
+        "threshold": 0.99919,
+        "precision": 0.9811320754716981,
+        "recall": 0.33726415094339623,
+        "f1": 0.501974550241334,
+        "tn": 3249,
+        "fp": 22,
+        "fn": 2248,
+        "tp": 1144,
+        "false_positive_rate": 0.006725771935188016
+      },
+      "domainSHA256": "0c2f91f448457bd676c73638045dd6f5105824548a75a2e367c3d6ff93c5b841",
+      "method": "Validation-only fine grid; same public precision/FPR constraints and domain priorities; test evaluated after selection"
+    },
+    "preDeviceContextAuthoredRows": 614,
+    "preDeviceContextExamplesSHA256": "b1cb0c8249e50d31f45ab304cc9309673552d7fd2662c1dbb543fa0a7d41306f"
   },
   "evaluation": {
     "publicTextClassifier": {
-      "threshold": 0.996,
-      "precision": 0.984363894811656,
-      "recall": 0.408313679245283,
-      "f1": 0.5772035840800167,
+      "threshold": 0.99919,
+      "precision": 0.9811320754716981,
+      "recall": 0.33726415094339623,
+      "f1": 0.501974550241334,
       "tn": 3249,
       "fp": 22,
-      "fn": 2007,
-      "tp": 1385,
+      "fn": 2248,
+      "tp": 1144,
       "false_positive_rate": 0.006725771935188016
     },
     "domainValidationAuthored": {
-      "threshold": 0.996,
+      "threshold": 0.99919,
       "precision": 1.0,
-      "recall": 0.92,
-      "f1": 0.9583333333333334,
+      "recall": 0.88,
+      "f1": 0.9361702127659575,
       "tn": 30,
       "fp": 0,
-      "fn": 2,
-      "tp": 23,
+      "fn": 3,
+      "tp": 22,
       "false_positive_rate": 0.0
     },
-    "warning": "Public spam labels are noisy and differ from promotional intent. Scores are not calibrated correctness probabilities. Development regression results are not unseen generalization accuracy. End-to-end projection includes language/context/range safeguards."
+    "warning": "Public spam labels are noisy and differ from promotional intent. Scores are not calibrated correctness probabilities. Development regression results are not unseen generalization accuracy. End-to-end projection includes language/context/range safeguards.",
+    "externalBotDevelopment": {
+      "fn": 27,
+      "fp": 1,
+      "tn": 47,
+      "tp": 12
+    },
+    "nativeDevelopmentRegression": {
+      "posts": 322,
+      "withNormalText": 270,
+      "normalDamagedPosts": 0,
+      "withAdText": 174,
+      "completeAdRemovalPosts": 174,
+      "adRemainingPosts": 0,
+      "partialAdPosts": 0,
+      "pureAds": 52,
+      "pureHidden": 52,
+      "mixedPosts": 127,
+      "mixedFullyCleaned": 127,
+      "buttonErrors": 0,
+      "strictAdCoverage": "Every non-whitespace character of an annotated ad span must be removed; partial contact-only removal counts as failure."
+    },
+    "deviceSampleDevelopmentRegression": {
+      "posts": 221,
+      "withNormalText": 177,
+      "normalDamagedPosts": 0,
+      "withAdText": 139,
+      "completeAdRemovalPosts": 139,
+      "adRemainingPosts": 0,
+      "partialAdPosts": 0,
+      "pureAds": 44,
+      "pureHidden": 44,
+      "mixedPosts": 95,
+      "mixedFullyCleaned": 95,
+      "buttonErrors": 0
+    },
+    "physicalDevice": {
+      "device": "iPhone 16 Pro",
+      "os": "Version 27.0.1 (Build 24A446)",
+      "posts": 322,
+      "coldLoadMilliseconds": 50.95737497322261,
+      "predictionMilliseconds": {
+        "median": 67.01947911642492,
+        "p95": 164.67233351431787,
+        "maximum": 422.0702915918082
+      },
+      "parity": {
+        "maxProbabilityError": 0,
+        "vectors": 100
+      },
+      "allTextAndButtonExpectationsPassed": true,
+      "scope": "Production model/tokenizer/policy/projector in a local diagnostic app; separate from complete IPA installation."
+    }
   },
   "privacy": "No network or message upload in inference. Real-device messages and raw corpora are excluded from the repository. Classification outputs cannot generate original training messages.",
   "limitations": [
@@ -87,5 +220,12 @@
     "Adversarial obfuscation, very short coded messages and advertorials can be missed",
     "Normal content can be misclassified; originals remain stored and can be revealed",
     "No self-training from predictions or automatic remote model updates"
-  ]
+  ],
+  "inference": {
+    "computeUnits": "cpuOnly",
+    "spanThreshold": 0.99919,
+    "wholeCardConsensusFloor": 0.99,
+    "wholeCardConsensus": "Complete text and every meaningful blank-line block >= .99, at least two blocks >= span threshold, no substantive normal content or protected code. Only complete-card cuts use this floor.",
+    "privacy": "On-device, bounded background inference; no network requests."
+  }
 }

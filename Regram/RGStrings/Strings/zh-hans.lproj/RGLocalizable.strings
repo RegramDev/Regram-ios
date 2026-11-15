@@ -1385,8 +1385,8 @@
 "AdSamples.Title" = "广告过滤与样本";
 "AdSamples.Action" = "标记广告 / 纠正过滤";
 "AdSamples.OriginalAction" = "查看原文 / 纠正过滤";
-"AdSamples.Enabled" = "清理频道广告片段";
-"AdSamples.AutomaticNotice" = "在设备上使用内置 AI 模型识别中文广告文字和按钮，保留正常内容；高置信度的整条广告会隐藏。消息不会上传。频道资料页可单独关闭。";
+"AdSamples.Enabled" = "清理频道与群聊广告";
+"AdSamples.AutomaticNotice" = "在设备上使用内置 AI 模型识别中文广告文字和按钮，保留正常内容；高置信度的整条广告会隐藏。消息不会上传。频道和群聊资料页可单独关闭。";
 "AdSamples.Records" = "广告样本";
 "AdSamples.LibraryNotice" = "自动命中的广告会记录为“待确认”，重复浏览不重复收集。长按漏判消息，选择“标记广告 / 纠正过滤”可手动添加；打开记录可核对原文、片段和按钮，左滑删除。";
 "AdSamples.LocalNotice" = "记录按账号保存在本机，不进入系统备份，也不自动上传。最多保留 10,000 条，满后暂停收集；可导出并删除旧记录。公共模型改进随应用更新分发。";
@@ -1397,7 +1397,7 @@
 "AdSamples.Export" = "导出全部记录（含待确认）";
 "AdSamples.ExportNotice" = "文件包含原文、链接、按钮、自动判断和人工标注，不含媒体文件。待确认记录不能直接作为训练答案；分享前请检查内容，导出不会自动上传。";
 "AdSamples.Loading" = "正在读取…";
-"AdSamples.Empty" = "暂无广告样本。浏览频道后自动收集，也可长按消息手动添加。";
+"AdSamples.Empty" = "暂无广告样本。浏览频道和群聊后自动收集，也可长按消息手动添加。";
 "AdSamples.Retry" = "读取失败，点按重试";
 "AdSamples.Error" = "操作未完成，已有记录仍保留。";
 "AdSamples.Capacity" = "已达到容量限制，请导出并删除部分旧记录后重试。";
@@ -1410,8 +1410,8 @@
 "AdSamples.Preview" = "预览过滤结果";
 "AdSamples.MarkNotice" = "选中文字后点“正常 / 广告 / 待定”。红色是广告，橙色是待定；未标记文字按正常保留。初始红色标记是自动建议，保存前请核对全文。";
 "AdSamples.ButtonNotice" = "按钮分别判断；链接只供核对，不会自动打开。";
-"AdSamples.MediaNotice" = "媒体标注供后续改进使用，只记录媒体类型，不保存媒体内容。自动过滤可依据文字隐藏整条广告，暂不识别图片或视频画面。";
-"AdSamples.SaveNotice" = "确认后应用本次纠错，并可在同一频道复用相同广告片段。原始消息保留，不上传内容。";
+"AdSamples.MediaNotice" = "媒体标为广告且没有正常内容剩余时，会隐藏这条消息；标注只作用于对应媒体。记录仅包含媒体类型，不保存媒体文件，暂不识别图片或视频画面。";
+"AdSamples.SaveNotice" = "确认后应用本次纠错，并可在同一会话复用相同广告片段。原始消息保留，不上传内容。";
 "AdSamples.AllNormal" = "全文、按钮和媒体均正常";
 "AdSamples.AllAd" = "全文、按钮和媒体均为广告";
 "AdSamples.MediaCount" = "媒体数量：";

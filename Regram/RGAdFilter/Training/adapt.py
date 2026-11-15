@@ -14,7 +14,9 @@ from opencc import OpenCC
 from train import normalize,metrics
 
 ap=argparse.ArgumentParser();ap.add_argument('--source',required=True);ap.add_argument('--examples',required=True);ap.add_argument('--output',required=True);ap.add_argument('--epochs',type=int,default=4);ap.add_argument('--domain-validation')
+ap.add_argument('--content-weight',type=float,default=18);ap.add_argument('--promotion-weight',type=float,default=18)
 a=ap.parse_args();source=Path(a.source);out=Path(a.output);out.mkdir(parents=True,exist_ok=True)
+assert 0 < a.content_weight <= 100 and 0 < a.promotion_weight <= 100
 random.seed(34657);np.random.seed(34657);torch.manual_seed(34657);torch.set_num_threads(3)
 splits=json.loads((source/'split.json').read_text());original=json.loads((source/'metrics.json').read_text());examples=json.loads(Path(a.examples).read_text());cc=OpenCC('s2t')
 additions=[];seen=set()
@@ -23,7 +25,7 @@ for label,key in [(0,'content'),(1,'promotion')]:
   for variant in (text,cc.convert(text)):
    text=normalize(variant)
    if (label,text) in seen:continue
-   seen.add((label,text));additions.append(dict(text=text,label=label,group=f'authored-{key}-{i}',weight=18))
+   seen.add((label,text));additions.append(dict(text=text,label=label,group=f'authored-{key}-{i}',weight=a.promotion_weight if label else a.content_weight))
 # Replay is drawn only from training. No validation/test input is promoted into training.
 pool=[r for r in splits['train'] if not r.get('group','').startswith('authored-')] if a.domain_validation else splits['train']
 replay=random.sample(pool,min(8000,len(pool)))
@@ -78,4 +80,5 @@ for epoch in range(a.epochs):
 m=BertForSequenceClassification.from_pretrained(out/'checkpoint',attn_implementation='eager').to(device);selected=json.loads((out/'selected.json').read_text());scores=predict(partitions['test']);y=labels[partitions['test']].numpy()
 r=dict(cleaning=original['cleaning'],history=history,selected=selected,test=metrics(y,scores,selected['validation']['threshold']),data_sha256=original['data_sha256'],max_length=128,parameters=sum(p.numel() for p in m.parameters()),adaptation=dict(replay=len(replay),authored=len(additions),examples_sha256=hashlib.sha256(Path(a.examples).read_bytes()).hexdigest(),source_selected=original['selected']))
 if a.domain_validation:r['adaptation']['domain_validation_sha256']=hashlib.sha256(Path(a.domain_validation).read_bytes()).hexdigest()
+r['adaptation']['samplingWeights']={'content':a.content_weight,'promotion':a.promotion_weight}
 (out/'metrics.json').write_text(json.dumps(r,indent=2));print(json.dumps(dict(final_test=r['test'])),flush=True)

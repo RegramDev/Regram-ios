@@ -252,7 +252,7 @@ private final class RGAdEditorController: RGAdTableController, UITextViewDelegat
         let input = rgAdInput(message)
         session.perform({ store -> RGAdSample in
             var draft = try rgAdSampleDraft(message, store: store)
-            if draft.reviewedAt == nil, draft.detection == nil, let suggestion = try? RGAdPolicy.project(input, samples: store.load(), sourceGroup: draft.sourceGroup, semantic: RGAdSemanticClassifier.shared.predict(input)) {
+            if draft.reviewedAt == nil, draft.detection == nil, let suggestion = try? RGAdPolicy.project(input, samples: store.load(), sourceGroup: draft.sourceGroup, semantic: RGAdSemanticClassifier.shared.predict(input), sampleId: draft.id) {
                 draft.spans = suggestion.removedRanges.map { RGAdSpan($0, .ad) }
                 for id in suggestion.removedButtonIds { draft.buttonLabels[id] = .ad }
                 if suggestion.disposition == .hide { draft.mediaLabel = .ad }

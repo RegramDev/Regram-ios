@@ -12,6 +12,7 @@ struct PeerId: Hashable { let value: Int64; var namespace: Int32 { 0 }; func toI
 struct MessageId: Hashable { let peerId: PeerId; let namespace: Int32 = 0; let id: Int32 }
 enum Namespaces { enum Message { static let Cloud: Int32 = 0 }; enum Peer { static let SecretChat: Int32 = 1 } }
 class Peer {}
+final class TelegramGroup: Peer {}
 final class TelegramChannel: Peer { enum Info { case broadcast, group }; let info = Info.broadcast }
 struct PostboxDecoder {}
 struct PostboxEncoder {}
@@ -40,22 +41,24 @@ final class TelegramMediaWebpage: Media {
     init(_ url: String) { content = .Loaded(Content(url: url)) }
 }
 final class Message {
-    let id: MessageId, text: String, attributes: [MessageAttribute], media: [Media], peers: [PeerId: Peer]
+    let id: MessageId, text: String, attributes: [MessageAttribute], media: [Media]
+    var peers: [PeerId: Peer]
     let stableVersion: UInt32
     var protected = false, containsSecretMedia = false, incoming = true
     var richText: String? = nil, adAttribute: String? = nil, activeEphemeralReplacementMessage: String? = nil
-    init(id: Int32, text: String, attributes: [MessageAttribute] = [], media: [Media] = [], version: UInt32 = 1) {
-        let peer = PeerId(value: 99)
+    var groupingKey: Int64? = nil
+    init(id: Int32, text: String, attributes: [MessageAttribute] = [], media: [Media] = [], version: UInt32 = 1, peerValue: Int64 = 99) {
+        let peer = PeerId(value: peerValue)
         self.id = MessageId(peerId: peer, id: id); self.text = text; self.attributes = attributes; self.media = media
         self.peers = [peer: TelegramChannel()]; self.stableVersion = version
     }
     var textEntitiesAttribute: TextEntitiesMessageAttribute? { attributes.first { $0 is TextEntitiesMessageAttribute } as? TextEntitiesMessageAttribute }
     func isCopyProtected() -> Bool { protected }
     func effectivelyIncoming(_ peer: PeerId) -> Bool { incoming }
-    func withUpdatedText(_ text: String) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion) }
-    func withUpdatedAttributes(_ value: [MessageAttribute]) -> Message { Message(id: id.id, text: text, attributes: value, media: media, version: stableVersion) }
-    func withUpdatedStableVersion(stableVersion: UInt32) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion) }
-    func withUpdatedMedia(_ value: [Media]) -> Message { Message(id: id.id, text: text, attributes: attributes, media: value, version: stableVersion) }
+    func withUpdatedText(_ text: String) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value) }
+    func withUpdatedAttributes(_ value: [MessageAttribute]) -> Message { Message(id: id.id, text: text, attributes: value, media: media, version: stableVersion, peerValue: id.peerId.value) }
+    func withUpdatedStableVersion(stableVersion: UInt32) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value) }
+    func withUpdatedMedia(_ value: [Media]) -> Message { Message(id: id.id, text: text, attributes: attributes, media: value, version: stableVersion, peerValue: id.peerId.value) }
 }
 final class AccountContext {
     struct Account { let basePath: String; let peerId = PeerId(value: 1) }
@@ -74,10 +77,10 @@ final class RGSimpleSettings {
 tests = r'''
 final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
 @main enum Checks {
-    static func spin(_ condition: () -> Bool, timeout: Double = 5) {
+    static func spin(_ condition: () -> Bool, timeout: Double = 10, line: UInt = #line) {
         let until = Date().addingTimeInterval(timeout)
         while !condition() && Date() < until { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
-        precondition(condition(), "timed out")
+        precondition(condition(), "timed out at check line \(line)")
     }
     static func settle() { RunLoop.current.run(until: Date().addingTimeInterval(0.15)) }
     static func main() throws {
@@ -117,8 +120,8 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         message.richText = "rich"; precondition(display() === message); message.richText = nil
         let done = Box(false)
         session.perform(changes: true, { store in
-            var sample = try store.draft(input: rgAdInput(message), messageKey: "99:1", mediaKinds: ["image"], mediaIdentity: "fixture")
-            sample.buttonLabels = sample.buttonLabels.mapValues { _ in .normal }; sample.mediaLabel = .normal
+            var sample = try rgAdSampleDraft(message, store: store)
+            sample.spans = []; sample.buttonLabels = sample.buttonLabels.mapValues { _ in .normal }; sample.mediaLabel = .normal
             try store.save(sample)
         }) { result in try! result.get(); done.value = true }
         spin { done.value }; spin { display() === message }
@@ -160,10 +163,14 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
     }
 }
 '''
-with tempfile.TemporaryDirectory(prefix='regram-ad-bridge-') as directory:
-    work = Path(directory)
-    swift = work / 'BridgeChecks.swift'
-    swift.write_text(adapters + '\n' + bridge + '\n' + tests)
-    binary = work / 'checks'
-    subprocess.run(['xcrun','swiftc','-swift-version','5','-parse-as-library','-warnings-as-errors',*map(str, sorted((root/'Regram/RGAdFilter/Sources').glob('*.swift'))),str(swift),'-o',str(binary)],check=True,cwd=root)
-    subprocess.run([str(binary)],check=True,timeout=30)
+def run():
+    with tempfile.TemporaryDirectory(prefix='regram-ad-bridge-') as directory:
+        work = Path(directory)
+        swift = work / 'BridgeChecks.swift'
+        swift.write_text(adapters + '\n' + bridge + '\n' + tests)
+        binary = work / 'checks'
+        subprocess.run(['xcrun','swiftc','-swift-version','5','-parse-as-library','-warnings-as-errors',*map(str, sorted((root/'Regram/RGAdFilter/Sources').glob('*.swift'))),str(swift),'-o',str(binary)],check=True,cwd=root)
+        subprocess.run([str(binary)],check=True,timeout=30)
+
+if __name__ == '__main__':
+    run()

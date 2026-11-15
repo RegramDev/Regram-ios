@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 3
+    public static let revision = 4
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")
@@ -40,6 +40,7 @@ public enum RGAdPolicy {
     /// Build once when reviewed records change. Rendering never scans the sample library.
     public struct Knowledge {
         private var exact: [String: [RGAdInput: RGAdSample]] = [:]
+        private var reviewedMedia: [String: RGAdSample] = [:]
         private var snippets: [String: [String]] = [:]
         private var buttons: [String: [ButtonKey: RGAdLabel]] = [:]
         public init(samples: [RGAdSample] = []) {
@@ -48,7 +49,10 @@ public enum RGAdPolicy {
                 var known: [RGAdInput: RGAdSample] = [:], targets: [ButtonKey: RGAdLabel] = [:]
                 var candidates: [String] = [], seen = Set<String>()
                 for sample in local {
-                    if known[sample.input] == nil { known[sample.input] = sample }
+                    // Media labels apply to the reviewed snapshot, never every captionless image
+                    // (or a different attachment carrying the same caption) in that conversation.
+                    if sample.input.hasMedia { reviewedMedia[sample.id] = sample }
+                    else if known[sample.input] == nil { known[sample.input] = sample }
                     for button in sample.input.buttons.flatMap({ $0 }) {
                         guard let key = ButtonKey(button), let label = sample.buttonLabels[button.id] else { continue }
                         if targets[key] == nil || label != .ad { targets[key] = label }
@@ -78,11 +82,25 @@ public enum RGAdPolicy {
             }
         }
 
-        public func project(_ input: RGAdInput, sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult()) throws -> RGAdProjection {
+        /// A reviewed normal/uncertain attachment must not inherit another album item's verdict.
+        private func review(_ input: RGAdInput, sourceGroup: String, sampleId: String?) -> RGAdSample? {
+            let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
+            if input.hasMedia {
+                guard let sampleId, let sample = reviewedMedia[sampleId], sample.sourceGroup == sourceGroup, sample.input == sanitized else { return nil }
+                return sample
+            }
+            return exact[sourceGroup]?[sanitized]
+        }
+
+        public func preservesMedia(_ input: RGAdInput, sourceGroup: String, sampleId: String? = nil) -> Bool {
+            guard let sample = review(input, sourceGroup: sourceGroup, sampleId: sampleId) else { return false }
+            return sample.mediaLabel != .ad || sample.hasUncertainty
+        }
+
+        public func project(_ input: RGAdInput, sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult(), sampleId: String? = nil) throws -> RGAdProjection {
             guard input.text.utf16.count <= 65_536 else { throw RGAdFilterError.inputTooLong }
             guard input.entities.count <= 2048, input.buttons.count <= 128, input.buttons.flatMap({ $0 }).count <= 128 else { throw RGAdFilterError.invalidInput }
-            let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
-            if let sample = exact[sourceGroup]?[sanitized] {
+            if let sample = review(input, sourceGroup: sourceGroup, sampleId: sampleId) {
                 let wholeAd = sample.mediaLabel == .ad && sample.buttonLabels.values.allSatisfy { $0 == .ad }
                     && sample.previewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !sample.hasUncertainty
                 return try RGAdFilter.project(input, confirmedRanges: sample.spans.filter { $0.label == .ad }.map(\.range), confirmedButtonIds: Set(sample.buttonLabels.filter { $0.value == .ad }.keys), inferButtons: false, entireMessageIsAd: wholeAd)
@@ -134,16 +152,26 @@ public enum RGAdPolicy {
                 } else {
                     let title = RGAdPolicy.matchText(button.title)
                     if !RGAdPolicy.matches(RGAdPolicy.warning, title),
-                       RGAdPolicy.cooperation.contains(title) || RGAdPolicy.matches(RGAdPolicy.promotion, title) || RGAdPolicy.matches(RGAdPolicy.brandedPromotion, title) {
+                       RGAdPolicy.cooperation.contains(title) || RGAdPolicy.matches(RGAdPolicy.promotion, title) || RGAdPolicy.matches(RGAdPolicy.brandedPromotion, title)
+                        || (RGAdPolicy.matches(RGAdPolicy.signup, title) && RGAdPolicy.matches(RGAdPolicy.gambling, title)) {
                         removedButtons.insert(button.id)
                     }
                 }
             }
-            return try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage)
+            let result = try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage)
+            // A caption independently classified entirely as advertising describes its attachment.
+            // Previously line-level decisions cleared the caption but stranded the advertising
+            // image. Normal text/buttons and explicit human media corrections veto this upgrade.
+            if input.hasMedia, result.disposition == .trim, !input.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               result.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, result.buttons.isEmpty {
+                return RGAdProjection(disposition: .hide, text: result.text, entities: result.entities, buttons: result.buttons,
+                                      removedRanges: result.removedRanges, removedButtonIds: result.removedButtonIds, hideLinkPreview: result.hideLinkPreview)
+            }
+            return result
         }
     }
 
-    public static func project(_ input: RGAdInput, samples: [RGAdSample] = [], sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult()) throws -> RGAdProjection {
-        try Knowledge(samples: samples).project(input, sourceGroup: sourceGroup, semantic: semantic)
+    public static func project(_ input: RGAdInput, samples: [RGAdSample] = [], sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult(), sampleId: String? = nil) throws -> RGAdProjection {
+        try Knowledge(samples: samples).project(input, sourceGroup: sourceGroup, semantic: semantic, sampleId: sampleId)
     }
 }

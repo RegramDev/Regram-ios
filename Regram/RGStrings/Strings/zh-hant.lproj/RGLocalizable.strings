@@ -1383,8 +1383,8 @@
 "AdSamples.Title" = "廣告過濾與樣本";
 "AdSamples.Action" = "標記廣告 / 更正過濾";
 "AdSamples.OriginalAction" = "查看原文 / 糾正過濾";
-"AdSamples.Enabled" = "清理頻道廣告片段";
-"AdSamples.AutomaticNotice" = "在裝置上使用內建 AI 模型辨識中文廣告文字和按鈕，保留正常內容；高信心的整則廣告會隱藏。訊息不會上傳。頻道資料頁可單獨關閉。";
+"AdSamples.Enabled" = "清理頻道與群組廣告";
+"AdSamples.AutomaticNotice" = "在裝置上使用內建 AI 模型辨識中文廣告文字和按鈕，保留正常內容；高信心的整則廣告會隱藏。訊息不會上傳。頻道和群組資料頁可單獨關閉。";
 "AdSamples.Records" = "廣告樣本";
 "AdSamples.LibraryNotice" = "自動命中的廣告會記錄為「待確認」，重複瀏覽不重複收集。長按漏判訊息，選擇「標記廣告 / 更正過濾」可手動新增；開啟記錄可核對原文、片段和按鈕，向左滑動刪除。";
 "AdSamples.LocalNotice" = "記錄按帳號儲存在本機，不進入系統備份，也不自動上傳。最多保留 10,000 筆，滿後暫停收集；可匯出並刪除舊記錄。公共模型改進隨應用程式更新分發。";
@@ -1395,7 +1395,7 @@
 "AdSamples.Export" = "匯出全部記錄（含待確認）";
 "AdSamples.ExportNotice" = "檔案包含原文、連結、按鈕、自動判斷和人工標註，不含媒體檔案。待確認記錄不能直接作為訓練答案；分享前請檢查內容，匯出不會自動上傳。";
 "AdSamples.Loading" = "正在讀取…";
-"AdSamples.Empty" = "暫無廣告樣本。瀏覽頻道後自動收集，也可長按訊息手動新增。";
+"AdSamples.Empty" = "暫無廣告樣本。瀏覽頻道和群組後自動收集，也可長按訊息手動新增。";
 "AdSamples.Retry" = "讀取失敗，點按重試";
 "AdSamples.Error" = "操作未完成，已有記錄仍保留。";
 "AdSamples.Capacity" = "已達到容量限制，請匯出並刪除部分舊記錄後重試。";
@@ -1408,8 +1408,8 @@
 "AdSamples.Preview" = "預覽過濾結果";
 "AdSamples.MarkNotice" = "選取文字後點「正常 / 廣告 / 待定」。紅色是廣告，橙色是待定；未標記文字按正常保留。初始紅色標記是自動建議，儲存前請核對全文。";
 "AdSamples.ButtonNotice" = "按鈕分別判斷；連結僅供核對，不會自動開啟。";
-"AdSamples.MediaNotice" = "媒體標註供後續改進使用，只記錄媒體類型，不儲存媒體內容。自動過濾可依文字隱藏整則廣告，暫不辨識圖片或影片畫面。";
-"AdSamples.SaveNotice" = "確認後套用本次糾錯，並可在同一頻道重用相同廣告片段。原始訊息保留，不上傳內容。";
+"AdSamples.MediaNotice" = "媒體標為廣告且沒有正常內容剩餘時，會隱藏這則訊息；標註只作用於對應媒體。記錄僅包含媒體類型，不儲存媒體檔案，暫不辨識圖片或影片畫面。";
+"AdSamples.SaveNotice" = "確認後套用本次糾錯，並可在同一對話重用相同廣告片段。原始訊息保留，不上傳內容。";
 "AdSamples.AllNormal" = "全文、按鈕和媒體均正常";
 "AdSamples.AllAd" = "全文、按鈕和媒體均為廣告";
 "AdSamples.MediaCount" = "媒體數量：";
