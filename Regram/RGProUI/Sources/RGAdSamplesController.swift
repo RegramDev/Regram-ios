@@ -318,8 +318,16 @@ private final class RGAdEditorController: RGAdTableController, UITextViewDelegat
     func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
         UIMenu(children: labels.map { value in UIAction(title: labelTitle(value)) { [weak self] _ in self?.mark(range, as: value) } })
     }
-    @objc private func changeButton(_ sender: UISegmentedControl) { guard !busy else { return }; sample?.buttonLabels[buttons[sender.tag].id] = labels[sender.selectedSegmentIndex] }
-    @objc private func changeMedia(_ sender: UISegmentedControl) { guard !busy else { return }; sample?.mediaLabel = labels[sender.selectedSegmentIndex] }
+    @objc private func changeButton(_ sender: UISegmentedControl) {
+        guard !busy, buttons.indices.contains(sender.tag), labels.indices.contains(sender.selectedSegmentIndex) else { return }
+        // Read the button id before opening the mutable access to sample's label dictionary.
+        let id = buttons[sender.tag].id, value = labels[sender.selectedSegmentIndex]
+        sample?.buttonLabels[id] = value
+    }
+    @objc private func changeMedia(_ sender: UISegmentedControl) {
+        guard !busy, labels.indices.contains(sender.selectedSegmentIndex) else { return }
+        sample?.mediaLabel = labels[sender.selectedSegmentIndex]
+    }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         super.tableView(tableView, didSelectRowAt: indexPath)
         guard !busy, var sample else { return }

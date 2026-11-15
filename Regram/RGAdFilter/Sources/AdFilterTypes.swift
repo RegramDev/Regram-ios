@@ -10,7 +10,7 @@ public struct RGAdRange: Codable, Equatable, Hashable {
     public func contains(_ other: Self) -> Bool { lower <= other.lower && upper >= other.upper }
 }
 
-public struct RGAdEntity: Codable, Equatable {
+public struct RGAdEntity: Codable, Equatable, Hashable {
     public enum Kind: String, Codable { case format, link, mention, customEmoji, code, quote }
     public let range: RGAdRange
     public let kind: Kind
@@ -21,7 +21,7 @@ public struct RGAdEntity: Codable, Equatable {
     }
 }
 
-public struct RGAdButton: Codable, Equatable {
+public struct RGAdButton: Codable, Equatable, Hashable {
     public let id: String
     public let title: String
     /// Only URL buttons have a target. Callbacks and other actions stay opaque.
@@ -31,7 +31,7 @@ public struct RGAdButton: Codable, Equatable {
     }
 }
 
-public struct RGAdInput: Codable, Equatable {
+public struct RGAdInput: Codable, Equatable, Hashable {
     public let text: String
     public let peerId: Int64?
     public let entities: [RGAdEntity]

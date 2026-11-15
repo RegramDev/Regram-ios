@@ -2,9 +2,9 @@ import Foundation
 
 /// Pure, account-free projection. The source message/database are never modified.
 public enum RGAdFilter {
-    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], inferButtons: Bool = true) throws -> RGAdProjection {
+    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], inferButtons: Bool = true) throws -> RGAdProjection {
         guard input.text.utf16.count <= 65_536, input.entities.count <= 2048, rules.count <= 128,
-              predictions.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
+              predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.05
         let boundaries = rgAdBoundaries(input.text)
         let allButtons = input.buttons.flatMap { $0 }
@@ -13,7 +13,7 @@ public enum RGAdFilter {
               Set(allButtons.map(\.id)).count == allButtons.count else { throw RGAdFilterError.invalidInput }
         let source = input.text as NSString
         let paragraphs = paragraphRanges(input.text)
-        var ranges: [RGAdRange] = confirmedRanges
+        var ranges: [RGAdRange] = suggestedRanges + confirmedRanges
         var removedButtons = confirmedButtonIds
         let activeRules = rules.filter { !$0.pattern.isEmpty && ($0.peerId == nil || $0.peerId == input.peerId) }
         for rule in activeRules {

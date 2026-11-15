@@ -33,6 +33,21 @@ final class AdFilterTests: XCTestCase {
         }
     }
 
+    func testRepeatedPromotionDoesNotEraseWarningInSameMessage() throws {
+        let text = "警惕骗局：" + ad + "\n" + ad
+        let last = (text as NSString).range(of: "@promotion_user", options: .backwards)
+        let input = RGAdInput(text: text, entities: [entity(text, "@promotion_user"), RGAdEntity(range: RGAdRange(last.location, NSMaxRange(last)), kind: .mention, value: "@promotion_user")])
+        XCTAssertEqual(try RGAdPolicy.project(input).text, "警惕骗局：" + ad + "\n")
+    }
+
+    func testRepeatedNormalOccurrencePreventsLearning() throws {
+        let storage = try store(), snippet = "欢迎参与我们的优惠活动并领取专属奖励"
+        var sample = try storage.draft(input: RGAdInput(text: snippet + "\n" + snippet, peerId: 9), messageKey: "9:1", mediaKinds: [], mediaIdentity: "")
+        try sample.mark(NSRange(location: 0, length: snippet.utf16.count), as: .ad)
+        try storage.save(sample)
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: "新内容\n" + snippet, peerId: 9), samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .keep)
+    }
+
     func testNoDestinationAndNormalResourceLinksArePreserved() throws {
         for text in ["中奖可提现", "本片包含广告行业与赌场相关情节。", "免费体验新功能 @search_helper", ad] {
             XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text)).disposition, .keep)

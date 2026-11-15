@@ -77,7 +77,9 @@ public final class RGAdFilterSession {
     private let queue = DispatchQueue(label: "regram.ad-filter", qos: .userInitiated)
     private let lock = NSLock()
     private let store: RGAdSampleStore
-    private var samples: [RGAdSample] = []
+    private var knowledge = RGAdPolicy.Knowledge()
+    private var lastBatch: [MessageId: RGAdInput] = [:]
+    private var requestGeneration: UInt64 = 0
     private var salt = ""
     private var enabled = false
     private struct Cached { let input: RGAdInput; let projection: RGAdProjection?; let revision: UInt32 }
@@ -95,7 +97,7 @@ public final class RGAdFilterSession {
 
     private func reload() throws {
         let samples = try store.load(), salt = try store.salt(), enabled = try store.isEnabled()
-        self.samples = samples; self.salt = salt; self.enabled = enabled
+        self.knowledge = RGAdPolicy.Knowledge(samples: samples); self.salt = salt; self.enabled = enabled; self.lastBatch = [:]
         lock.lock(); cached.removeAll(); order.removeAll(); lock.unlock()
     }
     private func changed() {
@@ -115,17 +117,27 @@ public final class RGAdFilterSession {
     }
 
     public func prepare(_ messages: [Message], accountPeerId: PeerId) {
+        lock.lock(); requestGeneration &+= 1; let request = requestGeneration; lock.unlock()
         queue.async {
-            var changed = false
-            for message in messages {
+            self.lock.lock(); let latest = request == self.requestGeneration; self.lock.unlock()
+            guard latest else { return } // Coalesce stale scroll windows before doing any matching.
+            let eligible = messages.filter { message in
                 guard rgCanCorrectAds(message), message.effectivelyIncoming(accountPeerId),
-                      let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info,
-                      message.adAttribute == nil, message.activeEphemeralReplacementMessage == nil else { continue }
-                let input = rgAdInput(message)
+                      let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info else { return false }
+                return message.adAttribute == nil && message.activeEphemeralReplacementMessage == nil
+            }
+            var inputs: [MessageId: RGAdInput] = [:]
+            for message in eligible { inputs[message.id] = rgAdInput(message) }
+            // In particular, a window larger than the bounded cache must not trigger a refresh loop.
+            guard inputs != self.lastBatch else { return }
+            self.lastBatch = inputs
+            var changed = false
+            for message in eligible {
+                guard let input = inputs[message.id] else { continue }
                 self.lock.lock(); let old = self.cached[message.id]; self.lock.unlock()
                 if old?.input == input { continue }
                 let group = RGAdSampleStore.sourceGroup(salt: self.salt, peerId: message.id.peerId.toInt64())
-                let result = self.enabled ? try? RGAdPolicy.project(input, samples: self.samples, sourceGroup: group) : nil
+                let result = self.enabled ? try? self.knowledge.project(input, sourceGroup: group) : nil
                 let projected = result?.disposition == .keep ? nil : result
                 self.lock.lock()
                 if self.cached[message.id] == nil {
