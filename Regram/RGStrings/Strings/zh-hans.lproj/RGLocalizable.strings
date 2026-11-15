@@ -287,8 +287,8 @@
 "MessageFilter.Rule.EditTitle" = "修改关键词";
 "MessageFilter.Rule.EditMessage" = "包含此文字的消息将被隐藏。";
 "MessageFilter.Rule.EditMessageRegex" = "匹配此正则表达式的消息将被隐藏。";
-"MessageFilter.PerChat.Title" = "关键词消息过滤";
-"MessageFilter.PerChat.Notice" = "关闭后，此对话不应用关键词和正则隐藏规则；广告片段清理单独设置。";
+"MessageFilter.PerChat.Title" = "关键词过滤";
+"MessageFilter.PerChat.Notice" = "按关键词和正则规则隐藏整条消息。";
 "EraseData.Title" = "清除全部数据";
 "EraseData.Notice" = "退出所有账号并删除全部本地数据、缓存和设置。想从零开始时用这个 —— 删除 App 并不会清除数据，因为 iOS 会保留共享容器。";
 "EraseData.Confirm" = "将退出所有账号并删除本 App 的全部本地数据，此操作无法撤销。";
@@ -1382,23 +1382,22 @@
 
 /* Local ad filtering and explicit corrections */
 "ContextMenu.adSample" = "纠正广告过滤";
-"AdSamples.Title" = "自动广告过滤";
-"AdSamples.Action" = "纠正广告过滤";
+"AdSamples.Title" = "广告过滤与样本";
+"AdSamples.Action" = "标记广告 / 纠正过滤";
 "AdSamples.OriginalAction" = "查看原文 / 纠正过滤";
-"AdSamples.FilteredNotice" = "已过滤广告 · 长按查看原文";
 "AdSamples.Enabled" = "清理频道广告片段";
-"AdSamples.AutomaticNotice" = "使用公共内置规则和已确认的本机纠错，判断不稳时保留内容。与关键词整条隐藏独立；频道资料页可单独关闭。图片和视频保留。";
-"AdSamples.Records" = "纠错记录";
-"AdSamples.LibraryNotice" = "长按消息即可核对文字和按钮，纠错是可选操作。左滑删除记录，也会取消从该记录学到的偏好。";
-"AdSamples.LocalNotice" = "只保存你主动确认的记录，按账号隔离，不进入系统备份，也不自动上传。经验证的公共改进会随应用更新分发。";
+"AdSamples.AutomaticNotice" = "在设备上使用内置 AI 模型识别中文广告文字和按钮，保留正常内容；高置信度的整条广告会隐藏。消息不会上传。频道资料页可单独关闭。";
+"AdSamples.Records" = "广告样本";
+"AdSamples.LibraryNotice" = "自动命中的广告会记录为“待确认”，重复浏览不重复收集。长按漏判消息，选择“标记广告 / 纠正过滤”可手动添加；打开记录可核对原文、片段和按钮，左滑删除。";
+"AdSamples.LocalNotice" = "记录按账号保存在本机，不进入系统备份，也不自动上传。最多保留 10,000 条，满后暂停收集；可导出并删除旧记录。公共模型改进随应用更新分发。";
 "AdSamples.Normal" = "正常";
 "AdSamples.Ad" = "广告";
 "AdSamples.Uncertain" = "待定";
 "AdSamples.Media" = "媒体";
-"AdSamples.Export" = "导出纠错样本";
-"AdSamples.ExportNotice" = "导出文件包含当前账号已保存消息的原文、链接、按钮和标注，不含媒体文件。分享前请检查内容；导出不会自动上传。";
+"AdSamples.Export" = "导出全部记录（含待确认）";
+"AdSamples.ExportNotice" = "文件包含原文、链接、按钮、自动判断和人工标注，不含媒体文件。待确认记录不能直接作为训练答案；分享前请检查内容，导出不会自动上传。";
 "AdSamples.Loading" = "正在读取…";
-"AdSamples.Empty" = "暂无纠错记录";
+"AdSamples.Empty" = "暂无广告样本。浏览频道后自动收集，也可长按消息手动添加。";
 "AdSamples.Retry" = "读取失败，点按重试";
 "AdSamples.Error" = "操作未完成，已有记录仍保留。";
 "AdSamples.Capacity" = "已达到容量限制，请导出并删除部分旧记录后重试。";
@@ -1411,7 +1410,7 @@
 "AdSamples.Preview" = "预览过滤结果";
 "AdSamples.MarkNotice" = "选中文字后点“正常 / 广告 / 待定”。红色是广告，橙色是待定；未标记文字按正常保留。初始红色标记是自动建议，保存前请核对全文。";
 "AdSamples.ButtonNotice" = "按钮分别判断；链接只供核对，不会自动打开。";
-"AdSamples.MediaNotice" = "媒体标注供后续改进使用。本版保留图片和视频，只记录媒体类型，不保存媒体内容。";
+"AdSamples.MediaNotice" = "媒体标注供后续改进使用，只记录媒体类型，不保存媒体内容。自动过滤可依据文字隐藏整条广告，暂不识别图片或视频画面。";
 "AdSamples.SaveNotice" = "确认后应用本次纠错，并可在同一频道复用相同广告片段。原始消息保留，不上传内容。";
 "AdSamples.AllNormal" = "全文、按钮和媒体均正常";
 "AdSamples.AllAd" = "全文、按钮和媒体均为广告";
@@ -1420,5 +1419,18 @@
 "AdSamples.EmptyText" = "过滤后无剩余文字";
 "AdSamples.None" = "无";
 
-"AdSamples.PerChat.Title" = "清理此频道广告片段";
-"AdSamples.PerChat.Notice" = "需开启“自动广告过滤”。只清理已识别的广告文字和按钮，保留正文；不受上方关键词开关影响。";
+"AdSamples.PerChat.Title" = "智能广告过滤";
+"AdSamples.PerChat.Notice" = "广告过滤保留正常正文；关键词过滤按规则隐藏整条消息。广告过滤需在“消息过滤器”中开启。";
+
+"AdSamples.ModelReady" = "本机 AI 已就绪";
+"AdSamples.ModelUnavailable" = "本机 AI 暂不可用，重新进入此页可重试";
+
+"AdSamples.Pending" = "自动识别 · 待确认";
+
+"AdSamples.Reviewed" = "已确认";
+
+"AdSamples.ExportTraining" = "导出已确认训练集";
+
+"AdSamples.ExportTrainingNotice" = "只导出已由你确认、且没有“待定”标注的记录。包含原文、链接和按钮，不含媒体文件，不会自动上传。";
+
+"AdSamples.RecordingPaused" = "部分广告未能保存。请检查存储空间，或导出并删除部分旧记录后继续浏览。";

@@ -11,7 +11,16 @@ public struct RGAdSpan: Codable, Equatable {
     public init(_ range: RGAdRange, _ label: RGAdLabel) { self.range = range; self.label = label }
 }
 
-/// Human-reviewed snapshots only. Unmarked text is normal; button/media labels are independent.
+/// The original automatic decision is retained separately from subsequent human corrections.
+public struct RGAdDetection: Codable, Equatable {
+    public let recordedAt: Double
+    public let policyRevision: Int
+    public let removedRanges: [RGAdRange]
+    public let removedButtonIds: [String]
+    public let hidMessage: Bool
+}
+
+/// Pending detections and human-reviewed snapshots. Only reviewed records teach local policy.
 /// Original UTF-16 text and entities are immutable, including when the server edits the message.
 public struct RGAdSample: Codable, Equatable {
     public let schemaVersion: Int
@@ -24,6 +33,10 @@ public struct RGAdSample: Codable, Equatable {
     public var buttonLabels: [String: RGAdLabel]
     public var mediaLabel: RGAdLabel
     public var reviewedAt: Double?
+    public var detection: RGAdDetection? = nil
+
+    public var recordedAt: Double { reviewedAt ?? detection?.recordedAt ?? 0 }
+    public var isTrainingReady: Bool { reviewedAt != nil && !hasUncertainty }
 
     public mutating func mark(_ range: NSRange, as label: RGAdLabel) throws {
         guard range.location >= 0, range.length > 0, range.location <= input.text.utf16.count,
@@ -75,6 +88,13 @@ public struct RGAdSample: Codable, Equatable {
             guard span.label != .normal, rgAdValid(span.range, boundaries: boundaries), span.range.lower >= end else { throw RGAdSampleError.invalid }
             end = span.range.upper
         }
+        if let detection {
+            guard detection.recordedAt.isFinite, detection.recordedAt > 0,
+                  detection.policyRevision > 0, detection.removedRanges.count <= 1024,
+                  detection.removedRanges.allSatisfy({ rgAdValid($0, boundaries: boundaries) }),
+                  Set(detection.removedButtonIds).isSubset(of: Set(ids)) else { throw RGAdSampleError.invalid }
+        }
+        if let reviewedAt, !reviewedAt.isFinite || reviewedAt <= 0 { throw RGAdSampleError.invalid }
     }
 }
 
@@ -82,8 +102,10 @@ public enum RGAdSampleError: Error, Equatable { case invalid, capacity, damaged 
 
 /// Account-directory storage, serialized by the caller. No networking, media bytes or raw peer IDs.
 public final class RGAdSampleStore {
-    public static let maximumSamples = 1000
+    public static let maximumSamples = 10_000
     public let directory: URL
+    public private(set) var recordingFailed = false
+    private var storedIds: Set<String>?
     public init(accountDirectory: URL) { directory = accountDirectory.appendingPathComponent("regram-ad-samples-v1", isDirectory: true) }
 
     private func prepare() throws {
@@ -131,7 +153,8 @@ public final class RGAdSampleStore {
         guard (try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max) <= 1_048_576 else { throw RGAdSampleError.damaged }
         let sample = try JSONDecoder().decode(RGAdSample.self, from: Data(contentsOf: file))
         try sample.validate()
-        guard sample.reviewedAt != nil, file.lastPathComponent == sample.id + ".json" else { throw RGAdSampleError.damaged }
+        guard sample.reviewedAt != nil || sample.detection != nil,
+              file.lastPathComponent == sample.id + ".json" else { throw RGAdSampleError.damaged }
         return sample
     }
 
@@ -139,29 +162,53 @@ public final class RGAdSampleStore {
         try prepare()
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey]).filter { $0.pathExtension == "json" }
         guard files.count <= Self.maximumSamples else { throw RGAdSampleError.capacity }
-        return try files.map(read).sorted { ($0.reviewedAt ?? 0) > ($1.reviewedAt ?? 0) }
+        let samples = try files.map(read).sorted { $0.recordedAt > $1.recordedAt }
+        storedIds = Set(samples.map(\.id))
+        return samples
     }
 
     public func save(_ value: RGAdSample) throws {
-        try value.validate(); try prepare()
-        let path = directory.appendingPathComponent(value.id + ".json")
-        if !FileManager.default.fileExists(atPath: path.path), try load().count >= Self.maximumSamples { throw RGAdSampleError.capacity }
         var sample = value; sample.reviewedAt = Date().timeIntervalSince1970
+        try write(sample)
+    }
+
+    /// Idempotent across scrolling, pinned-message updates and restart. Never overwrites a review.
+    public func recordDetection(input: RGAdInput, messageKey: String, mediaKinds: [String], mediaIdentity: String, projection: RGAdProjection) throws {
+        guard projection.disposition != .keep else { return }
+        do {
+            var sample = try draft(input: input, messageKey: messageKey, mediaKinds: mediaKinds, mediaIdentity: mediaIdentity)
+            guard sample.reviewedAt == nil, sample.detection == nil else { return }
+            sample.detection = RGAdDetection(recordedAt: Date().timeIntervalSince1970, policyRevision: RGAdPolicy.revision,
+                                            removedRanges: projection.removedRanges, removedButtonIds: projection.removedButtonIds, hidMessage: projection.disposition == .hide)
+            sample.spans = projection.removedRanges.map { RGAdSpan($0, .ad) }
+            for id in projection.removedButtonIds { sample.buttonLabels[id] = .ad }
+            if projection.disposition == .hide { sample.mediaLabel = .ad }
+            try write(sample)
+            recordingFailed = false
+        } catch { recordingFailed = true; throw error }
+    }
+
+    private func write(_ sample: RGAdSample) throws {
+        try sample.validate(); try prepare()
+        if storedIds == nil { _ = try load() }
+        if storedIds?.contains(sample.id) != true, (storedIds?.count ?? 0) >= Self.maximumSamples { throw RGAdSampleError.capacity }
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(sample)
         guard data.count <= 1_048_576 else { throw RGAdSampleError.capacity }
-        try data.write(to: path, options: .atomic)
+        try data.write(to: directory.appendingPathComponent(sample.id + ".json"), options: .atomic)
+        storedIds?.insert(sample.id)
     }
 
     public func remove(_ sample: RGAdSample) throws {
         try sample.validate()
         try FileManager.default.removeItem(at: directory.appendingPathComponent(sample.id + ".json"))
+        storedIds?.remove(sample.id)
     }
 
-    public func export() throws -> Data {
+    public func export(trainingOnly: Bool = false) throws -> Data {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         var data = Data()
-        for sample in try load() {
+        for sample in try load() where !trainingOnly || sample.isTrainingReady {
             data.append(try encoder.encode(sample)); data.append(0x0a)
             guard data.count <= 64 * 1024 * 1024 else { throw RGAdSampleError.capacity }
         }

@@ -49,6 +49,7 @@ enum InfoSection: Int, CaseIterable {
     case unofficial
     case community
     case regram
+    case messageFilters // MARK: Regram — switches share a native card, followed by one footer.
     case antiRevoke
     case groupLocation
     case calls
@@ -1158,21 +1159,22 @@ func infoItems(
     if !isMyProfile, let rgFilterPeerId = data.peer?.id.toInt64() {
         items[.regram] = items[.regram] ?? []
         let rgLang = presentationData.strings.baseLanguageCode
-        items[.regram]!.append(PeerInfoScreenSwitchItem(id: 9500, text: "MessageFilter.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isMessageFilterEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
+        items[.messageFilters]!.append(PeerInfoScreenSwitchItem(id: 9500, text: "MessageFilter.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isMessageFilterEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
             RGSimpleSettings.shared.setMessageFilterEnabled(value, forPeer: rgFilterPeerId)
         }))
-        items[.regram]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
 
         // MARK: Regram — ad segment cleaning is independent of whole-message keyword hiding.
         if case let .channel(channel)? = data.peer, case .broadcast = channel.info {
             let accountId = context.account.peerId.toInt64()
             let preferences = RGSimpleSettings.shared.chatPreferences(accountId: accountId, peerId: rgFilterPeerId)
-            items[.regram]!.append(PeerInfoScreenSwitchItem(id: 9513, text: "AdSamples.PerChat.Title".i18n(rgLang), value: preferences.adFiltering != false, isLocked: false, toggled: { value in
+            items[.messageFilters]!.append(PeerInfoScreenSwitchItem(id: 9513, text: "AdSamples.PerChat.Title".i18n(rgLang), value: preferences.adFiltering != false, isLocked: false, toggled: { value in
                 var preferences = RGSimpleSettings.shared.chatPreferences(accountId: accountId, peerId: rgFilterPeerId)
                 preferences.adFiltering = value ? nil : false
                 RGSimpleSettings.shared.setChatPreferences(preferences, accountId: accountId, peerId: rgFilterPeerId)
             }))
-            items[.regram]!.append(PeerInfoScreenCommentItem(id: 9514, text: "AdSamples.PerChat.Notice".i18n(rgLang)))
+            items[.messageFilters]!.append(PeerInfoScreenCommentItem(id: 9514, text: "AdSamples.PerChat.Notice".i18n(rgLang)))
+        } else {
+            items[.messageFilters]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
         }
 
         // MARK: Regram — per-chat anti-revoke, the same shape as hiding a sender: a switch here and

@@ -135,35 +135,50 @@ private final class RGAdLibraryController: RGAdTableController {
     private var enabled = false
     private var loading = true
     private var failed = false
+    private var modelAvailable = false
+    private var recordingFailed = false
     override init(context: AccountContext) { super.init(context: context); title = "AdSamples.Title".i18n(lang) }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); reload() }
     private func reload() {
         loading = true; table.reloadData()
-        session.perform({ store in (try store.load(), try store.isEnabled()) }) { [weak self] result in
+        session.perform({ store in (try store.load(), try store.isEnabled(), RGAdSemanticClassifier.shared.prepareModel(), store.recordingFailed) }) { [weak self] result in
             guard let self else { return }; self.loading = false
             switch result {
-            case let .success(value): self.samples = value.0; self.enabled = value.1; self.failed = false
+            case let .success(value): self.samples = value.0; self.enabled = value.1; self.modelAvailable = value.2; self.recordingFailed = value.3; self.failed = false
             case let .failure(error): self.failed = true; self.showError(error)
             }
             self.table.reloadData()
         }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : section == 1 ? max(1, samples.count) : 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : section == 1 ? max(1, samples.count) : 2 }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 1 ? "AdSamples.Records".i18n(lang) + " (\(samples.count))" : nil }
-    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { (section == 0 ? "AdSamples.AutomaticNotice" : section == 2 ? "AdSamples.LocalNotice" : "AdSamples.LibraryNotice").i18n(lang) }
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        let notice = (section == 0 ? "AdSamples.AutomaticNotice" : section == 2 ? "AdSamples.LocalNotice" : "AdSamples.LibraryNotice").i18n(lang)
+        if section == 1 && (recordingFailed || samples.count >= RGAdSampleStore.maximumSamples) {
+            return "AdSamples.RecordingPaused".i18n(lang) + "\n" + notice
+        }
+        return notice
+    }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 0 {
-            let row = cell("AdSamples.Enabled".i18n(lang)); let toggle = UISwitch(); toggle.isOn = enabled; toggle.isEnabled = !loading && !failed
+            let status = loading ? "AdSamples.Loading" : modelAvailable ? "AdSamples.ModelReady" : "AdSamples.ModelUnavailable"
+            let row = cell("AdSamples.Enabled".i18n(lang), detail: status.i18n(lang)); let toggle = UISwitch(); toggle.isOn = enabled; toggle.isEnabled = !loading && !failed
             toggle.onTintColor = data.theme.list.itemAccentColor; toggle.addTarget(self, action: #selector(toggleEnabled(_:)), for: .valueChanged); toggle.accessibilityLabel = "AdSamples.Enabled".i18n(lang); row.accessoryView = toggle; return row
         }
-        if indexPath.section == 2 { let row = cell("AdSamples.Export".i18n(lang), action: true); row.isUserInteractionEnabled = !loading && !failed && !samples.isEmpty; return row }
+        if indexPath.section == 2 {
+            let training = indexPath.row == 1
+            let row = cell((training ? "AdSamples.ExportTraining" : "AdSamples.Export").i18n(lang), action: true)
+            row.isUserInteractionEnabled = !loading && !failed && (training ? samples.contains(where: { $0.isTrainingReady }) : !samples.isEmpty)
+            row.textLabel?.isEnabled = row.isUserInteractionEnabled
+            return row
+        }
         if failed { return cell("AdSamples.Retry".i18n(lang), action: true) }
         guard !samples.isEmpty else { return cell((loading ? "AdSamples.Loading" : "AdSamples.Empty").i18n(lang)) }
         let sample = samples[indexPath.row]
-        let status = (sample.hasUncertainty ? "AdSamples.Uncertain" : sample.hasAds ? "AdSamples.Ad" : "AdSamples.Normal").i18n(lang)
-        let row = cell(String(sample.input.text.prefix(100)).isEmpty ? "AdSamples.Media".i18n(lang) : String(sample.input.text.prefix(100)), detail: status + " · " + DateFormatter.localizedString(from: Date(timeIntervalSince1970: sample.reviewedAt ?? 0), dateStyle: .short, timeStyle: .short), action: true)
+        let status = (sample.reviewedAt == nil ? "AdSamples.Pending" : "AdSamples.Reviewed").i18n(lang) + " · " + (sample.hasUncertainty ? "AdSamples.Uncertain" : sample.hasAds ? "AdSamples.Ad" : "AdSamples.Normal").i18n(lang)
+        let row = cell(String(sample.input.text.prefix(100)).isEmpty ? "AdSamples.Media".i18n(lang) : String(sample.input.text.prefix(100)), detail: status + " · " + DateFormatter.localizedString(from: Date(timeIntervalSince1970: sample.recordedAt), dateStyle: .short, timeStyle: .short), action: true)
         row.textLabel?.numberOfLines = 3; row.textLabel?.textColor = data.theme.list.itemPrimaryTextColor; row.accessoryType = .disclosureIndicator
         return row
     }
@@ -178,7 +193,7 @@ private final class RGAdLibraryController: RGAdTableController {
         guard !loading else { return }
         if indexPath.section == 1 {
             if failed { reload() } else if samples.indices.contains(indexPath.row) { pushAdController(RGAdEditorController(context: context, sample: samples[indexPath.row])) }
-        } else if indexPath.section == 2, !samples.isEmpty, !failed { confirmExport() }
+        } else if indexPath.section == 2, !samples.isEmpty, !failed { confirmExport(trainingOnly: indexPath.row == 1) }
     }
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         guard indexPath.section == 1, !loading, !failed, samples.indices.contains(indexPath.row) else { return nil }
@@ -191,19 +206,20 @@ private final class RGAdLibraryController: RGAdTableController {
         }
         let config = UISwipeActionsConfiguration(actions: [remove]); config.performsFirstActionWithFullSwipe = false; return config
     }
-    private func confirmExport() {
-        let alert = UIAlertController(title: "AdSamples.Export".i18n(lang), message: "AdSamples.ExportNotice".i18n(lang), preferredStyle: .alert)
+    private func confirmExport(trainingOnly: Bool) {
+        guard !trainingOnly || samples.contains(where: { $0.isTrainingReady }) else { return }
+        let alert = UIAlertController(title: "AdSamples.Export".i18n(lang), message: (trainingOnly ? "AdSamples.ExportTrainingNotice" : "AdSamples.ExportNotice").i18n(lang), preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: data.strings.Common_Cancel, style: .cancel))
-        alert.addAction(UIAlertAction(title: "AdSamples.Export".i18n(lang), style: .default) { [weak self] _ in self?.export() }); show(alert)
+        alert.addAction(UIAlertAction(title: "AdSamples.Export".i18n(lang), style: .default) { [weak self] _ in self?.export(trainingOnly: trainingOnly) }); show(alert)
     }
-    private func export() {
-        session.perform({ try $0.export() }) { [weak self] result in
+    private func export(trainingOnly: Bool) {
+        session.perform({ try $0.export(trainingOnly: trainingOnly) }) { [weak self] result in
             guard let self else { return }
             do {
                 let bytes = try result.get()
                 let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ad-samples-" + UUID().uuidString)
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                let file = directory.appendingPathComponent("Regram-ad-corrections.jsonl")
+                let file = directory.appendingPathComponent(trainingOnly ? "Regram-ad-training-reviewed.jsonl" : "Regram-ad-samples-with-pending.jsonl")
                 do { try bytes.write(to: file, options: .atomic) } catch { try? FileManager.default.removeItem(at: directory); throw error }
                 let share = UIActivityViewController(activityItems: [file], applicationActivities: nil)
                 share.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: directory) }
@@ -234,18 +250,12 @@ private final class RGAdEditorController: RGAdTableController, UITextViewDelegat
     init(context: AccountContext, message: Message) {
         super.init(context: context); setup()
         let input = rgAdInput(message)
-        let kinds = message.media.filter { !($0 is TelegramMediaWebpage) }.map { media -> String in
-            if media is TelegramMediaImage { return "image" }
-            if let file = media as? TelegramMediaFile { return file.isVideo ? "video" : file.isVoice ? "voice" : "file" }
-            return "other"
-        }
-        let key = "\(message.id.peerId.toInt64()):\(message.id.namespace):\(message.id.id)"
-        let mediaIdentity = message.media.map { String(describing: $0.id) }.joined(separator: ":")
         session.perform({ store -> RGAdSample in
-            var draft = try store.draft(input: input, messageKey: key, mediaKinds: kinds, mediaIdentity: mediaIdentity)
-            if draft.reviewedAt == nil, let suggestion = try? RGAdPolicy.project(input, samples: store.load(), sourceGroup: draft.sourceGroup) {
+            var draft = try rgAdSampleDraft(message, store: store)
+            if draft.reviewedAt == nil, draft.detection == nil, let suggestion = try? RGAdPolicy.project(input, samples: store.load(), sourceGroup: draft.sourceGroup, semantic: RGAdSemanticClassifier.shared.predict(input)) {
                 draft.spans = suggestion.removedRanges.map { RGAdSpan($0, .ad) }
                 for id in suggestion.removedButtonIds { draft.buttonLabels[id] = .ad }
+                if suggestion.disposition == .hide { draft.mediaLabel = .ad }
             }
             return draft
         }) { [weak self] result in

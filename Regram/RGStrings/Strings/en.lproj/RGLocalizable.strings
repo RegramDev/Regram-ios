@@ -322,8 +322,8 @@ Matching is case-insensitive.";
 "MessageFilter.Rule.EditTitle" = "Edit Keyword";
 "MessageFilter.Rule.EditMessage" = "Messages containing this text will be hidden.";
 "MessageFilter.Rule.EditMessageRegex" = "Messages matching this regular expression will be hidden.";
-"MessageFilter.PerChat.Title" = "Keyword message filter";
-"MessageFilter.PerChat.Notice" = "When off, keyword and regex hide rules do not apply in this chat. Ad segment filtering is controlled separately.";
+"MessageFilter.PerChat.Title" = "Keyword Filtering";
+"MessageFilter.PerChat.Notice" = "Hide entire messages using keyword and regular expression rules.";
 "EraseData.Title" = "Erase All Data";
 "EraseData.Notice" = "Logs out every account and deletes all local data, caches and settings. Use this to start over — deleting the app does not clear its data, because iOS keeps the shared container alive.";
 "EraseData.Confirm" = "This logs out every account and deletes all local data of this app. This cannot be undone.";
@@ -1389,23 +1389,22 @@ Matching is case-insensitive.";
 
 /* Local ad filtering and explicit corrections */
 "ContextMenu.adSample" = "Correct ad filtering";
-"AdSamples.Title" = "Automatic Ad Filtering";
-"AdSamples.Action" = "Correct ad filtering";
+"AdSamples.Title" = "Ad Filter & Samples";
+"AdSamples.Action" = "Mark Ad / Correct Filtering";
 "AdSamples.OriginalAction" = "View original / correct filtering";
-"AdSamples.FilteredNotice" = "Ads filtered · Long-press to view original";
 "AdSamples.Enabled" = "Filter channel ad segments";
-"AdSamples.AutomaticNotice" = "Uses shared built-in rules and reviewed local corrections; uncertain content is kept. Independent of whole-message keyword hiding. Turn off for individual channels in their profiles. Photos and videos are kept.";
-"AdSamples.Records" = "Reviewed corrections";
-"AdSamples.LibraryNotice" = "Long-press a message to review its text and buttons. Corrections are optional. Swipe a record to delete it and its learned preferences.";
-"AdSamples.LocalNotice" = "Only explicitly saved records are stored, separately for each account and excluded from system backup. No automatic uploads. Reusable public improvements are distributed with app updates.";
+"AdSamples.AutomaticNotice" = "An on-device AI model recognizes Chinese promotional text and buttons while preserving normal content. High-confidence promotional posts are hidden. Messages are never uploaded. Disable per channel in its profile.";
+"AdSamples.Records" = "Ad Samples";
+"AdSamples.LibraryNotice" = "Detected ads are recorded as pending review without duplicates when you scroll again. Touch and hold a missed message and choose “Mark Ad / Correct Filtering” to add it. Open a record to review its original text, spans and buttons; swipe left to delete.";
+"AdSamples.LocalNotice" = "Records stay on this device, separately for each account, without system backup or automatic uploads. Collection pauses at 10,000 records; export and delete old records to make room. Shared model improvements ship with app updates.";
 "AdSamples.Normal" = "Keep";
 "AdSamples.Ad" = "Ad";
 "AdSamples.Uncertain" = "Unsure";
 "AdSamples.Media" = "Media";
-"AdSamples.Export" = "Export corrections";
-"AdSamples.ExportNotice" = "The export contains original message text, links, button labels and your corrections for this account. It has no media files. Review it before sharing. Exporting does not upload it automatically.";
+"AdSamples.Export" = "Export All Records (Including Pending)";
+"AdSamples.ExportNotice" = "Includes original text, links, buttons, automatic decisions and human labels, but no media files. Pending records are not training truth. Review the contents before sharing; export does not upload automatically.";
 "AdSamples.Loading" = "Loading…";
-"AdSamples.Empty" = "No corrections yet";
+"AdSamples.Empty" = "No ad samples yet. Browse channels to collect detections or touch and hold a message to add a sample.";
 "AdSamples.Retry" = "Could not load · Tap to retry";
 "AdSamples.Error" = "Could not complete this operation. Your existing records have been kept.";
 "AdSamples.Capacity" = "Storage limit reached. Export and remove old records, then retry.";
@@ -1418,7 +1417,7 @@ Matching is case-insensitive.";
 "AdSamples.Preview" = "Preview after filtering";
 "AdSamples.MarkNotice" = "Select text, then choose Keep, Ad or Unsure. Red marks ads; orange marks uncertainty. Unmarked text is kept. Initial red marks are suggestions: check the full message before saving.";
 "AdSamples.ButtonNotice" = "Review each button separately. Links are displayed for inspection and are not opened.";
-"AdSamples.MediaNotice" = "Media labels are for future improvements. This version keeps images and videos, and saves only their type, not their contents.";
+"AdSamples.MediaNotice" = "Media labels help future improvements. Only media types are recorded, never media files. Text can identify an entire promotional post; image and video contents are not analyzed.";
 "AdSamples.SaveNotice" = "Confirming applies this correction and may reuse exact ad snippets in the same channel. Original messages are unchanged. Nothing is uploaded.";
 "AdSamples.AllNormal" = "Keep all text, buttons and media";
 "AdSamples.AllAd" = "Mark all text, buttons and media as ads";
@@ -1427,5 +1426,18 @@ Matching is case-insensitive.";
 "AdSamples.EmptyText" = "No text remains after filtering";
 "AdSamples.None" = "None";
 
-"AdSamples.PerChat.Title" = "Filter ads in this channel";
-"AdSamples.PerChat.Notice" = "Requires Automatic Ad Filtering. Removes recognized ad text and buttons while keeping the body. Independent of the keyword switch above.";
+"AdSamples.PerChat.Title" = "Smart Ad Filtering";
+"AdSamples.PerChat.Notice" = "Ad filtering keeps normal content; keyword rules hide entire messages. Enable Automatic Ad Filtering in Message Filters first.";
+
+"AdSamples.ModelReady" = "On-device AI is ready";
+"AdSamples.ModelUnavailable" = "On-device AI is unavailable. Reopen this page to retry.";
+
+"AdSamples.Pending" = "Automatic · Pending Review";
+
+"AdSamples.Reviewed" = "Reviewed";
+
+"AdSamples.ExportTraining" = "Export Reviewed Training Set";
+
+"AdSamples.ExportTrainingNotice" = "Exports only records you have reviewed with no uncertain labels. Includes original text, links and buttons, but no media files. Nothing is uploaded automatically.";
+
+"AdSamples.RecordingPaused" = "Some ads could not be recorded. Check device storage, or export and delete some old records, then continue browsing.";

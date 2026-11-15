@@ -7929,6 +7929,22 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 // which is what the "1 of N" label and the pinned-list screen refer to.
                 var pinnedMessages = pinnedMessages
                 var topMessage = topMessage
+                // MARK: Regram — the same local model and original-preserving projection cover
+                // pinned captions/buttons. Keep this scope separate from the scrolling window.
+                let rgAdFilter = RGAdFilterSession.get(context)
+                var rgPinnedSources = pinnedMessages.messages.map(\.message)
+                if let topMessage { rgPinnedSources.append(topMessage.message) }
+                rgAdFilter.prepare(rgPinnedSources, accountPeerId: context.account.peerId, scope: .pinned)
+                pinnedMessages.messages = pinnedMessages.messages.compactMap { entry in
+                    if rgAdFilter.shouldHide(entry.message, accountPeerId: context.account.peerId) { return nil }
+                    var entry = entry
+                    entry.message = rgAdFilter.display(entry.message, accountPeerId: context.account.peerId)
+                    return entry
+                }
+                if let value = topMessage {
+                    if rgAdFilter.shouldHide(value.message, accountPeerId: context.account.peerId) { topMessage = nil }
+                    else { topMessage?.message = rgAdFilter.display(value.message, accountPeerId: context.account.peerId) }
+                }
                 let rgContentFilter = RGContentFilterState(accountPeerId: context.account.peerId)
                 if !rgContentFilter.isEmpty {
                     pinnedMessages.messages = pinnedMessages.messages.filter { entry in

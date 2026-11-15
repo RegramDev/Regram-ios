@@ -328,7 +328,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets", "//Regram/RGBranding:Images"]
+RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets", "//Regram/RGBranding:Images", "//Regram/RGAdFilter:ModelResources"] # MARK: Regram — bundled offline model.
 
 swift_library(
     name = "Lib",

@@ -268,11 +268,16 @@ func chatHistoryEntriesForView(
             }
             continue loop
         }
+        // MARK: Regram — pure promotional text disappears without a replacement notice.
+        if rgAdFilter.shouldHide(message, accountPeerId: accountPeerId) {
+            currentState.rgFilteredOutCount += 1
+            continue loop
+        }
         if message.adAttribute == nil {
             currentState.rgHasVisibleHistoryMessages = true
         }
         // MARK: Regram — display copy only; Postbox retains the complete original.
-        message = rgAdFilter.display(message, accountPeerId: accountPeerId, notice: "AdSamples.FilteredNotice".i18n(presentationData.strings.rgLanguageCode))
+        message = rgAdFilter.display(message, accountPeerId: accountPeerId)
     
         var adminRank: CachedChannelAdminRank?
         if let author = message.author {

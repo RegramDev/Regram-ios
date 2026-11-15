@@ -59,7 +59,7 @@ public struct RGAdRule: Codable, Equatable {
 
 public struct RGAdPrediction: Codable, Equatable {
     public let range: RGAdRange
-    /// Minimum token probability over the ENTIRE proposed span; not a calibrated accuracy.
+    /// Minimum model score across the supporting windows/context views; not calibrated accuracy.
     public let confidence: Double
     public init(range: RGAdRange, confidence: Double) { self.range = range; self.confidence = confidence }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 2
+    public static let revision = 3
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")
@@ -78,12 +78,14 @@ public enum RGAdPolicy {
             }
         }
 
-        public func project(_ input: RGAdInput, sourceGroup: String = "") throws -> RGAdProjection {
+        public func project(_ input: RGAdInput, sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult()) throws -> RGAdProjection {
             guard input.text.utf16.count <= 65_536 else { throw RGAdFilterError.inputTooLong }
             guard input.entities.count <= 2048, input.buttons.count <= 128, input.buttons.flatMap({ $0 }).count <= 128 else { throw RGAdFilterError.invalidInput }
             let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
             if let sample = exact[sourceGroup]?[sanitized] {
-                return try RGAdFilter.project(input, confirmedRanges: sample.spans.filter { $0.label == .ad }.map(\.range), confirmedButtonIds: Set(sample.buttonLabels.filter { $0.value == .ad }.keys), inferButtons: false)
+                let wholeAd = sample.mediaLabel == .ad && sample.buttonLabels.values.allSatisfy { $0 == .ad }
+                    && sample.previewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !sample.hasUncertainty
+                return try RGAdFilter.project(input, confirmedRanges: sample.spans.filter { $0.label == .ad }.map(\.range), confirmedButtonIds: Set(sample.buttonLabels.filter { $0.value == .ad }.keys), inferButtons: false, entireMessageIsAd: wholeAd)
             }
             let source = input.text as NSString
             let lines = RGAdFilter.paragraphRanges(input.text)
@@ -123,7 +125,7 @@ public enum RGAdPolicy {
                     start = NSMaxRange(match)
                 }
             }
-            var removedButtons = Set<String>(), preservedButtons = Set<String>()
+            var removedButtons = semantic.buttonIds, preservedButtons = Set<String>()
             for button in input.buttons.flatMap({ $0 }) {
                 guard let key = ButtonKey(button) else { continue }
                 if let label = buttons[sourceGroup]?[key] {
@@ -137,11 +139,11 @@ public enum RGAdPolicy {
                     }
                 }
             }
-            return try RGAdFilter.project(input, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons)
+            return try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage)
         }
     }
 
-    public static func project(_ input: RGAdInput, samples: [RGAdSample] = [], sourceGroup: String = "") throws -> RGAdProjection {
-        try Knowledge(samples: samples).project(input, sourceGroup: sourceGroup)
+    public static func project(_ input: RGAdInput, samples: [RGAdSample] = [], sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult()) throws -> RGAdProjection {
+        try Knowledge(samples: samples).project(input, sourceGroup: sourceGroup, semantic: semantic)
     }
 }

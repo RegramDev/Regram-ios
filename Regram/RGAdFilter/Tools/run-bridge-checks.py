@@ -30,7 +30,8 @@ final class ReplyMarkupMessageAttribute: MessageAttribute {
     init(rows: [ReplyMarkupRow], flags: MarkupFlags, placeholder: String?) { self.rows = rows; self.flags = flags; self.placeholder = placeholder }
 }
 final class TranslationMessageAttribute: MessageAttribute {}
-class Media {}
+class Media { let id: Int64? = 1 }
+final class TelegramMediaFile: Media { let isVideo = false; let isVoice = false }
 final class TelegramMediaImage: Media {}
 final class TelegramMediaWebpage: Media {
     struct Content { let url: String }
@@ -89,7 +90,7 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         let entities = TextEntitiesMessageAttribute(entities: [MessageTextEntity(range: range.location..<NSMaxRange(range), type: .Mention), MessageTextEntity(range: 0..<text.utf16.count, type: .Bold)])
         let markup = ReplyMarkupMessageAttribute(rows: [ReplyMarkupRow(buttons: [ReplyButton(title: "电影搜索", action: .url("https://t.me/search_helper")), ReplyButton(title: "推广", action: .url("https://t.me/promotion_user"))])], flags: .inline, placeholder: nil)
         let message = Message(id: 1, text: text, attributes: [entities, markup, TranslationMessageAttribute()], media: [TelegramMediaImage()])
-        func display(_ value: Message = message) -> Message { session.display(value, accountPeerId: account, notice: "过滤提示") }
+        func display(_ value: Message = message) -> Message { session.display(value, accountPeerId: account) }
         let refreshes = Box(0)
         let observer = NotificationCenter.default.addObserver(forName: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil, queue: .main) { _ in refreshes.value += 1; session.prepare([message], accountPeerId: account) }
         defer { NotificationCenter.default.removeObserver(observer) }
@@ -103,7 +104,7 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         precondition((filtered.attributes.first { $0 is ReplyMarkupMessageAttribute } as? ReplyMarkupMessageAttribute)?.rows[0].buttons.count == 1)
         precondition(filtered.textEntitiesAttribute!.entities.allSatisfy { $0.range.upperBound <= filtered.text.utf16.count })
         precondition(rgAdOriginalRange(filtered, range: NSRange(location: 0, length: 2)) == NSRange(location: 0, length: 2))
-        precondition(rgAdOriginalRange(filtered, range: (filtered.text as NSString).range(of: "过滤提示")) == nil)
+        precondition(filtered.text == "剧名：春日旅程\n简介：正常正文。\n", "cleaned text must not add a notice")
         settle(); let settled = refreshes.value; session.prepare([message], accountPeerId: account); settle()
         precondition(refreshes.value == settled, "prepared batch keeps notifying itself")
         RGSimpleSettings.shared.revealed = [99]; precondition(display() === message); RGSimpleSettings.shared.revealed = []
@@ -131,10 +132,20 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         let records = Box(false)
         session.perform(changes: true, { store in for sample in try store.load() { try store.remove(sample) } }) { _ in records.value = true }
         spin { records.value }; session.prepare(large, accountPeerId: account)
-        spin { rgAdMessageWasFiltered(display(large.last!)) }; settle()
+        spin { rgAdMessageWasFiltered(display(large.last!)) }
+        let drained = Box(false)
+        session.perform({ _ in true }) { _ in drained.value = true }
+        spin { drained.value }; settle()
         let loopCount = loops.value; session.prepare(large, accountPeerId: account); settle()
-        precondition(loops.value == loopCount && loops.value <= 3, "large window caused refresh loop")
+        precondition(loops.value == loopCount, "large window caused refresh loop")
         NotificationCenter.default.removeObserver(repeatObserver)
+        let pinned = Message(id: 9001, text: text, attributes: [entities, markup])
+        session.prepare([pinned], accountPeerId: account, scope: .pinned)
+        spin { rgAdMessageWasFiltered(display(pinned)) }
+        let otherWindow = large.map { Message(id: $0.id.id + 1000, text: text, attributes: [entities, markup]) }
+        session.prepare(otherWindow, accountPeerId: account)
+        drained.value = false; session.perform({ _ in true }) { _ in drained.value = true }; spin { drained.value }
+        precondition(rgAdMessageWasFiltered(display(pinned)), "scrolling evicted a pinned ad projection")
         let adLine = "0充值，免费体验，中奖可提现 → @promotion_user\n"
         let mixedText = "开头\n" + adLine + "正常尾部👋"
         let mention = (mixedText as NSString).range(of: "@promotion_user")

@@ -809,8 +809,8 @@
 "LinkPreview.Disable.Notice" = "傳送訊息時不附加連結預覽。";
 "LocalPremium.Notice" = "在本機啟用會員介面與客戶端選項。貼圖、回應等需要 Telegram 伺服器驗證的權益仍需有效訂閱。";
 "LocalPremium.Title" = "本機會員";
-"MessageFilter.PerChat.Notice" = "關閉後，此對話不套用關鍵字和正規表示式隱藏規則；廣告片段清理單獨設定。";
-"MessageFilter.PerChat.Title" = "關鍵字訊息過濾";
+"MessageFilter.PerChat.Notice" = "依關鍵字和正規表示式規則隱藏整則訊息。";
+"MessageFilter.PerChat.Title" = "關鍵字過濾";
 "MessageFilter.Rule.EditMessage" = "含有此文字的訊息將被隱藏。";
 "MessageFilter.Rule.EditMessageRegex" = "符合此正規表示式的訊息將被隱藏。";
 "MessageFilter.Rule.EditTitle" = "編輯關鍵字";
@@ -1380,23 +1380,22 @@
 
 /* Local ad filtering and explicit corrections */
 "ContextMenu.adSample" = "糾正廣告過濾";
-"AdSamples.Title" = "自動廣告過濾";
-"AdSamples.Action" = "糾正廣告過濾";
+"AdSamples.Title" = "廣告過濾與樣本";
+"AdSamples.Action" = "標記廣告 / 更正過濾";
 "AdSamples.OriginalAction" = "查看原文 / 糾正過濾";
-"AdSamples.FilteredNotice" = "已過濾廣告 · 長按查看原文";
 "AdSamples.Enabled" = "清理頻道廣告片段";
-"AdSamples.AutomaticNotice" = "使用公共內建規則和已確認的本機糾錯，判斷不穩時保留內容。與關鍵字整則隱藏獨立；頻道資料頁可單獨關閉。圖片和影片保留。";
-"AdSamples.Records" = "糾錯記錄";
-"AdSamples.LibraryNotice" = "長按訊息即可核對文字和按鈕，糾錯是選用操作。左滑刪除記錄，也會取消從該記錄學到的偏好。";
-"AdSamples.LocalNotice" = "只儲存你主動確認的記錄，按帳號隔離，不進入系統備份，也不自動上傳。經驗證的公共改進會隨應用程式更新分發。";
+"AdSamples.AutomaticNotice" = "在裝置上使用內建 AI 模型辨識中文廣告文字和按鈕，保留正常內容；高信心的整則廣告會隱藏。訊息不會上傳。頻道資料頁可單獨關閉。";
+"AdSamples.Records" = "廣告樣本";
+"AdSamples.LibraryNotice" = "自動命中的廣告會記錄為「待確認」，重複瀏覽不重複收集。長按漏判訊息，選擇「標記廣告 / 更正過濾」可手動新增；開啟記錄可核對原文、片段和按鈕，向左滑動刪除。";
+"AdSamples.LocalNotice" = "記錄按帳號儲存在本機，不進入系統備份，也不自動上傳。最多保留 10,000 筆，滿後暫停收集；可匯出並刪除舊記錄。公共模型改進隨應用程式更新分發。";
 "AdSamples.Normal" = "正常";
 "AdSamples.Ad" = "廣告";
 "AdSamples.Uncertain" = "待定";
 "AdSamples.Media" = "媒體";
-"AdSamples.Export" = "匯出糾錯樣本";
-"AdSamples.ExportNotice" = "匯出檔案包含目前帳號已儲存訊息的原文、連結、按鈕和標註，不含媒體檔案。分享前請檢查內容；匯出不會自動上傳。";
+"AdSamples.Export" = "匯出全部記錄（含待確認）";
+"AdSamples.ExportNotice" = "檔案包含原文、連結、按鈕、自動判斷和人工標註，不含媒體檔案。待確認記錄不能直接作為訓練答案；分享前請檢查內容，匯出不會自動上傳。";
 "AdSamples.Loading" = "正在讀取…";
-"AdSamples.Empty" = "暫無糾錯記錄";
+"AdSamples.Empty" = "暫無廣告樣本。瀏覽頻道後自動收集，也可長按訊息手動新增。";
 "AdSamples.Retry" = "讀取失敗，點按重試";
 "AdSamples.Error" = "操作未完成，已有記錄仍保留。";
 "AdSamples.Capacity" = "已達到容量限制，請匯出並刪除部分舊記錄後重試。";
@@ -1409,7 +1408,7 @@
 "AdSamples.Preview" = "預覽過濾結果";
 "AdSamples.MarkNotice" = "選取文字後點「正常 / 廣告 / 待定」。紅色是廣告，橙色是待定；未標記文字按正常保留。初始紅色標記是自動建議，儲存前請核對全文。";
 "AdSamples.ButtonNotice" = "按鈕分別判斷；連結僅供核對，不會自動開啟。";
-"AdSamples.MediaNotice" = "媒體標註供後續改進使用。本版保留圖片和影片，只記錄媒體類型，不儲存媒體內容。";
+"AdSamples.MediaNotice" = "媒體標註供後續改進使用，只記錄媒體類型，不儲存媒體內容。自動過濾可依文字隱藏整則廣告，暫不辨識圖片或影片畫面。";
 "AdSamples.SaveNotice" = "確認後套用本次糾錯，並可在同一頻道重用相同廣告片段。原始訊息保留，不上傳內容。";
 "AdSamples.AllNormal" = "全文、按鈕和媒體均正常";
 "AdSamples.AllAd" = "全文、按鈕和媒體均為廣告";
@@ -1418,5 +1417,18 @@
 "AdSamples.EmptyText" = "過濾後無剩餘文字";
 "AdSamples.None" = "無";
 
-"AdSamples.PerChat.Title" = "清理此頻道廣告片段";
-"AdSamples.PerChat.Notice" = "需開啟「自動廣告過濾」。只清理已識別的廣告文字和按鈕，保留內文；不受上方關鍵字開關影響。";
+"AdSamples.PerChat.Title" = "智慧廣告過濾";
+"AdSamples.PerChat.Notice" = "廣告過濾保留正常內文；關鍵字過濾依規則隱藏整則訊息。廣告過濾需在「訊息過濾器」中開啟。";
+
+"AdSamples.ModelReady" = "本機 AI 已就緒";
+"AdSamples.ModelUnavailable" = "本機 AI 暫時無法使用，重新進入此頁可重試";
+
+"AdSamples.Pending" = "自動識別 · 待確認";
+
+"AdSamples.Reviewed" = "已確認";
+
+"AdSamples.ExportTraining" = "匯出已確認訓練集";
+
+"AdSamples.ExportTrainingNotice" = "只匯出已由你確認、且沒有「待定」標註的記錄。包含原文、連結和按鈕，不含媒體檔案，不會自動上傳。";
+
+"AdSamples.RecordingPaused" = "部分廣告未能儲存。請檢查儲存空間，或匯出並刪除部分舊記錄後繼續瀏覽。";

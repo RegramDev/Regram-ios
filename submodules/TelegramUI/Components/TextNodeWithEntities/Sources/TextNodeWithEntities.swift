@@ -417,6 +417,7 @@ public class ImmediateTextNodeWithEntities: TextNode {
     public var textStroke: (UIColor, CGFloat)?
     public var cutout: TextNodeCutout?
     public var displaySpoilers = false
+    public var displayEmbeddedItemsUnderSpoilers = false // MARK: Regram — custom emoji in revealed replies.
     public var displaySpoilerEffect = true
     public var spoilerColor: UIColor = .black
     public var balancedTextLayout: Bool = false
@@ -571,7 +572,7 @@ public class ImmediateTextNodeWithEntities: TextNode {
         self.constrainedSize = constrainedSize
         
         let makeLayout = TextNode.asyncLayout(self)
-        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, textShadowColor: self.textShadowColor, textStroke: self.textStroke, displaySpoilers: self.displaySpoilers))
+        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, textShadowColor: self.textShadowColor, textStroke: self.textStroke, displaySpoilers: self.displaySpoilers, displayEmbeddedItemsUnderSpoilers: self.displayEmbeddedItemsUnderSpoilers))
         
         let _ = apply()
         
@@ -677,7 +678,7 @@ public class ImmediateTextNodeWithEntities: TextNode {
         self.constrainedSize = constrainedSize
         
         let makeLayout = TextNode.asyncLayout(self)
-        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, displaySpoilers: self.displaySpoilers))
+        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, displaySpoilers: self.displaySpoilers, displayEmbeddedItemsUnderSpoilers: self.displayEmbeddedItemsUnderSpoilers))
         
         let _ = apply()
         
@@ -695,7 +696,7 @@ public class ImmediateTextNodeWithEntities: TextNode {
         self.constrainedSize = constrainedSize
         
         let makeLayout = TextNode.asyncLayout(self)
-        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, displaySpoilers: self.displaySpoilers))
+        let (layout, apply) = makeLayout(TextNodeLayoutArguments(attributedString: self.processedAttributedText(), backgroundColor: nil, maximumNumberOfLines: self.maximumNumberOfLines, truncationType: self.truncationType, constrainedSize: constrainedSize, alignment: self.textAlignment, verticalAlignment: self.verticalAlignment, lineSpacing: self.lineSpacing, cutout: self.cutout, insets: self.insets, displaySpoilers: self.displaySpoilers, displayEmbeddedItemsUnderSpoilers: self.displayEmbeddedItemsUnderSpoilers))
         
         let _ = apply()
         

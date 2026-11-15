@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import TelegramCore
@@ -28,6 +29,7 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
     public let innerSubject: EngineMessageReplyInnerSubject?
     
     private var previousMediaReference: AnyMediaReference?
+    private var rgPreviousHasSpoiler: Bool? // MARK: Regram — refresh cached thumbnails when the preference changes.
     
     public let closeButton: HighlightableButtonNode
     public let lineNode: ASImageNode
@@ -112,9 +114,21 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
         self.addSubnode(self.imageNode)
         self.addSubnode(self.actionArea)
         
-        self.messageDisposable.set((context.account.postbox.messageView(messageId)
-        |> deliverOnMainQueue).startStrict(next: { [weak self] messageView in
+        // MARK: Regram — refresh the active reply composer without changing source entities.
+        let rgSpoilerPreference = Signal<Bool, NoError> { subscriber in
+            let observer = NotificationCenter.default.addObserver(forName: RGSimpleSettings.spoilerSettingsDidChange, object: nil, queue: .main) { _ in
+                subscriber.putNext(RGSimpleSettings.shared.automaticallyRevealSpoilers)
+            }
+            subscriber.putNext(RGSimpleSettings.shared.automaticallyRevealSpoilers)
+            return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
+        } |> distinctUntilChanged
+        self.messageDisposable.set((combineLatest(context.account.postbox.messageView(messageId), rgSpoilerPreference)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] messageView, rgRevealSpoilers in
             if let strongSelf = self {
+                // MARK: Regram — reveal text and custom emoji together, remove the dust overlay.
+                strongSelf.textNode.displaySpoilers = rgRevealSpoilers
+                strongSelf.textNode.displayEmbeddedItemsUnderSpoilers = rgRevealSpoilers
+                strongSelf.textNode.displaySpoilerEffect = !rgRevealSpoilers
                 if messageView.message == nil {
                     Queue.mainQueue().justDispatch {
                         strongSelf.interfaceInteraction?.setupReplyMessage(nil, nil, { _, _ in })
@@ -223,7 +237,10 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                 }
                 strongSelf.previousMediaReference = updatedMediaReference
                 
-                let hasSpoiler = message?.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) ?? false
+                // MARK: Regram
+                let hasSpoiler = !rgRevealSpoilers && (message?.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute }) ?? false)
+                if strongSelf.rgPreviousHasSpoiler != hasSpoiler { mediaUpdated = true }
+                strongSelf.rgPreviousHasSpoiler = hasSpoiler
                 
                 var updateImageSignal: Signal<(TransformImageArguments) -> DrawingContext?, NoError>?
                 if mediaUpdated {

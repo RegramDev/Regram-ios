@@ -236,4 +236,50 @@ final class AdFilterTests: XCTestCase {
         XCTAssertFalse(try first.isEnabled()); XCTAssertTrue(try second.isEnabled())
         try first.setEnabled(true); XCTAssertTrue(try first.isEnabled())
     }
+
+    func testAutomaticRecordsDoNotTeachUntilReviewedAndKeepOriginalDecision() throws {
+        let storage = try store(), text = "正常内容\n欢迎购买本店的精选商品享受专属优惠"
+        let input = RGAdInput(text: text, peerId: 42)
+        let cut = RGAdRange(5, text.utf16.count)
+        let projection = try RGAdFilter.project(input, confirmedRanges: [cut])
+        for _ in 0..<3 {
+            try storage.recordDetection(input: input, messageKey: "42:1", mediaKinds: [], mediaIdentity: "", projection: projection)
+        }
+        let reopened = RGAdSampleStore(accountDirectory: storage.directory.deletingLastPathComponent())
+        var records = try reopened.load()
+        XCTAssertEqual(records.count, 1)
+        XCTAssertNil(records[0].reviewedAt)
+        XCTAssertNotNil(records[0].detection)
+        XCTAssertEqual(records[0].input.text, text)
+        XCTAssertNil(records[0].input.peerId)
+        XCTAssertTrue(try reopened.export(trainingOnly: true).isEmpty)
+        XCTAssertFalse(try reopened.export().isEmpty)
+        XCTAssertEqual(try RGAdPolicy.project(input, samples: records, sourceGroup: records[0].sourceGroup).disposition, .keep)
+        let originalDecision = records[0].detection
+        records[0].spans = [] // Human corrects this automatic detection to normal.
+        try reopened.save(records[0])
+        try reopened.recordDetection(input: input, messageKey: "42:1", mediaKinds: [], mediaIdentity: "", projection: projection)
+        records = try reopened.load()
+        XCTAssertTrue(records[0].spans.isEmpty)
+        XCTAssertNotNil(records[0].reviewedAt)
+        XCTAssertEqual(records[0].detection, originalDecision)
+        XCTAssertFalse(try reopened.export(trainingOnly: true).isEmpty)
+        let edited = RGAdInput(text: text + "！", peerId: 42)
+        try reopened.recordDetection(input: edited, messageKey: "42:1", mediaKinds: [], mediaIdentity: "", projection: RGAdFilter.project(edited, confirmedRanges: [cut]))
+        XCTAssertEqual(try reopened.load().count, 2)
+        XCTAssertEqual(String(decoding: try reopened.export(trainingOnly: true), as: UTF8.self).split(separator: "\n").count, 1)
+    }
+
+    func testReviewedWholeAdHidesMediaButUncertainReviewDoesNot() throws {
+        let storage = try store(), input = RGAdInput(text: "推广正文", peerId: 42, hasMedia: true)
+        var sample = try storage.draft(input: input, messageKey: "42:1", mediaKinds: ["image"], mediaIdentity: "image-1")
+        try sample.mark(NSRange(location: 0, length: input.text.utf16.count), as: .ad)
+        try storage.save(sample)
+        XCTAssertFalse(try storage.load()[0].isTrainingReady)
+        XCTAssertNotEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .hide)
+        sample.mediaLabel = .ad
+        try storage.save(sample)
+        XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .hide)
+        XCTAssertTrue(try storage.load()[0].isTrainingReady)
+    }
 }

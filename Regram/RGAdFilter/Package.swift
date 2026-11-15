@@ -1,4 +1,4 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-let package = Package(name: "RGAdFilter", platforms: [.macOS(.v12), .iOS(.v15)], products: [.library(name: "RGAdFilter", targets: ["RGAdFilter"])], targets: [.target(name: "RGAdFilter", path: "Sources"), .testTarget(name: "RGAdFilterTests", dependencies: ["RGAdFilter"], path: "Tests")])
+let package = Package(name: "RGAdFilter", platforms: [.macOS(.v12), .iOS(.v15)], products: [.library(name: "RGAdFilter", targets: ["RGAdFilter"])], targets: [.target(name: "RGAdFilter", path: ".", exclude: ["Tests", "Tools", "Training", "BUILD"], sources: ["Sources"], resources: [.copy("Resources")]), .testTarget(name: "RGAdFilterTests", dependencies: ["RGAdFilter"], path: "Tests")])

@@ -2,7 +2,7 @@ import Foundation
 
 /// Pure, account-free projection. The source message/database are never modified.
 public enum RGAdFilter {
-    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], preservedButtonIds: Set<String> = [], inferButtons: Bool = true) throws -> RGAdProjection {
+    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], preservedButtonIds: Set<String> = [], inferButtons: Bool = true, entireMessageIsAd: Bool = false) throws -> RGAdProjection {
         guard input.text.utf16.count <= 65_536, input.entities.count <= 2048, rules.count <= 128,
               predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, preservedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.05
@@ -13,6 +13,7 @@ public enum RGAdFilter {
               Set(allButtons.map(\.id)).count == allButtons.count else { throw RGAdFilterError.invalidInput }
         let source = input.text as NSString
         let paragraphs = paragraphRanges(input.text)
+        let modelSegments = semanticRanges(input.text)
         var ranges: [RGAdRange] = suggestedRanges + confirmedRanges
         var removedButtons = confirmedButtonIds
         let activeRules = rules.filter { !$0.pattern.isEmpty && ($0.peerId == nil || $0.peerId == input.peerId) }
@@ -42,13 +43,13 @@ public enum RGAdFilter {
                 if matched { removedButtons.insert(button.id) }
             }
         }
-        // The prototype only acts on complete model-selected paragraphs. Token fragments are
+        // Automatic inference only acts on complete sentences or paragraphs. Token fragments are
         // useful diagnostics, but stripping a few confident characters can change the meaning.
         ranges += predictions.filter { prediction in
             guard prediction.confidence.isFinite, prediction.confidence >= threshold, prediction.confidence <= 1,
                   rgAdValid(prediction.range, boundaries: boundaries),
-                  paragraphs.contains(where: { $0.lower == prediction.range.lower }),
-                  paragraphs.contains(where: { $0.upper == prediction.range.upper }) else { return false }
+                  modelSegments.contains(where: { $0.lower == prediction.range.lower }),
+                  modelSegments.contains(where: { $0.upper == prediction.range.upper }) else { return false }
             return source.substring(with: prediction.range.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).count >= 4
         }.map(\.range)
         // Reject partial graphemes, protected quotations/code, and cuts through atomic entities.
@@ -57,7 +58,12 @@ public enum RGAdFilter {
             return !input.entities.contains { entity in
                 guard entity.range.intersects(range) else { return false }
                 switch entity.kind {
-                case .code, .quote: return !confirmedRanges.contains(where: { $0.contains(range) })
+                case .code: return !confirmedRanges.contains(where: { $0.contains(range) })
+                case .quote:
+                    // Promotional cards also use quote formatting for price lists. Only a
+                    // complete-message semantic decision may override that formatting guard.
+                    let wholeCard = entireMessageIsAd && range == RGAdRange(0, source.length)
+                    return !wholeCard && !confirmedRanges.contains(where: { $0.contains(range) })
                 case .link, .mention, .customEmoji: return !range.contains(entity.range)
                 case .format: return false
                 }
@@ -71,7 +77,14 @@ public enum RGAdFilter {
             let separatorBlock = RGAdRange(paragraph.lower, next < paragraphs.count ? paragraphs[next].lower : paragraph.upper)
             if next < paragraphs.count && ranges.contains(where: { $0.contains(paragraphs[next]) }) {
                 // Formatting on a decorative divider is harmless; links/quotes remain protected.
-                if !input.entities.contains(where: { $0.kind != .format && $0.range.intersects(separatorBlock) }) { ranges.append(separatorBlock) }
+                let protected = input.entities.contains { entity in
+                    guard entity.kind != .format, entity.range.intersects(separatorBlock) else { return false }
+                    // A decorative linked divider can itself point at the sponsor just removed.
+                    if separatorBlock.contains(entity.range), let target = entityTarget(entity, text: source),
+                       input.entities.contains(where: { other in entityTarget(other, text: source) == target && ranges.contains(where: { $0.contains(other.range) }) }) { return false }
+                    return true
+                }
+                if !protected { ranges.append(separatorBlock) }
             }
         }
         ranges = merge(ranges)
@@ -113,7 +126,7 @@ public enum RGAdFilter {
         let buttons = input.buttons.map { $0.filter { !removedButtons.contains($0.id) } }.filter { !$0.isEmpty }
         let hidePreview = normalizedTarget(input.previewTarget).map { removedTargets.contains($0) } ?? false
         let changed = !ranges.isEmpty || !removedButtons.isEmpty || hidePreview
-        let hide = changed && !input.hasMedia && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && buttons.isEmpty
+        let hide = changed && (!input.hasMedia || entireMessageIsAd) && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && buttons.isEmpty
         guard ProcessInfo.processInfo.systemUptime < deadline else { throw RGAdFilterError.budgetExceeded }
         return RGAdProjection(disposition: hide ? .hide : (changed ? .trim : .keep), text: text, entities: mappedEntities, buttons: buttons,
                               removedRanges: ranges, removedButtonIds: allButtons.map(\.id).filter { removedButtons.contains($0) }, hideLinkPreview: hidePreview)
@@ -156,7 +169,34 @@ public enum RGAdFilter {
         return result
     }
 
-    private static func isSeparator(_ text: String) -> Bool {
+    /// Blank-line blocks keep a heading with its price/features when assessing context.
+    static func contextRanges(_ text: String) -> [RGAdRange] {
+        let source = text as NSString
+        var result: [RGAdRange] = [], start: Int?
+        for line in paragraphRanges(text) {
+            if source.substring(with: line.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if let lower = start { result.append(RGAdRange(lower, line.lower)); start = nil }
+            } else if start == nil { start = line.lower }
+        }
+        if let start { result.append(RGAdRange(start, source.length)) }
+        return result
+    }
+
+    /// Sentence stops also separate an inline promotion from the preceding normal sentence.
+    /// Never split on URL dots or commas; atomic entities are checked again before projection.
+    static func semanticRanges(_ text: String) -> [RGAdRange] {
+        var result: [RGAdRange] = [], lower = 0, offset = 0
+        for character in text {
+            offset += String(character).utf16.count
+            if character.isNewline || "。！？；!?;".contains(character) {
+                result.append(RGAdRange(lower, offset)); lower = offset
+            }
+        }
+        if lower < offset { result.append(RGAdRange(lower, offset)) }
+        return result
+    }
+
+    static func isSeparator(_ text: String) -> Bool {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return value.count >= 3 && value.unicodeScalars.allSatisfy { "-=─━═_—".unicodeScalars.contains($0) }
     }

@@ -410,6 +410,7 @@ public final class TextNodeLayout: NSObject {
     fileprivate let textShadowBlur: CGFloat?
     fileprivate let textStroke: (UIColor, CGFloat)?
     fileprivate let displaySpoilers: Bool
+    fileprivate var rgDisplayEmbeddedItemsUnderSpoilers = false // MARK: Regram — include reveal flags in layout reuse.
     public let hasRTL: Bool
     public let spoilers: [(NSRange, CGRect)]
     public let spoilerWords: [(NSRange, CGRect)]
@@ -2892,7 +2893,7 @@ open class TextNode: ASDisplayNode, TextNodeProtocol {
             let layout: TextNodeLayout
             
             var updated = false
-            if let existingLayout = existingLayout, existingLayout.constrainedSize == arguments.constrainedSize && existingLayout.maximumNumberOfLines == arguments.maximumNumberOfLines && existingLayout.truncationType == arguments.truncationType && existingLayout.cutout == arguments.cutout && existingLayout.explicitAlignment == arguments.alignment && existingLayout.lineSpacing.isEqual(to: arguments.lineSpacing) {
+            if let existingLayout = existingLayout, existingLayout.constrainedSize == arguments.constrainedSize && existingLayout.maximumNumberOfLines == arguments.maximumNumberOfLines && existingLayout.truncationType == arguments.truncationType && existingLayout.cutout == arguments.cutout && existingLayout.explicitAlignment == arguments.alignment && existingLayout.lineSpacing.isEqual(to: arguments.lineSpacing) && existingLayout.displaySpoilers == arguments.displaySpoilers && existingLayout.rgDisplayEmbeddedItemsUnderSpoilers == arguments.displayEmbeddedItemsUnderSpoilers { // MARK: Regram
                 let stringMatch: Bool
                 
                 var colorMatch: Bool = true
@@ -2925,6 +2926,8 @@ open class TextNode: ASDisplayNode, TextNodeProtocol {
                 updated = true
             }
             
+            // MARK: Regram — remember the embedded-item reveal mode for subsequent layouts.
+            layout.rgDisplayEmbeddedItemsUnderSpoilers = arguments.displayEmbeddedItemsUnderSpoilers
             let node = maybeNode ?? TextNode()
             
             return (layout, {
@@ -3035,7 +3038,7 @@ open class TextView: UIView {
             let layout: TextNodeLayout
             
             var updated = false
-            if let existingLayout = existingLayout, existingLayout.constrainedSize == arguments.constrainedSize && existingLayout.maximumNumberOfLines == arguments.maximumNumberOfLines && existingLayout.truncationType == arguments.truncationType && existingLayout.cutout == arguments.cutout && existingLayout.explicitAlignment == arguments.alignment && existingLayout.lineSpacing.isEqual(to: arguments.lineSpacing) {
+            if let existingLayout = existingLayout, existingLayout.constrainedSize == arguments.constrainedSize && existingLayout.maximumNumberOfLines == arguments.maximumNumberOfLines && existingLayout.truncationType == arguments.truncationType && existingLayout.cutout == arguments.cutout && existingLayout.explicitAlignment == arguments.alignment && existingLayout.lineSpacing.isEqual(to: arguments.lineSpacing) && existingLayout.displaySpoilers == arguments.displaySpoilers && existingLayout.rgDisplayEmbeddedItemsUnderSpoilers == arguments.displayEmbeddedItemsUnderSpoilers { // MARK: Regram
                 let stringMatch: Bool
                 
                 var colorMatch: Bool = true
@@ -3068,6 +3071,8 @@ open class TextView: UIView {
                 updated = true
             }
             
+            // MARK: Regram — remember the embedded-item reveal mode for subsequent layouts.
+            layout.rgDisplayEmbeddedItemsUnderSpoilers = arguments.displayEmbeddedItemsUnderSpoilers
             let view = maybeView ?? TextView()
             
             return (layout, {

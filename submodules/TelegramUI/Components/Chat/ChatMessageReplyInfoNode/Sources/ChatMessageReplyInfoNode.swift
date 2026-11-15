@@ -1,4 +1,5 @@
 import Foundation
+import RGSimpleSettings // MARK: Regram
 import UIKit
 import AsyncDisplayKit
 import Display
@@ -153,6 +154,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
     private var dustNode: InvisibleInkDustNode?
     private var imageNode: TransformImageNode?
     private var previousMediaReference: AnyMediaReference?
+    private var rgPreviousHasSpoiler: Bool? // MARK: Regram — refresh cached thumbnails when the preference changes.
     private var expiredStoryIconView: UIImageView?
     private var checkLayer: CheckLayer?
     private var giftEmojiLayer: InlineStickerItemLayer?
@@ -200,10 +202,13 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
         let textNodeLayout = TextNodeWithEntities.asyncLayout(maybeNode?.textNode)
         let imageNodeLayout = TransformImageNode.asyncLayout(maybeNode?.imageNode)
         let previousMediaReference = maybeNode?.previousMediaReference
+        let rgPreviousHasSpoiler = maybeNode?.rgPreviousHasSpoiler // MARK: Regram
         
         let isQuoteExpanded = maybeNode?.isQuoteExpanded ?? false
         
         return { arguments in
+            // MARK: Regram — the same preference applies to reply and quote previews.
+            let rgRevealSpoilers = RGSimpleSettings.shared.automaticallyRevealSpoilers
             let fontSize = floor(arguments.presentationData.fontSize.baseDisplaySize * 14.0 / 17.0)
             let titleFont = Font.semibold(fontSize)
             let textFont = Font.regular(fontSize)
@@ -730,7 +735,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                 textCutout = nil
             }
             
-            let (textLayout, textApply) = textNodeLayout(TextNodeLayoutArguments(attributedString: messageText, backgroundColor: nil, maximumNumberOfLines: maxTextNumberOfLines, truncationType: .end, constrainedSize: adjustedConstrainedTextSize, alignment: .natural, lineSpacing: 0.07, cutout: textCutout, insets: textInsets))
+            let (textLayout, textApply) = textNodeLayout(TextNodeLayoutArguments(attributedString: messageText, backgroundColor: nil, maximumNumberOfLines: maxTextNumberOfLines, truncationType: .end, constrainedSize: adjustedConstrainedTextSize, alignment: .natural, lineSpacing: 0.07, cutout: textCutout, insets: textInsets, displaySpoilers: rgRevealSpoilers, displayEmbeddedItemsUnderSpoilers: rgRevealSpoilers))
             
             let imageSide: CGFloat
             let titleLineHeight: CGFloat = titleLayout.linesRects().first?.height ?? 12.0
@@ -761,11 +766,13 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
             
             let hasSpoiler: Bool
             if let message = arguments.message {
-                hasSpoiler = message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
+                hasSpoiler = !rgRevealSpoilers && message.attributes.contains(where: { $0 is MediaSpoilerMessageAttribute })
             } else {
                 hasSpoiler = false
             }
             
+            // MARK: Regram — the media identity can be unchanged while its blur changes.
+            if rgPreviousHasSpoiler != hasSpoiler { mediaUpdated = true }
             var updateImageSignal: Signal<(TransformImageArguments) -> DrawingContext?, NoError>?
             
             var mediaUserLocation: MediaResourceUserLocation = .other
@@ -810,6 +817,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                 }
                 
                 node.previousMediaReference = updatedMediaReference
+                node.rgPreviousHasSpoiler = hasSpoiler // MARK: Regram
                 
                 //node.textNode?.textNode.displaysAsynchronously = !arguments.presentationData.isPreview
                 
@@ -928,7 +936,7 @@ public class ChatMessageReplyInfoNode: ASDisplayNode {
                     expiredStoryIconView.removeFromSuperview()
                 }
                 
-                if !textLayout.spoilers.isEmpty {
+                if !rgRevealSpoilers && !textLayout.spoilers.isEmpty { // MARK: Regram
                     let dustNode: InvisibleInkDustNode
                     if let current = node.dustNode {
                         dustNode = current

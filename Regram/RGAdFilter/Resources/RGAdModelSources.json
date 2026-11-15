@@ -1,0 +1,91 @@
+{
+  "modelVersion": "2026-11-16.1",
+  "purpose": "Chinese promotional intent in channel text; not multilingual, OCR, or a guarantee of ad-free content.",
+  "base": {
+    "repository": "https://huggingface.co/hfl/minirbt-h256",
+    "revision": "446e1b4012b10946f479563005700c54c9db3f7c",
+    "license": "Apache-2.0",
+    "licenseURL": "https://github.com/iflytek/MiniRBT/blob/main/LICENSE",
+    "parameters": 10345730,
+    "weightsSHA256": "6728ca573fd5197f28198eb7e6119a76e4d5dc626f953fca8c0dc5ba2798f9fc"
+  },
+  "publicSources": [
+    {
+      "repository": "https://github.com/Olivi-9/Chinese-Spam-Dataset",
+      "revision": "952edf821038511b1acb3cac549a8b7c6303907b",
+      "file": "train.csv",
+      "sha256": "68c8463752c4b3180d519b7424b7eb49fb6b396d32ebd1434bdc46bcb893f545",
+      "usage": "text/label only; malformed rows excluded",
+      "license": "No explicit dataset license located; raw data not redistributed."
+    },
+    {
+      "repository": "https://github.com/ramsayleung/bayes_spam_sniper",
+      "revision": "f685165f4cf92deac34c7904f552639b805e29da",
+      "file": "db/data/db_migration_data.csv",
+      "sha256": "0aa633116201791c09d29da67d5b1f1aacad3892ce9719a9ddee8bf05632e6c7",
+      "usage": "Only message_content ham/spam marked by admin_dashboard/group_admin; identifiers excluded",
+      "license": "No explicit dataset license located; raw data not redistributed."
+    },
+    {
+      "repository": "https://github.com/jasonbitsmith/tg-ad-guard-bot",
+      "revision": "31c66c395520ca35e71db94152c92e76ce32aae7",
+      "file": "test/unit.test.js",
+      "sha256": "1687709acbec712c25c75af61f39ac42304dc14bb2fe0cc677f26040321b70a8",
+      "usage": "87 development probes relabeled for promotional intent, including preserving anti-fraud discussion. No raw text redistributed or directly trained.",
+      "license": "No explicit dataset license located."
+    }
+  ],
+  "training": {
+    "rawCombinedRows": 53762,
+    "combinedSHA256": "f575b26b57cc137754e88a4df61c8fc6a656b4f9f8ab41148d6611ead7264d33",
+    "initialSplit": {
+      "train": 33529,
+      "validation": 7003,
+      "test": 6663
+    },
+    "epochs": {
+      "base": 6,
+      "shortLabels": 4,
+      "contextCalibration": 4
+    },
+    "selectedContextEpoch": 4,
+    "finalAuthoredRows": 614,
+    "examplesSHA256": "b1cb0c8249e50d31f45ab304cc9309673552d7fd2662c1dbb543fa0a7d41306f",
+    "domainValidationSHA256": "0c2f91f448457bd676c73638045dd6f5105824548a75a2e367c3d6ff93c5b841",
+    "checkpointSelection": "Public validation precision >= .985 and FPR <= .005, then domain false positives, domain recall, public recall. Test labels never fitted.",
+    "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split."
+  },
+  "evaluation": {
+    "publicTextClassifier": {
+      "threshold": 0.996,
+      "precision": 0.984363894811656,
+      "recall": 0.408313679245283,
+      "f1": 0.5772035840800167,
+      "tn": 3249,
+      "fp": 22,
+      "fn": 2007,
+      "tp": 1385,
+      "false_positive_rate": 0.006725771935188016
+    },
+    "domainValidationAuthored": {
+      "threshold": 0.996,
+      "precision": 1.0,
+      "recall": 0.92,
+      "f1": 0.9583333333333334,
+      "tn": 30,
+      "fp": 0,
+      "fn": 2,
+      "tp": 23,
+      "false_positive_rate": 0.0
+    },
+    "warning": "Public spam labels are noisy and differ from promotional intent. Scores are not calibrated correctness probabilities. Development regression results are not unseen generalization accuracy. End-to-end projection includes language/context/range safeguards."
+  },
+  "privacy": "No network or message upload in inference. Real-device messages and raw corpora are excluded from the repository. Classification outputs cannot generate original training messages.",
+  "limitations": [
+    "Chinese only; unsupported languages preserved for explicit rules",
+    "No image, video or audio content recognition",
+    "Adversarial obfuscation, very short coded messages and advertorials can be missed",
+    "Normal content can be misclassified; originals remain stored and can be revealed",
+    "No self-training from predictions or automatic remote model updates"
+  ]
+}
