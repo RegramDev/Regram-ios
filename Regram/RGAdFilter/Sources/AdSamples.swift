@@ -1,0 +1,183 @@
+import Foundation
+import CryptoKit
+
+public enum RGAdLabel: String, Codable, CaseIterable {
+    case normal, ad, uncertain
+}
+
+public struct RGAdSpan: Codable, Equatable {
+    public let range: RGAdRange
+    public let label: RGAdLabel
+    public init(_ range: RGAdRange, _ label: RGAdLabel) { self.range = range; self.label = label }
+}
+
+/// Human-reviewed snapshots only. Unmarked text is normal; button/media labels are independent.
+/// Original UTF-16 text and entities are immutable, including when the server edits the message.
+public struct RGAdSample: Codable, Equatable {
+    public let schemaVersion: Int
+    public let offsetUnit: String
+    public let id: String
+    public let sourceGroup: String
+    public let input: RGAdInput
+    public let mediaKinds: [String]
+    public var spans: [RGAdSpan]
+    public var buttonLabels: [String: RGAdLabel]
+    public var mediaLabel: RGAdLabel
+    public var reviewedAt: Double?
+
+    public mutating func mark(_ range: NSRange, as label: RGAdLabel) throws {
+        guard range.location >= 0, range.length > 0, range.location <= input.text.utf16.count,
+              range.length <= input.text.utf16.count - range.location else { throw RGAdSampleError.invalid }
+        let source = input.text as NSString
+        let expanded = source.rangeOfComposedCharacterSequences(for: range)
+        var selected = RGAdRange(expanded.location, NSMaxRange(expanded))
+        // Links and custom emoji are indivisible: highlight exactly what will be removed.
+        var changed = true
+        while changed {
+            changed = false
+            for entity in input.entities where [.link, .mention, .customEmoji].contains(entity.kind) && entity.range.intersects(selected) && !selected.contains(entity.range) {
+                selected = RGAdRange(min(selected.lower, entity.range.lower), max(selected.upper, entity.range.upper)); changed = true
+            }
+        }
+        var result: [RGAdSpan] = []
+        for span in spans {
+            if !span.range.intersects(selected) { result.append(span); continue }
+            if span.range.lower < selected.lower { result.append(RGAdSpan(RGAdRange(span.range.lower, selected.lower), span.label)) }
+            if span.range.upper > selected.upper { result.append(RGAdSpan(RGAdRange(selected.upper, span.range.upper), span.label)) }
+        }
+        if label != .normal { result.append(RGAdSpan(selected, label)) }
+        spans = []
+        for span in result.sorted(by: { $0.range.lower < $1.range.lower }) {
+            if let last = spans.last, last.label == span.label, last.range.upper == span.range.lower {
+                spans[spans.count - 1] = RGAdSpan(RGAdRange(last.range.lower, span.range.upper), span.label)
+            } else { spans.append(span) }
+        }
+    }
+
+    public var previewText: String {
+        (try? RGAdFilter.project(input, confirmedRanges: spans.filter { $0.label == .ad }.map(\.range), confirmedButtonIds: Set(buttonLabels.filter { $0.value == .ad }.keys), inferButtons: false).text) ?? input.text
+    }
+
+    public var hasAds: Bool { spans.contains { $0.label == .ad } || buttonLabels.values.contains(.ad) || (!mediaKinds.isEmpty && mediaLabel == .ad) }
+    public var hasUncertainty: Bool { spans.contains { $0.label == .uncertain } || buttonLabels.values.contains(.uncertain) || (!mediaKinds.isEmpty && mediaLabel == .uncertain) }
+
+    public func validate() throws {
+        let boundaries = rgAdBoundaries(input.text)
+        let ids = input.buttons.flatMap { $0 }.map(\.id)
+        guard schemaVersion == 1, offsetUnit == "utf16", id.count == 64, id.allSatisfy({ $0.isHexDigit }),
+              sourceGroup.count == 64, input.peerId == nil, input.text.utf16.count <= 65_536,
+              input.entities.count <= 2048, ids.count <= 128, Set(ids).count == ids.count,
+              Set(buttonLabels.keys) == Set(ids), mediaKinds.count <= 32, spans.count <= 1024,
+              input.entities.allSatisfy({ rgAdValid($0.range, boundaries: boundaries) }),
+              input.buttons.flatMap({ $0 }).allSatisfy({ $0.title.utf16.count <= 1024 && ($0.target?.utf16.count ?? 0) <= 8192 }) else { throw RGAdSampleError.invalid }
+        var end = 0
+        for span in spans {
+            guard span.label != .normal, rgAdValid(span.range, boundaries: boundaries), span.range.lower >= end else { throw RGAdSampleError.invalid }
+            end = span.range.upper
+        }
+    }
+}
+
+public enum RGAdSampleError: Error, Equatable { case invalid, capacity, damaged }
+
+/// Account-directory storage, serialized by the caller. No networking, media bytes or raw peer IDs.
+public final class RGAdSampleStore {
+    public static let maximumSamples = 1000
+    public let directory: URL
+    public init(accountDirectory: URL) { directory = accountDirectory.appendingPathComponent("regram-ad-samples-v1", isDirectory: true) }
+
+    private func prepare() throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var url = directory
+        var values = URLResourceValues(); values.isExcludedFromBackup = true
+        try url.setResourceValues(values)
+        #if os(iOS)
+        try FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: directory.path)
+        #endif
+    }
+
+    public func salt() throws -> String {
+        try prepare()
+        let path = directory.appendingPathComponent("source-salt")
+        if FileManager.default.fileExists(atPath: path.path) {
+            let value = try String(contentsOf: path, encoding: .utf8)
+            guard UUID(uuidString: value) != nil else { throw RGAdSampleError.damaged }
+            return value
+        }
+        let value = UUID().uuidString
+        try Data(value.utf8).write(to: path, options: .atomic)
+        return value
+    }
+
+    public static func digest(_ text: String) -> String { SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined() }
+    public static func sourceGroup(salt: String, peerId: Int64) -> String { digest(salt + ":source:" + String(peerId)) }
+
+    public func draft(input: RGAdInput, messageKey: String, mediaKinds: [String], mediaIdentity: String) throws -> RGAdSample {
+        let salt = try self.salt()
+        let source = Self.sourceGroup(salt: salt, peerId: input.peerId ?? 0)
+        let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        let content = try encoder.encode(sanitized)
+        let id = Self.digest(salt + ":message:" + messageKey + ":" + content.base64EncodedString() + ":" + mediaIdentity)
+        let file = directory.appendingPathComponent(id + ".json")
+        if FileManager.default.fileExists(atPath: file.path) { return try read(file) }
+        let sample = RGAdSample(schemaVersion: 1, offsetUnit: "utf16", id: id, sourceGroup: source, input: sanitized, mediaKinds: mediaKinds,
+                                spans: [], buttonLabels: Dictionary(uniqueKeysWithValues: input.buttons.flatMap { $0 }.map { ($0.id, .uncertain) }), mediaLabel: .uncertain, reviewedAt: nil)
+        try sample.validate()
+        return sample
+    }
+
+    private func read(_ file: URL) throws -> RGAdSample {
+        guard (try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max) <= 1_048_576 else { throw RGAdSampleError.damaged }
+        let sample = try JSONDecoder().decode(RGAdSample.self, from: Data(contentsOf: file))
+        try sample.validate()
+        guard sample.reviewedAt != nil, file.lastPathComponent == sample.id + ".json" else { throw RGAdSampleError.damaged }
+        return sample
+    }
+
+    public func load() throws -> [RGAdSample] {
+        try prepare()
+        let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey]).filter { $0.pathExtension == "json" }
+        guard files.count <= Self.maximumSamples else { throw RGAdSampleError.capacity }
+        return try files.map(read).sorted { ($0.reviewedAt ?? 0) > ($1.reviewedAt ?? 0) }
+    }
+
+    public func save(_ value: RGAdSample) throws {
+        try value.validate(); try prepare()
+        let path = directory.appendingPathComponent(value.id + ".json")
+        if !FileManager.default.fileExists(atPath: path.path), try load().count >= Self.maximumSamples { throw RGAdSampleError.capacity }
+        var sample = value; sample.reviewedAt = Date().timeIntervalSince1970
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try encoder.encode(sample)
+        guard data.count <= 1_048_576 else { throw RGAdSampleError.capacity }
+        try data.write(to: path, options: .atomic)
+    }
+
+    public func remove(_ sample: RGAdSample) throws {
+        try sample.validate()
+        try FileManager.default.removeItem(at: directory.appendingPathComponent(sample.id + ".json"))
+    }
+
+    public func export() throws -> Data {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        var data = Data()
+        for sample in try load() {
+            data.append(try encoder.encode(sample)); data.append(0x0a)
+            guard data.count <= 64 * 1024 * 1024 else { throw RGAdSampleError.capacity }
+        }
+        return data
+    }
+
+    public func isEnabled() throws -> Bool {
+        let path = directory.appendingPathComponent("disabled")
+        return !FileManager.default.fileExists(atPath: path.path)
+    }
+
+    public func setEnabled(_ enabled: Bool) throws {
+        try prepare()
+        let path = directory.appendingPathComponent("disabled")
+        if enabled {
+            if FileManager.default.fileExists(atPath: path.path) { try FileManager.default.removeItem(at: path) }
+        } else { try Data().write(to: path, options: .atomic) }
+    }
+}

@@ -13,6 +13,7 @@ import Markdown
 import Display
 import TelegramStringFormatting
 import RGSimpleSettings
+import RGStrings // MARK: Regram
 
 struct ChatHistoryEntriesForViewState {
     private var messageStableIdToLocalId: [UInt32: Int64] = [:]
@@ -182,6 +183,7 @@ func chatHistoryEntriesForView(
     // expensive to repeat per entry.
     let accountPeerId = context.account.peerId
     let rgContentFilter = RGContentFilterState(accountPeerId: accountPeerId)
+    let rgAdFilter = RGAdFilterSession.get(context) // MARK: Regram
 
     loop: for entry in view.entries {
         var message = entry.message.withAppliedEphemeralReplacementMessage()
@@ -269,6 +271,8 @@ func chatHistoryEntriesForView(
         if message.adAttribute == nil {
             currentState.rgHasVisibleHistoryMessages = true
         }
+        // MARK: Regram — display copy only; Postbox retains the complete original.
+        message = rgAdFilter.display(message, accountPeerId: accountPeerId, notice: "AdSamples.FilteredNotice".i18n(presentationData.strings.rgLanguageCode))
     
         var adminRank: CachedChannelAdminRank?
         if let author = message.author {

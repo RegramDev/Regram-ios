@@ -502,6 +502,9 @@ private func ephemeralReplacementContextMenuItems(chatPresentationInterfaceState
 }
 
 func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState: ChatPresentationInterfaceState, context: AccountContext, messages: [EngineRawMessage], controllerInteraction: ChatControllerInteraction?, selectAll: Bool, interfaceInteraction: ChatPanelInterfaceInteraction?, readStats: MessageReadStats? = nil, messageNode: ChatMessageItemView? = nil) -> Signal<ContextController.Items, NoError> {
+    // MARK: Regram — copy/edit/reply and corrections always use the original snapshot.
+    let rgWasAdFiltered = messages.contains(where: rgAdMessageWasFiltered)
+    let messages = messages.map(rgAdOriginalMessage)
     guard let interfaceInteraction = interfaceInteraction, let controllerInteraction = controllerInteraction else {
         return .single(ContextController.Items(content: .list([])))
     }
@@ -1718,6 +1721,16 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
             f(.default)
         }))
         rgCollect(.json, showJsonAction)
+
+        // MARK: Regram — optional correction; opening does not save a training sample.
+        if messages.count == 1, !isCopyProtected, rgCanCorrectAds(message) {
+            rgCollect(.adSample, .action(ContextMenuActionItem(text: (rgWasAdFiltered ? "AdSamples.OriginalAction" : "AdSamples.Action").i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
+                generateTintedImage(image: UIImage(systemName: "text.badge.checkmark"), color: theme.contextMenu.primaryColor)
+            }, action: { _, dismiss in
+                dismiss(.default)
+                if let controller = rgAdSampleController(context: context, message: message) { controllerInteraction.navigationController()?.pushViewController(controller) }
+            })))
+        }
 
         // MARK: Regram — text selection is explicit and inspected on a consent page before uploading.
         let summaryIds = chatPresentationInterfaceState.interfaceState.selectionState?.selectedIds

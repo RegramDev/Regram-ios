@@ -138,6 +138,7 @@ struct MessageFilterView: View {
     // to Regram Pro. `selectChats` above already pushes a native controller for the same reason.
     let editPatternExternally: (RGMessageFilterRule, @escaping (String) -> Void) -> Void
     let testRulesExternally: ([RGMessageFilterRule]) -> Void
+    let openAdSamples: () -> Void
     @ObservedObject var editing: MessageFilterEditingState
     @Environment(\.lang) var lang: String
 
@@ -149,12 +150,13 @@ struct MessageFilterView: View {
         }
     }
 
-    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void, testRulesExternally: @escaping ([RGMessageFilterRule]) -> Void) {
+    init(wrapperController: LegacyController?, editing: MessageFilterEditingState, initialKeyword: String, selectChats: @escaping (Set<Int64>, @escaping (Set<Int64>) -> Void) -> Void, editPatternExternally: @escaping (RGMessageFilterRule, @escaping (String) -> Void) -> Void, testRulesExternally: @escaping ([RGMessageFilterRule]) -> Void, openAdSamples: @escaping () -> Void) {
         self.wrapperController = wrapperController
         self.editing = editing
         self.selectChats = selectChats
         self.editPatternExternally = editPatternExternally
         self.testRulesExternally = testRulesExternally
+        self.openAdSamples = openAdSamples
         _newKeyword = State(initialValue: initialKeyword)
         _rules = State(initialValue: RGSimpleSettings.shared.messageFilterRules)
     }
@@ -202,6 +204,11 @@ struct MessageFilterView: View {
 
     var bodyContent: some View {
             RGSettingsList {
+                RGSettingsSection {
+                    Button(action: openAdSamples) {
+                        HStack { Text("AdSamples.Title".i18n(lang)); Spacer(); Image(systemName: "chevron.right").rgSecondaryText() }
+                    }
+                }
                 RGSettingsSection(footer: Text("MessageFilter.SubTitle".i18n(lang) + "\n\n" + "MessageFilter.Regex.Notice".i18n(lang))) {
                     MessageFilterKeywordInputView(newKeyword: $newKeyword, isRegex: newIsRegex, onAdd: addRule)
                     Toggle("MessageFilter.Regex".i18n(lang), isOn: $newIsRegex)
@@ -607,6 +614,8 @@ public func rgMessageFilterController(context: AccountContext, presentationData:
         content: {
             MessageFilterView(wrapperController: legacyController, editing: editingState, initialKeyword: initialKeyword, selectChats: selectChats, editPatternExternally: editPattern, testRulesExternally: { [weak legacyController] rules in
                 legacyController?.push(rgMessageFilterTestController(context: context, rules: rules))
+            }, openAdSamples: { [weak legacyController] in
+                legacyController?.push(rgAdSamplesController(context: context))
             })
         }
     )

@@ -159,7 +159,7 @@ public enum RGSettingsCatalog {
         .init("settings.stickers", "forceEmojiTab", "Settings.ForceEmojiTab"),
         .init("settings.stickers", "defaultEmojisFirst", "Settings.DefaultEmojisFirst"),
         .init("settings.profiles", "hidePhoneInSettings", "Settings.HidePhoneInSettingsUI"),
-        .init("pro.privacy", "messageFilter", "MessageFilter.Title"),
+        .init("pro.privacy", "messageFilter", "MessageFilter.Title", keywords: "ad advertisement correction samples 自动广告过滤 纠错 样本 自動廣告過濾 糾錯 樣本"),
         .init("pro.privacy", "hiddenUsers", "HiddenUsers.Title"),
         .init("pro.privacy", "groupHiddenMembers", "GroupMembers.Hidden.Title"),
         .init("pro.notifications", "groupReminders", "GroupMembers.Reminders.Title"),

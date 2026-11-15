@@ -61,6 +61,7 @@ public enum RGContextMenuItemId: String, CaseIterable, Hashable {
     case delete
     case json
     case addFilter
+    case adSample
     case importSettings
 
     /// Regular message actions implemented by Regram. Conditional actions are added only after
@@ -69,7 +70,7 @@ public enum RGContextMenuItemId: String, CaseIterable, Hashable {
         .reply, .repeatForward, .repeatCopy, .copy, .translate, .speak, .edit, .editHistory, .bookmark, .summarize, .messageScreenshot,
         .pin, .unpin, .copyLink, .forward, .forwardNoQuote, .saveToCloud, .saveMedia,
         .saveToFiles, .favoriteSticker, .saveStickerToCameraRoll, .saveGif, .viewStickerPack,
-        .select, .selectFromUser, .delete, .report, .json, .addFilter
+        .select, .selectFromUser, .delete, .report, .json, .addFilter, .adSample
     ]
 
     public var canBeCustomized: Bool {
