@@ -809,8 +809,8 @@
 "LinkPreview.Disable.Notice" = "傳送訊息時不附加連結預覽。";
 "LocalPremium.Notice" = "在本機啟用會員介面與客戶端選項。貼圖、回應等需要 Telegram 伺服器驗證的權益仍需有效訂閱。";
 "LocalPremium.Title" = "本機會員";
-"MessageFilter.PerChat.Notice" = "為目前對話設定訊息過濾。";
-"MessageFilter.PerChat.Title" = "此對話的過濾設定";
+"MessageFilter.PerChat.Notice" = "關閉後，此對話不套用關鍵字和正規表示式隱藏規則；廣告片段清理單獨設定。";
+"MessageFilter.PerChat.Title" = "關鍵字訊息過濾";
 "MessageFilter.Rule.EditMessage" = "含有此文字的訊息將被隱藏。";
 "MessageFilter.Rule.EditMessageRegex" = "符合此正規表示式的訊息將被隱藏。";
 "MessageFilter.Rule.EditTitle" = "編輯關鍵字";
@@ -1385,7 +1385,7 @@
 "AdSamples.OriginalAction" = "查看原文 / 糾正過濾";
 "AdSamples.FilteredNotice" = "已過濾廣告 · 長按查看原文";
 "AdSamples.Enabled" = "清理頻道廣告片段";
-"AdSamples.AutomaticNotice" = "使用公共內建規則和已確認的本機糾錯，判斷不穩時保留內容。清理頻道文字與訊息按鈕，既有隱藏規則仍生效。圖片和影片保留。";
+"AdSamples.AutomaticNotice" = "使用公共內建規則和已確認的本機糾錯，判斷不穩時保留內容。與關鍵字整則隱藏獨立；頻道資料頁可單獨關閉。圖片和影片保留。";
 "AdSamples.Records" = "糾錯記錄";
 "AdSamples.LibraryNotice" = "長按訊息即可核對文字和按鈕，糾錯是選用操作。左滑刪除記錄，也會取消從該記錄學到的偏好。";
 "AdSamples.LocalNotice" = "只儲存你主動確認的記錄，按帳號隔離，不進入系統備份，也不自動上傳。經驗證的公共改進會隨應用程式更新分發。";
@@ -1417,3 +1417,6 @@
 "AdSamples.SelectFirst" = "請先選取一段文字";
 "AdSamples.EmptyText" = "過濾後無剩餘文字";
 "AdSamples.None" = "無";
+
+"AdSamples.PerChat.Title" = "清理此頻道廣告片段";
+"AdSamples.PerChat.Notice" = "需開啟「自動廣告過濾」。只清理已識別的廣告文字和按鈕，保留內文；不受上方關鍵字開關影響。";

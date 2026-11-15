@@ -66,9 +66,22 @@ public enum RGAdFilter {
         ranges = merge(ranges)
         // Only remove separator lines adjacent to a confirmed removed block. Keep other content.
         for (index, paragraph) in paragraphs.enumerated() where isSeparator(source.substring(with: paragraph.nsRange)) {
-            if index + 1 < paragraphs.count && ranges.contains(where: { $0.contains(paragraphs[index + 1]) }) {
-                if !input.entities.contains(where: { $0.range.intersects(paragraph) }) { ranges.append(paragraph) }
+            var next = index + 1
+            while next < paragraphs.count && source.substring(with: paragraphs[next].nsRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { next += 1 }
+            let separatorBlock = RGAdRange(paragraph.lower, next < paragraphs.count ? paragraphs[next].lower : paragraph.upper)
+            if next < paragraphs.count && ranges.contains(where: { $0.contains(paragraphs[next]) }) {
+                // Formatting on a decorative divider is harmless; links/quotes remain protected.
+                if !input.entities.contains(where: { $0.kind != .format && $0.range.intersects(separatorBlock) }) { ranges.append(separatorBlock) }
             }
+        }
+        ranges = merge(ranges)
+        // Blank lines between removed paragraphs belong to the same ad block. Do not leave
+        // multiple empty rows where a footer used to be, or consume any intervening body text.
+        let blocks = ranges
+        for (previous, next) in zip(blocks, blocks.dropFirst()) where previous.upper < next.lower {
+            let gap = RGAdRange(previous.upper, next.lower)
+            if source.substring(with: gap.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               !input.entities.contains(where: { $0.kind != .format && $0.range.intersects(gap) }) { ranges.append(gap) }
         }
         ranges = merge(ranges)
         let remaining = complement(ranges, length: source.length)

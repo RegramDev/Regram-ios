@@ -287,8 +287,8 @@
 "MessageFilter.Rule.EditTitle" = "修改关键词";
 "MessageFilter.Rule.EditMessage" = "包含此文字的消息将被隐藏。";
 "MessageFilter.Rule.EditMessageRegex" = "匹配此正则表达式的消息将被隐藏。";
-"MessageFilter.PerChat.Title" = "消息过滤器";
-"MessageFilter.PerChat.Notice" = "关闭后，此对话中不再应用消息过滤器。";
+"MessageFilter.PerChat.Title" = "关键词消息过滤";
+"MessageFilter.PerChat.Notice" = "关闭后，此对话不应用关键词和正则隐藏规则；广告片段清理单独设置。";
 "EraseData.Title" = "清除全部数据";
 "EraseData.Notice" = "退出所有账号并删除全部本地数据、缓存和设置。想从零开始时用这个 —— 删除 App 并不会清除数据，因为 iOS 会保留共享容器。";
 "EraseData.Confirm" = "将退出所有账号并删除本 App 的全部本地数据，此操作无法撤销。";
@@ -1387,7 +1387,7 @@
 "AdSamples.OriginalAction" = "查看原文 / 纠正过滤";
 "AdSamples.FilteredNotice" = "已过滤广告 · 长按查看原文";
 "AdSamples.Enabled" = "清理频道广告片段";
-"AdSamples.AutomaticNotice" = "使用公共内置规则和已确认的本机纠错，判断不稳时保留内容。清理频道文字与消息按钮，既有隐藏规则仍生效。图片和视频保留。";
+"AdSamples.AutomaticNotice" = "使用公共内置规则和已确认的本机纠错，判断不稳时保留内容。与关键词整条隐藏独立；频道资料页可单独关闭。图片和视频保留。";
 "AdSamples.Records" = "纠错记录";
 "AdSamples.LibraryNotice" = "长按消息即可核对文字和按钮，纠错是可选操作。左滑删除记录，也会取消从该记录学到的偏好。";
 "AdSamples.LocalNotice" = "只保存你主动确认的记录，按账号隔离，不进入系统备份，也不自动上传。经验证的公共改进会随应用更新分发。";
@@ -1419,3 +1419,6 @@
 "AdSamples.SelectFirst" = "请先选中一段文字";
 "AdSamples.EmptyText" = "过滤后无剩余文字";
 "AdSamples.None" = "无";
+
+"AdSamples.PerChat.Title" = "清理此频道广告片段";
+"AdSamples.PerChat.Notice" = "需开启“自动广告过滤”。只清理已识别的广告文字和按钮，保留正文；不受上方关键词开关影响。";

@@ -2,14 +2,30 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 1
+    public static let revision = 2
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")
     private static let gambling = try! NSRegularExpression(pattern: "8g\\.com|博彩|盘口|盤口", options: .caseInsensitive)
+    private static let brandedPromotion = try! NSRegularExpression(pattern: "(?:白马庄园|白馬莊園).{0,8}(?:大额无忧|大額無憂)")
+    private static let gamblingHosts = ["8g.com", "8gtg.vip"]
     private static let cooperation = Set(["广告合作招商", "廣告合作招商"])
     private static func matches(_ regex: NSRegularExpression, _ text: String) -> Bool {
         regex.firstMatch(in: text, range: NSRange(location: 0, length: text.utf16.count)) != nil
+    }
+
+    /// Matching only: never rewrite the source or compute offsets in normalized text.
+    private static func matchText(_ text: String) -> String {
+        String(String.UnicodeScalarView(text.precomposedStringWithCompatibilityMapping.unicodeScalars.filter {
+            !CharacterSet.whitespacesAndNewlines.contains($0) && ![0x200b, 0x200c, 0x200d, 0x2060, 0xfeff].contains($0.value)
+        }))
+    }
+
+    private static func gamblingDestination(_ entity: RGAdEntity, source: NSString) -> Bool {
+        guard entity.kind == .link,
+              let target = RGAdFilter.normalizedTarget(entity.value ?? source.substring(with: entity.range.nsRange)),
+              let host = URLComponents(string: target)?.host?.lowercased() else { return false }
+        return gamblingHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 
     private struct ButtonKey: Hashable {
@@ -64,20 +80,35 @@ public enum RGAdPolicy {
 
         public func project(_ input: RGAdInput, sourceGroup: String = "") throws -> RGAdProjection {
             guard input.text.utf16.count <= 65_536 else { throw RGAdFilterError.inputTooLong }
+            guard input.entities.count <= 2048, input.buttons.count <= 128, input.buttons.flatMap({ $0 }).count <= 128 else { throw RGAdFilterError.invalidInput }
             let sanitized = RGAdInput(text: input.text, entities: input.entities, buttons: input.buttons, hasMedia: input.hasMedia, previewTarget: input.previewTarget)
             if let sample = exact[sourceGroup]?[sanitized] {
                 return try RGAdFilter.project(input, confirmedRanges: sample.spans.filter { $0.label == .ad }.map(\.range), confirmedButtonIds: Set(sample.buttonLabels.filter { $0.value == .ad }.keys), inferButtons: false)
             }
             let source = input.text as NSString
             let lines = RGAdFilter.paragraphRanges(input.text)
+            let matchingDeadline = ProcessInfo.processInfo.systemUptime + 0.05
             var ranges: [RGAdRange] = [], protected: [RGAdRange] = []
+            var precedingPromotion = false
             for line in lines {
-                let text = source.substring(with: line.nsRange)
+                guard ProcessInfo.processInfo.systemUptime < matchingDeadline else { throw RGAdFilterError.budgetExceeded }
+                let text = RGAdPolicy.matchText(source.substring(with: line.nsRange))
+                if text.isEmpty { continue }
+                let adjacentPromotion = precedingPromotion
+                precedingPromotion = false
                 if RGAdPolicy.matches(RGAdPolicy.warning, text) { protected.append(line); continue }
-                let destination = input.entities.contains { [.link, .mention].contains($0.kind) && line.contains($0.range) }
-                if destination, text.count >= 12,
-                   RGAdPolicy.matches(RGAdPolicy.promotion, text) || (RGAdPolicy.matches(RGAdPolicy.signup, text) && RGAdPolicy.matches(RGAdPolicy.gambling, text)) {
+                let entities = input.entities.filter { $0.range.upper > $0.range.lower && $0.range.lower >= 0 && $0.range.upper <= source.length && line.contains($0.range) }
+                let destination = entities.contains { [.link, .mention].contains($0.kind) && RGAdFilter.normalizedTarget($0.value ?? source.substring(with: $0.range.nsRange)) != nil }
+                let quoted = input.entities.contains { [.code, .quote].contains($0.kind) && $0.range.intersects(line) }
+                let crossesLink = input.entities.contains { [.link, .mention, .customEmoji].contains($0.kind) && $0.range.intersects(line) && !line.contains($0.range) }
+                let casino = RGAdPolicy.matches(RGAdPolicy.gambling, text) || entities.contains { RGAdPolicy.gamblingDestination($0, source: source) }
+                // Some banners render their brand entirely through custom emoji. A linked signup
+                // reward immediately following a verified promotion supplies two further signals.
+                let banner = adjacentPromotion && entities.filter { $0.kind == .customEmoji }.count >= 3 && text.count <= 160
+                if destination, !quoted, !crossesLink, text.count >= 12,
+                   RGAdPolicy.matches(RGAdPolicy.promotion, text) || (RGAdPolicy.matches(RGAdPolicy.signup, text) && (casino || banner)) {
                     ranges.append(line)
+                    precedingPromotion = true
                 }
             }
             let deadline = ProcessInfo.processInfo.systemUptime + 0.02
@@ -98,8 +129,12 @@ public enum RGAdPolicy {
                 if let label = buttons[sourceGroup]?[key] {
                     if label == .ad { removedButtons.insert(button.id) }
                     else { preservedButtons.insert(button.id) }
-                } else if RGAdPolicy.cooperation.contains(button.title.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    removedButtons.insert(button.id)
+                } else {
+                    let title = RGAdPolicy.matchText(button.title)
+                    if !RGAdPolicy.matches(RGAdPolicy.warning, title),
+                       RGAdPolicy.cooperation.contains(title) || RGAdPolicy.matches(RGAdPolicy.promotion, title) || RGAdPolicy.matches(RGAdPolicy.brandedPromotion, title) {
+                        removedButtons.insert(button.id)
+                    }
                 }
             }
             return try RGAdFilter.project(input, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons)

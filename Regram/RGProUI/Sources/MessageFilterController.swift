@@ -207,6 +207,7 @@ struct MessageFilterView: View {
                 RGSettingsSection {
                     Button(action: openAdSamples) {
                         HStack { Text("AdSamples.Title".i18n(lang)); Spacer(); Image(systemName: "chevron.right").rgSecondaryText() }
+                            .contentShape(Rectangle())
                     }
                 }
                 RGSettingsSection(footer: Text("MessageFilter.SubTitle".i18n(lang) + "\n\n" + "MessageFilter.Regex.Notice".i18n(lang))) {

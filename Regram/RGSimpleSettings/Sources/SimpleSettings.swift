@@ -811,8 +811,12 @@ public class RGSimpleSettings {
     public func setChatPreferences(_ value: RGChatPreferences, accountId: Int64, peerId: Int64) {
         var values = self.chatPreferencesSnapshot
         let key = RGChatPreferences.key(accountId: accountId, peerId: peerId)
+        let adFilteringChanged = values[key]?.adFiltering != value.adFiltering
         if value.isEmpty { values.removeValue(forKey: key) } else { values[key] = value }
-        if let data = try? JSONEncoder().encode(values), let json = String(data: data, encoding: .utf8) { self.chatPreferencesJSON = json }
+        if let data = try? JSONEncoder().encode(values), let json = String(data: data, encoding: .utf8) {
+            self.chatPreferencesJSON = json
+            if adFilteringChanged { self.notifyContentFiltersChanged() }
+        }
     }
 
     public func defaultOutgoingFormat(accountId: Int64, peerId: Int64) -> DefaultOutgoingFormat {
@@ -910,7 +914,7 @@ public class RGSimpleSettings {
         if keys.contains(where: { $0.hasPrefix("font") }) { center.post(name: RGFontConfiguration.settingsChanged, object: nil) }
         if touches("bottomBarLayout", "showTabNames", "hideTabBar", "tabBarWidthPercent", "native.showContactsTab", "native.showCallsTab") { center.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
         if touches("hideChatListSeparators", "compactChatList", "chatListLines") { center.post(name: Self.chatListSeparatorSettingsDidChange, object: nil) }
-        if touches("messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "groupHiddenSenders", "groupNotificationSenders") { center.post(name: Self.contentFiltersDidChangeNotification, object: nil) }
+        if touches("messageFilterRules", "blockedPeerIds", "messageFilterDisabledPeerIds", "groupHiddenSenders", "groupNotificationSenders", "chatPreferences") { center.post(name: Self.contentFiltersDidChangeNotification, object: nil) }
         if touches("defaultVideoQuality") { center.post(name: RGVideoQualityPreference.settingsChanged, object: nil) }
         if touches("mediaLoadingExperiment") { center.post(name: RGMediaLoadingPolicy.settingsChanged, object: nil) }
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }

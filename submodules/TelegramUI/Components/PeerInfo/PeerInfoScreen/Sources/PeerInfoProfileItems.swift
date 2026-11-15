@@ -1163,6 +1163,18 @@ func infoItems(
         }))
         items[.regram]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
 
+        // MARK: Regram — ad segment cleaning is independent of whole-message keyword hiding.
+        if case let .channel(channel)? = data.peer, case .broadcast = channel.info {
+            let accountId = context.account.peerId.toInt64()
+            let preferences = RGSimpleSettings.shared.chatPreferences(accountId: accountId, peerId: rgFilterPeerId)
+            items[.regram]!.append(PeerInfoScreenSwitchItem(id: 9513, text: "AdSamples.PerChat.Title".i18n(rgLang), value: preferences.adFiltering != false, isLocked: false, toggled: { value in
+                var preferences = RGSimpleSettings.shared.chatPreferences(accountId: accountId, peerId: rgFilterPeerId)
+                preferences.adFiltering = value ? nil : false
+                RGSimpleSettings.shared.setChatPreferences(preferences, accountId: accountId, peerId: rgFilterPeerId)
+            }))
+            items[.regram]!.append(PeerInfoScreenCommentItem(id: 9514, text: "AdSamples.PerChat.Notice".i18n(rgLang)))
+        }
+
         // MARK: Regram — per-chat anti-revoke, the same shape as hiding a sender: a switch here and
         // a list on the Pro screen. With anti-revoke on for every chat there is nothing to toggle.
         if RGSimpleSettings.shared.antiRevoke {

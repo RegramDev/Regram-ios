@@ -176,9 +176,10 @@ public final class RGAdFilterSession {
         guard rgCanCorrectAds(message), message.effectivelyIncoming(accountPeerId),
               let channel = message.peers[message.id.peerId] as? TelegramChannel, case .broadcast = channel.info,
               message.adAttribute == nil, message.activeEphemeralReplacementMessage == nil else { return message }
-        // Respect the existing per-chat disable/temporary reveal controls.
+        // MARK: Regram — keyword rules hide whole messages and have their own legacy opt-outs.
+        // They must not silently disable the independent, account-scoped segment cleaner.
         let settings = RGSimpleSettings.shared
-        guard !settings.messageFilterDisabledPeerIds.contains(message.id.peerId.toInt64()),
+        guard settings.chatPreferences(accountId: accountPeerId.toInt64(), peerId: message.id.peerId.toInt64()).adFiltering != false,
               !settings.temporarilyVisiblePeerIds(accountId: accountPeerId.toInt64()).contains(message.id.peerId.toInt64()) else { return message }
         lock.lock(); let value = cached[message.id]; lock.unlock()
         guard let value, let projection = value.projection, value.input == rgAdInput(message) else { return message }

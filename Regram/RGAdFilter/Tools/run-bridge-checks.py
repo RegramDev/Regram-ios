@@ -64,6 +64,9 @@ final class AccountContext {
 final class RGSimpleSettings {
     static let shared = RGSimpleSettings(), contentFiltersDidChangeNotification = Notification.Name("AdBridgeChecks.changed")
     var messageFilterDisabledPeerIds = Set<Int64>(), revealed = Set<Int64>()
+    struct ChatPreferences { var adFiltering: Bool? }
+    var adFiltering: Bool? = nil
+    func chatPreferences(accountId: Int64, peerId: Int64) -> ChatPreferences { ChatPreferences(adFiltering: adFiltering) }
     func temporarilyVisiblePeerIds(accountId: Int64) -> Set<Int64> { revealed }
 }
 '''
@@ -104,7 +107,11 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         settle(); let settled = refreshes.value; session.prepare([message], accountPeerId: account); settle()
         precondition(refreshes.value == settled, "prepared batch keeps notifying itself")
         RGSimpleSettings.shared.revealed = [99]; precondition(display() === message); RGSimpleSettings.shared.revealed = []
-        RGSimpleSettings.shared.messageFilterDisabledPeerIds = [99]; precondition(display() === message); RGSimpleSettings.shared.messageFilterDisabledPeerIds = []
+        RGSimpleSettings.shared.messageFilterDisabledPeerIds = [99]
+        precondition(rgAdMessageWasFiltered(display()), "legacy keyword opt-out must not disable segment filtering")
+        RGSimpleSettings.shared.adFiltering = false; precondition(display() === message)
+        RGSimpleSettings.shared.adFiltering = nil; precondition(rgAdMessageWasFiltered(display()))
+        RGSimpleSettings.shared.messageFilterDisabledPeerIds = []
         message.protected = true; precondition(display() === message); message.protected = false
         message.richText = "rich"; precondition(display() === message); message.richText = nil
         let done = Box(false)

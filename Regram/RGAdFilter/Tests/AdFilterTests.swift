@@ -62,6 +62,56 @@ final class AdFilterTests: XCTestCase {
         XCTAssertEqual(output.text, input.text); XCTAssertTrue(output.buttons.isEmpty)
     }
 
+    func testEmojiBannerAndIndependentInviteButton() throws {
+        // Synthetic body, destinations and emoji IDs; shape mirrors a mixed movie/ad footer.
+        let banner = "🩷🩷🩷🩷 新人注册送38U"
+        let text = "剧名：春日旅程\n简介：正常剧情。\n@search_helper\n================\n\n实力飞投｜超高限红｜大额无忧 ➜ @first_promo\n\n" + ad + "\n\n" + banner
+        var entities = [entity(text, "@search_helper"), entity(text, "@first_promo"), entity(text, "@promotion_user"), entity(text, banner, kind: .link, value: "https://example.org/signup"), entity(text, "================", kind: .format, value: "bold")]
+        let start = (text as NSString).range(of: "🩷🩷🩷🩷").location
+        for i in 0..<4 { entities.append(RGAdEntity(range: RGAdRange(start + i * 2, start + i * 2 + 2), kind: .customEmoji, value: "synthetic-\(i)")) }
+        let input = RGAdInput(text: text, entities: entities, buttons: [
+            [RGAdButton(id: "cooperate", title: "广 告 合 作 招 商", target: "https://example.org/sponsor")],
+            [RGAdButton(id: "search", title: "电影搜索", target: "https://t.me/search_helper"), RGAdButton(id: "resources", title: "电报资源", target: "https://t.me/resource_helper")],
+            [RGAdButton(id: "invite", title: "白马庄园大额无忧", target: "https://t.me/+syntheticInvite"), RGAdButton(id: "lottery", title: "一元云购 0充值，免费体验，中奖可提现", target: "https://example.org/different-destination")]
+        ], hasMedia: true)
+        let result = try RGAdPolicy.project(input)
+        XCTAssertEqual(result.text, "剧名：春日旅程\n简介：正常剧情。\n@search_helper\n")
+        XCTAssertEqual(result.buttons.flatMap { $0 }.map(\.id), ["search", "resources"])
+        XCTAssertEqual(result.disposition, .trim)
+        XCTAssertEqual(result.entities.map(\.kind), [.mention])
+    }
+
+    func testLinkedHiddenBrandAndObfuscatedPromotion() throws {
+        let text = "正常正文👨‍👩‍👧‍👦\n🩷🩷🩷🩷 新人注册送38U"
+        for target in ["https://8g.com/?campaign=synthetic", "https://8gtg.vip/synthetic"] {
+            let link = entity(text, "🩷🩷🩷🩷 新人注册送38U", kind: .link, value: target)
+            XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text, entities: [link])).text, "正常正文👨‍👩‍👧‍👦\n")
+        }
+        let spaced = "正常正文\n０ 充 值，免\u{200b}费 体 验，中 奖 可 提 现 → @promotion_user"
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: spaced, entities: [entity(spaced, "@promotion_user")])).text, "正常正文\n")
+        let traditional = "正常正文\n實 力 飛 投｜超 高 限 紅｜大 額 無 憂 @promotion_user"
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: traditional, entities: [entity(traditional, "@promotion_user")])).text, "正常正文\n")
+    }
+
+    func testBannerEvidenceDoesNotConsumeNormalOrReportedContent() throws {
+        let banner = "🩷🩷🩷🩷 新人注册送38U"
+        for prefix in ["", "警惕骗局：" + ad + "\n", ad + "\n正常剧情介绍\n"] {
+            let text = prefix + banner
+            var entities = [entity(text, banner, kind: .link, value: "https://example.org/signup")]
+            if prefix.contains("@promotion_user") { entities.append(entity(text, "@promotion_user")) }
+            let start = (text as NSString).range(of: "🩷🩷🩷🩷").location
+            for i in 0..<4 { entities.append(RGAdEntity(range: RGAdRange(start + i * 2, start + i * 2 + 2), kind: .customEmoji, value: "synthetic-\(i)")) }
+            XCTAssertTrue(try RGAdPolicy.project(RGAdInput(text: text, entities: entities)).text.contains(banner))
+        }
+        for target in ["https://8g.com.example.org", "https://example.org/8g.com"] {
+            XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: banner, entities: [entity(banner, banner, kind: .link, value: target)])).disposition, .keep)
+        }
+        let warning = "警 惕\u{200b}诈 骗：" + ad
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: warning, entities: [entity(warning, "@promotion_user")])).disposition, .keep)
+        let normal = RGAdInput(text: "影视正文", buttons: [[RGAdButton(id: "normal", title: "白马庄园取景地介绍", target: "https://example.org/film"), RGAdButton(id: "warning", title: "警惕白马庄园大额无忧骗局", target: "https://example.org/report")]])
+        XCTAssertEqual(try RGAdPolicy.project(normal).disposition, .keep)
+    }
+
     func testDestinationIsExactAndNormalLinkVetoesInferredRemoval() throws {
         let text = "联系 @promotion_user\n" + ad
         let ranges = (text as NSString).range(of: "@promotion_user", options: .backwards)
