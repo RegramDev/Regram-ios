@@ -50,8 +50,10 @@ public func rgCanCorrectAds(_ message: Message) -> Bool {
 
 private final class RGAdOriginalAttribute: MessageAttribute {
     let source: Message?
-    init(_ source: Message) { self.source = source }
-    required init(decoder: PostboxDecoder) { source = nil }
+    let removedRanges: [RGAdRange]
+    let bodyLength: Int
+    init(_ source: Message, projection: RGAdProjection) { self.source = source; removedRanges = projection.removedRanges; bodyLength = projection.text.utf16.count }
+    required init(decoder: PostboxDecoder) { source = nil; removedRanges = []; bodyLength = 0 }
     func encode(_ encoder: PostboxEncoder) {} // Display-only; never encode the original message.
 }
 
@@ -60,6 +62,23 @@ public func rgAdOriginalMessage(_ message: Message) -> Message {
 }
 
 public func rgAdMessageWasFiltered(_ message: Message) -> Bool { message.attributes.contains { $0 is RGAdOriginalAttribute } }
+
+/// Quote offsets refer to the server's original text. A selection spanning a removed interval, or
+/// the local notice, cannot be a contiguous server quote and must fall back to a plain reply.
+public func rgAdOriginalRange(_ message: Message, range: NSRange) -> NSRange? {
+    guard let attribute = message.attributes.first(where: { $0 is RGAdOriginalAttribute }) as? RGAdOriginalAttribute else { return range }
+    guard let source = attribute.source, range.location >= 0, range.length > 0, range.location <= attribute.bodyLength,
+          range.length <= attribute.bodyLength - range.location else { return nil }
+    var originalStart = 0, displayStart = 0
+    for cut in attribute.removedRanges + [RGAdRange(source.text.utf16.count, source.text.utf16.count)] {
+        let length = cut.lower - originalStart
+        if range.location >= displayStart, NSMaxRange(range) <= displayStart + length {
+            return NSRange(location: originalStart + range.location - displayStart, length: range.length)
+        }
+        originalStart = cut.upper; displayStart += length
+    }
+    return nil
+}
 
 /// Expensive matching and file access run off the rendering thread. UI reads only prepared values.
 public final class RGAdFilterSession {
@@ -186,7 +205,7 @@ public final class RGAdFilterSession {
                 if !rows.isEmpty { attributes.append(ReplyMarkupMessageAttribute(rows: rows, flags: markup.flags, placeholder: markup.placeholder)) }
             } else if !(attribute is TranslationMessageAttribute) { attributes.append(attribute) }
         }
-        attributes.append(RGAdOriginalAttribute(message))
+        attributes.append(RGAdOriginalAttribute(message, projection: projection))
         // A small placeholder keeps the original reachable even for a wholly promotional message.
         let body = projection.text + (projection.text.isEmpty ? "" : "\n\n") + notice
         // History/bubble diffing keys off stableVersion, even when text/attributes changed. This

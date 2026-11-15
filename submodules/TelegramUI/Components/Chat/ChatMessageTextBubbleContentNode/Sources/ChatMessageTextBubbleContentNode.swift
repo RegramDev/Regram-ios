@@ -1978,6 +1978,15 @@ public class ChatMessageTextBubbleContentNode: ChatMessageBubbleContentNode {
             }
         }
         
+        // MARK: Regram — selections in cleaned messages still quote the original server text.
+        if rgAdMessageWasFiltered(item.message) {
+            guard let originalRange = rgAdOriginalRange(item.message, range: range) else { return nil }
+            let original = rgAdOriginalMessage(item.message)
+            guard let selection = RGMessageQuoteSelection.validated(originalRange, in: original.text, expectedText: substring) else { return nil }
+            range = selection.range; offset = selection.range.location; substring = selection.text
+            entitySource = original.textEntitiesAttribute?.entities
+        }
+
         var entities: [MessageTextEntity] = []
         if let entitySource { // MARK: Regram
             entities = messageTextEntitiesInRange(entities: entitySource, range: range, onlyQuoteable: true)

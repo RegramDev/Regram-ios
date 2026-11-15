@@ -99,6 +99,8 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         precondition(filtered.media.count == 1 && !filtered.attributes.contains { $0 is TranslationMessageAttribute })
         precondition((filtered.attributes.first { $0 is ReplyMarkupMessageAttribute } as? ReplyMarkupMessageAttribute)?.rows[0].buttons.count == 1)
         precondition(filtered.textEntitiesAttribute!.entities.allSatisfy { $0.range.upperBound <= filtered.text.utf16.count })
+        precondition(rgAdOriginalRange(filtered, range: NSRange(location: 0, length: 2)) == NSRange(location: 0, length: 2))
+        precondition(rgAdOriginalRange(filtered, range: (filtered.text as NSString).range(of: "过滤提示")) == nil)
         settle(); let settled = refreshes.value; session.prepare([message], accountPeerId: account); settle()
         precondition(refreshes.value == settled, "prepared batch keeps notifying itself")
         RGSimpleSettings.shared.revealed = [99]; precondition(display() === message); RGSimpleSettings.shared.revealed = []
@@ -125,6 +127,17 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         spin { rgAdMessageWasFiltered(display(large.last!)) }; settle()
         let loopCount = loops.value; session.prepare(large, accountPeerId: account); settle()
         precondition(loops.value == loopCount && loops.value <= 3, "large window caused refresh loop")
+        NotificationCenter.default.removeObserver(repeatObserver)
+        let adLine = "0充值，免费体验，中奖可提现 → @promotion_user\n"
+        let mixedText = "开头\n" + adLine + "正常尾部👋"
+        let mention = (mixedText as NSString).range(of: "@promotion_user")
+        let middle = Message(id: 700, text: mixedText, attributes: [TextEntitiesMessageAttribute(entities: [MessageTextEntity(range: mention.location..<NSMaxRange(mention), type: .Mention)])])
+        session.prepare([middle], accountPeerId: account)
+        spin { rgAdMessageWasFiltered(display(middle)) }
+        let cleaned = display(middle)
+        let selected = (cleaned.text as NSString).range(of: "正常尾部👋")
+        precondition(rgAdOriginalRange(cleaned, range: selected) == (mixedText as NSString).range(of: "正常尾部👋"), "quote offset was not restored")
+        precondition(rgAdOriginalRange(cleaned, range: NSRange(location: 0, length: NSMaxRange(selected))) == nil, "discontinuous text must not become a forged quote")
         print("Ad bridge checks passed: original restoration, display versions, entities, buttons, media, translation, privacy eligibility, reveal controls, corrections and bounded-cache refresh stability.")
     }
 }
