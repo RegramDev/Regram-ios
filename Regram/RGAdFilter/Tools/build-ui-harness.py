@@ -80,7 +80,7 @@ class Media { let id: Int64? = 1 }
 final class TelegramMediaWebpage: Media {}
 final class TelegramMediaImage: Media {}
 final class TelegramMediaFile: Media { let isVideo = true, isVoice = false }
-final class Message { let id = MessageId(), media: [Media] = [] }
+final class Message { let id = MessageId(), media: [Media] = []; let text = "fixture" }
 func rgAdOriginalMessage(_ value: Message) -> Message { value }
 func rgCanCorrectAds(_ value: Message) -> Bool { true }
 func rgAdInput(_ value: Message) -> RGAdInput { RGAdInput(text: "fixture") }

@@ -19,6 +19,13 @@ public func rgAdSampleController(context: AccountContext, message: Message) -> V
     return RGAdEditorController(context: context, message: original)
 }
 
+public func rgAdSampleController(context: AccountContext, messages: [Message]) -> ViewController? {
+    let originals = messages.map(rgAdOriginalMessage).filter(rgCanCorrectAds)
+    guard !originals.isEmpty else { return nil }
+    if originals.count == 1 { return rgAdSampleController(context: context, message: originals[0]) }
+    return RGAdAlbumController(context: context, messages: originals)
+}
+
 private class RGAdTableController: ViewController, UITableViewDataSource, UITableViewDelegate {
     let context: AccountContext
     let session: RGAdFilterSession
@@ -103,6 +110,24 @@ private class RGAdTableController: ViewController, UITableViewDataSource, UITabl
         presenter.present(controller, animated: true)
     }
     func push(_ controller: ViewController) { (navigationController as? NavigationController)?.pushViewController(controller) }
+}
+
+private final class RGAdAlbumController: RGAdTableController {
+    private let messages: [Message]
+    init(context: AccountContext, messages: [Message]) {
+        self.messages = messages; super.init(context: context); title = "AdSamples.OriginalAction".i18n(lang)
+    }
+    required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { messages.count }
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let message = messages[indexPath.row]
+        let preview = message.text.isEmpty ? "AdSamples.Media".i18n(lang) : String(message.text.prefix(120))
+        let row = cell("\(indexPath.row + 1) · " + preview, action: true); row.accessoryType = .disclosureIndicator; return row
+    }
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        super.tableView(tableView, didSelectRowAt: indexPath)
+        if let editor = rgAdSampleController(context: context, message: messages[indexPath.row]) { push(editor) }
+    }
 }
 
 private final class RGAdLibraryController: RGAdTableController {

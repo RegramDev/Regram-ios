@@ -1723,12 +1723,12 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
         rgCollect(.json, showJsonAction)
 
         // MARK: Regram — optional correction; opening does not save a training sample.
-        if messages.count == 1, !isCopyProtected, rgCanCorrectAds(message) {
+        if !isCopyProtected, messages.contains(where: rgCanCorrectAds) {
             rgCollect(.adSample, .action(ContextMenuActionItem(text: (rgWasAdFiltered ? "AdSamples.OriginalAction" : "AdSamples.Action").i18n(chatPresentationInterfaceState.strings.rgLanguageCode), icon: { theme in
                 generateTintedImage(image: UIImage(systemName: "text.badge.checkmark"), color: theme.contextMenu.primaryColor)
             }, action: { _, dismiss in
                 dismiss(.default)
-                if let controller = rgAdSampleController(context: context, message: message) { controllerInteraction.navigationController()?.pushViewController(controller) }
+                if let controller = rgAdSampleController(context: context, messages: messages) { controllerInteraction.navigationController()?.pushViewController(controller) }
             })))
         }
 
