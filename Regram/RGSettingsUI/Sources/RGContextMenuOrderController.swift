@@ -184,6 +184,8 @@ private func rgContextMenuItemTitle(_ id: RGContextMenuItemId, strings: Presenta
         return "ContextMenu.importSettings".i18n(lang)
     case .addFilter:
         return "MessageFilter.AddToFilter".i18n(lang)
+    case .adSample:
+        return "ContextMenu.adSample".i18n(lang)
     case .retry:
         return strings.Conversation_MessageDialogRetry
     case .json:
