@@ -4511,21 +4511,19 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             }
         }
         var maxMessage = chatHistoryMaxVisibleReadIndex(rows: rows, topInset: self.insets.top, lastMessageId: lastMessageId, isThread: self.chatLocation.threadId != nil)
-        // MARK: Regram — include only the trailing filtered messages when the newest history is on screen.
+        // MARK: Regram — legacy and AI-hidden tails share the same read boundary. Never
+        // cross a normal/unclassified row, a history hole, search results or another topic.
         if let historyView = (self.listView.opaqueTransactionState as? ChatHistoryTransactionOpaqueState)?.historyView,
+           self.tag == nil, let peerId = self.chatLocation.peerId,
            historyView.originalView.laterId == nil, !historyView.originalView.holeLater,
-           self.isScrollAtBottomPosition {
+           !historyView.originalView.isLoading,
+           self.isScrollAtBottomPosition || (!historyView.rgHasVisibleHistoryMessages && historyView.rgFilteredOutCount > 0) {
             let accountPeerId = self.context.account.peerId
             let filter = RGContentFilterState(accountPeerId: accountPeerId)
-            if !filter.isEmpty {
-                for entry in historyView.originalView.entries.reversed() {
-                    let message = entry.message
-                    if let maxMessage, message.index <= maxMessage { break }
-                    guard filter.shouldHide(message: message) else { break }
-                    if !message.flags.intersection(.IsIncomingMask).isEmpty, maxMessage == nil || maxMessage! < message.index {
-                        maxMessage = message.index
-                    }
-                }
+            let messages = historyView.originalView.entries.map(\.message)
+            let hiddenAds = RGAdFilterSession.get(self.context).hiddenMessageIds(in: messages, accountPeerId: accountPeerId)
+            maxMessage = rgReadIndexIncludingFilteredTail(messages: messages, peerId: peerId, threadId: self.chatLocation.threadId, visibleIndex: maxMessage) { message in
+                hiddenAds.contains(message.id) || (!filter.isEmpty && filter.shouldHide(message: message))
             }
         }
         if let maxMessage {
@@ -4558,9 +4556,12 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
             return
         }
         let filter = RGContentFilterState(accountPeerId: self.context.account.peerId)
-        guard !filter.isEmpty else { return }
-        let messageIds = rgFilteredMentionIdsToRead(messages: historyView.originalView.entries.map(\.message), peerId: peerId, threadId: self.chatLocation.threadId, readThrough: index, isHidden: { message in
-            filter.shouldHide(message: EngineMessage(message))
+        // MARK: Regram — AI-hidden replies/album members also have no node to consume @ tags.
+        let messages = historyView.originalView.entries.map(\.message)
+        let hiddenAds = RGAdFilterSession.get(self.context).hiddenMessageIds(in: messages, accountPeerId: self.context.account.peerId)
+        guard !filter.isEmpty || !hiddenAds.isEmpty else { return }
+        let messageIds = rgFilteredMentionIdsToRead(messages: messages, peerId: peerId, threadId: self.chatLocation.threadId, readThrough: index, isHidden: { message in
+            hiddenAds.contains(message.id) || (!filter.isEmpty && filter.shouldHide(message: EngineMessage(message)))
         })
         if !messageIds.isEmpty {
             self.context.account.viewTracker.updateMarkMentionsSeenForMessageIds(messageIds: messageIds)
@@ -5133,6 +5134,10 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 } else if case .empty(.topic) = loadState, let entry = transition.historyView.originalView.entries.first {
                     strongSelf.updateMaxVisibleReadIncomingMessageIndex(entry.message.index)
                 }
+
+                // MARK: Regram — removing the final ad can leave an empty list without a new
+                // scroll-offset event. Read only the applied visible/fully hidden latest tail.
+                strongSelf.updateMaxVisibleReadIncomingMessageIndexFromVisibleItems()
                 
                 if !strongSelf.didSetInitialData {
                     strongSelf.didSetInitialData = true

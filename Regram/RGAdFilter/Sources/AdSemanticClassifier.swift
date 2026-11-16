@@ -34,8 +34,7 @@ public final class RGAdSemanticClassifier {
     private let resourceDirectory: URL?
     private var loaded: Loaded?
     private var retryAfter: TimeInterval = 0
-    private var scores: [String: Double] = [:]
-    private var order: [String] = []
+    private var scores = RGAdBoundedCache<String, Double>(countLimit: 2048, costLimit: 2 * 1024 * 1024)
 
     public init(resourceDirectory: URL? = nil) { self.resourceDirectory = resourceDirectory }
 
@@ -98,9 +97,15 @@ public final class RGAdSemanticClassifier {
             guard score.isFinite, (0...1).contains(score) else { throw RGAdFilterError.invalidPrediction }
             minimum = min(minimum, score)
         }
-        if order.count >= 2048 { scores.removeValue(forKey: order.removeFirst()) }
-        order.append(key); scores[key] = minimum
+        scores.insert(minimum, for: key, cost: key.utf8.count * 2 + 128)
         return minimum
+    }
+
+    /// Only use for actual memory pressure, off the UI thread. Normal navigation keeps
+    /// the model warm so reclaiming memory does not cause repeated loads and extra heat.
+    public func reduceMemoryPressure() {
+        lock.lock(); defer { lock.unlock() }
+        scores.removeAll(); loaded = nil
     }
 
     /// Public for the same production engine's conversion and physical-device regression harness.
@@ -179,6 +184,19 @@ public final class RGAdSemanticClassifier {
                 if !wholeLanguageSupported && !supportsLanguage(source.substring(with: block.nsRange)) { continue }
                 if let score = try probability(source.substring(with: block.nsRange), using: value) { blockScores[block] = score }
             }
+            // One complete, strongly commercial block already satisfies the whole-card
+            // path below. Without quoted/code content, menus or opaque actions, scoring
+            // each sentence cannot supply its independently normal-block veto. Reuse the
+            // full-block result instead of repeating those model windows.
+            if wholeLanguageSupported, blocks.count == 1, let block = blocks.first,
+               let score = blockScores[block], score >= max(0.999, value.threshold),
+               !substantive.isEmpty, navigation.isEmpty,
+               !input.entities.contains(where: { [.code, .quote].contains($0.kind) }),
+               input.buttons.flatMap({ $0 }).allSatisfy({ RGAdFilter.normalizedTarget($0.target) != nil }),
+               ProcessInfo.processInfo.systemUptime <= deadline {
+                return RGAdSemanticResult(predictions: [RGAdPrediction(range: RGAdRange(0, source.length), confidence: score)],
+                    buttonIds: Set(input.buttons.flatMap({ $0 }).map(\.id)), threshold: value.threshold, entireMessage: true)
+            }
             // Several independently normal blocks must not become a whole advertisement just
             // because their combined text contains a short sponsorship footer.
             if blockScores.count >= 2, blockScores.values.allSatisfy({ $0 <= 0.2 }) { hasContent = true }
@@ -210,6 +228,19 @@ public final class RGAdSemanticClassifier {
                     // of the following body to agree before removing a lead sentence.
                     let lead = RGAdRange(range.lower, blocks.count >= 2 ? blocks[1].upper : substantive[1].upper)
                     contextualLead = (try probability(source.substring(with: lead.nsRange), using: value) ?? 0) >= value.threshold
+                    // A linked sponsor can precede an otherwise normal welcome/article.
+                    // Independently strong text and action to the exact same destination
+                    // establish that first line without borrowing the following body's intent.
+                    if !contextualLead, score >= max(0.99, value.threshold),
+                       let reference = input.entities.first(where: { entity in
+                           entity.kind == .link && range.contains(entity.range)
+                               && RGAdTokenizer.normalize(source.substring(with: entity.range.nsRange)) == RGAdTokenizer.normalize(text)
+                       }), let target = RGAdFilter.normalizedTarget(reference.value) {
+                        for button in input.buttons.flatMap({ $0 }) where RGAdFilter.normalizedTarget(button.target) == target {
+                            guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
+                            if (try probability(button.title, using: value) ?? 0) >= max(0.99, value.threshold) { contextualLead = true; break }
+                        }
+                    }
                 }
                 // A sentence about prices/payments may resemble a solicitation in isolation.
                 // Its complete paragraph must agree before any sentence can be cut.
@@ -230,7 +261,7 @@ public final class RGAdSemanticClassifier {
                 // preserve a standalone descriptive reference despite its isolated score.
                 // Bare destinations, short menu items and long promotional paragraphs keep
                 // their existing evaluation paths.
-                if let score, score >= value.threshold, (4...48).contains(length), (length >= 12 || contextualBlock <= 0.2),
+                if let score, score >= value.threshold, (4...48).contains(length), (length >= 12 || contextualBlock <= 0.2 || score < 0.99),
                    !navigation.contains(range), blocks.count > 1, let blockIndex,
                    let reference = input.entities.first(where: { entity in
                        entity.kind == .link && range.contains(entity.range)
@@ -357,6 +388,33 @@ public final class RGAdSemanticClassifier {
                     }
                 }
             }
+            // A short sponsorship invitation may be unlinked while its adjacent menu
+            // supplies the destinations. Require the complete block, every meaningful
+            // sentence, two already classified menu items and their joint text to agree.
+            // Quotes/code and a normal sentence anywhere in that block remain protected.
+            for (index, block) in blocks.enumerated() where index > 0 && index + 1 < blocks.count {
+                guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
+                guard let score = blockScores[block], score >= max(0.99, value.threshold),
+                      !input.entities.contains(where: { [.code, .quote].contains($0.kind) && $0.range.intersects(block) }),
+                      let menu = navigationRows.first(where: { blocks[index + 1].contains($0.key) })?.value else { continue }
+                let commercialMenu = menu.filter { unit in predictions.contains(where: { $0.range.contains(unit) && $0.confidence >= max(0.99, value.threshold) }) }
+                guard commercialMenu.count >= 2 else { continue }
+                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+                guard !units.isEmpty, !units.contains(where: { navigation.contains($0) }) else { continue }
+                var minimum = score
+                for unit in units {
+                    guard ProcessInfo.processInfo.systemUptime <= deadline,
+                          let part = try probability(source.substring(with: unit.nsRange), using: value) else { minimum = 0; break }
+                    minimum = min(minimum, part)
+                    if minimum < value.threshold { break }
+                }
+                if minimum >= value.threshold, ProcessInfo.processInfo.systemUptime <= deadline {
+                    let joint = source.substring(with: block.nsRange) + "\n" + commercialMenu.map { source.substring(with: $0.nsRange) }.joined(separator: " ")
+                    if let contextual = try probability(joint, using: value), contextual >= max(0.99, value.threshold) {
+                        predictions.append(RGAdPrediction(range: block, confidence: min(minimum, contextual)))
+                    }
+                }
+            }
             // Telegram blockquotes are also used to style sponsorship footers. Only treat a
             // complete quoted block as commercial when every substantive line agrees, two
             // adjacent menu links independently promote it, and a trained, explicitly framed
@@ -426,6 +484,7 @@ public final class RGAdSemanticClassifier {
             // A whole promotional card is hidden only when its complete text agrees and there
             // is no substantive preserved sentence. A movie/news body vetoes this decision.
             var entireMessage = false
+            var normalIntroduction = false
             var projectionThreshold = value.threshold
             let hasBodyBeyondNavigation = navigation.isEmpty || substantive.contains(where: { !navigation.contains($0) })
             if !hasContent, !substantive.isEmpty, hasBodyBeyondNavigation, ProcessInfo.processInfo.systemUptime <= deadline {
@@ -441,8 +500,21 @@ public final class RGAdSemanticClassifier {
                     projectionThreshold = min(value.threshold, 0.99)
                 }
                 if whole >= max(0.99, projectionThreshold), ProcessInfo.processInfo.systemUptime <= deadline {
-                    predictions.append(RGAdPrediction(range: RGAdRange(0, input.text.utf16.count), confidence: whole))
-                    entireMessage = true
+                    // Release notes can split a normal title, version and changes into
+                    // short blocks. A jointly normal introduction vetoes a whole-card cut,
+                    // even when a sponsor footer dominates that score. Only score this
+                    // prefix when it can prevent deletion, avoiding extra work on normal posts.
+                    let prefixBlocks = blocks.prefix { (blockScores[$0] ?? 1) <= 0.2 && hasSemanticWords($0) }
+                    if prefixBlocks.count >= 3, let first = prefixBlocks.first, let last = prefixBlocks.last {
+                        let prefix = source.substring(with: RGAdRange(first.lower, last.upper).nsRange)
+                        if RGAdTokenizer.normalize(prefix).unicodeScalars.filter({ CharacterSet.alphanumerics.contains($0) }).count >= 24 {
+                            normalIntroduction = (try probability(prefix, using: value) ?? 1) <= 0.2
+                        }
+                    }
+                    if !normalIntroduction, ProcessInfo.processInfo.systemUptime <= deadline {
+                        predictions.append(RGAdPrediction(range: RGAdRange(0, input.text.utf16.count), confidence: whole))
+                        entireMessage = true
+                    }
                 }
             }
             var buttons = Set<String>()
@@ -457,7 +529,7 @@ public final class RGAdSemanticClassifier {
             // and no confidently normal body. Mixed menus, quotes and normal sharing keep
             // their own content even when an unrelated promotional button is removed.
             let actions = input.buttons.flatMap { $0 }
-            if !entireMessage, !actions.isEmpty, actions.count <= 4,
+            if !entireMessage, !normalIntroduction, !actions.isEmpty, actions.count <= 4,
                (4...64).contains(RGAdTokenizer.normalize(input.text).count),
                !input.entities.contains(where: { [.code, .quote].contains($0.kind) }),
                actions.allSatisfy({ RGAdFilter.normalizedTarget($0.target) != nil && buttons.contains($0.id) }),

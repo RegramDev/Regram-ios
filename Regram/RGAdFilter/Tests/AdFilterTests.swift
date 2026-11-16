@@ -13,6 +13,73 @@ final class AdFilterTests: XCTestCase {
     }
     private let ad = "0充值，免费体验，中奖可提现 → @promotion_user"
 
+    func testAdvertisingMajorityRemovesOrphanLinksAndURLActions() throws {
+        let body = "精选套餐限时优惠，现在购买即可享受专属折扣和额外权益。\n"
+        let text = body + "\nhttps://example.org/offer\n@offer_contact\n立即访问\n"
+        let input = RGAdInput(text: text, entities: [entity(text, "https://example.org/offer", kind: .link),
+            entity(text, "@offer_contact"), entity(text, "立即访问", kind: .link, value: "https://example.org/join")],
+            buttons: [[RGAdButton(id: "other", title: "入口", target: "https://example.org/join")]], hasMedia: true)
+        let semantic = RGAdSemanticResult(predictions: [RGAdPrediction(range: RGAdRange(0, body.utf16.count), confidence: 1)], threshold: 0.98)
+        let result = try RGAdPolicy.project(input, semantic: semantic)
+        XCTAssertEqual(result.disposition, .hide)
+        XCTAssertTrue(result.buttons.isEmpty)
+        XCTAssertTrue(result.entities.isEmpty)
+        XCTAssertEqual(try RGAdFilter.project(input, confirmedRanges: [RGAdRange(0, body.utf16.count)], inferButtons: false).buttons, input.buttons)
+        XCTAssertTrue(try RGAdFilter.project(input, confirmedRanges: [RGAdRange(0, body.utf16.count)], inferButtons: false).text.contains("https://example.org/offer"))
+    }
+
+    func testLongAdKeepsNormalBodyAndItsResources() throws {
+        let normal = "剧集更新与播放说明。\nhttps://example.org/play\n\n"
+        let ad = "本店全新套餐优惠上线，现在订购可以享受长期折扣，还可以联系客服定制服务，欢迎访问并了解全部价格。\n"
+        let text = normal + ad + "https://example.org/offer\n"
+        let input = RGAdInput(text: text, entities: [entity(text, "https://example.org/play", kind: .link), entity(text, "https://example.org/offer", kind: .link)], hasMedia: true)
+        let result = try RGAdFilter.project(input, confirmedRanges: [RGAdRange(normal.utf16.count, (normal + ad).utf16.count)])
+        XCTAssertEqual(result.text, normal)
+        XCTAssertEqual(result.disposition, .trim)
+        XCTAssertEqual(result.entities.count, 1)
+        XCTAssertEqual(result.entities[0].value, "https://example.org/play")
+    }
+
+    func testAdvertisingRatioDoesNotCountURLLengthAndPreservesAmbiguousReferences() throws {
+        let ad = "本店的精选套餐现在开始订购享受折扣。\n"
+        let normal = "这是一段详细的正常使用说明，介绍安装、配置以及遇到问题时的解决方法。\n"
+        let hugeURL = "https://example.org/" + String(repeating: "a", count: 600)
+        let text = normal + ad + hugeURL
+        let input = RGAdInput(text: text, entities: [entity(text, hugeURL, kind: .link)])
+        let projected = try RGAdFilter.project(input, confirmedRanges: [RGAdRange(normal.utf16.count, (normal + ad).utf16.count)])
+        XCTAssertEqual(projected.text, normal + hugeURL)
+        let dominant = String(repeating: ad, count: 5)
+        for kind in [RGAdEntity.Kind.quote, .code] {
+            let protected = RGAdInput(text: dominant + hugeURL, entities: [entity(dominant + hugeURL, hugeURL, kind: .link), entity(dominant + hugeURL, hugeURL, kind: kind)])
+            XCTAssertTrue(try RGAdFilter.project(protected, confirmedRanges: [RGAdRange(0, dominant.utf16.count)]).text.contains(hugeURL))
+        }
+        let adjacent = dominant + "https://example.org/docs\n" + normal
+        let guarded = RGAdInput(text: adjacent, entities: [entity(adjacent, "https://example.org/docs", kind: .link)])
+        XCTAssertEqual(try RGAdFilter.project(guarded, confirmedRanges: [RGAdRange(0, dominant.utf16.count)]).text, "https://example.org/docs\n" + normal)
+    }
+
+    func testReviewedNormalActionsAndOpaqueActionsSurviveMajorityCleanup() throws {
+        let body = "现在订购本店精选套餐，超值优惠限时开放，欢迎了解具体服务。\n"
+        let text = body + "https://example.org/docs"
+        let input = RGAdInput(text: text, entities: [entity(text, "https://example.org/docs", kind: .link)], buttons: [[
+            RGAdButton(id: "keep", title: "官方说明", target: "https://example.org/docs"), RGAdButton(id: "opaque", title: "验证")]])
+        let result = try RGAdFilter.project(input, confirmedRanges: [RGAdRange(0, body.utf16.count)], preservedButtonIds: ["keep"])
+        XCTAssertEqual(result.text, "https://example.org/docs")
+        XCTAssertEqual(result.buttons, input.buttons)
+    }
+
+    func testPaddedCouponCodeDoesNotProtectWholeCommercialCard() throws {
+        let text = "购买套餐限时优惠\n优惠码：9999\n\n \n"
+        let entities = [entity(text, "9999\n\n", kind: .code), entity(text, " \n", kind: .code)]
+        let result = try RGAdFilter.project(RGAdInput(text: text, entities: entities, hasMedia: true),
+            predictions: [RGAdPrediction(range: RGAdRange(0, text.utf16.count), confidence: 1)], entireMessageIsAd: true)
+        XCTAssertEqual(result.disposition, .hide)
+        let code = "let price = 20\nprint(price)"
+        let guarded = text + code
+        XCTAssertNotEqual(try RGAdFilter.project(RGAdInput(text: guarded, entities: [entity(guarded, code, kind: .code)]),
+            predictions: [RGAdPrediction(range: RGAdRange(0, guarded.utf16.count), confidence: 1)], entireMessageIsAd: true).disposition, .hide)
+    }
+
     func testAuthorDisclosureHidesCompleteCardAndMediaWithoutModel() throws {
         for tag in RGAdDisclosure.tags.map({ "#" + $0 }) + ["#AD", "#Ads", "#Sponsored", "＃广告"] {
             for text in [tag + "\n\n产品服务介绍\n\n多个功能和价格说明", "产品服务介绍\n\n多个功能和价格说明\n\n🥰 #产品 " + tag] {
@@ -471,6 +538,7 @@ final class AdFilterTests: XCTestCase {
         let reopened = RGAdSampleStore(accountDirectory: storage.directory.deletingLastPathComponent())
         var records = try reopened.load()
         XCTAssertEqual(records.count, 1)
+        XCTAssertTrue(try reopened.load(reviewedOnly: true).isEmpty, "Inference must not retain the pending sample library")
         XCTAssertNil(records[0].reviewedAt)
         XCTAssertNotNil(records[0].detection)
         XCTAssertEqual(records[0].input.text, text)
@@ -490,6 +558,9 @@ final class AdFilterTests: XCTestCase {
         let edited = RGAdInput(text: text + "！", peerId: 42)
         try reopened.recordDetection(input: edited, messageKey: "42:1", mediaKinds: [], mediaIdentity: "", projection: RGAdFilter.project(edited, confirmedRanges: [cut]))
         XCTAssertEqual(try reopened.load().count, 2)
+        XCTAssertEqual(try reopened.load(reviewedOnly: true).count, 1)
+        try reopened.recordDetection(input: edited, messageKey: "42:1", mediaKinds: [], mediaIdentity: "", projection: RGAdFilter.project(edited, confirmedRanges: [cut]))
+        XCTAssertEqual(try reopened.load().count, 2, "Reviewed-only loading must keep the full idempotency index")
         XCTAssertEqual(String(decoding: try reopened.export(trainingOnly: true), as: UTF8.self).split(separator: "\n").count, 1)
     }
 

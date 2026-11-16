@@ -1382,12 +1382,12 @@
 
 /* Local ad filtering and explicit corrections */
 "ContextMenu.adSample" = "纠正广告过滤";
-"AdSamples.Title" = "广告过滤与样本";
+"AdSamples.Title" = "ReSieve";
 "AdSamples.Action" = "标记广告 / 纠正过滤";
 "AdSamples.OriginalAction" = "查看原文 / 纠正过滤";
-"AdSamples.Enabled" = "清理频道与群聊广告";
-"AdSamples.AutomaticNotice" = "在设备上使用内置 AI 模型识别中文广告文字和按钮，保留正常内容；高置信度的整条广告会隐藏。消息不会上传。频道和群聊资料页可单独关闭。";
-"AdSamples.Records" = "广告样本";
+"AdSamples.Enabled" = "ReSieve";
+"AdSamples.AutomaticNotice" = "ReSieve 识别中文广告文字和按钮，保留正常内容；判定为整条推广时，连同附带媒体隐藏。消息不会上传。频道和群聊资料页可单独关闭。";
+"AdSamples.Records" = "过滤记录与纠错";
 "AdSamples.LibraryNotice" = "自动命中的广告会记录为“待确认”，重复浏览不重复收集。长按漏判消息，选择“标记广告 / 纠正过滤”可手动添加；打开记录可核对原文、片段和按钮，左滑删除。";
 "AdSamples.LocalNotice" = "记录按账号保存在本机，不进入系统备份，也不自动上传。最多保留 10,000 条，满后暂停收集；可导出并删除旧记录。公共模型改进随应用更新分发。";
 "AdSamples.Normal" = "正常";
@@ -1419,10 +1419,10 @@
 "AdSamples.EmptyText" = "过滤后无剩余文字";
 "AdSamples.None" = "无";
 
-"AdSamples.PerChat.Title" = "智能广告过滤";
-"AdSamples.PerChat.Notice" = "广告过滤保留正常正文；关键词过滤按规则隐藏整条消息。广告过滤需在“消息过滤器”中开启。";
+"AdSamples.PerChat.Title" = "ReSieve";
+"AdSamples.PerChat.Notice" = "ReSieve 保留正常正文；关键词规则会隐藏整条消息。请先在“消息过滤器”中启用 ReSieve。";
 
-"AdSamples.ModelReady" = "本机 AI 已就绪";
+"AdSamples.ModelReady" = "已开启 · 本机识别";
 "AdSamples.ModelUnavailable" = "本机 AI 暂不可用，重新进入此页可重试";
 
 "AdSamples.Pending" = "自动识别 · 待确认";
@@ -1434,3 +1434,9 @@
 "AdSamples.ExportTrainingNotice" = "只导出已由你确认、且没有“待定”标注的记录。包含原文、链接和按钮，不含媒体文件，不会自动上传。";
 
 "AdSamples.RecordingPaused" = "部分广告未能保存。请检查存储空间，或导出并删除部分旧记录后继续浏览。";
+
+"AdSamples.ModelDisabled" = "未启用";
+
+"AdSamples.AutomaticSection" = "自动广告过滤";
+
+"AdSamples.EntryNotice" = "在本机识别频道和群聊中的广告，保留正常正文。可查看过滤记录、纠正误判。下方关键词规则独立生效。";

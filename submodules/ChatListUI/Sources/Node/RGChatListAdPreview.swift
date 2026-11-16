@@ -48,18 +48,21 @@ final class RGChatListAdPreview {
     }
 
     private func sourceMessages(_ update: ChatListNodeViewUpdate) -> [Message] {
-        let items = update.list.items + update.list.additionalItems.map(\.item)
-        var sources: [MessageId: Message] = [:]
+        let items = (update.list.items + update.list.additionalItems.map(\.item)).sorted { $0.index > $1.index }
+        var sources: [Message] = [], seen = Set<MessageId>()
+        func append(_ message: EngineMessage) {
+            if seen.insert(message.id).inserted { sources.append(message._asMessage()) }
+        }
+        // Top previews first, in list order. Dictionary iteration and older fallback rows
+        // must not decide which visible conversation receives a verdict first.
+        for item in items { for message in item.messages { append(message) } }
+        for group in update.list.groupItems { if let message = group.topMessage { append(message) } }
         for item in items {
             if case let .chatList(peerId) = item.id, let cached = recent[peerId], cached.top == item.messages {
-                for message in cached.messages.prefix(cached.count) { sources[message.id] = message._asMessage() }
+                for message in cached.messages.prefix(cached.count) { append(message) }
             }
-            for message in item.messages { sources[message.id] = message._asMessage() }
         }
-        for group in update.list.groupItems {
-            if let message = group.topMessage { sources[message.id] = message._asMessage() }
-        }
-        return Array(sources.values)
+        return sources
     }
 
     private func prepare(_ update: ChatListNodeViewUpdate) -> Signal<Void, NoError> {

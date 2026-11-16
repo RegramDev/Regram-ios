@@ -204,7 +204,7 @@ struct MessageFilterView: View {
 
     var bodyContent: some View {
             RGSettingsList {
-                RGSettingsSection {
+                RGSettingsSection(header: Text("AdSamples.AutomaticSection".i18n(lang)), footer: Text("AdSamples.EntryNotice".i18n(lang))) {
                     Button(action: openAdSamples) {
                         HStack { Text("AdSamples.Title".i18n(lang)); Spacer(); Image(systemName: "chevron.right").rgSecondaryText() }
                             .contentShape(Rectangle())

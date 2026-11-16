@@ -24,6 +24,18 @@ import Foundation
     }
 
     static func main() {
+        let read = message(1, hidden: false), ad = message(2), newestAd = message(4)
+        func tail(_ messages: [Message], visible: MessageIndex? = read.index, thread: Int64? = nil) -> MessageIndex? {
+            rgReadIndexIncludingFilteredTail(messages: messages, peerId: peer, threadId: thread, visibleIndex: visible, isHidden: hidden)
+        }
+        expect(tail([read, ad, newestAd]) == newestAd.index, "Read through a fully hidden trailing run after the visible message")
+        expect(tail([read, ad, message(3, hidden: false), newestAd]) == read.index, "A newest ad must not jump over unread normal content")
+        expect(tail([ad, newestAd], visible: nil) == newestAd.index, "An entirely hidden latest window has no visible node but can be read")
+        expect(tail([read, ad], visible: nil) == nil, "No visible read anchor cannot cross a normal message")
+        expect(tail([read, message(2, threadId: 7)], thread: 8) == read.index, "Do not cross topic boundaries")
+        expect(tail([read, message(2, peerId: PeerId(namespace: Namespaces.Peer.CloudChannel, value: 200))]) == read.index, "Do not cross conversation boundaries")
+        expect(tail([read, message(2, namespace: Namespaces.Message.Local)]) == read.index, "Pending/local messages are not a cloud read boundary")
+        expect(tail([read, message(2, incoming: false)]) == read.index, "Outgoing tails do not create incoming read receipts")
         let blocked = message(2), visible = message(3, hidden: false), later = message(4)
         let otherPeer = message(1, peerId: PeerId(namespace: Namespaces.Peer.CloudChannel, value: 200))
         let otherTopic = message(1, threadId: 20)
@@ -45,6 +57,11 @@ import Foundation
         expect(mixed.postbox.storage.messages[blocked.id]!.tags.contains(.unseenPersonalMessage), "Regression fixture must retain tags while server acknowledgement is pending")
         expect(next(mixed) == [.result(visible.id)], "A second tap while offline must not get stuck on the pending hidden reply")
         expect(mixed.bulkAcknowledgements == 0 && mixed.postbox.storage.summaryResets == 0, "Skipping filtered messages must not bulk-clear remaining visible mentions")
+
+        let aiOnly = seed([blocked, visible, later])
+        let aiResult = rgEarliestVisibleUnseenPersonalMentionMessage(account: aiOnly, peerId: peer, threadId: nil, isHidden: { _ in false }, preparedHidden: { .single(hidden($0)) }).values()
+        expect(aiResult == [.result(visible.id)], "An asynchronously prepared AI verdict skips the hidden target even without keyword rules")
+        expect(aiOnly.viewTracker.acknowledged == [blocked.id], "AI mention navigation preserves the later unread targets")
 
         let many = seed(allHidden + [message(13, hidden: false), message(14)])
         expect(next(many) == [.result(message(13).id)], "Navigation must pass more filtered replies than the four-entry lookup page")

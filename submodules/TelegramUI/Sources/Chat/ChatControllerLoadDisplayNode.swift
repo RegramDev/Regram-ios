@@ -1412,14 +1412,22 @@ extension ChatControllerImpl {
             if let strongSelf = self, strongSelf.isNodeLoaded, let peerId = strongSelf.chatLocation.peerId {
                 // MARK: Regram — dismiss hidden mentions and navigate to the next visible reply.
                 let account = strongSelf.context.account
-                let signal: Signal<EarliestUnseenPersonalMentionMessageResult, NoError>
-                if RGContentFilterState(accountPeerId: account.peerId).isEmpty {
-                    signal = strongSelf.context.engine.messages.earliestUnseenPersonalMentionMessage(peerId: peerId, threadId: strongSelf.chatLocation.threadId)
-                } else {
-                    signal = rgEarliestVisibleUnseenPersonalMentionMessage(account: account, peerId: peerId, threadId: strongSelf.chatLocation.threadId, isHidden: { message in
-                        RGContentFilterState(accountPeerId: account.peerId).shouldHide(message: EngineMessage(message))
-                    })
-                }
+                let adFilter = RGAdFilterSession.get(strongSelf.context)
+                let signal = rgEarliestVisibleUnseenPersonalMentionMessage(account: account, peerId: peerId, threadId: strongSelf.chatLocation.threadId, isHidden: { message in
+                    RGContentFilterState(accountPeerId: account.peerId).shouldHide(message: EngineMessage(message))
+                        || adFilter.shouldHide(message, accountPeerId: account.peerId)
+                }, preparedHidden: { message in
+                    // MARK: Regram — an @ target may be outside the loaded history. Prepare
+                    // it off-thread before navigating; cancelling navigation cancels its work.
+                    return Signal { subscriber in
+                        let scope = RGAdFilterSession.Scope.pinnedView(UUID())
+                        let request = adFilter.prepare([message], accountPeerId: account.peerId, scope: scope) {
+                            subscriber.putNext(adFilter.shouldHide(message, accountPeerId: account.peerId, scope: scope))
+                            subscriber.putCompletion()
+                        }
+                        return ActionDisposable { request.cancel(); adFilter.release(scope: scope) }
+                    }
+                })
                 strongSelf.navigationActionDisposable.set((signal |> deliverOnMainQueue).startStrict(next: { result in
                     if let strongSelf = self {
                         switch result {

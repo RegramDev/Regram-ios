@@ -2,6 +2,47 @@ import XCTest
 @testable import RGAdFilter
 
 final class AdWorkTests: XCTestCase {
+    func testCancelledPausedWorkReleasesCapturedWindow() {
+        final class Window {}
+        let queue = DispatchQueue(label: "ad-cancelled-memory-test")
+        let scheduler = RGAdWorkScheduler(queue: queue)
+        let request = RGAdWorkRequest()
+        weak var retained: Window?
+        queue.sync {
+            scheduler.updateConditions(RGAdWorkConditions(foreground: false))
+            let window = Window(); retained = window
+            scheduler.enqueue(cancelled: { request.isCancelled }, step: { _ = window; return false }, onCancel: {})
+        }
+        XCTAssertNotNil(retained)
+        request.cancel()
+        queue.sync { scheduler.discardCancelled() }
+        XCTAssertNil(retained)
+    }
+
+    func testPinnedPriorityAdvancesWithoutStarvingOlderPreviews() {
+        let queue = DispatchQueue(label: "ad-priority-test")
+        let scheduler = RGAdWorkScheduler(queue: queue)
+        let done = expectation(description: "all priorities finish"); done.expectedFulfillmentCount = 3
+        var visits: [Int] = []
+        queue.async {
+            for priority in [0, 1, 2] {
+                var count = 0
+                scheduler.enqueue(priority: priority, cancelled: { false }, step: {
+                    visits.append(priority); count += 1
+                    if count == 8 { done.fulfill(); return true }; return false
+                }, onCancel: { XCTFail("unexpected cancellation") })
+            }
+        }
+        wait(for: [done], timeout: 3)
+        queue.sync {
+            XCTAssertEqual(visits.first, 2)
+            XCTAssertLessThanOrEqual(try! XCTUnwrap(visits.firstIndex(of: 0)), 3)
+            XCTAssertEqual(visits.filter { $0 == 0 }.count, 8)
+            XCTAssertEqual(visits.filter { $0 == 1 }.count, 8)
+            XCTAssertEqual(visits.filter { $0 == 2 }.count, 8)
+        }
+    }
+
     func testSharedBudgetAndFairProgressAcrossLists() {
         let queue = DispatchQueue(label: "ad-work-test")
         let scheduler = RGAdWorkScheduler(queue: queue)

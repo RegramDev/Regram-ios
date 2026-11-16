@@ -129,6 +129,10 @@ public enum RGAdFilter {
             ranges.append(paragraph)
             ranges = merge(ranges)
         }
+        // A mostly commercial message can leave bare links that have no meaning on their
+        // own. Use the surviving body to establish ownership, never the destination's host.
+        let orphanLinks = inferButtons ? orphanLinkRanges(input, removed: ranges, preservedButtonIds: preservedButtonIds) : nil
+        if let orphanLinks { ranges = merge(ranges + orphanLinks) }
         let remaining = complement(ranges, length: source.length)
         var text = ""
         var mappedEntities: [RGAdEntity] = []
@@ -162,6 +166,58 @@ public enum RGAdFilter {
         guard ProcessInfo.processInfo.systemUptime < deadline else { throw RGAdFilterError.budgetExceeded }
         return RGAdProjection(disposition: hide ? .hide : (changed ? .trim : .keep), text: text, entities: mappedEntities, buttons: buttons,
                               removedRanges: ranges, removedButtonIds: allButtons.map(\.id).filter { removedButtons.contains($0) }, hideLinkPreview: hidePreview)
+    }
+
+    private static func orphanLinkRanges(_ input: RGAdInput, removed: [RGAdRange], preservedButtonIds: Set<String>) -> [RGAdRange]? {
+        guard !removed.isEmpty else { return nil }
+        let lines = paragraphRanges(input.text), source = input.text as NSString
+        guard lines.count <= 128 else { return nil }
+        let protectedTargets = Set(input.buttons.flatMap { $0 }.compactMap { button in
+            preservedButtonIds.contains(button.id) ? normalizedTarget(button.target) : nil
+        })
+        func wordCount(_ range: RGAdRange) -> Int {
+            source.substring(with: range.nsRange).unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+        }
+        func uncovered(_ range: RGAdRange, by cuts: [RGAdRange]) -> [RGAdRange] {
+            complement(merge(cuts.compactMap { cut in
+                guard cut.intersects(range) else { return nil }
+                return RGAdRange(max(range.lower, cut.lower) - range.lower, min(range.upper, cut.upper) - range.lower)
+            }), length: range.upper - range.lower).map { RGAdRange($0.lower + range.lower, $0.upper + range.lower) }
+        }
+        var candidates = Set<Int>(), anchors: [Int: Bool] = [:]
+        var totalWords = 0, removedWords = 0
+        for (index, line) in lines.enumerated() {
+            let links = input.entities.filter { [.link, .mention].contains($0.kind) && line.contains($0.range) }
+            let protected = input.entities.contains { entity in
+                entity.range.intersects(line) && ([.code, .quote].contains(entity.kind)
+                    || ([.link, .mention, .customEmoji].contains(entity.kind) && !line.contains(entity.range)))
+            }
+            // Short linked labels and bare URLs/handles are navigation. Descriptive linked
+            // prose is still body text, and code/quotations cannot be inherited from an ad.
+            let linkOnly = !links.isEmpty && !protected && links.allSatisfy { entity in
+                entityTarget(entity, text: source) != nil && (normalizedTarget(source.substring(with: entity.range.nsRange)) != nil
+                    || wordCount(entity.range) <= 24)
+            } && uncovered(line, by: links.map(\.range)).allSatisfy { wordCount($0) == 0 }
+            if linkOnly {
+                if !links.contains(where: { entityTarget($0, text: source).map(protectedTargets.contains) ?? false }) { candidates.insert(index) }
+                else { anchors[index] = false }
+                continue
+            }
+            // URL lengths and tracking parameters must not change the advertising ratio.
+            let body = uncovered(line, by: links.filter { normalizedTarget(source.substring(with: $0.range.nsRange)) != nil }.map(\.range))
+            let total = body.reduce(0) { $0 + wordCount($1) }
+            let kept = body.flatMap { uncovered($0, by: removed) }.reduce(0) { $0 + wordCount($1) }
+            totalWords += total; removedWords += total - kept
+            if total > 0 || protected { anchors[index] = total > 0 && kept == 0 && !protected }
+        }
+        guard removedWords >= 12, totalWords > 0, removedWords * 5 >= totalWords * 3 else { return nil }
+        let positions = anchors.keys.sorted()
+        return candidates.sorted().compactMap { index in
+            let neighbors = [positions.last(where: { $0 < index }), positions.first(where: { $0 > index })].compactMap { $0 }
+            // A neighbouring normal paragraph owns its link even if a long ad follows it.
+            guard !neighbors.isEmpty, neighbors.allSatisfy({ anchors[$0] == true }) else { return nil }
+            return lines[index]
+        }
     }
 
     private static func matchRanges(_ rule: RGAdRule, text: String) -> [RGAdRange] {
@@ -288,7 +344,9 @@ public enum RGAdFilter {
     static func isInlineCodeLabel(_ entity: RGAdEntity, source: NSString) -> Bool {
         guard entity.kind == .code, entity.range.lower >= 0, entity.range.upper <= source.length,
               (1...32).contains(entity.range.upper - entity.range.lower) else { return false }
-        return source.substring(with: entity.range.nsRange).unicodeScalars.allSatisfy {
+        // Telegram formatting can include the spaces/newlines around a coupon. Empty
+        // formatting is layout, while internal whitespace/syntax still protects real code.
+        return source.substring(with: entity.range.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.allSatisfy {
             $0.isASCII && (CharacterSet.alphanumerics.contains($0) || "_-".unicodeScalars.contains($0))
         }
     }

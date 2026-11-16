@@ -31,6 +31,7 @@ public struct RGAdWorkConditions: Equatable {
 /// multiply the CPU budget. Pauses retain unfinished work without caching a "normal" verdict.
 public final class RGAdWorkScheduler {
     private struct Job {
+        let priority: Int
         let cancelled: () -> Bool
         let step: () -> Bool
         let onCancel: () -> Void
@@ -40,6 +41,7 @@ public final class RGAdWorkScheduler {
     private var jobs: [Job] = []
     private var scheduled: DispatchWorkItem?
     private var readyAt: TimeInterval = 0
+    private var prioritySteps = 0
     public init(queue: DispatchQueue) { self.queue = queue }
 
     public func updateConditions(_ value: RGAdWorkConditions) {
@@ -49,10 +51,16 @@ public final class RGAdWorkScheduler {
         schedule()
     }
 
-    public func enqueue(cancelled: @escaping () -> Bool, step: @escaping () -> Bool, onCancel: @escaping () -> Void) {
+    public func enqueue(priority: Int = 0, cancelled: @escaping () -> Bool, step: @escaping () -> Bool, onCancel: @escaping () -> Void) {
         pruneCancelled()
-        jobs.append(Job(cancelled: cancelled, step: step, onCancel: onCancel))
+        jobs.append(Job(priority: priority, cancelled: cancelled, step: step, onCancel: onCancel))
         schedule()
+    }
+
+    /// Release captured message windows even while the scheduler is paused/backgrounded.
+    public func discardCancelled() {
+        pruneCancelled()
+        if jobs.isEmpty { scheduled?.cancel(); scheduled = nil }
     }
 
     private func pruneCancelled() {
@@ -75,7 +83,13 @@ public final class RGAdWorkScheduler {
         guard !conditions.paused else { return }
         let start = ProcessInfo.processInfo.systemUptime
         while !jobs.isEmpty {
-            let job = jobs.removeFirst()
+            // Pinned/current content should not sit behind unrelated previews. Preserve
+            // round-robin order within each priority and service older work every fourth step.
+            let highest = jobs.map(\.priority).max() ?? 0
+            let preferred = jobs.firstIndex(where: { $0.priority == highest }) ?? 0
+            let index = prioritySteps >= 3 ? 0 : preferred
+            if index == 0 { prioritySteps = 0 } else { prioritySteps += 1 }
+            let job = jobs.remove(at: index)
             if job.cancelled() { job.onCancel() }
             else if !autoreleasepool(invoking: job.step) { jobs.append(job) }
             if ProcessInfo.processInfo.systemUptime - start >= 0.012 { break }

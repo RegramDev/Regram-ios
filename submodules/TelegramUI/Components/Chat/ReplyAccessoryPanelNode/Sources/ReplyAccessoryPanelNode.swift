@@ -23,6 +23,7 @@ import CompositeTextNode
 
 public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
     private let messageDisposable = MetaDisposable()
+    private let rgAdWork: RGAdFilterWorkScope // MARK: Regram — bounded preparation for the active draft preview.
     public let chatPeerId: EnginePeer.Id
     public let messageId: EngineMessage.Id
     public let quote: EngineMessageReplyQuote?
@@ -53,6 +54,8 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
         self.messageId = messageId
         self.quote = quote
         self.innerSubject = innerSubject
+        let rgAdSession = RGAdFilterSession.get(context)
+        self.rgAdWork = RGAdFilterWorkScope(session: rgAdSession, scope: .pinnedView(UUID()))
         
         self.context = context
         self.theme = theme
@@ -122,8 +125,11 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
             subscriber.putNext(RGSimpleSettings.shared.automaticallyRevealSpoilers)
             return ActionDisposable { NotificationCenter.default.removeObserver(observer) }
         } |> distinctUntilChanged
-        self.messageDisposable.set((combineLatest(context.account.postbox.messageView(messageId), rgSpoilerPreference)
-        |> deliverOnMainQueue).startStrict(next: { [weak self] messageView, rgRevealSpoilers in
+        // MARK: Regram — refresh display copies when the target verdict changes; keep the
+        // draft's original reply id/quote untouched for sending and explicit restoration.
+        let rgFilterUpdates = Signal<Void, NoError>.single(()) |> then(rgContentFiltersDidChange())
+        self.messageDisposable.set((combineLatest(context.account.postbox.messageView(messageId), rgSpoilerPreference, rgFilterUpdates)
+        |> deliverOnMainQueue).startStrict(next: { [weak self] messageView, rgRevealSpoilers, _ in
             if let strongSelf = self {
                 // MARK: Regram — reveal text and custom emoji together, remove the dust overlay.
                 strongSelf.textNode.displaySpoilers = rgRevealSpoilers
@@ -136,7 +142,11 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                     return
                 }
 
-                let message = messageView.message
+                var message = messageView.message
+                if let original = message, original.id.peerId == chatPeerId {
+                    strongSelf.rgAdWork.prepare([original], accountPeerId: context.account.peerId)
+                    message = rgAdSession.display(original, accountPeerId: context.account.peerId, scope: strongSelf.rgAdWork.scope)
+                }
 
                 var authorName = ""
                 var text = ""
@@ -321,7 +331,7 @@ public final class ReplyAccessoryPanelNode: AccessoryPanelNode {
                 
                 strongSelf.textNode.attributedText = messageText
                 
-                if let quote = strongSelf.quote {
+                if let quote = strongSelf.quote, message.map({ rgAdQuoteIsVisible(quote, in: $0) }) ?? true {
                     let textColor = strongSelf.theme.chat.inputPanel.primaryTextColor
                     let quoteText = stringWithAppliedEntities(trimToLineCount(quote.text, lineCount: 1), entities: quote.entities, baseColor: textColor, linkColor: textColor, baseFont: textFont, linkFont: textFont, boldFont: textFont, italicFont: textFont, boldItalicFont: textFont, fixedFont: textFont, blockQuoteFont: textFont, underlineLinks: false, message: message)
                     

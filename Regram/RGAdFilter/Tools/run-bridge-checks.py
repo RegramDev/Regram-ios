@@ -31,6 +31,18 @@ final class ReplyMarkupMessageAttribute: MessageAttribute {
     init(rows: [ReplyMarkupRow], flags: MarkupFlags, placeholder: String?) { self.rows = rows; self.flags = flags; self.placeholder = placeholder }
 }
 final class TranslationMessageAttribute: MessageAttribute {}
+struct EngineMessageReplyQuote {
+    let text: String; let offset: Int?
+    init(text: String, offset: Int?) { self.text = text; self.offset = offset }
+}
+final class ReplyMessageAttribute: MessageAttribute {
+    let messageId: MessageId; let threadMessageId: MessageId?; let quote: EngineMessageReplyQuote?
+    let isQuote: Bool; let innerSubject: Int?
+    init(messageId: MessageId, threadMessageId: MessageId? = nil, quote: EngineMessageReplyQuote? = nil, isQuote: Bool = false, innerSubject: Int? = nil) {
+        self.messageId = messageId; self.threadMessageId = threadMessageId; self.quote = quote; self.isQuote = isQuote; self.innerSubject = innerSubject
+    }
+}
+final class QuotedReplyMessageAttribute: MessageAttribute {}
 class Media { let id: Int64? = 1 }
 final class TelegramMediaFile: Media { let isVideo = false; let isVoice = false }
 final class TelegramMediaImage: Media {}
@@ -47,6 +59,7 @@ final class Message {
     var protected = false, containsSecretMedia = false, incoming = true
     var richText: String? = nil, adAttribute: String? = nil, activeEphemeralReplacementMessage: String? = nil
     var groupingKey: Int64? = nil
+    var associatedMessages: [MessageId: Message] = [:]
     init(id: Int32, text: String, attributes: [MessageAttribute] = [], media: [Media] = [], version: UInt32 = 1, peerValue: Int64 = 99) {
         let peer = PeerId(value: peerValue)
         self.id = MessageId(peerId: peer, id: id); self.text = text; self.attributes = attributes; self.media = media
@@ -55,10 +68,16 @@ final class Message {
     var textEntitiesAttribute: TextEntitiesMessageAttribute? { attributes.first { $0 is TextEntitiesMessageAttribute } as? TextEntitiesMessageAttribute }
     func isCopyProtected() -> Bool { protected }
     func effectivelyIncoming(_ peer: PeerId) -> Bool { incoming }
-    func withUpdatedText(_ text: String) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value) }
-    func withUpdatedAttributes(_ value: [MessageAttribute]) -> Message { Message(id: id.id, text: text, attributes: value, media: media, version: stableVersion, peerValue: id.peerId.value) }
-    func withUpdatedStableVersion(stableVersion: UInt32) -> Message { Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value) }
-    func withUpdatedMedia(_ value: [Media]) -> Message { Message(id: id.id, text: text, attributes: attributes, media: value, version: stableVersion, peerValue: id.peerId.value) }
+    private func preserving(_ copy: Message) -> Message {
+        copy.associatedMessages = associatedMessages; copy.peers = peers; copy.incoming = incoming; copy.groupingKey = groupingKey
+        copy.protected = protected; copy.containsSecretMedia = containsSecretMedia; copy.richText = richText
+        copy.adAttribute = adAttribute; copy.activeEphemeralReplacementMessage = activeEphemeralReplacementMessage; return copy
+    }
+    func withUpdatedText(_ text: String) -> Message { preserving(Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value)) }
+    func withUpdatedAttributes(_ value: [MessageAttribute]) -> Message { preserving(Message(id: id.id, text: text, attributes: value, media: media, version: stableVersion, peerValue: id.peerId.value)) }
+    func withUpdatedStableVersion(stableVersion: UInt32) -> Message { preserving(Message(id: id.id, text: text, attributes: attributes, media: media, version: stableVersion, peerValue: id.peerId.value)) }
+    func withUpdatedMedia(_ value: [Media]) -> Message { preserving(Message(id: id.id, text: text, attributes: attributes, media: value, version: stableVersion, peerValue: id.peerId.value)) }
+    func withUpdatedAssociatedMessages(_ value: [MessageId: Message]) -> Message { let copy = withUpdatedText(text); copy.associatedMessages = value; return copy }
 }
 final class AccountContext {
     struct Account { let basePath: String; let peerId = PeerId(value: 1) }
@@ -82,12 +101,60 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         while !condition() && Date() < until { RunLoop.current.run(until: Date().addingTimeInterval(0.01)) }
         precondition(condition(), "timed out at check line \(line)")
     }
-    static func settle() { RunLoop.current.run(until: Date().addingTimeInterval(0.15)) }
+    static func settle(_ duration: Double = 0.25) { RunLoop.current.run(until: Date().addingTimeInterval(duration)) }
     static func main() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
         let context = AccountContext(root.path), account = context.account.peerId
         let session = RGAdFilterSession.get(context)
+        // A completed pinned verdict must advance the pending one-second background refresh.
+        let urgent = Message(id: 30001, text: "服务套餐与购买说明\n#ad")
+        let notified = Box(false)
+        let notificationStart = ProcessInfo.processInfo.systemUptime
+        let urgentObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.contentFiltersDidChangeNotification, object: nil, queue: .main) { _ in
+            if session.shouldHide(urgent, accountPeerId: account, scope: .pinned) { notified.value = true }
+        }
+        session.prepare([urgent], accountPeerId: account, scope: .pinned)
+        spin { notified.value }
+        let urgentLatency = ProcessInfo.processInfo.systemUptime - notificationStart
+        precondition(urgentLatency < 0.7, "pinned result waited for the background refresh")
+        NotificationCenter.default.removeObserver(urgentObserver)
+        print("Pinned notification latency: \(Int(urgentLatency * 1000)) ms")
+        let replyTarget = Message(id: 31000, text: "商业套餐说明\n#ad", media: [TelegramMediaImage()])
+        let replyHeader = ReplyMessageAttribute(messageId: replyTarget.id)
+        let reply = Message(id: 31001, text: "这是对上条消息的正常讨论", attributes: [replyHeader, QuotedReplyMessageAttribute()], media: [TelegramMediaImage()])
+        reply.incoming = false; reply.associatedMessages[replyTarget.id] = replyTarget
+        let replyReady = Box(false)
+        session.prepare([reply], accountPeerId: account) { replyReady.value = true }; spin { replyReady.value }
+        let replyDisplay = session.display(reply, accountPeerId: account)
+        precondition(session.display(replyTarget, accountPeerId: account).media.isEmpty, "a hidden ad exposed its image through a secondary display path")
+        precondition(replyDisplay.text == reply.text && replyDisplay.media.count == 1 && !replyDisplay.incoming, "normal/outgoing reply was changed")
+        precondition(!replyDisplay.attributes.contains { $0 is ReplyMessageAttribute || $0 is QuotedReplyMessageAttribute }, "hidden reply target leaked through its preview")
+        precondition(rgAdOriginalMessage(replyDisplay) === reply && reply.attributes.contains { $0 is ReplyMessageAttribute }, "reply metadata was not recoverable")
+        precondition(session.display(replyDisplay, accountPeerId: account).stableVersion == replyDisplay.stableVersion, "reply display projection was applied twice")
+        RGSimpleSettings.shared.adFiltering = false
+        precondition(session.display(replyDisplay, accountPeerId: account) === reply, "disabling the filter did not restore the reply")
+        RGSimpleSettings.shared.adFiltering = nil
+        let replyMixedText = "正文说明。\n0充值，免费体验，中奖可提现 → @promotion_user\n正常尾部"
+        let replyMention = (replyMixedText as NSString).range(of: "@promotion_user")
+        let replyMixed = Message(id: 31002, text: replyMixedText, attributes: [TextEntitiesMessageAttribute(entities: [MessageTextEntity(range: replyMention.location..<NSMaxRange(replyMention), type: .Mention)])])
+        let adQuoteRange = (replyMixedText as NSString).range(of: "中奖可提现")
+        let quoteReply = Message(id: 31003, text: "正常回复", attributes: [ReplyMessageAttribute(messageId: replyMixed.id, quote: EngineMessageReplyQuote(text: "中奖可提现", offset: adQuoteRange.location), isQuote: true)])
+        quoteReply.associatedMessages[replyMixed.id] = replyMixed
+        replyReady.value = false; session.prepare([quoteReply], accountPeerId: account) { replyReady.value = true }; spin { replyReady.value }
+        let quoteDisplay = session.display(quoteReply, accountPeerId: account)
+        precondition((quoteDisplay.attributes.first { $0 is ReplyMessageAttribute } as? ReplyMessageAttribute)?.quote == nil, "explicit quote brought the deleted ad back")
+        precondition(quoteDisplay.associatedMessages[replyMixed.id]?.text.contains("正常尾部") == true && quoteDisplay.associatedMessages[replyMixed.id]?.text.contains("中奖") == false, "mixed reply did not retain only normal target content")
+        let normalQuoteRange = (replyMixedText as NSString).range(of: "正常尾部")
+        let normalQuote = Message(id: 31004, text: "正常回复", attributes: [ReplyMessageAttribute(messageId: replyMixed.id, quote: EngineMessageReplyQuote(text: "正常尾部", offset: normalQuoteRange.location), isQuote: true)])
+        normalQuote.associatedMessages[replyMixed.id] = replyMixed
+        precondition((session.display(normalQuote, accountPeerId: account).attributes.first { $0 is ReplyMessageAttribute } as? ReplyMessageAttribute)?.quote?.text == "正常尾部", "normal explicit quotation was discarded")
+        let unloadedReply = Message(id: 31005, text: "正常回复", attributes: [replyHeader])
+        precondition(session.display(unloadedReply, accountPeerId: account) === unloadedReply, "unloaded reply was guessed to be advertising")
+        let editedTarget = Message(id: replyTarget.id.id, text: "已修改为正常说明", version: 2)
+        let editedReply = Message(id: reply.id.id, text: reply.text, attributes: [replyHeader], version: 2)
+        editedReply.associatedMessages[editedTarget.id] = editedTarget
+        precondition(session.display(editedReply, accountPeerId: account) === editedReply, "stale target verdict hid an edited reply")
         let text = "剧名：春日旅程\n简介：正常正文。\n0充值，免费体验，中奖可提现 → @promotion_user"
         let range = (text as NSString).range(of: "@promotion_user")
         let entities = TextEntitiesMessageAttribute(entities: [MessageTextEntity(range: range.location..<NSMaxRange(range), type: .Mention), MessageTextEntity(range: 0..<text.utf16.count, type: .Bold)])
@@ -134,12 +201,17 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         // Normal correction above matches the same body; use a different prefix to exercise ads.
         let records = Box(false)
         session.perform(changes: true, { store in for sample in try store.load() { try store.remove(sample) } }) { _ in records.value = true }
-        spin { records.value }; session.prepare(large, accountPeerId: account)
+        spin { records.value }
+        let largeReady = Box(false)
+        session.prepare(large, accountPeerId: account) { largeReady.value = true }
         spin { rgAdMessageWasFiltered(display(large.last!)) }
+        // Current-chat results now notify before the rest of the batch finishes. A queue
+        // barrier does not drain scheduled inference; wait for the actual completion.
+        spin({ largeReady.value }, timeout: 30)
         let drained = Box(false)
         session.perform({ _ in true }) { _ in drained.value = true }
-        spin { drained.value }; settle()
-        let loopCount = loops.value; session.prepare(large, accountPeerId: account); settle()
+        spin { drained.value }; settle(1.1)
+        let loopCount = loops.value; session.prepare(large, accountPeerId: account); settle(1.1)
         precondition(loops.value == loopCount, "large window caused refresh loop")
         NotificationCenter.default.removeObserver(repeatObserver)
         let pinned = Message(id: 9001, text: text, attributes: [entities, markup])
@@ -203,7 +275,7 @@ def run():
         swift.write_text(adapters + '\n' + bridge + '\n' + tests)
         binary = work / 'checks'
         subprocess.run(['xcrun','swiftc','-swift-version','5','-parse-as-library','-warnings-as-errors',*map(str, sorted((root/'Regram/RGAdFilter/Sources').glob('*.swift'))),str(swift),'-o',str(binary)],check=True,cwd=root)
-        subprocess.run([str(binary)],check=True,timeout=30)
+        subprocess.run([str(binary)],check=True,timeout=60)
 
 if __name__ == '__main__':
     run()

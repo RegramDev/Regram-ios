@@ -152,22 +152,24 @@ private final class RGAdLibraryController: RGAdTableController {
         }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : section == 1 ? max(1, samples.count) : 2 }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { section == 1 ? "AdSamples.Records".i18n(lang) + " (\(samples.count))" : nil }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { section == 0 ? 1 : section == 1 ? 2 : max(1, samples.count) }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        section == 0 ? "AdSamples.AutomaticSection".i18n(lang) : section == 2 ? "AdSamples.Records".i18n(lang) + " (\(samples.count))" : nil
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        let notice = (section == 0 ? "AdSamples.AutomaticNotice" : section == 2 ? "AdSamples.LocalNotice" : "AdSamples.LibraryNotice").i18n(lang)
-        if section == 1 && (recordingFailed || samples.count >= RGAdSampleStore.maximumSamples) {
+        let notice = (section == 0 ? "AdSamples.AutomaticNotice" : section == 1 ? "AdSamples.LocalNotice" : "AdSamples.LibraryNotice").i18n(lang)
+        if section == 2 && (recordingFailed || samples.count >= RGAdSampleStore.maximumSamples) {
             return "AdSamples.RecordingPaused".i18n(lang) + "\n" + notice
         }
         return notice
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 0 {
-            let status = loading ? "AdSamples.Loading" : modelAvailable ? "AdSamples.ModelReady" : "AdSamples.ModelUnavailable"
+            let status = loading ? "AdSamples.Loading" : modelAvailable ? (enabled ? "AdSamples.ModelReady" : "AdSamples.ModelDisabled") : "AdSamples.ModelUnavailable"
             let row = cell("AdSamples.Enabled".i18n(lang), detail: status.i18n(lang)); let toggle = UISwitch(); toggle.isOn = enabled; toggle.isEnabled = !loading && !failed
             toggle.onTintColor = data.theme.list.itemAccentColor; toggle.addTarget(self, action: #selector(toggleEnabled(_:)), for: .valueChanged); toggle.accessibilityLabel = "AdSamples.Enabled".i18n(lang); row.accessoryView = toggle; return row
         }
-        if indexPath.section == 2 {
+        if indexPath.section == 1 {
             let training = indexPath.row == 1
             let row = cell((training ? "AdSamples.ExportTraining" : "AdSamples.Export").i18n(lang), action: true)
             row.isUserInteractionEnabled = !loading && !failed && (training ? samples.contains(where: { $0.isTrainingReady }) : !samples.isEmpty)
@@ -191,12 +193,12 @@ private final class RGAdLibraryController: RGAdTableController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         super.tableView(tableView, didSelectRowAt: indexPath)
         guard !loading else { return }
-        if indexPath.section == 1 {
+        if indexPath.section == 2 {
             if failed { reload() } else if samples.indices.contains(indexPath.row) { pushAdController(RGAdEditorController(context: context, sample: samples[indexPath.row])) }
-        } else if indexPath.section == 2, !samples.isEmpty, !failed { confirmExport(trainingOnly: indexPath.row == 1) }
+        } else if indexPath.section == 1, !samples.isEmpty, !failed { confirmExport(trainingOnly: indexPath.row == 1) }
     }
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        guard indexPath.section == 1, !loading, !failed, samples.indices.contains(indexPath.row) else { return nil }
+        guard indexPath.section == 2, !loading, !failed, samples.indices.contains(indexPath.row) else { return nil }
         let sample = samples[indexPath.row]
         let remove = UIContextualAction(style: .destructive, title: data.strings.Common_Delete) { [weak self] _, _, done in
             guard let self else { done(false); return }

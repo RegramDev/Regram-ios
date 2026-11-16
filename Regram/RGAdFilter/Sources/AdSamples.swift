@@ -167,13 +167,18 @@ public final class RGAdSampleStore {
         return sample
     }
 
-    public func load() throws -> [RGAdSample] {
+    public func load(reviewedOnly: Bool = false) throws -> [RGAdSample] {
         try prepare()
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey]).filter { $0.pathExtension == "json" }
         guard files.count <= Self.maximumSamples else { throw RGAdSampleError.capacity }
-        let samples = try files.map(read).sorted { $0.recordedAt > $1.recordedAt }
-        storedIds = Set(samples.map(\.id))
-        return samples
+        var samples: [RGAdSample] = [], ids = Set<String>()
+        for file in files {
+            let sample = try autoreleasepool { try read(file) }
+            ids.insert(sample.id)
+            if !reviewedOnly || sample.reviewedAt != nil { samples.append(sample) }
+        }
+        storedIds = ids
+        return samples.sorted { $0.recordedAt > $1.recordedAt }
     }
 
     public func save(_ value: RGAdSample) throws {

@@ -1,5 +1,5 @@
 {
-  "modelVersion": "2026-11-16.9",
+  "modelVersion": "2026-11-16.10",
   "purpose": "Chinese channel and group text under reviewed promotional-intent policy. Preserve normal sharing, official benefits, and reviewed channel-related service/package information. No general channel-topic inference or ad-free guarantee.",
   "base": {
     "repository": "https://huggingface.co/hfl/minirbt-h256",
@@ -53,41 +53,41 @@
     "checkpointSelection": "Public validation precision >= .985 and FPR <= .005, then domain false positives, domain recall, public recall. Test labels never fitted.",
     "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split.",
     "thresholdCalibration": {
-      "previousThreshold": 0.99221,
+      "previousThreshold": 0.962,
       "validation": {
-        "threshold": 0.962,
-        "precision": 0.9866429207479964,
-        "recall": 0.3174785100286533,
-        "f1": 0.480381530457403,
-        "tn": 3498,
-        "fp": 15,
-        "fn": 2382,
-        "tp": 1108,
-        "false_positive_rate": 0.004269854824935952
+        "threshold": 0.99164,
+        "precision": 0.9853768278965129,
+        "recall": 0.2510028653295129,
+        "f1": 0.40009134505594884,
+        "tn": 3500,
+        "fp": 13,
+        "fn": 2614,
+        "tp": 876,
+        "false_positive_rate": 0.003700540848277825
       },
       "domainValidation": {
-        "threshold": 0.962,
+        "threshold": 0.99164,
         "precision": 1.0,
-        "recall": 0.92,
-        "f1": 0.9583333333333334,
+        "recall": 0.84,
+        "f1": 0.9130434782608695,
         "tn": 30,
         "fp": 0,
-        "fn": 2,
-        "tp": 23,
+        "fn": 4,
+        "tp": 21,
         "false_positive_rate": 0.0
       },
       "test": {
-        "threshold": 0.962,
-        "precision": 0.9733218588640276,
-        "recall": 0.3334316037735849,
-        "f1": 0.49670619235836627,
-        "tn": 3240,
-        "fp": 31,
-        "fn": 2261,
-        "tp": 1131,
-        "false_positive_rate": 0.009477224090492203
+        "threshold": 0.99164,
+        "precision": 0.9758149316508938,
+        "recall": 0.27358490566037735,
+        "f1": 0.42735436334331106,
+        "tn": 3248,
+        "fp": 23,
+        "fn": 2464,
+        "tp": 928,
+        "false_positive_rate": 0.007031488841332926
       },
-      "method": "Per-epoch validation-only selection with public precision/FPR constraints; reused test is a longitudinal benchmark, not a new external evaluation."
+      "method": "Per-epoch validation-only selection with public precision/FPR constraints; repeatedly observed test is a longitudinal benchmark, not a new external evaluation."
     },
     "preDeviceContextAuthoredRows": 614,
     "preDeviceContextExamplesSHA256": "b1cb0c8249e50d31f45ab304cc9309673552d7fd2662c1dbb543fa0a7d41306f",
@@ -520,57 +520,183 @@
       "rawMessagesUploaded": false,
       "quoteContextFramingSHA256": "659074bd22491deb20271fca97b784d0815fc939e35ae2f14f1bf6c3206f085b",
       "partition": "Inspected development and selected supervised adaptation; not unseen testing. Preserve normal discussions, ad-blocking tools, official benefits, verification and previously reviewed service-related exceptions."
+    },
+    "linkedPromotionAdaptation": {
+      "build": 34660,
+      "sourceBuild": 34659,
+      "stages": [
+        {
+          "stage": "33",
+          "parent": "32",
+          "epochs": 3,
+          "selectedEpoch": 1,
+          "learningRate": 3e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "17dd7893643e13b4b3e35112085d78ed760a60b92a8164be05aeb1b5c7225402",
+            "normalizedRows": 381,
+            "weightMultiplier": 20.0
+          },
+          "examplesSHA256": "6acccbd4099f42dca69357191198b250aa595e381f6a7627134c167a816449bf",
+          "exactNativeWindowRows": 156,
+          "onAcceptedLineage": false
+        },
+        {
+          "stage": "34",
+          "parent": "32",
+          "epochs": 5,
+          "selectedEpoch": 1,
+          "learningRate": 5e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "40562860ae7907985d4d62c8648b8adbc9e3485fa0a3ca5df2613866f57a4b60",
+            "normalizedRows": 401,
+            "weightMultiplier": 50.0
+          },
+          "examplesSHA256": "acc0c44525cbbae59753c4400442a695d36ba73bb004ac9197519acc740130a0",
+          "exactNativeWindowRows": 166,
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "35",
+          "parent": "34",
+          "epochs": 3,
+          "selectedEpoch": 3,
+          "learningRate": 2e-06,
+          "samplingWeights": {
+            "content": 100.0,
+            "promotion": 72.0
+          },
+          "focus": {
+            "sha256": "a29890ee0686c56b0a63d544e4a0cbd3ca7df4ebf93ebd29b5dbc905585ec180",
+            "normalizedRows": 409,
+            "weightMultiplier": 20.0
+          },
+          "examplesSHA256": "0c9bc09a804ebf8a6c72aceee56708b9919721fefde804cac99c0ba7c43251bf",
+          "exactNativeWindowRows": 170,
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "36",
+          "parent": "35",
+          "epochs": 3,
+          "selectedEpoch": 2,
+          "learningRate": 2e-06,
+          "samplingWeights": {
+            "content": 100.0,
+            "promotion": 72.0
+          },
+          "focus": {
+            "sha256": "f539c4812f11b14f7e48ea639b05c14140136a14e81e7bc92e0160c0d6936e3f",
+            "normalizedRows": 413,
+            "weightMultiplier": 20.0
+          },
+          "examplesSHA256": "59e32eb3ab7ee67dde194d620a05aa5675be7f4c3a0eb3b2520865e0bad36f4d",
+          "exactNativeWindowRows": 170,
+          "onAcceptedLineage": true,
+          "additionalReviewedPriority": {
+            "examplesSHA256": "fd2b9f7e61d11dc14588ec5dc43832351318926088726734a0d30f0b479d7272",
+            "rawExamples": 3,
+            "samplingMultiplier": 8,
+            "scriptSHA256": "7d701b46edd376e515de6dff48bf33e1a54c926c9f89be2103a6dc301784a16c"
+          }
+        },
+        {
+          "stage": "37",
+          "parent": "36",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 1e-06,
+          "samplingWeights": {
+            "content": 100.0,
+            "promotion": 72.0
+          },
+          "focus": {
+            "sha256": "e1dc9614f1d79e197a82beb6811192a833a1476a0eaa6651311798b5f67a1c9c",
+            "normalizedRows": 413,
+            "weightMultiplier": 20.0
+          },
+          "examplesSHA256": "1da0b862c31a59cefc77e9d2da22ea299b42bc6dc7c23c4ddb989b99405249e2",
+          "exactNativeWindowRows": 170,
+          "onAcceptedLineage": true,
+          "additionalReviewedPriority": {
+            "examplesSHA256": "f20e9026581a59647c89276b2ef1ae9bd931cfaa2fb5f3a778b906732941116b",
+            "rawExamples": 4,
+            "samplingMultiplier": 8,
+            "scriptSHA256": "265ed3a6d00354c2b6ea39a13e75143f3b171e0eddb9f8cb9a9774976e431f11"
+          }
+        }
+      ],
+      "explicitUserAdPosts": 8,
+      "publicEmbedInputs": 7,
+      "deviceOriginalInputs": 1,
+      "duplicateUserLinkCountedOnce": true,
+      "examplesSHA256": "1da0b862c31a59cefc77e9d2da22ea299b42bc6dc7c23c4ddb989b99405249e2",
+      "finalAugmentedRows": 11415,
+      "replayRows": 7899,
+      "exactNativeWindowRows": 170,
+      "rawMessagesCommitted": false,
+      "rawMessagesUploaded": false,
+      "automaticLabelsUsedAsTruth": false,
+      "rejectedExperiments": "Stage 33, later stage-34 epoch exports and lower-threshold probe were development candidates, not shipping weights. Stage 35 descends from validation-selected stage-34 epoch 1.",
+      "scope": "Eight explicit user labels plus reviewed earlier residual-ad and normal-content contrasts. Real data remains local. These inspected examples are development/training material, not an unseen accuracy test."
     }
   },
   "evaluation": {
     "publicTextClassifier": {
-      "threshold": 0.962,
-      "precision": 0.9733218588640276,
-      "recall": 0.3334316037735849,
-      "f1": 0.49670619235836627,
-      "tn": 3240,
-      "fp": 31,
-      "fn": 2261,
-      "tp": 1131,
-      "false_positive_rate": 0.009477224090492203
+      "threshold": 0.99164,
+      "precision": 0.9758149316508938,
+      "recall": 0.27358490566037735,
+      "f1": 0.42735436334331106,
+      "tn": 3248,
+      "fp": 23,
+      "fn": 2464,
+      "tp": 928,
+      "false_positive_rate": 0.007031488841332926
     },
     "domainValidationAuthored": {
-      "threshold": 0.962,
+      "threshold": 0.99164,
       "precision": 1.0,
-      "recall": 0.92,
-      "f1": 0.9583333333333334,
+      "recall": 0.84,
+      "f1": 0.9130434782608695,
       "tn": 30,
       "fp": 0,
-      "fn": 2,
-      "tp": 23,
+      "fn": 4,
+      "tp": 21,
       "false_positive_rate": 0.0
     },
     "warning": "Inspected development cases, including training and repeated templates. Not unseen accuracy. Partial contact-only removal counts as advertising remaining. Public spam labels are not the user advertising policy.",
     "externalBotDevelopment": {
-      "fn": 23,
-      "fp": 1,
-      "tn": 47,
-      "tp": 16
+      "tp": 9,
+      "tn": 48,
+      "fp": 0,
+      "fn": 30
     },
     "nativeDevelopmentRegression": {
-      "posts": 931,
+      "posts": 939,
       "reviewedOverrideCases": 4,
       "normalBearing": 813,
       "normalDamaged": 0,
-      "adBearing": 681,
+      "adBearing": 689,
       "adRemaining": 0,
-      "pureAds": 117,
-      "pureHidden": 117,
+      "pureAds": 125,
+      "pureHidden": 125,
       "mixed": 575,
       "mixedFullyCleaned": 575,
       "buttonErrors": [],
       "incomplete": 0,
       "failures": [],
       "latency": {
-        "median": 55.7543333270587,
-        "p95": 192.16862501343712
+        "median": 54.844750033225864,
+        "p95": 197.03050004318357
       },
-      "scope": "Inspected development cases, with reviewed spans and button expectations. Not unseen accuracy; latency includes score reuse."
+      "scope": "Human-reviewed development cases, including training and repeated templates; not unseen accuracy."
     },
     "livePhoneInspection": {
       "installedBuild": 34658,
@@ -610,7 +736,7 @@
     },
     "physicalDevice": {
       "performed": false,
-      "scope": "This revision validated on macOS production engine and independently compiled for iOS. No current phone thermal/battery or installed-app verification claimed."
+      "scope": "Current model and policy exercised in the macOS production engine. Full iOS app compilation and IPA resource verification are recorded separately; no installed-app thermal/battery measurement claimed."
     },
     "nativeConversion": {
       "parity": {
@@ -618,7 +744,27 @@
         "vectors": 100
       },
       "windowBoundaryVectors": 12,
-      "modelSHA256": "239500a96c527296cd84d8623a72767be1abdb844ae69b0c8811e34a4e0950aa"
+      "modelSHA256": "317fb694c4d81160af90ffeb87ceedc8e5f6e120442f3105b1b0ddcd90e31b49"
+    },
+    "linkedUserExamples": {
+      "posts": 8,
+      "wholeMessageHidden": 8,
+      "personalCorrectionApplied": false,
+      "publicEmbedInputs": 7,
+      "originalDeviceInputs": 1,
+      "webEmbedLimitation": "Web embeds omit inline keyboards; checks cover the text/entities/media available in each source.",
+      "scope": "Human-labelled development examples; all eight evaluated without personal corrections. No image pixels were classified."
+    },
+    "currentDeviceInspection": {
+      "originalSnapshotsExported": 927,
+      "explicitlyLinkedOriginalInspected": 1,
+      "scope": "Xcode inspection of the installed previous app, used to obtain original message entities. Final model evaluation did not reuse its personal correction; no final-IPA thermal or UI claim."
+    },
+    "integrationChecks": {
+      "unitTests": 66,
+      "filteredReadAssertions": 36,
+      "replyBridge": "Normal/outgoing replies, whole-ad headers/media, mixed quote/text, restoration, source edits and unloaded targets checked with production bridge adapters.",
+      "scope": "macOS native and adapter tests; app compilation and device UI remain separate."
     }
   },
   "privacy": "No network or message upload in inference. Real-device messages and raw corpora are excluded from the repository. Classification outputs cannot generate original training messages.",
@@ -632,13 +778,13 @@
   ],
   "inference": {
     "computeUnits": "cpuOnly",
-    "spanThreshold": 0.962,
+    "spanThreshold": 0.99164,
     "wholeCardConsensusFloor": 0.99,
     "wholeCardConsensus": "Complete text and every meaningful blank-line block >= .99, at least two blocks >= span threshold, no substantive normal content or protected code. Only complete-card cuts use this floor.",
     "privacy": "On-device, bounded background inference; no network requests.",
     "inlineNavigation": "Distinct menu links classified independently; adjacent same-target entity fragments coalesced; normal navigation protected; short-label expansion requires own score >=.99 plus adjacent/combined agreement.",
     "sameDestination": "Whitespace-adjacent repeated bare destination can follow a fully removed matching link; disabled for manual reviewed snapshots.",
-    "policyRevision": 7,
+    "policyRevision": 8,
     "authorDisclosure": "35 explicit Chinese/English tags, case-insensitive full hashtag boundaries, including ad/ads/sponsored/promotion. Scope at message/section/paragraph/sentence boundaries; protect URL fragments, actual code, quoted tag examples and embedded multi-topic rows. Entire-message semantic decisions still require their independent content guards.",
     "shortNormalLead": "A confidently normal short introduction with its own reference URL vetoes whole-message removal when later promotional blocks link elsewhere.",
     "callbackButtons": "Opaque verification/moderation/poll callbacks are not classified from their label alone; still removed with a complete ad or explicit reviewed correction.",
@@ -650,6 +796,27 @@
     "wholeParagraph": "At least two substantive lines, every line and full blank-line block above threshold, link/mention destination, no real code/quote or mixed navigation.",
     "scheduling": "Per-account utility queue, round-robin scopes, atomic message steps with 12ms between-message budget; rest at least work duration, 2x fair, 3x low-power, 7x serious; background/critical pause. Conditions change scheduling, not labels or thresholds.",
     "reuse": "Shared bounded result cache across views, weak original-object validation memo, reusable Int32 tensors/provider and model score cache; known final rules/reviews bypass model work.",
-    "incompleteResults": "Model unavailable/deadline/policy budget failures never cache a complete normal verdict. Confirmed cuts remain visible; active views retry with roughly 60-second backoff."
+    "incompleteResults": "Model unavailable/deadline/policy budget failures never cache a complete normal verdict. Confirmed cuts remain visible; active views retry with roughly 60-second backoff.",
+    "orphanPromotionLinks": "Only after at least 12 meaningful body characters and 60% of body characters are removed as advertising; standalone links inherit the verdict only when all adjacent body anchors are ads. URL length is excluded. Normal references, quotes, code and explicitly preserved actions stay protected; exact manual corrections bypass inference.",
+    "sponsorshipMenuContext": "An unlinked sponsorship block requires every meaningful sentence, the full block, two independently promotional adjacent menu items and their joint text to agree. Quoted variants retain separate framed-context checks.",
+    "normalIntroduction": "Before whole-card deletion, three or more independently normal opening blocks totalling at least 24 alphanumeric characters must also be jointly normal to veto the cut.",
+    "singleBlockFastPath": "Reuse a >= max(.999, span threshold) complete single-block score only without code, quotations, menus or opaque actions; avoids redundant sentence inference in the equivalent whole-card path.",
+    "pinnedAndPreviewScheduling": "Pinned priority 2, current history 1, home preview 0; service oldest work every fourth priority jump. Start pinned query alongside history load. Home visible top messages precede fallback history. First/pinned verdicts advance coalesced refresh, capped at five per second; remaining batch refresh stays coalesced. Thermal and low-power rest budgets unchanged.",
+    "memoryBudget": {
+      "scoreReuse": {
+        "entries": 2048,
+        "estimatedBytes": 2097152
+      },
+      "messageReusePerAccount": {
+        "entries": 2048,
+        "estimatedBytes": 8388608
+      },
+      "activeWindows": "Retained separately to avoid ads reappearing after shared-cache eviction; old window ids removed on completion.",
+      "pressure": "Reclaim shared scores and model only on actual iOS memory warnings; normal navigation keeps the model warm. Account registry is weak; cancelled work is released while paused.",
+      "samples": "Runtime knowledge loads only reviewed samples; pending records retain their disk/idempotency index.",
+      "scope": "Conservative cache payload accounting, not a process RSS limit or measured phone memory savings."
+    },
+    "replyPreviews": "Prepare at most 128 already loaded one-hop reply targets per history/pinned request. A pure-ad target loses only the display reply header; normal reply body survives. Mixed target previews use cleaned text and original-range validation for explicit quotes. Draft reply previews share this rule, while sending ids/quotes remain unchanged. Missing targets remain unclassified.",
+    "readState": "At the fully loaded latest history bottom, extend read-through only across a contiguous confirmed hidden tail. Never cross an unread normal/unknown row, history hole, another peer/topic or search/tag view. Hidden mentions and explicit @ navigation also use AI results; homepage preview projection sends no read receipts."
   }
 }

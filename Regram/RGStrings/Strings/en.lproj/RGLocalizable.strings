@@ -1389,12 +1389,12 @@ Matching is case-insensitive.";
 
 /* Local ad filtering and explicit corrections */
 "ContextMenu.adSample" = "Correct ad filtering";
-"AdSamples.Title" = "Ad Filter & Samples";
+"AdSamples.Title" = "ReSieve";
 "AdSamples.Action" = "Mark Ad / Correct Filtering";
 "AdSamples.OriginalAction" = "View original / correct filtering";
-"AdSamples.Enabled" = "Filter channel and group ads";
-"AdSamples.AutomaticNotice" = "An on-device AI model recognizes Chinese promotional text and buttons while preserving normal content. High-confidence promotional posts are hidden. Messages are never uploaded. Disable per channel or group in its profile.";
-"AdSamples.Records" = "Ad Samples";
+"AdSamples.Enabled" = "ReSieve";
+"AdSamples.AutomaticNotice" = "ReSieve recognizes Chinese promotional text and buttons while keeping normal content. Posts classified as entirely promotional are hidden with their attached media. Messages are never uploaded. Turn it off for individual channels or groups in their profiles.";
+"AdSamples.Records" = "Filter Records & Corrections";
 "AdSamples.LibraryNotice" = "Detected ads are recorded as pending review without duplicates when you scroll again. Touch and hold a missed message and choose “Mark Ad / Correct Filtering” to add it. Open a record to review its original text, spans and buttons; swipe left to delete.";
 "AdSamples.LocalNotice" = "Records stay on this device, separately for each account, without system backup or automatic uploads. Collection pauses at 10,000 records; export and delete old records to make room. Shared model improvements ship with app updates.";
 "AdSamples.Normal" = "Keep";
@@ -1426,10 +1426,10 @@ Matching is case-insensitive.";
 "AdSamples.EmptyText" = "No text remains after filtering";
 "AdSamples.None" = "None";
 
-"AdSamples.PerChat.Title" = "Smart Ad Filtering";
-"AdSamples.PerChat.Notice" = "Ad filtering keeps normal content; keyword rules hide entire messages. Enable Automatic Ad Filtering in Message Filters first.";
+"AdSamples.PerChat.Title" = "ReSieve";
+"AdSamples.PerChat.Notice" = "ReSieve keeps normal content; keyword rules hide entire messages. Enable ReSieve in Message Filters first.";
 
-"AdSamples.ModelReady" = "On-device AI is ready";
+"AdSamples.ModelReady" = "On · Processed on this device";
 "AdSamples.ModelUnavailable" = "On-device AI is unavailable. Reopen this page to retry.";
 
 "AdSamples.Pending" = "Automatic · Pending Review";
@@ -1441,3 +1441,9 @@ Matching is case-insensitive.";
 "AdSamples.ExportTrainingNotice" = "Exports only records you have reviewed with no uncertain labels. Includes original text, links and buttons, but no media files. Nothing is uploaded automatically.";
 
 "AdSamples.RecordingPaused" = "Some ads could not be recorded. Check device storage, or export and delete some old records, then continue browsing.";
+
+"AdSamples.ModelDisabled" = "Off";
+
+"AdSamples.AutomaticSection" = "Automatic Ad Filtering";
+
+"AdSamples.EntryNotice" = "Recognize channel and group ads on this device while keeping normal content. Review filtered records and correct mistakes. Keyword rules below work independently.";

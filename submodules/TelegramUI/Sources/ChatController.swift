@@ -7686,13 +7686,12 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         
         let referenceMessage = self.topPinnedScrollReferenceMessage(historyNode: historyNode, scrolledToMessageId: scrolledToMessageId)
         
-        return loadState
-        |> mapToSignal { loadState in
-            if !loadState {
-                return .single(.unresolved)
-            } else {
-                return ChatControllerImpl.topPinnedMessageState(context: context, chatLocation: chatLocation, referenceMessage: referenceMessage)
-            }
+        // MARK: Regram — fetch/classify pinned candidates while history is loading. The panel
+        // still waits for history, but its model work no longer starts only after that wait.
+        return combineLatest(queue: .mainQueue(), loadState,
+            ChatControllerImpl.topPinnedMessageState(context: context, chatLocation: chatLocation, referenceMessage: referenceMessage))
+        |> map { loaded, pinned in
+            return loaded ? pinned : .unresolved
         }
     }
     
