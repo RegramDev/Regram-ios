@@ -2,6 +2,46 @@ import XCTest
 @testable import RGAdFilter
 
 final class AdWorkTests: XCTestCase {
+    func testAsyncInferenceLeavesControlQueueFreeAndPreservesSingleAdmission() {
+        let queue = DispatchQueue(label: "ad-async-control-test")
+        let scheduler = RGAdWorkScheduler(queue: queue), request = RGAdWorkRequest()
+        let entered = expectation(description: "inference started"), cancelled = expectation(description: "cancelled once")
+        let second = expectation(description: "next inference resumed")
+        var finishInference: ((Bool) -> Void)?, starts = 0
+        queue.async {
+            scheduler.enqueueAsync(cancelled: { request.isCancelled }, step: { done in
+                starts += 1; finishInference = done; entered.fulfill()
+            }, onCancel: { cancelled.fulfill() })
+        }
+        wait(for: [entered], timeout: 2)
+        // A blocked model neither blocks settings/cancellation nor admits concurrent inference.
+        queue.sync {
+            scheduler.enqueue(cancelled: { false }, step: { starts += 1; second.fulfill(); return true }, onCancel: { XCTFail() })
+            XCTAssertEqual(starts, 1)
+            request.cancel()
+            scheduler.updateConditions(RGAdWorkConditions(foreground: false))
+            finishInference?(false)
+        }
+        wait(for: [cancelled], timeout: 2)
+        queue.sync { XCTAssertEqual(starts, 1); scheduler.updateConditions(RGAdWorkConditions()) }
+        wait(for: [second], timeout: 2)
+        queue.sync { XCTAssertEqual(starts, 2) }
+    }
+
+    func testCompletedAsyncStepDoesNotAlsoCancelItsDisposedConsumer() {
+        let queue = DispatchQueue(label: "ad-async-completion-test")
+        let scheduler = RGAdWorkScheduler(queue: queue)
+        let done = expectation(description: "following job")
+        var disposed = false
+        queue.async {
+            scheduler.enqueueAsync(cancelled: { disposed }, step: { complete in
+                disposed = true; complete(true)
+            }, onCancel: { XCTFail("completed consumer was cancelled again") })
+            scheduler.enqueue(cancelled: { false }, step: { done.fulfill(); return true }, onCancel: { XCTFail() })
+        }
+        wait(for: [done], timeout: 2)
+    }
+
     func testCancelledPausedWorkReleasesCapturedWindow() {
         final class Window {}
         let queue = DispatchQueue(label: "ad-cancelled-memory-test")
@@ -121,6 +161,14 @@ final class AdWorkTests: XCTestCase {
         func classify(_ input: RGAdInput) -> RGAdSemanticResult { calls += 1; return RGAdSemanticResult() }
         XCTAssertEqual(try knowledge.resolve(RGAdInput(text: "套餐说明\n\n#ad"), classify: classify).disposition, .hide)
         XCTAssertEqual(calls, 0)
+        XCTAssertTrue(try knowledge.prepare(RGAdInput(text: "", hasMedia: true)).isFinal)
+        _ = try knowledge.resolve(RGAdInput(text: "", hasMedia: true), classify: classify)
+        XCTAssertEqual(calls, 0)
+        let pending = try knowledge.prepare(RGAdInput(text: "正常内容\n\n#推广 套餐介绍\n\n正常结尾"))
+        XCTAssertFalse(pending.isFinal)
+        XCTAssertEqual(pending.projection.disposition, .trim)
+        XCTAssertTrue(pending.projection.text.contains("正常内容"))
+        XCTAssertFalse(pending.projection.text.contains("套餐介绍"))
         _ = try knowledge.resolve(RGAdInput(text: "正常讨论"), classify: classify)
         _ = try knowledge.resolve(RGAdInput(text: "正常内容\n\n#推广 套餐介绍\n\n正常结尾"), classify: classify)
         XCTAssertEqual(calls, 2)

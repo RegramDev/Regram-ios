@@ -2,7 +2,7 @@ import Foundation
 import CoreML
 import NaturalLanguage
 
-public struct RGAdSemanticResult {
+public struct RGAdSemanticResult: Codable, Equatable {
     public let predictions: [RGAdPrediction]
     public let buttonIds: Set<String>
     public let threshold: Double
@@ -34,7 +34,11 @@ public final class RGAdSemanticClassifier {
     private let resourceDirectory: URL?
     private var loaded: Loaded?
     private var retryAfter: TimeInterval = 0
-    private var scores = RGAdBoundedCache<String, Double>(countLimit: 2048, costLimit: 2 * 1024 * 1024)
+    private var scores = RGAdBoundedCache<String, Double>(countLimit: 2048, costLimit: 1792 * 1024)
+    // Different context strings can contain identical model windows. Reuse only exact token
+    // sequences; attention masks are a deterministic function of these IDs. Total score-cache
+    // budget stays at 2 MiB, including this cache, and every uncached window is still evaluated.
+    private var windowScores = RGAdBoundedCache<[Int32], Double>(countLimit: 512, costLimit: 256 * 1024)
 
     public init(resourceDirectory: URL? = nil) { self.resourceDirectory = resourceDirectory }
 
@@ -88,6 +92,7 @@ public final class RGAdSemanticClassifier {
         var minimum = 1.0
         for window in windows {
             guard window.count == value.ids.count, value.mask.count == value.ids.count else { throw RGAdFilterError.invalidPrediction }
+            if let score = windowScores[window] { minimum = min(minimum, score); continue }
             let ids = value.ids.dataPointer.assumingMemoryBound(to: Int32.self)
             let mask = value.mask.dataPointer.assumingMemoryBound(to: Int32.self)
             for (index, token) in window.enumerated() { ids[index] = token; mask[index] = token == 0 ? 0 : 1 }
@@ -95,6 +100,7 @@ public final class RGAdSemanticClassifier {
             guard let probabilities = output.featureValue(for: "probabilities")?.multiArrayValue, probabilities.count == 2 else { throw RGAdFilterError.invalidPrediction }
             let score = probabilities[1].doubleValue
             guard score.isFinite, (0...1).contains(score) else { throw RGAdFilterError.invalidPrediction }
+            windowScores.insert(score, for: window, cost: window.count * MemoryLayout<Int32>.stride + 128)
             minimum = min(minimum, score)
         }
         scores.insert(minimum, for: key, cost: key.utf8.count * 2 + 128)
@@ -105,7 +111,7 @@ public final class RGAdSemanticClassifier {
     /// the model warm so reclaiming memory does not cause repeated loads and extra heat.
     public func reduceMemoryPressure() {
         lock.lock(); defer { lock.unlock() }
-        scores.removeAll(); loaded = nil
+        scores.removeAll(); windowScores.removeAll(); loaded = nil
     }
 
     /// Public for the same production engine's conversion and physical-device regression harness.

@@ -137,18 +137,29 @@ private final class RGAdLibraryController: RGAdTableController {
     private var failed = false
     private var modelAvailable = false
     private var recordingFailed = false
+    private var reloadGeneration: UInt64 = 0
     override init(context: AccountContext) { super.init(context: context); title = "AdSamples.Title".i18n(lang) }
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     override func viewDidAppear(_ animated: Bool) { super.viewDidAppear(animated); reload() }
     private func reload() {
+        reloadGeneration &+= 1
+        let generation = reloadGeneration
         loading = true; table.reloadData()
-        session.perform({ store in (try store.load(), try store.isEnabled(), RGAdSemanticClassifier.shared.prepareModel(), store.recordingFailed) }) { [weak self] result in
-            guard let self else { return }; self.loading = false
-            switch result {
-            case let .success(value): self.samples = value.0; self.enabled = value.1; self.modelAvailable = value.2; self.recordingFailed = value.3; self.failed = false
-            case let .failure(error): self.failed = true; self.showError(error)
+        session.perform({ store in (try store.load(), try store.isEnabled(), store.recordingFailed) }) { [weak self] result in
+            // Model preflight shares the classifier lock with live predictions. Waiting for it
+            // must not occupy the session queue that publishes ready filtering results.
+            DispatchQueue.global(qos: .utility).async {
+                let available = RGAdSemanticClassifier.shared.prepareModel()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.reloadGeneration == generation else { return }
+                    self.loading = false; self.modelAvailable = available
+                    switch result {
+                    case let .success(value): self.samples = value.0; self.enabled = value.1; self.recordingFailed = value.2; self.failed = false
+                    case let .failure(error): self.failed = true; self.showError(error)
+                    }
+                    self.table.reloadData()
+                }
             }
-            self.table.reloadData()
         }
     }
     override func numberOfSections(in tableView: UITableView) -> Int { 3 }

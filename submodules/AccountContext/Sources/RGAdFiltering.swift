@@ -134,6 +134,9 @@ public final class RGAdFilterSession {
     }
 
     private let queue = DispatchQueue(label: "regram.ad-filter", qos: .utility)
+    // MARK: Regram — an atomic Core ML call must never block cached/rule results or refreshes.
+    private let inferenceQueue = DispatchQueue(label: "regram.ad-filter.inference", qos: .utility)
+    private static let cacheIOQueue = DispatchQueue(label: "regram.ad-filter.cache-io", qos: .utility)
     private let lock = NSLock()
     private let store: RGAdSampleStore
     private var knowledge = RGAdPolicy.Knowledge()
@@ -158,20 +161,33 @@ public final class RGAdFilterSession {
         }
     }
     private final class Batch {
-        let scope: Scope; let generation: UInt64; let messages: [Message]; let account: PeerId
+        let scope: Scope; let generation: UInt64; let epoch: UInt64; let messages: [Message]; let account: PeerId
         let inputs: [MessageId: RGAdInput]; let identities: [MessageId: String]; let previousHidden: Set<MessageId>
         var cursor = 0
+        var semantic: [SemanticWork] = []
+        var semanticCursor = 0
+        var finished = false
         var incomplete = false
         var requests: [(RGAdWorkRequest, (() -> Void)?, ((MessageId) -> Void)?)] = []
-        init(scope: Scope, generation: UInt64, messages: [Message], account: PeerId, inputs: [MessageId: RGAdInput], identities: [MessageId: String], previousHidden: Set<MessageId>) {
-            self.scope = scope; self.generation = generation; self.messages = messages; self.account = account
+        init(scope: Scope, generation: UInt64, epoch: UInt64, messages: [Message], account: PeerId, inputs: [MessageId: RGAdInput], identities: [MessageId: String], previousHidden: Set<MessageId>) {
+            self.scope = scope; self.generation = generation; self.epoch = epoch; self.messages = messages; self.account = account
             self.inputs = inputs; self.identities = identities; self.previousHidden = previousHidden
         }
+    }
+    private struct SemanticWork {
+        let message: Message
+        let group: String
+        let sampleId: String?
+        let preservesMedia: Bool
+        let cacheKey: String?
     }
     private lazy var scheduler = RGAdWorkScheduler(queue: queue)
     private var pending: [Scope: Batch] = [:]
     private var sourceGroups: [PeerId: String] = [:]
-    private var sharedCache = RGAdBoundedCache<MessageId, Cached>(countLimit: 2048, costLimit: 8 * 1024 * 1024)
+    private var sharedCache = RGAdBoundedCache<MessageId, Cached>(countLimit: 2048, costLimit: 7 * 1024 * 1024)
+    // Exact completed model outputs only. Policy and reviewed corrections are reapplied on reuse.
+    private var semanticCache: RGAdSemanticCache?
+    private var cacheWriteScheduled = false
     private var cacheEpoch: UInt64 = 0
     private var refreshWork: DispatchWorkItem?
     private var refreshDeadline: TimeInterval = 0
@@ -203,8 +219,10 @@ public final class RGAdFilterSession {
                 guard let self else { return }
                 self.lock.lock(); self.sharedCache.removeAll(); self.lock.unlock()
                 self.sourceGroups.removeAll()
+                self.flushSemanticCache()
+                self.semanticCache?.removeAllFromMemory()
                 self.scheduler.discardCancelled()
-                RGAdSemanticClassifier.shared.reduceMemoryPressure()
+                self.inferenceQueue.async { RGAdSemanticClassifier.shared.reduceMemoryPressure() }
             }
         })
         for (name, active) in [(UIApplication.didEnterBackgroundNotification, false), (UIApplication.willEnterForegroundNotification, true)] {
@@ -227,6 +245,7 @@ public final class RGAdFilterSession {
     private func updateWorkConditions() {
         let conditions = RGAdWorkConditions(foreground: foreground, lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, thermal: ProcessInfo.processInfo.thermalState.rawValue)
         scheduler.updateConditions(conditions)
+        if !foreground { flushSemanticCache() }
         if !conditions.paused { scheduleRetry() }
     }
 
@@ -245,6 +264,10 @@ public final class RGAdFilterSession {
         let samples = try store.load(reviewedOnly: true), salt = try store.salt(), enabled = try store.isEnabled()
         self.knowledge = RGAdPolicy.Knowledge(samples: samples); self.salt = salt; self.enabled = enabled; self.lastBatches = [:]; self.lastMedia = [:]
         sourceGroups.removeAll()
+        if semanticCache == nil {
+            let cache = RGAdSemanticCache(accountDirectory: store.directory.deletingLastPathComponent(), namespace: RGAdSemanticCache.bundledNamespace(), salt: salt)
+            cache.load(); semanticCache = cache
+        }
         pending.removeAll()
         retryNeeded = false
         lock.lock()
@@ -253,11 +276,24 @@ public final class RGAdFilterSession {
         lock.unlock()
         scheduler.discardCancelled()
     }
+
+    private func scheduleCacheWrite() {
+        guard !cacheWriteScheduled else { return }
+        cacheWriteScheduled = true
+        queue.asyncAfter(deadline: .now() + 1) { [weak self] in
+            guard let self else { return }
+            self.cacheWriteScheduled = false; self.flushSemanticCache()
+        }
+    }
+
+    private func flushSemanticCache() {
+        if let writer = semanticCache?.takeWriter() { Self.cacheIOQueue.async { writer() } }
+    }
     private func changed(urgent: Bool = false) {
         // Show a current-chat verdict promptly, while coalescing the remaining batch.
         // Urgent updates can advance an existing timer, never postpone a ready result.
         let now = ProcessInfo.processInfo.systemUptime
-        let delay = urgent ? max(0.02, lastRefresh + 0.2 - now) : 1.0
+        let delay = max(0.016, lastRefresh + (urgent ? 0.016 : 0.05) - now)
         let deadline = now + delay
         if refreshWork != nil && refreshDeadline <= deadline { return }
         refreshWork?.cancel()
@@ -334,28 +370,14 @@ public final class RGAdFilterSession {
             var inputs: [MessageId: RGAdInput] = [:], identities: [MessageId: String] = [:]
             for message in eligible { inputs[message.id] = rgAdInput(message); identities[message.id] = rgAdMediaIdentity(message) }
             if let batch = self.pending[scope], batch.generation == generation, batch.inputs == inputs, batch.identities == identities {
+                batch.requests.removeAll { $0.0.isCancelled }
                 batch.requests.append((token, completion, progress)); return
             }
             guard inputs != self.lastBatches[scope] || identities != self.lastMedia[scope] else { completion?(); return }
-            let batch = Batch(scope: scope, generation: generation, messages: eligible, account: accountPeerId, inputs: inputs, identities: identities,
+            let batch = Batch(scope: scope, generation: generation, epoch: self.cacheEpoch, messages: eligible, account: accountPeerId, inputs: inputs, identities: identities,
                               previousHidden: self.hiddenMessageIds(in: eligible, accountPeerId: accountPeerId, scope: scope))
             batch.requests.append((token, completion, progress)); self.pending[scope] = batch
-            self.scheduler.enqueue(priority: self.priority(scope), cancelled: {
-                self.pending[scope] !== batch || !self.isCurrent(scope, generation: generation) || batch.requests.allSatisfy { $0.0.isCancelled }
-            }, step: {
-                if batch.cursor < batch.messages.count {
-                    let message = batch.messages[batch.cursor]
-                    let updated = self.process(message, batch: batch)
-                    batch.cursor += 1
-                    // MARK: Regram — local consumers also need newly confirmed normal rows;
-                    // waiting for the whole batch leaves an ad's fallback preview blank.
-                    if updated {
-                        for (token, _, progress) in batch.requests where !token.isCancelled { progress?(message.id) }
-                    }
-                }
-                if batch.cursor == batch.messages.count { self.finish(batch, completed: true); return true }
-                return false
-            }, onCancel: { self.finish(batch, completed: false) })
+            self.prepareFastResults(batch)
         }
         return token
     }
@@ -368,50 +390,150 @@ public final class RGAdFilterSession {
         switch scope { case .pinned, .pinnedView: return 2; case .history, .historyView: return 1; case .chatList: return 0 }
     }
 
-    private func process(_ message: Message, batch: Batch) -> Bool {
-        let scope = batch.scope
-        guard let input = batch.inputs[message.id] else { return false }
+    private func isLive(_ batch: Batch) -> Bool {
+        !batch.finished && pending[batch.scope] === batch && cacheEpoch == batch.epoch
+            && isCurrent(batch.scope, generation: batch.generation) && batch.requests.contains { !$0.0.isCancelled }
+    }
+
+    // MARK: Regram — bounded, inexpensive preparation runs independently of model cooldown.
+    // Unknown messages remain unprepared; a deterministic partial cut is not a normal verdict.
+    private func prepareFastResults(_ batch: Batch) {
+        guard isLive(batch) else { finish(batch, completed: false); return }
+        let deadline = ProcessInfo.processInfo.systemUptime + 0.004
+        var count = 0
+        repeat {
+            if batch.cursor == batch.messages.count { break }
+            let message = batch.messages[batch.cursor]
+            autoreleasepool { prepareFastResult(message, batch: batch) }
+            batch.cursor += 1; count += 1
+        } while count < 16 && ProcessInfo.processInfo.systemUptime < deadline && isLive(batch)
+        if batch.cursor < batch.messages.count {
+            queue.async { self.prepareFastResults(batch) }
+        } else if batch.semantic.isEmpty {
+            finish(batch, completed: true)
+        } else {
+            scheduler.enqueueAsync(priority: priority(batch.scope), cancelled: { !self.isLive(batch) }, step: { done in
+                self.processSemantic(batch) {
+                    if !self.isLive(batch) { self.finish(batch, completed: false); done(true); return }
+                    batch.semanticCursor += 1
+                    if batch.semanticCursor == batch.semantic.count { self.finish(batch, completed: true); done(true) }
+                    else { done(false) }
+                }
+            }, onCancel: { self.finish(batch, completed: false) })
+        }
+    }
+
+    private func reusable(_ message: Message, batch: Batch) -> Cached? {
+        guard let input = batch.inputs[message.id] else { return nil }
         let mediaIdentity = batch.identities[message.id] ?? ""
         lock.lock()
-        let old = cached[scope]?[message.id]
+        let old = cached[batch.scope]?[message.id]
         let reuse = [old, sharedCache[message.id]].compactMap { $0 }.first { $0.completed && $0.input == input && $0.mediaIdentity == mediaIdentity }
         lock.unlock()
-        let value: Cached
-        if let reuse { value = reuse }
+        return reuse
+    }
+
+    private func prepareFastResult(_ message: Message, batch: Batch) {
+        guard isLive(batch), let input = batch.inputs[message.id] else { return }
+        if let reuse = reusable(message, batch: batch) { publish(reuse, message: message, batch: batch); return }
+        let group: String
+        if let existing = sourceGroups[message.id.peerId] { group = existing }
         else {
-            let group: String
-            if let existing = sourceGroups[message.id.peerId] { group = existing }
-            else {
-                if sourceGroups.count >= 1024 { sourceGroups.removeAll() }
-                group = RGAdSampleStore.sourceGroup(salt: salt, peerId: message.id.peerId.toInt64()); sourceGroups[message.id.peerId] = group
-            }
-            let sampleId = try? RGAdSampleStore.sampleId(input: input, salt: salt, messageKey: rgAdSampleKey(message), mediaIdentity: mediaIdentity)
-            var completed = true
-            let result: RGAdProjection?
-            do {
-                result = try knowledge.resolve(input, sourceGroup: group, sampleId: sampleId) { input in
-                    let semantic = RGAdSemanticClassifier.shared.predict(input)
-                    completed = semantic.completed
-                    return semantic
-                }
-            } catch RGAdFilterError.budgetExceeded { completed = false; result = nil }
-            catch { result = nil }
-            let projected = result?.disposition == .keep ? nil : result
-            if !completed {
-                batch.incomplete = true; retryNeeded = true; scheduleRetry()
-                // Keep already confirmed cuts visible, but never cache a failed inference as
-                // normal. Identical partial results must not create a notification/retry loop.
-                guard projected != nil else { return false }
-                if let old, old.input == input, old.mediaIdentity == mediaIdentity, old.projection == projected { return false }
-            }
-            if let projected {
-                try? store.recordDetection(input: input, messageKey: rgAdSampleKey(message), mediaKinds: rgAdMediaKinds(message), mediaIdentity: mediaIdentity, projection: projected)
-            }
-            revision &+= 1
-            value = Cached(input: input, mediaIdentity: mediaIdentity, projection: projected, revision: revision,
-                           preservesMedia: knowledge.preservesMedia(input, sourceGroup: group, sampleId: sampleId), source: message, completed: completed)
+            if sourceGroups.count >= 1024 { sourceGroups.removeAll() }
+            group = RGAdSampleStore.sourceGroup(salt: salt, peerId: message.id.peerId.toInt64()); sourceGroups[message.id.peerId] = group
         }
+        let sampleId = knowledge.requiresSnapshot(for: input)
+            ? try? RGAdSampleStore.sampleId(input: input, salt: salt, messageKey: rgAdSampleKey(message), mediaIdentity: batch.identities[message.id] ?? "") : nil
+        let preservesMedia = knowledge.preservesMedia(input, sourceGroup: group, sampleId: sampleId)
+        do {
+            let initial = try knowledge.prepare(input, sourceGroup: group, sampleId: sampleId)
+            let cacheKey = initial.isFinal ? nil : semanticCache?.key(for: input)
+            if !initial.isFinal, let semantic = semanticCache?.result(for: cacheKey, input: input) {
+                let result = try knowledge.project(input, sourceGroup: group, semantic: semantic, sampleId: sampleId)
+                accept(result, message: message, batch: batch, completed: true, preservesMedia: preservesMedia)
+                return
+            }
+            accept(initial.projection, message: message, batch: batch, completed: initial.isFinal, preservesMedia: preservesMedia, record: initial.isFinal)
+            if !initial.isFinal { batch.semantic.append(SemanticWork(message: message, group: group, sampleId: sampleId, preservesMedia: preservesMedia, cacheKey: cacheKey)) }
+        } catch RGAdFilterError.budgetExceeded {
+            batch.incomplete = true; retryNeeded = true; scheduleRetry()
+        } catch {
+            // Unsupported input shapes/sizes retain the original, as before. Retrying them
+            // cannot help and would strand a homepage fallback behind an impossible verdict.
+            accept(nil, message: message, batch: batch, completed: true, preservesMedia: preservesMedia)
+        }
+    }
+
+    private func processSemantic(_ batch: Batch, completion: @escaping () -> Void) {
+        guard isLive(batch), batch.semanticCursor < batch.semantic.count else { completion(); return }
+        let work = batch.semantic[batch.semanticCursor], message = batch.semantic[batch.semanticCursor].message
+        // Another scope may have finished this exact message while it was waiting for admission.
+        if let reuse = reusable(message, batch: batch) { publish(reuse, message: message, batch: batch); completion(); return }
+        guard let input = batch.inputs[message.id] else { completion(); return }
+        if let semantic = semanticCache?.result(for: work.cacheKey, input: input) {
+            do {
+                let result = try knowledge.project(input, sourceGroup: work.group, semantic: semantic, sampleId: work.sampleId)
+                accept(result, message: message, batch: batch, completed: true, preservesMedia: work.preservesMedia)
+            } catch RGAdFilterError.budgetExceeded { batch.incomplete = true; retryNeeded = true; scheduleRetry() }
+            catch { accept(nil, message: message, batch: batch, completed: true, preservesMedia: work.preservesMedia) }
+            completion(); return
+        }
+        let knowledge = self.knowledge
+        inferenceQueue.async {
+            let result: (RGAdProjection?, RGAdSemanticResult) = autoreleasepool {
+                let semantic = RGAdSemanticClassifier.shared.predict(input)
+                do { return (try knowledge.project(input, sourceGroup: work.group, semantic: semantic, sampleId: work.sampleId), semantic) }
+                catch RGAdFilterError.budgetExceeded { return (nil, RGAdSemanticResult(completed: false)) }
+                catch { return (nil, RGAdSemanticResult(completed: semantic.completed)) }
+            }
+            self.queue.async {
+                // A superseded viewport may still contain the same message in its replacement.
+                // Reuse a complete prediction, but never publish it into the retired viewport.
+                if self.cacheEpoch == batch.epoch, result.0 != nil, result.1.completed {
+                    self.semanticCache?.insert(result.1, for: work.cacheKey, input: input)
+                    self.scheduleCacheWrite()
+                }
+                // Cancellation, edits and corrections may arrive during the atomic prediction.
+                guard self.isLive(batch), self.canProject(message, accountPeerId: batch.account) else { completion(); return }
+                if !result.1.completed { batch.incomplete = true; self.retryNeeded = true; self.scheduleRetry() }
+                self.accept(result.0, message: message, batch: batch, completed: result.1.completed, preservesMedia: work.preservesMedia)
+                completion()
+            }
+        }
+    }
+
+    private func accept(_ result: RGAdProjection?, message: Message, batch: Batch, completed: Bool, preservesMedia: Bool, record: Bool = true) {
+        guard isLive(batch), let input = batch.inputs[message.id] else { return }
+        let projected = result?.disposition == .keep ? nil : result
+        // A pending or unavailable model cannot release an unclassified fallback preview.
+        guard completed || projected != nil else { return }
+        let mediaIdentity = batch.identities[message.id] ?? ""
+        lock.lock(); let old = cached[batch.scope]?[message.id]; lock.unlock()
+        var published = true
+        if old?.input != input || old?.mediaIdentity != mediaIdentity || old?.projection != projected
+            || old?.completed != completed || old?.preservesMedia != preservesMedia {
+            revision &+= 1
+            let value = Cached(input: input, mediaIdentity: mediaIdentity, projection: projected, revision: revision,
+                               preservesMedia: preservesMedia, source: message, completed: completed)
+            published = publish(value, message: message, batch: batch)
+        }
+        if record, published, let projected {
+            // Publishing/progress never waits for the automatic sample write. Recheck the
+            // settings epoch before recording; a correction may already have replaced it.
+            let epoch = batch.epoch, account = batch.account
+            queue.async {
+                guard self.cacheEpoch == epoch, self.canProject(message, accountPeerId: account) else { return }
+                try? self.store.recordDetection(input: input, messageKey: rgAdSampleKey(message), mediaKinds: rgAdMediaKinds(message), mediaIdentity: mediaIdentity, projection: projected)
+            }
+        }
+    }
+
+    @discardableResult private func publish(_ value: Cached, message: Message, batch: Batch) -> Bool {
+        guard isLive(batch) else { return false }
+        let scope = batch.scope
         lock.lock()
+        guard cacheEpoch == batch.epoch, requestGenerations[scope] == batch.generation else { lock.unlock(); return false }
+        let old = cached[scope]?[message.id]
         if cached[scope]?[message.id] == nil {
             if order[scope, default: []].count >= capacity(scope) + 128, let evicted = order[scope]?.removeFirst() { cached[scope]?.removeValue(forKey: evicted) }
             order[scope, default: []].append(message.id)
@@ -420,12 +542,18 @@ public final class RGAdFilterSession {
         sharedCache.insert(value, for: message.id, cost: value.estimatedMemoryCost)
         lock.unlock()
         if old !== value && (old?.projection != nil || value.projection != nil) {
-            changed(urgent: priority(scope) == 2 || batch.cursor == 0)
+            changed(urgent: priority(scope) == 2 || batch.cursor <= 1)
         }
-        return old !== value
+        if old !== value {
+            for (token, _, progress) in batch.requests where !token.isCancelled { progress?(message.id) }
+        }
+        return true
     }
 
     private func finish(_ batch: Batch, completed: Bool) {
+        guard !batch.finished else { return }
+        let completed = completed && isLive(batch)
+        batch.finished = true
         if pending[batch.scope] === batch { pending.removeValue(forKey: batch.scope) }
         if completed {
             if !batch.incomplete { lastBatches[batch.scope] = batch.inputs; lastMedia[batch.scope] = batch.identities }
@@ -464,11 +592,16 @@ public final class RGAdFilterSession {
         var candidates = ((scope.map { [cached[$0]?[message.id]] } ?? []) + [cached[.history]?[message.id], cached[.pinned]?[message.id], sharedCache[message.id]]).compactMap { $0 }
         // A retained history window can outlive eviction from the shared reuse cache.
         if candidates.isEmpty && scope == nil { candidates = cached.values.compactMap { $0[message.id] } }
-        if let value = candidates.first(where: { $0.validatedSource === message }) { lock.unlock(); return value }
+        // Another live scope may finish while this scope still holds a preliminary cut.
+        // Its complete shared verdict is usable immediately, without waiting for our scheduler.
+        if let value = candidates.first(where: { $0.completed && $0.validatedSource === message }) { lock.unlock(); return value }
+        let validated = candidates.first(where: { $0.validatedSource === message })
+        if let value = validated, !candidates.contains(where: { $0.completed }) { lock.unlock(); return value }
         lock.unlock()
         guard !candidates.isEmpty else { return nil }
-        let input = rgAdInput(message), mediaIdentity = rgAdMediaIdentity(message)
-        guard let value = candidates.first(where: { $0.input == input && $0.mediaIdentity == mediaIdentity }) else { return nil }
+        let input = validated?.input ?? rgAdInput(message), mediaIdentity = validated?.mediaIdentity ?? rgAdMediaIdentity(message)
+        guard let value = candidates.first(where: { $0.completed && $0.input == input && $0.mediaIdentity == mediaIdentity })
+            ?? candidates.first(where: { $0.input == input && $0.mediaIdentity == mediaIdentity }) else { return nil }
         lock.lock()
         guard cacheEpoch == epoch else { lock.unlock(); return nil }
         value.validatedSource = message; lock.unlock()

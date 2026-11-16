@@ -131,7 +131,7 @@ final class RGChatListAdPreview {
         func progressed() {
             guard !stopped, !scheduled else { return }
             scheduled = true
-            owner.queue.after(0.05) { [weak self] in
+            owner.queue.after(0.016) { [weak self] in
                 guard let self else { return }
                 self.scheduled = false; self.advance()
             }

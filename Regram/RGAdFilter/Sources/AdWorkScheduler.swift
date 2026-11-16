@@ -26,14 +26,14 @@ public struct RGAdWorkConditions: Equatable {
 }
 
 /// One shared pump per account, with round-robin progress across chat/history/pinned scopes.
-/// Calls and jobs run on `queue`. A step finishes one message atomically; between messages the
-/// pump yields after 12 ms accumulated work (one message can exceed that budget). Cooldown applies to the entire pump, so multiple lists cannot
-/// multiply the CPU budget. Pauses retain unfinished work without caching a "normal" verdict.
+/// Admission and completion run on `queue`; asynchronous steps can keep inference off that
+/// queue. Only one step is in flight, and its measured work still incurs the shared cooldown.
+/// Pauses retain unfinished work without caching a "normal" verdict.
 public final class RGAdWorkScheduler {
     private struct Job {
         let priority: Int
         let cancelled: () -> Bool
-        let step: () -> Bool
+        let step: (@escaping (Bool) -> Void) -> Void
         let onCancel: () -> Void
     }
     private let queue: DispatchQueue
@@ -42,6 +42,7 @@ public final class RGAdWorkScheduler {
     private var scheduled: DispatchWorkItem?
     private var readyAt: TimeInterval = 0
     private var prioritySteps = 0
+    private var running = false
     public init(queue: DispatchQueue) { self.queue = queue }
 
     public func updateConditions(_ value: RGAdWorkConditions) {
@@ -52,6 +53,12 @@ public final class RGAdWorkScheduler {
     }
 
     public func enqueue(priority: Int = 0, cancelled: @escaping () -> Bool, step: @escaping () -> Bool, onCancel: @escaping () -> Void) {
+        enqueueAsync(priority: priority, cancelled: cancelled, step: { completion in completion(step()) }, onCancel: onCancel)
+    }
+
+    /// The step must call completion exactly once, even after cancellation. Its caller must
+    /// reject stale results before publishing them. No second inference starts meanwhile.
+    public func enqueueAsync(priority: Int = 0, cancelled: @escaping () -> Bool, step: @escaping (@escaping (Bool) -> Void) -> Void, onCancel: @escaping () -> Void) {
         pruneCancelled()
         jobs.append(Job(priority: priority, cancelled: cancelled, step: step, onCancel: onCancel))
         schedule()
@@ -72,7 +79,7 @@ public final class RGAdWorkScheduler {
     }
 
     private func schedule() {
-        guard !conditions.paused, !jobs.isEmpty, scheduled == nil else { return }
+        guard !conditions.paused, !jobs.isEmpty, scheduled == nil, !running else { return }
         let work = DispatchWorkItem { [weak self] in self?.pump() }
         scheduled = work
         queue.asyncAfter(deadline: .now() + max(0, readyAt - ProcessInfo.processInfo.systemUptime), execute: work)
@@ -81,21 +88,29 @@ public final class RGAdWorkScheduler {
     private func pump() {
         scheduled = nil
         guard !conditions.paused else { return }
+        pruneCancelled()
+        guard !jobs.isEmpty else { return }
         let start = ProcessInfo.processInfo.systemUptime
-        while !jobs.isEmpty {
-            // Pinned/current content should not sit behind unrelated previews. Preserve
-            // round-robin order within each priority and service older work every fourth step.
-            let highest = jobs.map(\.priority).max() ?? 0
-            let preferred = jobs.firstIndex(where: { $0.priority == highest }) ?? 0
-            let index = prioritySteps >= 3 ? 0 : preferred
-            if index == 0 { prioritySteps = 0 } else { prioritySteps += 1 }
-            let job = jobs.remove(at: index)
-            if job.cancelled() { job.onCancel() }
-            else if !autoreleasepool(invoking: job.step) { jobs.append(job) }
-            if ProcessInfo.processInfo.systemUptime - start >= 0.012 { break }
+        // Pinned/current content should not sit behind unrelated previews. Preserve
+        // round-robin order within each priority and service older work every fourth step.
+        let highest = jobs.map(\.priority).max() ?? 0
+        let preferred = jobs.firstIndex(where: { $0.priority == highest }) ?? 0
+        let index = prioritySteps >= 3 ? 0 : preferred
+        if index == 0 { prioritySteps = 0 } else { prioritySteps += 1 }
+        let job = jobs.remove(at: index)
+        running = true
+        job.step { [self] completed in
+            queue.async { [self] in
+                running = false
+                // A completed step has already disposed its consumer. Do not invoke its
+                // cancellation callback a second time just because that disposal is visible.
+                if !completed {
+                    if job.cancelled() { job.onCancel() } else { jobs.append(job) }
+                }
+                let elapsed = ProcessInfo.processInfo.systemUptime - start
+                readyAt = ProcessInfo.processInfo.systemUptime + conditions.recoveryDelay(workDuration: elapsed)
+                schedule()
+            }
         }
-        let elapsed = ProcessInfo.processInfo.systemUptime - start
-        readyAt = ProcessInfo.processInfo.systemUptime + conditions.recoveryDelay(workDuration: elapsed)
-        schedule()
     }
 }
