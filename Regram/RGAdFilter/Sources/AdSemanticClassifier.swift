@@ -146,7 +146,7 @@ public final class RGAdSemanticClassifier {
             var predictions: [RGAdPrediction] = []
             let navigationRows = RGAdFilter.navigationRows(input)
             let navigation = Set(navigationRows.values.flatMap { $0 })
-            let paragraphs = (RGAdFilter.semanticRanges(input.text).filter { range in
+            let paragraphs = (RGAdFilter.semanticRanges(input.text, entities: input.entities).filter { range in
                 !navigationRows.keys.contains(where: { $0.intersects(range) })
             } + Array(navigation)).sorted { $0.lower < $1.lower }
             let blocks = RGAdFilter.contextRanges(input.text)
@@ -233,6 +233,27 @@ public final class RGAdSemanticClassifier {
                         hasContent = true
                     }
                 }
+                // A short tutorial/resource introduction with its own bare URL is
+                // still meaningful content. When the later promotional blocks link
+                // elsewhere, their greater length must not erase this introduction.
+                if range == substantive.first, (score ?? 1) <= 0.2, length >= 12,
+                   let blockIndex, contextualBlock <= 0.2, blocks.indices.contains(blockIndex + 1) {
+                    let reference = blocks[blockIndex + 1]
+                    if !hasSemanticWords(reference) {
+                        let referenceTargets = Set(input.entities.compactMap { entity -> String? in
+                            guard entity.kind == .link, reference.contains(entity.range) else { return nil }
+                            return RGAdFilter.normalizedTarget(entity.value ?? source.substring(with: entity.range.nsRange))
+                        })
+                        if !referenceTargets.isEmpty, blocks.dropFirst(blockIndex + 2).contains(where: { block in
+                            guard (blockScores[block] ?? 0) >= value.threshold else { return false }
+                            return input.entities.contains { entity in
+                                guard entity.kind == .link, block.contains(entity.range),
+                                      let target = RGAdFilter.normalizedTarget(entity.value ?? source.substring(with: entity.range.nsRange)) else { return false }
+                                return !referenceTargets.contains(target)
+                            }
+                        }) { hasContent = true }
+                    }
+                }
             }
             // Very short menu labels need their adjacent link's context. Extend only an
             // already confident promotional menu item, with independent agreement on the
@@ -309,7 +330,9 @@ public final class RGAdSemanticClassifier {
             var buttons = Set<String>()
             for button in input.buttons.flatMap({ $0 }) {
                 if entireMessage { buttons.insert(button.id) }
-                else if ProcessInfo.processInfo.systemUptime <= deadline, supportsLanguage(button.title), let score = try probability(button.title, using: value), score >= value.threshold { buttons.insert(button.id) }
+                // Callback actions (verification/moderation/polls) are opaque and
+                // cannot be inferred as ads from their short label alone.
+                else if RGAdFilter.normalizedTarget(button.target) != nil, ProcessInfo.processInfo.systemUptime <= deadline, supportsLanguage(button.title), let score = try probability(button.title, using: value), score >= value.threshold { buttons.insert(button.id) }
             }
             return RGAdSemanticResult(predictions: predictions, buttonIds: buttons, threshold: entireMessage ? projectionThreshold : value.threshold, entireMessage: entireMessage)
         } catch {

@@ -2,9 +2,9 @@ import Foundation
 
 /// Pure, account-free projection. The source message/database are never modified.
 public enum RGAdFilter {
-    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], preservedButtonIds: Set<String> = [], inferButtons: Bool = true, entireMessageIsAd: Bool = false) throws -> RGAdProjection {
+    public static func project(_ input: RGAdInput, rules: [RGAdRule] = [], predictions: [RGAdPrediction] = [], threshold: Double = 0.98, suggestedRanges: [RGAdRange] = [], confirmedRanges: [RGAdRange] = [], confirmedButtonIds: Set<String> = [], preservedButtonIds: Set<String> = [], inferButtons: Bool = true, entireMessageIsAd: Bool = false, disclosedRanges: [RGAdRange] = []) throws -> RGAdProjection {
         guard input.text.utf16.count <= 65_536, input.entities.count <= 2048, rules.count <= 128,
-              predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, confirmedButtonIds.count <= 128, preservedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
+              predictions.count <= 1024, suggestedRanges.count <= 1024, confirmedRanges.count <= 1024, disclosedRanges.count <= 128, confirmedButtonIds.count <= 128, preservedButtonIds.count <= 128, input.buttons.count <= 128 else { throw RGAdFilterError.invalidInput }
         let deadline = ProcessInfo.processInfo.systemUptime + 0.05
         let boundaries = rgAdBoundaries(input.text)
         let allButtons = input.buttons.flatMap { $0 }
@@ -14,7 +14,7 @@ public enum RGAdFilter {
         let source = input.text as NSString
         let paragraphs = paragraphRanges(input.text)
         let navigation = navigationRows(input).values.flatMap { $0 }
-        let modelSegments = semanticRanges(input.text) + navigation
+        let modelSegments = semanticRanges(input.text, entities: input.entities) + navigation
         var ranges: [RGAdRange] = suggestedRanges + confirmedRanges
         var removedButtons = confirmedButtonIds
         let activeRules = rules.filter { !$0.pattern.isEmpty && ($0.peerId == nil || $0.peerId == input.peerId) }
@@ -62,13 +62,15 @@ public enum RGAdFilter {
                 case .code:
                     // Coupon/identifier formatting alone does not make a complete commercial
                     // card normal content. Actual code and partial paragraph cuts stay protected.
-                    let wholeCard = entireMessageIsAd && range == RGAdRange(0, source.length) && isInlineCodeLabel(entity, source: source)
+                    let wholeCard = entireMessageIsAd && range == RGAdRange(0, source.length)
+                        && (isInlineCodeLabel(entity, source: source) || (disclosedRanges.contains(range) && RGAdDisclosure.isTextLabel(entity, source: source)))
                     return !wholeCard && !confirmedRanges.contains(where: { $0.contains(range) })
                 case .quote:
-                    // Promotional cards also use quote formatting for price lists. Only a
-                    // complete-message semantic decision may override that formatting guard.
+                    // Price lists can be quoted inside a complete promotional card
+                    // or an author-disclosed section. Other quotations stay protected.
                     let wholeCard = entireMessageIsAd && range == RGAdRange(0, source.length)
-                    return !wholeCard && !confirmedRanges.contains(where: { $0.contains(range) })
+                    let disclosedSection = disclosedRanges.contains(range) && range.contains(entity.range)
+                    return !wholeCard && !disclosedSection && !confirmedRanges.contains(where: { $0.contains(range) })
                 case .link, .mention, .customEmoji: return !range.contains(entity.range)
                 case .format: return false
                 }
@@ -209,11 +211,16 @@ public enum RGAdFilter {
 
     /// Sentence stops also separate an inline promotion from the preceding normal sentence.
     /// Never split on URL dots or commas; atomic entities are checked again before projection.
-    static func semanticRanges(_ text: String) -> [RGAdRange] {
+    static func semanticRanges(_ text: String, entities: [RGAdEntity] = []) -> [RGAdRange] {
         var result: [RGAdRange] = [], lower = 0, offset = 0
+        let atomic = entities.filter { [.link, .mention, .customEmoji].contains($0.kind) }.map(\.range)
         for character in text {
             offset += String(character).utf16.count
-            if character.isNewline || "。！？；!?;".contains(character) {
+            // Query strings can contain question marks, semicolons and exclamation
+            // marks. Splitting inside a link makes both sentence cuts fail atomic
+            // entity validation and strands the surrounding promotional text.
+            let punctuation = "。！？；!?;".contains(character) && !atomic.contains { $0.lower < offset && offset <= $0.upper }
+            if character.isNewline || punctuation {
                 result.append(RGAdRange(lower, offset)); lower = offset
             }
         }

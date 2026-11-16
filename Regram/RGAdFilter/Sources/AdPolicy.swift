@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 5
+    public static let revision = 6
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")
@@ -108,7 +108,9 @@ public enum RGAdPolicy {
             let source = input.text as NSString
             let lines = RGAdFilter.paragraphRanges(input.text)
             let matchingDeadline = ProcessInfo.processInfo.systemUptime + 0.05
-            var ranges: [RGAdRange] = [], protected: [RGAdRange] = []
+            let disclosed = RGAdDisclosure.ranges(input)
+            let disclosedWhole = disclosed.contains { $0 == RGAdRange(0, source.length) }
+            var ranges: [RGAdRange] = disclosed, protected: [RGAdRange] = []
             var precedingPromotion = false
             for line in lines {
                 guard ProcessInfo.processInfo.systemUptime < matchingDeadline else { throw RGAdFilterError.budgetExceeded }
@@ -144,6 +146,7 @@ public enum RGAdPolicy {
                 }
             }
             var removedButtons = semantic.buttonIds, preservedButtons = Set<String>()
+            if disclosedWhole { removedButtons.formUnion(input.buttons.flatMap { $0 }.map(\.id)) }
             for button in input.buttons.flatMap({ $0 }) {
                 guard let key = ButtonKey(button) else { continue }
                 if let label = buttons[sourceGroup]?[key] {
@@ -158,7 +161,7 @@ public enum RGAdPolicy {
                     }
                 }
             }
-            let result = try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage)
+            let result = try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage || disclosedWhole, disclosedRanges: disclosed)
             // A caption independently classified entirely as advertising describes its attachment.
             // Previously line-level decisions cleared the caption but stranded the advertising
             // image. Normal text/buttons and explicit human media corrections veto this upgrade.

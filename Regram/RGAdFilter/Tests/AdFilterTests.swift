@@ -13,6 +13,116 @@ final class AdFilterTests: XCTestCase {
     }
     private let ad = "0充值，免费体验，中奖可提现 → @promotion_user"
 
+    func testAuthorDisclosureHidesCompleteCardAndMediaWithoutModel() throws {
+        for tag in RGAdDisclosure.tags.map({ "#" + $0 }) + ["#AD", "#Ads", "#Sponsored", "＃广告"] {
+            for text in [tag + "\n\n产品服务介绍\n\n多个功能和价格说明", "产品服务介绍\n\n多个功能和价格说明\n\n🥰 #产品 " + tag] {
+                let input = RGAdInput(text: text, buttons: [[RGAdButton(id: "contact", title: "咨询", target: "https://example.org/contact"), RGAdButton(id: "opaque", title: "领取")]], hasMedia: true)
+                let result = try RGAdPolicy.project(input)
+                XCTAssertEqual(result.disposition, .hide)
+                XCTAssertTrue(result.text.isEmpty)
+                XCTAssertTrue(result.buttons.isEmpty)
+            }
+        }
+        let long = Array(repeating: "服务说明与功能列表\n", count: 160).joined() + "\n#推广"
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: long, hasMedia: true)).disposition, .hide)
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: "套餐说明\n\n#AD 10-21", hasMedia: true)).disposition, .hide)
+    }
+
+    func testDisclosureRespectsMixedMessageSectionsAndButtons() throws {
+        let prefix = "正常软件介绍与安装教程\nhttps://example.org/docs\n"
+        let promotion = "服务套餐说明\nhttps://example.org/buy\n\n#推广\n"
+        let suffix = "下一段正常更新说明\n"
+        let text = prefix + "======\n" + promotion + "======\n" + suffix
+        let input = RGAdInput(text: text, entities: [entity(text, "https://example.org/docs", kind: .link), entity(text, "https://example.org/buy", kind: .link)], buttons: [[RGAdButton(id: "docs", title: "使用文档", target: "https://example.org/docs"), RGAdButton(id: "buy", title: "立即购买", target: "https://example.org/buy")]], hasMedia: true)
+        let result = try RGAdPolicy.project(input)
+        XCTAssertEqual(result.disposition, .trim)
+        XCTAssertTrue(result.text.contains(prefix)); XCTAssertTrue(result.text.contains(suffix))
+        XCTAssertFalse(result.text.contains("套餐")); XCTAssertFalse(result.text.contains("#推广"))
+        XCTAssertEqual(result.buttons.flatMap { $0 }.map(\.id), ["docs"])
+        XCTAssertTrue(result.entities.allSatisfy { $0.range.upper <= result.text.utf16.count })
+    }
+
+    func testInlineDisclosureOnlyRemovesItsOwnSentenceOrParagraph() throws {
+        for text in ["正常内容。#广告 套餐介绍。正常结尾。", "正常内容。套餐介绍 #广告。正常结尾。", "正常内容。\n\n#推广 套餐介绍\n更多套餐说明\n\n正常结尾。"] {
+            let result = try RGAdPolicy.project(RGAdInput(text: text, hasMedia: true))
+            XCTAssertEqual(result.disposition, .trim)
+            XCTAssertTrue(result.text.contains("正常内容。")); XCTAssertTrue(result.text.contains("正常结尾。"))
+            XCTAssertFalse(result.text.contains("套餐")); XCTAssertFalse(result.text.contains("#广告")); XCTAssertFalse(result.text.contains("#推广"))
+        }
+        let text = "正常影片介绍\n#影视 #更新\n\n产品与价格说明\n\n#推广"
+        let result = try RGAdPolicy.project(RGAdInput(text: text, hasMedia: true))
+        XCTAssertTrue(result.text.contains("正常影片介绍\n#影视 #更新"))
+        XCTAssertFalse(result.text.contains("产品"))
+    }
+
+    func testDisclosureDoesNotMatchTagSubstringsDiscussionOrURLs() throws {
+        for text in ["#广告设计", "#推广教程", "#广告_案例", "#广告123", "标签说明：\"#广告\"", "讨论 #推广 标签的用法", "`#广告`", "https://example.org/#广告", "https://example.org?q=#推广", "abc#广告", "#admin", "#ADvice", "#adblock", "#adapter", "#address", "#sponsorshipGuide", "#福利", "#推荐", "#合作", "#sponsor"] {
+            XCTAssertTrue(RGAdDisclosure.ranges(RGAdInput(text: text)).isEmpty, text)
+            XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text)).text, text)
+        }
+        for kind in [RGAdEntity.Kind.quote, .code, .link] {
+            let text = "#广告\n套餐介绍"
+            XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text, entities: [entity(text, "#广告", kind: kind)])).text, text)
+        }
+    }
+
+    func testDisclosureCanHideQuotedPriceCardButProtectsRealCode() throws {
+        let text = "套餐价格与服务说明\n优惠码 EXAMPLE\n\n#广告"
+        let quoted = RGAdInput(text: text, entities: [entity(text, "套餐价格与服务说明", kind: .quote), entity(text, "EXAMPLE", kind: .code)], hasMedia: true)
+        XCTAssertEqual(try RGAdPolicy.project(quoted).disposition, .hide)
+        let label = "复制 123456 到活动页面搜索，领取邀请红包"
+        let redemption = "红包推广\n" + label + "\n\n#推广"
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: redemption, entities: [entity(redemption, label, kind: .code)], hasMedia: true)).disposition, .hide)
+        let code = "func show() { print(1) }\n#广告"
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: code, entities: [entity(code, "func show() { print(1) }", kind: .code)])).text, code)
+    }
+
+    func testReviewedKeepOverridesAuthorDisclosure() throws {
+        let storage = try store(), input = RGAdInput(text: "保留这一条示例内容\n\n#AD", peerId: 99)
+        XCTAssertEqual(try RGAdPolicy.project(input).disposition, .hide)
+        let sample = try storage.draft(input: input, messageKey: "99:disclosure", mediaKinds: [], mediaIdentity: "")
+        try storage.save(sample)
+        XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: sample.sourceGroup).disposition, .keep)
+        XCTAssertEqual(try RGAdPolicy.project(input, samples: storage.load(), sourceGroup: "another-conversation").disposition, .hide)
+    }
+
+    func testEmbeddedTopicTagsInNormalSoftwareDescriptionArePreserved() throws {
+        let text = "开源拦截工具\n⏺ #短信 #电话 #广告 #拦截\n使用方法见官方文档。"
+        XCTAssertTrue(RGAdDisclosure.ranges(RGAdInput(text: text)).isEmpty)
+        XCTAssertEqual(try RGAdPolicy.project(RGAdInput(text: text)).text, text)
+    }
+
+    func testStandaloneDisclosureBetweenNormalParagraphs() throws {
+        for gap in ["\n", "\n\n"] {
+            let text = "正常教程介绍。\n\n#AD" + gap + "商业服务套餐说明\n更多价格说明\n\n正常教程结尾。"
+            let result = try RGAdPolicy.project(RGAdInput(text: text, hasMedia: true))
+            XCTAssertEqual(result.disposition, .trim)
+            XCTAssertTrue(result.text.contains("正常教程介绍。")); XCTAssertTrue(result.text.contains("正常教程结尾。"))
+            XCTAssertFalse(result.text.contains("#AD")); XCTAssertFalse(result.text.contains("套餐")); XCTAssertFalse(result.text.contains("价格"))
+        }
+    }
+
+    func testPromotionalSentenceWithQueryLinkIsRemovedCompletely() throws {
+        let link = "https://example.org/buy?plan=small!limited;ref=sample"
+        let promotion = "购买付费套餐，访问 " + link + " 获取优惠。\n"
+        let text = promotion + "正常软件使用说明。"
+        let entities = [entity(text, link, kind: .link)]
+        let segments = RGAdFilter.semanticRanges(text, entities: entities)
+        let adRange = RGAdRange(0, promotion.utf16.count - 1)
+        XCTAssertTrue(segments.contains(adRange))
+        let result = try RGAdFilter.project(RGAdInput(text: text, entities: entities), predictions: [RGAdPrediction(range: adRange, confidence: 1)])
+        XCTAssertEqual(result.text.trimmingCharacters(in: .whitespacesAndNewlines), "正常软件使用说明。")
+        XCTAssertTrue(result.entities.isEmpty)
+    }
+
+    func testDisclosedQuotedSectionPreservesOutsideQuotation() throws {
+        let text = "正常引用说明\n======\n套餐广告\n月付价格与购买入口\n#广告\n======\n正常教程结尾"
+        let result = try RGAdPolicy.project(RGAdInput(text: text, entities: [entity(text, "正常引用说明", kind: .quote), entity(text, "月付价格与购买入口", kind: .quote)], hasMedia: true))
+        XCTAssertEqual(result.disposition, .trim)
+        XCTAssertTrue(result.text.contains("正常引用说明")); XCTAssertTrue(result.text.contains("正常教程结尾"))
+        XCTAssertFalse(result.text.contains("套餐")); XCTAssertFalse(result.text.contains("月付"))
+    }
+
     func testMixedCaptionAndButtons() throws {
         let text = "剧名：春日旅程\n简介：两人一起寻找答案。\n@search_helper\n================\n" + ad
         let input = RGAdInput(text: text, entities: [entity(text, "@search_helper"), entity(text, "@promotion_user")], buttons: [[RGAdButton(id: "0:0", title: "电影搜索", target: "https://t.me/search_helper"), RGAdButton(id: "0:1", title: "一元云购", target: "https://t.me/promotion_user")]], hasMedia: true)
