@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.2 / b34662** improves ReSieve updates in the chat list and pinned messages, reuses completed classifications across restarts, and reduces sample-library startup work and repeated computation. It also prevents an older sample-page refresh from replacing newer records. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
+The latest public release, **13.2 / b34662**, improves ReSieve updates in the chat list and pinned messages, reuses completed classifications across restarts, and reduces sample-library startup work and repeated computation. It also prevents an older sample-page refresh from replacing newer records. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 
@@ -137,7 +137,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34662 passed the full Xcode 27.1 arm64 Release build, with the main app, six extensions, strict ad-hoc signatures, three language resources, model resources and 12 matching dSYMs verified. Validation includes 78 filtering unit tests, 86 project checks, and filtering bridge, chat-list preview, scheduling and restart regressions. All seven bundle identities, complete entitlements and URL schemes match b34661. The app was built from `479c438d7ffabaafdc4877aa5cfc35b41cdd3523`; later commits only update validation and release documentation. See the [response improvements](docs/ad-filter-latency.md), [restart cache record](docs/ad-filter-restart-cache.md) and [changelog](docs/changelog.md).
+The current source includes b34663's iPhone inference improvements. Neural Engine screens clearly normal text while CPU inference still confirms promotional candidates. A 939-message comparison on the phone produced identical filtering results. The local b34663 test package passed the full arm64 Release build and checks for the main app, six extensions, signatures, model resources and 12 matching dSYMs, along with 80 filtering unit tests and 86 project checks. See the [iPhone acceleration notes](docs/ad-filter-neural-engine-34663.md) for timings, cold-start limits and build records.
 
 ## Building
 

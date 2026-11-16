@@ -1,6 +1,6 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34662** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34663** 整理（b34663 为本地测试包，最新公开版本仍为 b34662），构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
