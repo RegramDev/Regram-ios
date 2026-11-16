@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.2 / b34652** fixes a profile crash and the selected chat folder highlight on older iOS versions. It adds two tab bar heights, optional dimming for revoked messages, and scrolling to the latest message after repeating. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34652) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
+**13.2 / b34661** adds ReSieve, an on-device ad classifier for channels and groups, with mixed-message cleanup, filtering records and manual corrections. It also improves chat-list preview updates and read-state handling after filtering. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34661) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 
@@ -30,6 +30,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 ### Filters and privacy
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
+- ReSieve on-device ad filtering for channels, groups, pinned messages and chat-list previews. Enable it in Regram Pro → Privacy and Filters → Message Filter. Original messages are preserved, detections can be reviewed and corrected, and messages stay on the device. See the [model notes and limitations](docs/ad-semantic-model.md) and [model repository](https://github.com/RegramDev/ReSieve).
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
 - Hide a member only in a selected group, separately for each account; manage selections from the member avatar menu or group profile.
 - Group member alerts notify when selected members post. Hidden and filtered messages stay excluded; background alerts depend on Telegram push delivery and system notification permissions.
@@ -136,7 +137,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34649 passed the full Xcode 27.1 arm64 Release build and version checks, with the main app, six extensions, strict ad-hoc signatures, localization resources and 12 matching dSYMs verified. The fixes passed 86 project checks plus camera, folder-color persistence and real-audio conversion regressions. All seven bundle identities, complete entitlements and URL schemes match b34648. Latest, the complete public download, checksum attachment and production update parser were verified. See the [delivery record](docs/camera-folder-colors-voice-import.md) for source, package and validation details.
+b34661 passed the full Xcode 27.1 arm64 Release build, with the main app, six extensions, strict ad-hoc signatures, three language resources, model resources and 12 matching dSYMs verified. The changes passed 86 project checks plus the filtering bridge and chat-list preview regressions. All seven bundle identities, complete entitlements and URL schemes match b34652. The app was built from `0d4d12fbce1cd3c63abaef904fdc22b01875eff2`; release preparation only adds documentation. See the [preview update record](docs/ad-preview-latency-34661.md) and [changelog](docs/changelog.md).
 
 ## Building
 

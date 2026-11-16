@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.2 / b34652**。修复聊天资料页闪退与旧版 iOS 分组选中底色，新增两种底栏高度和已撤回消息半透明选项，复读后跳到最新消息。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34652) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
+当前版本 **13.2 / b34661**。新增 ReSieve 本机广告识别，覆盖频道与群聊，支持保留混合消息中的正常内容、过滤记录与手动纠错；改善主页摘要等待和过滤后的未读处理。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34661) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
@@ -30,6 +30,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 ### 过滤与隐私
 
 - 关键词及正则过滤，支持隐藏／保留规则、全局或会话范围、规则测试、导入与导出。
+- ReSieve 本机广告识别：在「Regram Pro → 隐私与过滤 → 消息过滤器」启用，处理频道、群聊、置顶和主页摘要中的推广内容。原文保留，过滤记录可查看和纠正，消息不上传；[模型与使用边界](docs/ad-semantic-model.md)和[模型仓库](https://github.com/RegramDev/ReSieve)公开提供。
 - 隐藏指定发送者，按会话关闭规则过滤，或临时显示被隐藏内容。
 - 群内定向屏蔽：只隐藏指定成员在所选群中的消息，按账号保存；群内长按头像或从群资料页管理。
 - 群聊特别提醒：指定成员发言时提醒，屏蔽及过滤优先；后台提醒取决于 Telegram 推送与系统通知权限。
@@ -136,7 +137,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34649 已完成 Xcode 27.1 的完整 arm64 Release、版本声明检查，以及主应用／六扩展、严格 ad-hoc 签名、三语资源和 12 份匹配 dSYM 校验。修复源码通过 86 项项目检查和相机、颜色持久化、实际音频转换专项回归；七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34648 一致。Latest、公开完整下载、SHA-256 附件及生产更新解析核对通过。构建源码、文件摘要和验证范围见[本轮记录](docs/camera-folder-colors-voice-import.md)；历次记录见[更新记录](docs/changelog.md)。
+b34661 已完成 Xcode 27.1 的完整 arm64 Release，主应用／六扩展、严格 ad-hoc 签名、三语资源、模型资源和 12 份匹配 dSYM 校验通过。86 项项目检查及过滤桥接、主页预览专项回归通过，七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34652 一致。构建源码为 `0d4d12fbce1cd3c63abaef904fdc22b01875eff2`；后续发布准备只更新文档。修正原因见[主页预览记录](docs/ad-preview-latency-34661.md)，历次更新见[更新记录](docs/changelog.md)。
 
 ## 构建
 
