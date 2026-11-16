@@ -4,6 +4,7 @@ import Postbox
 import SwiftSignalKit
 import TelegramCore
 import AccountContext
+import RGAdFilter // MARK: Regram
 
 /// This stage changes display messages only. Ordering, drafts, unread state and the stored messages
 /// stay intact. It runs after legacy keyword substitution and never sends read receipts.
