@@ -162,7 +162,7 @@ public final class RGAdFilterSession {
         let inputs: [MessageId: RGAdInput]; let identities: [MessageId: String]; let previousHidden: Set<MessageId>
         var cursor = 0
         var incomplete = false
-        var requests: [(RGAdWorkRequest, (() -> Void)?)] = []
+        var requests: [(RGAdWorkRequest, (() -> Void)?, ((MessageId) -> Void)?)] = []
         init(scope: Scope, generation: UInt64, messages: [Message], account: PeerId, inputs: [MessageId: RGAdInput], identities: [MessageId: String], previousHidden: Set<MessageId>) {
             self.scope = scope; self.generation = generation; self.messages = messages; self.account = account
             self.inputs = inputs; self.identities = identities; self.previousHidden = previousHidden
@@ -290,6 +290,15 @@ public final class RGAdFilterSession {
 
     // Completion is delivered off the UI thread. Cancelling a consumer stops unused work, too.
     @discardableResult public func prepare(_ messages: [Message], accountPeerId: PeerId, scope: Scope = .history, completion: (() -> Void)? = nil) -> RGAdWorkRequest {
+        prepareMessages(messages, accountPeerId: accountPeerId, scope: scope, progress: nil, completion: completion)
+    }
+
+    // MARK: Regram — progress is scoped to a live consumer and includes normal verdicts.
+    @discardableResult public func prepareProgressively(_ messages: [Message], accountPeerId: PeerId, scope: Scope, progress: @escaping (MessageId) -> Void, completion: @escaping () -> Void) -> RGAdWorkRequest {
+        prepareMessages(messages, accountPeerId: accountPeerId, scope: scope, progress: progress, completion: completion)
+    }
+
+    private func prepareMessages(_ messages: [Message], accountPeerId: PeerId, scope: Scope, progress: ((MessageId) -> Void)?, completion: (() -> Void)?) -> RGAdWorkRequest {
         let token = RGAdWorkRequest()
         // One loaded reply target per message, one hop only. Do not fetch an unbounded
         // reply chain or spend homepage inference on reply headers that are not displayed.
@@ -325,17 +334,24 @@ public final class RGAdFilterSession {
             var inputs: [MessageId: RGAdInput] = [:], identities: [MessageId: String] = [:]
             for message in eligible { inputs[message.id] = rgAdInput(message); identities[message.id] = rgAdMediaIdentity(message) }
             if let batch = self.pending[scope], batch.generation == generation, batch.inputs == inputs, batch.identities == identities {
-                batch.requests.append((token, completion)); return
+                batch.requests.append((token, completion, progress)); return
             }
             guard inputs != self.lastBatches[scope] || identities != self.lastMedia[scope] else { completion?(); return }
             let batch = Batch(scope: scope, generation: generation, messages: eligible, account: accountPeerId, inputs: inputs, identities: identities,
                               previousHidden: self.hiddenMessageIds(in: eligible, accountPeerId: accountPeerId, scope: scope))
-            batch.requests.append((token, completion)); self.pending[scope] = batch
+            batch.requests.append((token, completion, progress)); self.pending[scope] = batch
             self.scheduler.enqueue(priority: self.priority(scope), cancelled: {
                 self.pending[scope] !== batch || !self.isCurrent(scope, generation: generation) || batch.requests.allSatisfy { $0.0.isCancelled }
             }, step: {
                 if batch.cursor < batch.messages.count {
-                    self.process(batch.messages[batch.cursor], batch: batch); batch.cursor += 1
+                    let message = batch.messages[batch.cursor]
+                    let updated = self.process(message, batch: batch)
+                    batch.cursor += 1
+                    // MARK: Regram — local consumers also need newly confirmed normal rows;
+                    // waiting for the whole batch leaves an ad's fallback preview blank.
+                    if updated {
+                        for (token, _, progress) in batch.requests where !token.isCancelled { progress?(message.id) }
+                    }
                 }
                 if batch.cursor == batch.messages.count { self.finish(batch, completed: true); return true }
                 return false
@@ -352,9 +368,9 @@ public final class RGAdFilterSession {
         switch scope { case .pinned, .pinnedView: return 2; case .history, .historyView: return 1; case .chatList: return 0 }
     }
 
-    private func process(_ message: Message, batch: Batch) {
+    private func process(_ message: Message, batch: Batch) -> Bool {
         let scope = batch.scope
-        guard let input = batch.inputs[message.id] else { return }
+        guard let input = batch.inputs[message.id] else { return false }
         let mediaIdentity = batch.identities[message.id] ?? ""
         lock.lock()
         let old = cached[scope]?[message.id]
@@ -385,8 +401,8 @@ public final class RGAdFilterSession {
                 batch.incomplete = true; retryNeeded = true; scheduleRetry()
                 // Keep already confirmed cuts visible, but never cache a failed inference as
                 // normal. Identical partial results must not create a notification/retry loop.
-                guard projected != nil else { return }
-                if let old, old.input == input, old.mediaIdentity == mediaIdentity, old.projection == projected { return }
+                guard projected != nil else { return false }
+                if let old, old.input == input, old.mediaIdentity == mediaIdentity, old.projection == projected { return false }
             }
             if let projected {
                 try? store.recordDetection(input: input, messageKey: rgAdSampleKey(message), mediaKinds: rgAdMediaKinds(message), mediaIdentity: mediaIdentity, projection: projected)
@@ -406,6 +422,7 @@ public final class RGAdFilterSession {
         if old !== value && (old?.projection != nil || value.projection != nil) {
             changed(urgent: priority(scope) == 2 || batch.cursor == 0)
         }
+        return old !== value
     }
 
     private func finish(_ batch: Batch, completed: Bool) {
@@ -426,7 +443,7 @@ public final class RGAdFilterSession {
                 }
             }
         }
-        for (token, completion) in batch.requests where !token.isCancelled { completion?() }
+        for (token, completion, _) in batch.requests where !token.isCancelled { completion?() }
     }
 
     public func release(scope: Scope) {

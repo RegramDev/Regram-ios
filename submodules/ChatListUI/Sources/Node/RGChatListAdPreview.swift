@@ -14,7 +14,7 @@ final class RGChatListAdPreview {
         var count: Int
 
         mutating func advance() {
-            count = min(messages.count, count + 8)
+            count = min(messages.count, count + 1)
             // Keep an album together so its caption can decide its otherwise empty attachments.
             while count > 0, count < messages.count, let key = messages[count - 1].groupingKey, messages[count].groupingKey == key { count += 1 }
         }
@@ -41,10 +41,16 @@ final class RGChatListAdPreview {
         for item in items {
             if case let .chatList(peerId) = item.id, let cached = recent[peerId], cached.top != item.messages { recent.removeValue(forKey: peerId) }
         }
-        // Render cached verdicts immediately, then wait off-thread for the full source messages.
-        return .single(project(update)) |> then(prepare(update) |> mapToSignal { [self] _ in
-            return loadMissing(update)
-        }) |> rgChatListPreviewUpdates()
+        // A result for one row must not wait for all other rows. Each subscription owns
+        // cancellable preparation/loading; the helper retains only this view's recent cache.
+        return Signal { [self] subscriber in
+            let work = PreviewWork(owner: self, update: update, emit: subscriber.putNext, complete: subscriber.putCompletion)
+            work.advance()
+            return ActionDisposable {
+                if self.queue.isCurrent() { work.stop() }
+                else { self.queue.async { work.stop() } }
+            }
+        } |> rgChatListPreviewUpdates()
     }
 
     private func sourceMessages(_ update: ChatListNodeViewUpdate) -> [Message] {
@@ -53,70 +59,135 @@ final class RGChatListAdPreview {
         func append(_ message: EngineMessage) {
             if seen.insert(message.id).inserted { sources.append(message._asMessage()) }
         }
-        // Top previews first, in list order. Dictionary iteration and older fallback rows
-        // must not decide which visible conversation receives a verdict first.
-        for item in items { for message in item.messages { append(message) } }
-        for group in update.list.groupItems { if let message = group.topMessage { append(message) } }
+        // Keep each row's next fallback beside its top message, so an earlier visible row
+        // is not held behind unrelated/offscreen top messages. Stop at the first normal row.
         for item in items {
+            for message in item.messages { append(message) }
             if case let .chatList(peerId) = item.id, let cached = recent[peerId], cached.top == item.messages {
                 for message in cached.messages.prefix(cached.count) { append(message) }
             }
         }
+        for group in update.list.groupItems { if let message = group.topMessage { append(message) } }
         return sources
     }
 
-    private func prepare(_ update: ChatListNodeViewUpdate) -> Signal<Void, NoError> {
-        let messages = sourceMessages(update)
-        return Signal { [self] subscriber in
-            let request = session.prepare(messages, accountPeerId: context.account.peerId, scope: scope) {
-                subscriber.putNext(()); subscriber.putCompletion()
-            }
-            return ActionDisposable { request.cancel() }
-        } |> deliverOn(queue)
-    }
-
-    private func loadMissing(_ update: ChatListNodeViewUpdate) -> Signal<ChatListNodeViewUpdate, NoError> {
+    /// Advance only past confirmed hidden candidates; unknown/model-unavailable rows are
+    /// never certified as normal and never start a busy retry loop.
+    private func nextMissing(_ update: ChatListNodeViewUpdate) -> [EnginePeer.Id: [EngineMessage]] {
         let account = context.account.peerId
         let hidden = session.hiddenMessageIds(in: sourceMessages(update), accountPeerId: account, scope: scope)
-        let items = update.list.items + update.list.additionalItems.map(\.item)
+        let items = (update.list.items + update.list.additionalItems.map(\.item)).sorted { $0.index > $1.index }
         let keywords = RGContentFilterState(accountPeerId: account)
         func visible(_ message: EngineMessage) -> Bool {
             !hidden.contains(message.id) && (keywords.isEmpty || !keywords.shouldHide(message: message))
         }
-        var advanced = false
         for item in items {
             guard case let .chatList(peerId) = item.id, item.messages.allSatisfy({ !visible($0) }),
-                  var cached = recent[peerId], cached.count < cached.messages.count,
-                  !cached.messages.prefix(cached.count).contains(where: visible) else { continue }
-            cached.advance(); recent[peerId] = cached; advanced = true
-        }
-        if advanced {
-            return .single(project(update)) |> then(prepare(update) |> mapToSignal { [self] _ in loadMissing(update) })
+                  var cached = recent[peerId] else { continue }
+            while cached.count < cached.messages.count,
+                  cached.messages.prefix(cached.count).allSatisfy({ !visible($0) }) {
+                cached.advance()
+            }
+            recent[peerId] = cached
         }
         var missing: [EnginePeer.Id: [EngineMessage]] = [:]
         for item in items {
             guard case let .chatList(peerId) = item.id, !item.messages.isEmpty, recent[peerId] == nil else { continue }
             // A captionless album top may require the caption carried by another local message.
             if item.messages.allSatisfy({ hidden.contains($0.id) }) || item.messages.contains(where: { $0.groupingKey != nil }) {
-                missing[peerId] = item.messages
+                if missing.count < min(16, max(0, 128 - recent.count)) { missing[peerId] = item.messages }
             }
         }
-        // Bound retained history and keep each Postbox transaction small. Further chunks continue
-        // in this signal; they do not depend on a new message/notification arriving to make progress.
-        let batch = Array(missing.keys.sorted { $0.toInt64() < $1.toInt64() }.prefix(min(16, max(0, 128 - recent.count))))
-        guard !batch.isEmpty else { return .single(project(update)) }
-        return .single(project(update)) |> then(
-            context.engine.messages.locallyStoredRecentMessages(peerIds: batch, limit: 50)
-            |> deliverOn(queue)
-            |> mapToSignal { [self] messages -> Signal<ChatListNodeViewUpdate, NoError> in
-                for peerId in batch {
-                    guard let top = missing[peerId], let newest = top.map(\.index).max() else { continue }
-                    var cached = Recent(top: top, messages: (messages[peerId] ?? []).filter { $0.index <= newest }, count: 0)
-                    cached.advance(); recent[peerId] = cached
-                }
-                return prepare(update) |> mapToSignal { [self] _ in loadMissing(update) }
+        return missing
+    }
+
+    /// Runs on the list processing queue. Progress is coalesced locally instead of posting
+    /// a global settings refresh for every newly confirmed normal message.
+    private final class PreviewWork {
+        let owner: RGChatListAdPreview
+        let update: ChatListNodeViewUpdate
+        let emit: (ChatListNodeViewUpdate) -> Void
+        let complete: () -> Void
+        let history = MetaDisposable()
+        var request: RGAdWorkRequest?
+        var requestedIds: [MessageId]?
+        var requestedVersions: [MessageId: UInt32] = [:]
+        var generation = 0
+        var preparing = false
+        var fetching = false
+        var scheduled = false
+        var stopped = false
+
+        init(owner: RGChatListAdPreview, update: ChatListNodeViewUpdate, emit: @escaping (ChatListNodeViewUpdate) -> Void, complete: @escaping () -> Void) {
+            self.owner = owner; self.update = update; self.emit = emit; self.complete = complete
+        }
+
+        func stop() {
+            stopped = true; generation += 1
+            request?.cancel(); request = nil; history.dispose()
+        }
+
+        func progressed() {
+            guard !stopped, !scheduled else { return }
+            scheduled = true
+            owner.queue.after(0.05) { [weak self] in
+                guard let self else { return }
+                self.scheduled = false; self.advance()
             }
-        )
+        }
+
+        func advance() {
+            guard !stopped else { return }
+            let missing = owner.nextMissing(update)
+            emit(owner.project(update))
+            if !fetching, !missing.isEmpty {
+                fetching = true
+                history.set((owner.context.engine.messages.locallyStoredRecentMessages(peerIds: Array(missing.keys), limit: 50)
+                |> deliverOn(owner.queue)).start(next: { [weak self] messages in
+                    guard let self, !self.stopped else { return }
+                    self.fetching = false
+                    for (peerId, top) in missing {
+                        guard let newest = top.map(\.index).max() else { continue }
+                        var cached = Recent(top: top, messages: (messages[peerId] ?? []).filter { $0.index <= newest }, count: 0)
+                        cached.advance(); self.owner.recent[peerId] = cached
+                    }
+                    self.advance()
+                }))
+            }
+            let messages = owner.sourceMessages(update)
+            let ids = messages.map(\.id)
+            let versions = Dictionary(uniqueKeysWithValues: messages.map { ($0.id, $0.stableVersion) })
+            if requestedIds != ids || requestedVersions != versions {
+                requestedIds = ids; requestedVersions = versions
+                generation += 1
+                let current = generation
+                preparing = true
+                let previous = request
+                request = owner.session.prepareProgressively(messages, accountPeerId: owner.context.account.peerId, scope: owner.scope, progress: { [weak self] _ in
+                    guard let self else { return }
+                    self.owner.queue.async { [weak self] in
+                        guard let self, current == self.generation else { return }
+                        self.progressed()
+                    }
+                }, completion: { [weak self] in
+                    guard let self else { return }
+                    self.owner.queue.async { [weak self] in
+                        guard let self, !self.stopped, current == self.generation else { return }
+                        self.preparing = false; self.advance()
+                    }
+                })
+                previous?.cancel()
+            }
+            if !preparing && !fetching {
+                stopped = true
+                complete()
+            }
+        }
+
+        deinit {
+            request?.cancel()
+            history.dispose()
+        }
     }
 
     private func project(_ update: ChatListNodeViewUpdate) -> ChatListNodeViewUpdate {

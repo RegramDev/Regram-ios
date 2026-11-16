@@ -106,6 +106,32 @@ checks = r'''
             spin { done }; disposable.dispose(); return last!
         }
         ChecksHelper.value = helper
+        // A visible pure-ad row must find its normal fallback while unrelated rows are
+        // still being classified. The final result alone misses the whole-batch barrier.
+        let firstAd = message(501, ad, peer: 9000)
+        let firstNormal = message(500, "目标频道正常新闻", peer: 9000)
+        context.engine.messages.history[firstAd.id.peerId] = [firstAd, firstNormal].map(EngineMessage.init)
+        let trailing = (0..<24).map { item([message(Int32(600 + $0), "耗时对照消息\($0)", peer: Int64(9100 + $0))], index: 1000 - $0) }
+        let counter = LatencyCounter()
+        RGAdSemanticClassifier.shared.beforePrediction = { input in
+            if input.text.hasPrefix("耗时对照消息") { counter.increment(); Thread.sleep(forTimeInterval: 0.03) }
+        }
+        var latencyDone = false, firstFallback: Double?, fallbackProcessed = 0
+        let started = ProcessInfo.processInfo.systemUptime
+        let latency = helper.apply(to: update([item([firstAd], index: 1001)] + trailing)).start(next: { value in
+            if firstFallback == nil, value.list.items[0].messages.first?.id == firstNormal.id {
+                firstFallback = ProcessInfo.processInfo.systemUptime - started
+                fallbackProcessed = counter.count
+            }
+        }, completed: { latencyDone = true })
+        spin { latencyDone }; latency.dispose()
+        let totalLatency = ProcessInfo.processInfo.systemUptime - started
+        RGAdSemanticClassifier.shared.beforePrediction = nil
+        precondition(firstFallback != nil && counter.count == trailing.count, "preview skipped required classifications")
+        print("Progressive fallback: \(Int(firstFallback! * 1000)) ms; full batch: \(Int(totalLatency * 1000)) ms; unrelated predictions before fallback: \(fallbackProcessed)/\(trailing.count)")
+        if ProcessInfo.processInfo.environment["RG_AD_LATENCY_REPORT_ONLY"] != "1" {
+            precondition(fallbackProcessed < trailing.count, "normal fallback waited for unrelated previews")
+        }
         let mixed = message(9, "正常电影简介👋\n" + ad, image: true)
         let original = update([item([mixed])]), cleaned = apply(original)
         let body = cleaned.list.items[0].messages[0].message
@@ -219,6 +245,25 @@ checks = r'''
         _ = apply(update([item([edited])]))
         RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         precondition(!completedCancelled, "disposed preview delivered a late completion")
+        // A history lookup can finish after a row has received a new message. Its stale
+        // callback must not replace that row's cache or cancel the replacement's inference.
+        let staleAd = message(70, ad, peer: 750), staleNormal = message(69, "旧的正常消息", peer: 750)
+        context.engine.messages.history[staleAd.id.peerId] = [staleAd, staleNormal].map(EngineMessage.init)
+        ready = false
+        session.prepare([staleAd], accountPeerId: account) { DispatchQueue.main.async { ready = true } }
+        spin { ready }
+        let oldQueries = context.engine.messages.queries.count
+        var staleEmissions = 0
+        let stale = helper.apply(to: update([item([staleAd])])).start(next: { _ in staleEmissions += 1 })
+        spin { context.engine.messages.queries.count > oldQueries }
+        stale.dispose()
+        let emissionsAtCancellation = staleEmissions
+        let replacementAd = message(72, ad, peer: 750), replacementNormal = message(71, "新的正常消息", peer: 750)
+        context.engine.messages.history[staleAd.id.peerId] = [replacementAd, replacementNormal].map(EngineMessage.init)
+        precondition(apply(update([item([replacementAd])])).list.items[0].messages.map(\.id) == [replacementNormal.id])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        precondition(staleEmissions == emissionsAtCancellation, "cancelled history delivered a stale row")
+        precondition(apply(update([item([replacementAd])])).list.items[0].messages.map(\.id) == [replacementNormal.id], "stale history replaced current fallback")
         // Ordinary cloud groups are eligible; private/outgoing messages remain unchanged.
         let group = message(60, ad, peer: 601); group.peers[group.id.peerId] = TelegramGroup()
         precondition(apply(update([item([group])])).list.items[0].messages.isEmpty)
@@ -230,6 +275,11 @@ checks = r'''
     }
 }
 enum ChecksHelper { static var value: RGChatListAdPreview? }
+final class LatencyCounter {
+    private let lock = NSLock(); private var value = 0
+    var count: Int { lock.lock(); defer { lock.unlock() }; return value }
+    func increment() { lock.lock(); value += 1; lock.unlock() }
+}
 '''.replace('METADATA_ARGS',args)
 helper = (root/'submodules/ChatListUI/Sources/Node/RGChatListAdPreview.swift').read_text()
 helper += '\n' + (root/'submodules/ChatListUI/Sources/Node/RGChatListPreviewUpdates.swift').read_text()
@@ -244,11 +294,19 @@ final class RGAdSemanticClassifier {
     static let shared = RGAdSemanticClassifier()
     private let lock = NSLock()
     private var ready = true
+    private var callback: ((RGAdInput) -> Void)?
+    var beforePrediction: ((RGAdInput) -> Void)? {
+        get { lock.lock(); defer { lock.unlock() }; return callback }
+        set { lock.lock(); callback = newValue; lock.unlock() }
+    }
     var available: Bool {
         get { lock.lock(); defer { lock.unlock() }; return ready }
         set { lock.lock(); ready = newValue; lock.unlock() }
     }
-    func predict(_ input: RGAdInput) -> RGAdSemanticResult { RGAdSemanticResult(completed: available) }
+    func predict(_ input: RGAdInput) -> RGAdSemanticResult {
+        beforePrediction?(input)
+        return RGAdSemanticResult(completed: available)
+    }
 }
 ''')
     sources = [p for p in (root/'Regram/RGAdFilter/Sources').glob('*.swift') if p.name != 'AdSemanticClassifier.swift'] + [model] + list((root/'submodules/SSignalKit/SwiftSignalKit/Source').glob('*.swift'))
