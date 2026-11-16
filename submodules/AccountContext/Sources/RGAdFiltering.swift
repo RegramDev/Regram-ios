@@ -195,6 +195,7 @@ public final class RGAdFilterSession {
     private var retryNeeded = false
     private var retryScheduled = false
     private var foreground = true
+    private var workConditions = RGAdWorkConditions()
     private var observers: [NSObjectProtocol] = []
     private var revision: UInt32 = 0
     // MARK: Regram — scrolling must not evict the currently displayed pinned result.
@@ -244,6 +245,7 @@ public final class RGAdFilterSession {
 
     private func updateWorkConditions() {
         let conditions = RGAdWorkConditions(foreground: foreground, lowPower: ProcessInfo.processInfo.isLowPowerModeEnabled, thermal: ProcessInfo.processInfo.thermalState.rawValue)
+        workConditions = conditions
         scheduler.updateConditions(conditions)
         if !foreground { flushSemanticCache() }
         if !conditions.paused { scheduleRetry() }
@@ -479,7 +481,9 @@ public final class RGAdFilterSession {
             completion(); return
         }
         let knowledge = self.knowledge
-        inferenceQueue.async {
+        // MARK: Regram — propagate the visible scope's QoS through the asynchronous model hop.
+        let interactive = workConditions.interactive && priority(batch.scope) > 0
+        inferenceQueue.async(execute: DispatchWorkItem(qos: interactive ? .userInitiated : .utility, flags: .enforceQoS) {
             let result: (RGAdProjection?, RGAdSemanticResult) = autoreleasepool {
                 let semantic = RGAdSemanticClassifier.shared.predict(input)
                 do { return (try knowledge.project(input, sourceGroup: work.group, semantic: semantic, sampleId: work.sampleId), semantic) }
@@ -499,7 +503,7 @@ public final class RGAdFilterSession {
                 self.accept(result.0, message: message, batch: batch, completed: result.1.completed, preservesMedia: work.preservesMedia)
                 completion()
             }
-        }
+        })
     }
 
     private func accept(_ result: RGAdProjection?, message: Message, batch: Batch, completed: Bool, preservesMedia: Bool, record: Bool = true) {

@@ -19,6 +19,7 @@ public struct RGAdWorkConditions: Equatable {
         self.foreground = foreground; self.lowPower = lowPower; self.thermal = thermal
     }
     public var paused: Bool { !foreground || thermal >= 3 }
+    public var interactive: Bool { foreground && !lowPower && thermal < 2 }
     public func recoveryDelay(workDuration: TimeInterval) -> TimeInterval {
         let multiplier = thermal >= 2 ? 7.0 : lowPower ? 3.0 : thermal == 1 ? 2.0 : 1.0
         return max(0.005, workDuration * multiplier)
@@ -27,7 +28,8 @@ public struct RGAdWorkConditions: Equatable {
 
 /// One shared pump per account, with round-robin progress across chat/history/pinned scopes.
 /// Admission and completion run on `queue`; asynchronous steps can keep inference off that
-/// queue. Only one step is in flight, and its measured work still incurs the shared cooldown.
+/// queue. Only one step is in flight. Visible history/pins can skip preview recovery while
+/// power and thermal conditions permit; ordinary previews retain the shared cooldown.
 /// Pauses retain unfinished work without caching a "normal" verdict.
 public final class RGAdWorkScheduler {
     private struct Job {
@@ -40,6 +42,7 @@ public final class RGAdWorkScheduler {
     private var conditions = RGAdWorkConditions()
     private var jobs: [Job] = []
     private var scheduled: DispatchWorkItem?
+    private var scheduledInteractive = false
     private var readyAt: TimeInterval = 0
     private var prioritySteps = 0
     private var running = false
@@ -68,6 +71,7 @@ public final class RGAdWorkScheduler {
     public func discardCancelled() {
         pruneCancelled()
         if jobs.isEmpty { scheduled?.cancel(); scheduled = nil }
+        else { schedule() }
     }
 
     private func pruneCancelled() {
@@ -79,10 +83,17 @@ public final class RGAdWorkScheduler {
     }
 
     private func schedule() {
-        guard !conditions.paused, !jobs.isEmpty, scheduled == nil, !running else { return }
-        let work = DispatchWorkItem { [weak self] in self?.pump() }
+        guard !conditions.paused, !jobs.isEmpty, !running else { return }
+        let interactive = conditions.interactive && jobs.contains { $0.priority > 0 }
+        if let scheduled {
+            guard scheduledInteractive != interactive else { return }
+            scheduled.cancel()
+        }
+        let work = DispatchWorkItem(qos: interactive ? .userInitiated : .utility, flags: .enforceQoS) { [weak self] in self?.pump() }
         scheduled = work
-        queue.asyncAfter(deadline: .now() + max(0, readyAt - ProcessInfo.processInfo.systemUptime), execute: work)
+        scheduledInteractive = interactive
+        if interactive { queue.async(execute: work) }
+        else { queue.asyncAfter(deadline: .now() + max(0, readyAt - ProcessInfo.processInfo.systemUptime), execute: work) }
     }
 
     private func pump() {

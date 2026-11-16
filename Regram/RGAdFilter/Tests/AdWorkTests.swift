@@ -2,6 +2,41 @@ import XCTest
 @testable import RGAdFilter
 
 final class AdWorkTests: XCTestCase {
+    func testVisibleWorkInterruptsPreviewRecoveryWithoutRemovingPowerProtection() {
+        for conditions in [RGAdWorkConditions(), RGAdWorkConditions(lowPower: true), RGAdWorkConditions(thermal: 2)] {
+            let queue = DispatchQueue(label: "ad-visible-recovery-test")
+            let scheduler = RGAdWorkScheduler(queue: queue)
+            let first = expectation(description: "preview completed")
+            let visible = expectation(description: "visible work completed")
+            var completedAt = 0.0, startedAt = 0.0
+            queue.async {
+                scheduler.updateConditions(conditions)
+                scheduler.enqueueAsync(cancelled: { false }, step: { finish in
+                    queue.asyncAfter(deadline: .now() + 0.15) {
+                        completedAt = ProcessInfo.processInfo.systemUptime
+                        finish(true); first.fulfill()
+                    }
+                }, onCancel: { XCTFail() })
+            }
+            wait(for: [first], timeout: 2)
+            queue.async {
+                // A normal preview has already scheduled a recovery timer. A newly opened
+                // pinned view must replace that timer, not wait for its old deadline.
+                let preview = RGAdWorkRequest()
+                scheduler.enqueue(cancelled: { preview.isCancelled }, step: { return true }, onCancel: {})
+                scheduler.enqueue(priority: 2, cancelled: { false }, step: {
+                    startedAt = ProcessInfo.processInfo.systemUptime
+                    preview.cancel(); visible.fulfill(); return true
+                }, onCancel: { XCTFail() })
+            }
+            wait(for: [visible], timeout: 3)
+            queue.sync {
+                if conditions.interactive { XCTAssertLessThan(startedAt - completedAt, 0.12) }
+                else { XCTAssertGreaterThanOrEqual(startedAt - completedAt, conditions.recoveryDelay(workDuration: 0.14)) }
+            }
+        }
+    }
+
     func testAsyncInferenceLeavesControlQueueFreeAndPreservesSingleAdmission() {
         let queue = DispatchQueue(label: "ad-async-control-test")
         let scheduler = RGAdWorkScheduler(queue: queue), request = RGAdWorkRequest()
@@ -135,6 +170,10 @@ final class AdWorkTests: XCTestCase {
         XCTAssertEqual(RGAdWorkConditions().recoveryDelay(workDuration: 0.1), 0.1, accuracy: 0.001)
         XCTAssertEqual(RGAdWorkConditions(lowPower: true).recoveryDelay(workDuration: 0.1), 0.3, accuracy: 0.001)
         XCTAssertEqual(RGAdWorkConditions(thermal: 2).recoveryDelay(workDuration: 0.1), 0.7, accuracy: 0.001)
+        XCTAssertTrue(RGAdWorkConditions().interactive)
+        XCTAssertFalse(RGAdWorkConditions(foreground: false).interactive)
+        XCTAssertFalse(RGAdWorkConditions(lowPower: true).interactive)
+        XCTAssertFalse(RGAdWorkConditions(thermal: 2).interactive)
     }
 
     func testReplacingPausedWorkReleasesCancelledJobsBeforeForegrounding() {

@@ -51,7 +51,7 @@ public final class RGAdSemanticCache {
               json["version"] as? Int == 1, let model = json["modelSHA256"] as? String, model.count == 64,
               let vocabulary = json["vocabularySHA256"] as? String, vocabulary.count == 64 else { return nil }
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "development"
-        return digest(Data("semantic-1:\(build):\(ProcessInfo.processInfo.operatingSystemVersionString):".utf8) + data)
+        return digest(Data("semantic-2:\(build):\(ProcessInfo.processInfo.operatingSystemVersionString):".utf8) + data)
     }
 
     public func key(for input: RGAdInput) -> String? {

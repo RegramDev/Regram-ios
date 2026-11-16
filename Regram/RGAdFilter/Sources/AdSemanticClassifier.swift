@@ -26,6 +26,11 @@ public final class RGAdSemanticClassifier {
         let threshold: Double
         let labels: [String]
     }
+    private static let contentThreshold = 0.2
+    private struct Score {
+        let probability: Double
+        let isExact: Bool
+    }
     private struct Loaded {
         let model: MLModel; let tokenizer: RGAdTokenizer; let threshold: Double
         let ids: MLMultiArray; let mask: MLMultiArray; let features: MLDictionaryFeatureProvider
@@ -33,12 +38,12 @@ public final class RGAdSemanticClassifier {
     private let lock = NSLock()
     private let resourceDirectory: URL?
     private var loaded: Loaded?
+    private var acceleratedModel: MLModel?
     private var retryAfter: TimeInterval = 0
-    private var scores = RGAdBoundedCache<String, Double>(countLimit: 2048, costLimit: 1792 * 1024)
-    // Different context strings can contain identical model windows. Reuse only exact token
-    // sequences; attention masks are a deterministic function of these IDs. Total score-cache
-    // budget stays at 2 MiB, including this cache, and every uncached window is still evaluated.
-    private var windowScores = RGAdBoundedCache<[Int32], Double>(countLimit: 512, costLimit: 256 * 1024)
+    private var scores = RGAdBoundedCache<String, Score>(countLimit: 2048, costLimit: 1792 * 1024)
+    // Attention masks are a deterministic function of these IDs. Approximate content verdicts
+    // may be reused for classification, never for exact public probabilities. Combined budget: 2 MiB.
+    private var windowScores = RGAdBoundedCache<[Int32], Score>(countLimit: 512, costLimit: 256 * 1024)
 
     public init(resourceDirectory: URL? = nil) { self.resourceDirectory = resourceDirectory }
 
@@ -66,9 +71,8 @@ public final class RGAdSemanticClassifier {
         else if let raw = resource("RGAdSemantic", "mlmodel") { modelURL = try MLModel.compileModel(at: raw) }
         else { throw RGAdFilterError.invalidModel }
         let configuration = MLModelConfiguration()
-        // Core ML's ANE path differs from the validated export in probability parity.
-        // This strict classifier needs stable probabilities at its decision threshold. Keep inference on the CPU;
-        // bounded background work and the shared score cache avoid repeated footer inference.
+        // CPU remains authoritative at every promotional threshold. Neural Engine is a
+        // conservative content gate; its probabilities are not interchangeable with CPU's.
         configuration.computeUnits = .cpuOnly
         let model = try MLModel(contentsOf: modelURL, configuration: configuration)
         guard model.modelDescription.inputDescriptionsByName["input_ids"] != nil,
@@ -81,29 +85,70 @@ public final class RGAdSemanticClassifier {
         let features = try MLDictionaryFeatureProvider(dictionary: ["input_ids": MLFeatureValue(multiArray: ids), "attention_mask": MLFeatureValue(multiArray: mask)])
         let value = Loaded(model: model, tokenizer: tokenizer, threshold: manifest.threshold, ids: ids, mask: mask, features: features)
         loaded = value
+        loadAcceleratedModel(at: modelURL, for: model)
         return value
     }
 
-    private func probability(_ text: String, using value: Loaded, minimumLength: Int = 4) throws -> Double? {
-        let key = RGAdTokenizer.normalize(text)
+    private func loadAcceleratedModel(at url: URL, for fallback: MLModel) {
+        #if arch(arm64) && !targetEnvironment(simulator)
+        guard #available(iOS 16, macOS 13, *) else { return }
+        DispatchQueue.global(qos: .utility).async { [weak self, weak fallback] in
+            guard let fallback else { return }
+            let configuration = MLModelConfiguration()
+            configuration.computeUnits = .cpuAndNeuralEngine
+            guard let model = try? MLModel(contentsOf: url, configuration: configuration), let self else { return }
+            self.lock.lock(); defer { self.lock.unlock() }
+            // An old asynchronous load must not restore a model released by memory pressure.
+            if self.loaded?.model === fallback { self.acceleratedModel = model }
+        }
+        #endif
+    }
+
+    private func confidence(from model: MLModel, features: MLDictionaryFeatureProvider) throws -> Double {
+        let output = try model.prediction(from: features)
+        guard let probabilities = output.featureValue(for: "probabilities")?.multiArrayValue, probabilities.count == 2 else { throw RGAdFilterError.invalidPrediction }
+        let score = probabilities[1].doubleValue
+        guard score.isFinite, (0...1).contains(score) else { throw RGAdFilterError.invalidPrediction }
+        return score
+    }
+
+    private func acceleratedContent(_ features: MLDictionaryFeatureProvider) -> Bool {
+        guard let model = acceleratedModel else { return false }
+        do { return try confidence(from: model, features: features) <= 0.1 }
+        catch { acceleratedModel = nil; return false }
+    }
+
+    private func probability(of key: String, using value: Loaded, minimumLength: Int = 4, forClassification: Bool = false) throws -> Double? {
         guard key.count >= minimumLength else { return nil }
-        if let cached = scores[key] { return cached }
+        if let cached = scores[key], forClassification || cached.isExact { return cached.probability }
         guard let windows = value.tokenizer.windows(key), windows.count <= 8 else { return nil }
         var minimum = 1.0
-        for window in windows {
+        var isExact = true
+        for (windowIndex, window) in windows.enumerated() {
             guard window.count == value.ids.count, value.mask.count == value.ids.count else { throw RGAdFilterError.invalidPrediction }
-            if let score = windowScores[window] { minimum = min(minimum, score); continue }
-            let ids = value.ids.dataPointer.assumingMemoryBound(to: Int32.self)
-            let mask = value.mask.dataPointer.assumingMemoryBound(to: Int32.self)
-            for (index, token) in window.enumerated() { ids[index] = token; mask[index] = token == 0 ? 0 : 1 }
-            let output = try value.model.prediction(from: value.features)
-            guard let probabilities = output.featureValue(for: "probabilities")?.multiArrayValue, probabilities.count == 2 else { throw RGAdFilterError.invalidPrediction }
-            let score = probabilities[1].doubleValue
-            guard score.isFinite, (0...1).contains(score) else { throw RGAdFilterError.invalidPrediction }
-            windowScores.insert(score, for: window, cost: window.count * MemoryLayout<Int32>.stride + 128)
-            minimum = min(minimum, score)
+            let score: Score
+            if let cached = windowScores[window], forClassification || cached.isExact { score = cached }
+            else {
+                let ids = value.ids.dataPointer.assumingMemoryBound(to: Int32.self)
+                let mask = value.mask.dataPointer.assumingMemoryBound(to: Int32.self)
+                for (index, token) in window.enumerated() { ids[index] = token; mask[index] = token == 0 ? 0 : 1 }
+                if forClassification, acceleratedContent(value.features) {
+                    score = Score(probability: Self.contentThreshold, isExact: false)
+                } else {
+                    score = Score(probability: try confidence(from: value.model, features: value.features), isExact: true)
+                }
+                windowScores.insert(score, for: window, cost: window.count * MemoryLayout<Int32>.stride + 128)
+            }
+            minimum = min(minimum, score.probability)
+            isExact = isExact && score.isExact
+            // All classification branches distinguish content at <= .2 from scores >= .5.
+            // Once any window proves content, later windows cannot change that decision.
+            // Keep exact public probabilities separate for calibration and conversion checks.
+            if forClassification, minimum <= Self.contentThreshold, windowIndex + 1 < windows.count {
+                isExact = false; break
+            }
         }
-        scores.insert(minimum, for: key, cost: key.utf8.count * 2 + 128)
+        scores.insert(Score(probability: minimum, isExact: isExact), for: key, cost: key.utf8.count * 2 + 128)
         return minimum
     }
 
@@ -111,19 +156,19 @@ public final class RGAdSemanticClassifier {
     /// the model warm so reclaiming memory does not cause repeated loads and extra heat.
     public func reduceMemoryPressure() {
         lock.lock(); defer { lock.unlock() }
-        scores.removeAll(); windowScores.removeAll(); loaded = nil
+        scores.removeAll(); windowScores.removeAll(); loaded = nil; acceleratedModel = nil
     }
 
     /// Public for the same production engine's conversion and physical-device regression harness.
     public func probability(_ text: String) throws -> Double? {
         lock.lock(); defer { lock.unlock() }
-        return try probability(text, using: load())
+        return try probability(of: RGAdTokenizer.normalize(text), using: load())
     }
 
     /// Preflight from the settings queue so a missing/broken model is visible to the user.
     public func prepareModel() -> Bool {
         lock.lock(); defer { lock.unlock() }
-        do { return try probability("本机模型运行检测", using: load()) != nil }
+        do { return try probability(of: RGAdTokenizer.normalize("本机模型运行检测"), using: load()) != nil }
         catch {
             if ProcessInfo.processInfo.systemUptime >= retryAfter { retryAfter = ProcessInfo.processInfo.systemUptime + 60 }
             return false
@@ -134,10 +179,21 @@ public final class RGAdSemanticClassifier {
         guard input.text.utf16.count <= 65_536, input.entities.count <= 2048,
               input.buttons.count <= 128, input.buttons.flatMap({ $0 }).count <= 128,
               input.buttons.flatMap({ $0 }).allSatisfy({ $0.title.utf16.count <= 1024 }) else { return RGAdSemanticResult() }
+        var normalizedTexts: [String: String] = [:]
+        var normalizedBytes = 0
+        func normalize(_ text: String) -> String {
+            if let normalized = normalizedTexts[text] { return normalized }
+            let normalized = RGAdTokenizer.normalize(text)
+            let cost = (text.utf8.count + normalized.utf8.count) * 2 + 128
+            if normalizedTexts.count < 128, cost <= 256 * 1024 - normalizedBytes {
+                normalizedTexts[text] = normalized; normalizedBytes += cost
+            }
+            return normalized
+        }
         // Foreign names/hashtags can dominate a movie post's language guess. In that case
         // assess Chinese fragments independently, while preserving the foreign body as a whole.
         func supportsLanguage(_ text: String) -> Bool {
-            let normalized = RGAdTokenizer.normalize(text)
+            let normalized = normalize(text)
             let language = NLLanguageRecognizer.dominantLanguage(for: normalized)
             if language == .simplifiedChinese || language == .traditionalChinese { return true }
             // Technical Chinese often lists Latin model/protocol names. Admit substantial
@@ -155,6 +211,9 @@ public final class RGAdSemanticClassifier {
         lock.lock(); defer { lock.unlock() }
         do {
             let value = try load()
+            func classificationScore(_ text: String, minimumLength: Int = 4) throws -> Double? {
+                try probability(of: normalize(text), using: value, minimumLength: minimumLength, forClassification: true)
+            }
             let source = input.text as NSString
             func hasSemanticWords(_ range: RGAdRange) -> Bool {
                 let destinations = input.entities.filter { entity in
@@ -167,7 +226,7 @@ public final class RGAdSemanticClassifier {
                     cursor = max(cursor, entity.range.upper)
                 }
                 if cursor < range.upper { text += source.substring(with: NSRange(location: cursor, length: range.upper - cursor)) }
-                return RGAdTokenizer.normalize(text).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) })
+                return normalize(text).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) })
             }
             var predictions: [RGAdPrediction] = []
             var promotionalQuotes: [RGAdRange] = []
@@ -181,14 +240,14 @@ public final class RGAdSemanticClassifier {
             guard paragraphs.count <= 128 else { return RGAdSemanticResult() }
             var hasContent = !wholeLanguageSupported
             let deadline = ProcessInfo.processInfo.systemUptime + 2
-            let substantive = paragraphs.filter { RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+            let substantive = paragraphs.filter { normalize(source.substring(with: $0.nsRange)).count >= 4 }
             let interactive = input.buttons.flatMap { $0 }.filter { $0.target == nil }.count >= 2
             let disclosedProse = input.entities.contains(where: { $0.kind == .code }) && !RGAdDisclosure.ranges(input).isEmpty
             var blockScores: [RGAdRange: Double] = [:]
             for block in blocks {
                 guard ProcessInfo.processInfo.systemUptime <= deadline else { return RGAdSemanticResult(completed: false) }
                 if !wholeLanguageSupported && !supportsLanguage(source.substring(with: block.nsRange)) { continue }
-                if let score = try probability(source.substring(with: block.nsRange), using: value) { blockScores[block] = score }
+                if let score = try classificationScore(source.substring(with: block.nsRange)) { blockScores[block] = score }
             }
             // One complete, strongly commercial block already satisfies the whole-card
             // path below. Without quoted/code content, menus or opaque actions, scoring
@@ -205,13 +264,13 @@ public final class RGAdSemanticClassifier {
             }
             // Several independently normal blocks must not become a whole advertisement just
             // because their combined text contains a short sponsorship footer.
-            if blockScores.count >= 2, blockScores.values.allSatisfy({ $0 <= 0.2 }) { hasContent = true }
+            if blockScores.count >= 2, blockScores.values.allSatisfy({ $0 <= Self.contentThreshold }) { hasContent = true }
             // A normal introduction followed immediately by a quotation can be a report,
             // example or filter test. The quoted sales pitch must not turn that explanation
             // into a whole-message advertisement, even with a separate sponsorship menu.
             let introductoryQuote: RGAdRange? = {
-                guard blocks.count >= 2, let first = blocks.first, (blockScores[first] ?? 1) <= 0.2,
-                      RGAdTokenizer.normalize(source.substring(with: first.nsRange)).unicodeScalars.filter({ (0x3400...0x9fff).contains($0.value) }).count >= 12,
+                guard blocks.count >= 2, let first = blocks.first, (blockScores[first] ?? 1) <= Self.contentThreshold,
+                      normalize(source.substring(with: first.nsRange)).unicodeScalars.filter({ (0x3400...0x9fff).contains($0.value) }).count >= 12,
                       !input.entities.contains(where: { [.quote, .code].contains($0.kind) && $0.range.intersects(first) }),
                       input.entities.contains(where: { [.quote, .code].contains($0.kind) && blocks[1].contains($0.range) }) else { return nil }
                 return blocks[1]
@@ -226,25 +285,25 @@ public final class RGAdSemanticClassifier {
                 // destination may still be removed with a fully classified card or footer.
                 if !hasSemanticWords(range) { continue }
                 if !wholeLanguageSupported && !supportsLanguage(text) { continue }
-                let score = try probability(text, using: value, minimumLength: navigation.contains(range) ? 2 : 4)
+                let score = try classificationScore(text, minimumLength: navigation.contains(range) ? 2 : 4)
                 let quoted = input.entities.contains { $0.kind == .quote && $0.range.intersects(range) }
                 var contextualLead = true
                 if range == substantive.first, substantive.count >= 3, let score, score >= value.threshold {
                     // Headlines can resemble solicitations in isolation. Require the beginning
                     // of the following body to agree before removing a lead sentence.
                     let lead = RGAdRange(range.lower, blocks.count >= 2 ? blocks[1].upper : substantive[1].upper)
-                    contextualLead = (try probability(source.substring(with: lead.nsRange), using: value) ?? 0) >= value.threshold
+                    contextualLead = (try classificationScore(source.substring(with: lead.nsRange)) ?? 0) >= value.threshold
                     // A linked sponsor can precede an otherwise normal welcome/article.
                     // Independently strong text and action to the exact same destination
                     // establish that first line without borrowing the following body's intent.
                     if !contextualLead, score >= max(0.99, value.threshold),
                        let reference = input.entities.first(where: { entity in
                            entity.kind == .link && range.contains(entity.range)
-                               && RGAdTokenizer.normalize(source.substring(with: entity.range.nsRange)) == RGAdTokenizer.normalize(text)
+                               && normalize(source.substring(with: entity.range.nsRange)) == normalize(text)
                        }), let target = RGAdFilter.normalizedTarget(reference.value) {
                         for button in input.buttons.flatMap({ $0 }) where RGAdFilter.normalizedTarget(button.target) == target {
                             guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
-                            if (try probability(button.title, using: value) ?? 0) >= max(0.99, value.threshold) { contextualLead = true; break }
+                            if (try classificationScore(button.title) ?? 0) >= max(0.99, value.threshold) { contextualLead = true; break }
                         }
                     }
                 }
@@ -253,36 +312,36 @@ public final class RGAdSemanticClassifier {
                 let blockIndex = blocks.firstIndex(where: { $0.contains(range) })
                 let contextualBlock = blockIndex.flatMap { blockScores[blocks[$0]] } ?? 0
                 var contextualNeighbors = true
-                let length = RGAdTokenizer.normalize(text).unicodeScalars.filter({ CharacterSet.alphanumerics.contains($0) }).count
+                let length = normalize(text).unicodeScalars.filter({ CharacterSet.alphanumerics.contains($0) }).count
                 if let score, score >= value.threshold, blocks.count > 1, let blockIndex,
                    !input.entities.contains(where: { [.link, .mention].contains($0.kind) && $0.range.intersects(range) }) {
                     // A price, launch announcement or release-status sentence in an article needs
                     // surrounding agreement. Linked calls to action are assessed in their own block.
                     let neighbors = RGAdRange(blocks[max(0, blockIndex - 1)].lower, blocks[min(blocks.count - 1, blockIndex + 1)].upper)
-                    contextualNeighbors = (try probability(source.substring(with: neighbors.nsRange), using: value) ?? 0) >= value.threshold
-                    if length < 48, (try probability(input.text, using: value) ?? 0) <= 0.2 { contextualNeighbors = false }
+                    contextualNeighbors = (try classificationScore(source.substring(with: neighbors.nsRange)) ?? 0) >= value.threshold
+                    if length < 48, (try classificationScore(input.text) ?? 0) <= Self.contentThreshold { contextualNeighbors = false }
                 }
                 // A linked article/document title is not evidence of selling by itself.
                 // When both the surrounding prose and complete post strongly say content,
                 // preserve a standalone descriptive reference despite its isolated score.
                 // Bare destinations, short menu items and long promotional paragraphs keep
                 // their existing evaluation paths.
-                if let score, score >= value.threshold, (4...48).contains(length), (length >= 12 || contextualBlock <= 0.2 || score < 0.99),
+                if let score, score >= value.threshold, (4...48).contains(length), (length >= 12 || contextualBlock <= Self.contentThreshold || score < 0.99),
                    !navigation.contains(range), blocks.count > 1, let blockIndex,
                    let reference = input.entities.first(where: { entity in
                        entity.kind == .link && range.contains(entity.range)
                        && RGAdFilter.normalizedTarget(source.substring(with: entity.range.nsRange)) == nil
-                       && RGAdTokenizer.normalize(source.substring(with: entity.range.nsRange)) == RGAdTokenizer.normalize(text)
-                   }), (try probability(input.text, using: value) ?? 1) <= 0.2 {
+                       && normalize(source.substring(with: entity.range.nsRange)) == normalize(text)
+                   }), (try classificationScore(input.text) ?? 1) <= Self.contentThreshold {
                     let neighbors = RGAdRange(blocks[max(0, blockIndex - 1)].lower, blocks[min(blocks.count - 1, blockIndex + 1)].upper)
-                    if (try probability(source.substring(with: neighbors.nsRange), using: value) ?? 1) <= 0.2 {
+                    if (try classificationScore(source.substring(with: neighbors.nsRange)) ?? 1) <= Self.contentThreshold {
                         // A matching promotional action supports the original high-score cut;
                         // normal "read more"/resource buttons do not supply that evidence.
                         let target = RGAdFilter.normalizedTarget(reference.value)
                         var promotionalAction = false
                         for button in input.buttons.flatMap({ $0 }) where target != nil && RGAdFilter.normalizedTarget(button.target) == target {
                             guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
-                            if let actionScore = try probability(button.title, using: value), actionScore >= 0.5 {
+                            if let actionScore = try classificationScore(button.title), actionScore >= 0.5 {
                                 promotionalAction = true
                                 // A standalone sponsor link can also precede the article.
                                 // A separately classified action to the identical destination
@@ -302,16 +361,16 @@ public final class RGAdSemanticClassifier {
                 }
                 if score == nil && length >= 8 {
                     hasContent = true
-                } else if (score ?? 1) <= 0.2, length >= 64 {
+                } else if (score ?? 1) <= Self.contentThreshold, length >= 64 {
                     // A price list or feature line is not an independent normal paragraph.
                     // Require a substantive body sentence and its
                     // complete blank-line block to agree before vetoing a whole ad. A short
                     // generic feature in the middle cannot override the complete-message model.
-                    if let blockIndex, (blockScores[blocks[blockIndex]] ?? 1) <= 0.2 {
+                    if let blockIndex, (blockScores[blocks[blockIndex]] ?? 1) <= Self.contentThreshold {
                         let neighbors = RGAdRange(blocks[max(0, blockIndex - 1)].lower, blocks[min(blocks.count - 1, blockIndex + 1)].upper)
                         // Disclaimers inside a paid offer can be normal in isolation. Require
                         // surrounding context too before treating one as independent content.
-                        if (try probability(source.substring(with: neighbors.nsRange), using: value) ?? 0) <= 0.2 {
+                        if (try classificationScore(source.substring(with: neighbors.nsRange)) ?? 0) <= Self.contentThreshold {
                             // A paid card can put its feature list or risk disclosure several
                             // blocks after its offer. Keep the preceding offer in the model's
                             // context, without allowing a later advertisement to consume an
@@ -320,9 +379,9 @@ public final class RGAdSemanticClassifier {
                             var belongsToOffer = false
                             if ProcessInfo.processInfo.systemUptime <= deadline,
                                let offer = blocks.prefix(blockIndex).last(where: { (blockScores[$0] ?? 0) >= max(0.99, value.threshold) }),
-                               (try probability(input.text, using: value) ?? 0) >= max(0.99, value.threshold) {
+                               (try classificationScore(input.text) ?? 0) >= max(0.99, value.threshold) {
                                 let context = source.substring(with: offer.nsRange) + "\n\n" + source.substring(with: blocks[blockIndex].nsRange)
-                                belongsToOffer = (try probability(context, using: value) ?? 0) >= max(0.99, value.threshold)
+                                belongsToOffer = (try classificationScore(context) ?? 0) >= max(0.99, value.threshold)
                             }
                             if !belongsToOffer { hasContent = true }
                         }
@@ -331,13 +390,13 @@ public final class RGAdSemanticClassifier {
                 // Search results and interactive bot menus can mix unrelated short entries.
                 // A confidently normal header/body and opaque actions veto whole-message
                 // deletion; each commercial entry is still classified independently.
-                if interactive, (score ?? 1) <= 0.2, length >= 8,
-                   contextualBlock <= 0.2 || input.entities.contains(where: { $0.kind == .link && range.contains($0.range) }) { hasContent = true }
+                if interactive, (score ?? 1) <= Self.contentThreshold, length >= 8,
+                   contextualBlock <= Self.contentThreshold || input.entities.contains(where: { $0.kind == .link && range.contains($0.range) }) { hasContent = true }
                 // A short tutorial/resource introduction with its own bare URL is
                 // still meaningful content. When the later promotional blocks link
                 // elsewhere, their greater length must not erase this introduction.
-                if range == substantive.first, (score ?? 1) <= 0.2, length >= 12,
-                   let blockIndex, contextualBlock <= 0.2, blocks.indices.contains(blockIndex + 1) {
+                if range == substantive.first, (score ?? 1) <= Self.contentThreshold, length >= 12,
+                   let blockIndex, contextualBlock <= Self.contentThreshold, blocks.indices.contains(blockIndex + 1) {
                     let reference = blocks[blockIndex + 1]
                     if !hasSemanticWords(reference) {
                         let referenceTargets = Set(input.entities.compactMap { entity -> String? in
@@ -364,12 +423,12 @@ public final class RGAdSemanticClassifier {
                 guard let score = blockScores[block], score >= value.threshold,
                       !input.entities.contains(where: { [.code, .quote].contains($0.kind) && $0.range.intersects(block) }),
                       input.entities.contains(where: { [.link, .mention].contains($0.kind) && block.contains($0.range) }) else { continue }
-                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && normalize(source.substring(with: $0.nsRange)).count >= 4 }
                 guard units.count >= 2, !units.contains(where: { navigation.contains($0) }) else { continue }
                 var minimum = score
                 for unit in units {
                     guard ProcessInfo.processInfo.systemUptime <= deadline,
-                          let part = try probability(source.substring(with: unit.nsRange), using: value) else { minimum = 0; break }
+                          let part = try classificationScore(source.substring(with: unit.nsRange)) else { minimum = 0; break }
                     minimum = min(minimum, part)
                     if minimum < value.threshold { break }
                 }
@@ -382,13 +441,13 @@ public final class RGAdSemanticClassifier {
                 for (index, range) in units.enumerated() {
                     guard ProcessInfo.processInfo.systemUptime <= deadline else { break }
                     let text = source.substring(with: range.nsRange)
-                    guard (2...3).contains(RGAdTokenizer.normalize(text).count),
-                          let shortScore = try probability(text, using: value, minimumLength: 2), shortScore >= 0.99 else { continue }
+                    guard (2...3).contains(normalize(text).count),
+                          let shortScore = try classificationScore(text, minimumLength: 2), shortScore >= 0.99 else { continue }
                     for neighborIndex in [index - 1, index + 1] where units.indices.contains(neighborIndex) {
                         let neighbor = units[neighborIndex]
                         guard let known = predictions.first(where: { $0.range.contains(neighbor) && $0.confidence >= value.threshold }) else { continue }
                         let combined = RGAdRange(min(range.lower, neighbor.lower), max(range.upper, neighbor.upper))
-                        if let score = try probability(source.substring(with: combined.nsRange), using: value), score >= value.threshold {
+                        if let score = try classificationScore(source.substring(with: combined.nsRange)), score >= value.threshold {
                             predictions.append(RGAdPrediction(range: combined, confidence: min(score, known.confidence)))
                         }
                     }
@@ -405,18 +464,18 @@ public final class RGAdSemanticClassifier {
                       let menu = navigationRows.first(where: { blocks[index + 1].contains($0.key) })?.value else { continue }
                 let commercialMenu = menu.filter { unit in predictions.contains(where: { $0.range.contains(unit) && $0.confidence >= max(0.99, value.threshold) }) }
                 guard commercialMenu.count >= 2 else { continue }
-                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && normalize(source.substring(with: $0.nsRange)).count >= 4 }
                 guard !units.isEmpty, !units.contains(where: { navigation.contains($0) }) else { continue }
                 var minimum = score
                 for unit in units {
                     guard ProcessInfo.processInfo.systemUptime <= deadline,
-                          let part = try probability(source.substring(with: unit.nsRange), using: value) else { minimum = 0; break }
+                          let part = try classificationScore(source.substring(with: unit.nsRange)) else { minimum = 0; break }
                     minimum = min(minimum, part)
                     if minimum < value.threshold { break }
                 }
                 if minimum >= value.threshold, ProcessInfo.processInfo.systemUptime <= deadline {
                     let joint = source.substring(with: block.nsRange) + "\n" + commercialMenu.map { source.substring(with: $0.nsRange) }.joined(separator: " ")
-                    if let contextual = try probability(joint, using: value), contextual >= max(0.99, value.threshold) {
+                    if let contextual = try classificationScore(joint), contextual >= max(0.99, value.threshold) {
                         predictions.append(RGAdPrediction(range: block, confidence: min(minimum, contextual)))
                     }
                 }
@@ -434,12 +493,12 @@ public final class RGAdSemanticClassifier {
                       !input.entities.contains(where: { $0.kind == .code && $0.range.intersects(block) }),
                       let menu = navigationRows.first(where: { blocks[index + 1].contains($0.key) })?.value,
                       menu.filter({ unit in predictions.contains(where: { $0.range.contains(unit) && $0.confidence >= max(0.99, value.threshold) }) }).count >= 2 else { continue }
-                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+                let units = paragraphs.filter { block.contains($0) && hasSemanticWords($0) && normalize(source.substring(with: $0.nsRange)).count >= 4 }
                 guard units.count >= 2 else { continue }
                 var allCommercial = true
                 for unit in units {
                     guard ProcessInfo.processInfo.systemUptime <= deadline,
-                          (try probability(source.substring(with: unit.nsRange), using: value) ?? 0) >= value.threshold else { allCommercial = false; break }
+                          (try classificationScore(source.substring(with: unit.nsRange)) ?? 0) >= value.threshold else { allCommercial = false; break }
                 }
                 let context = source.substring(with: blocks[index - 1].nsRange)
                 let quote = source.substring(with: block.nsRange).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -451,7 +510,7 @@ public final class RGAdSemanticClassifier {
                 let framed = "上文：" + String(context.trimmingCharacters(in: .whitespacesAndNewlines).suffix(32))
                     + "\n引用：" + quote + "\n后续入口：" + String(commercialMenu.prefix(16))
                 if allCommercial, ProcessInfo.processInfo.systemUptime <= deadline,
-                   let contextual = try probability(framed, using: value), contextual >= max(0.99, value.threshold) {
+                   let contextual = try classificationScore(framed), contextual >= max(0.99, value.threshold) {
                     predictions.append(RGAdPrediction(range: block, confidence: min(score, contextual)))
                     promotionalQuotes.append(block)
                 }
@@ -472,17 +531,17 @@ public final class RGAdSemanticClassifier {
                 for candidate in lines[(index + 1)...] {
                     guard ProcessInfo.processInfo.systemUptime <= deadline else { complete = false; break }
                     let text = source.substring(with: candidate.nsRange)
-                    if !RGAdTokenizer.normalize(text).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }) { continue }
+                    if !normalize(text).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }) { continue }
                     // Bare contact destinations and their decorative logos have no standalone
                     // semantic meaning. They may join an already delimited commercial footer,
                     // but cannot establish that footer's promotional verdict themselves.
                     if !hasSemanticWords(candidate) { continue }
                     if !wholeLanguageSupported && !supportsLanguage(text) { complete = false; break }
-                    guard let score = try probability(text, using: value), score >= value.threshold else { complete = false; break }
+                    guard let score = try classificationScore(text), score >= value.threshold else { complete = false; break }
                     scores.append(score)
                     footerTexts.append(text)
                 }
-                if complete, !scores.isEmpty, let score = try probability(footerTexts.joined(separator: "\n"), using: value), score >= value.threshold {
+                if complete, !scores.isEmpty, let score = try classificationScore(footerTexts.joined(separator: "\n")), score >= value.threshold {
                     predictions.append(RGAdPrediction(range: footer, confidence: min(score, scores.min() ?? score)))
                     break
                 }
@@ -494,8 +553,8 @@ public final class RGAdSemanticClassifier {
             var projectionThreshold = value.threshold
             let hasBodyBeyondNavigation = navigation.isEmpty || substantive.contains(where: { !navigation.contains($0) })
             if !hasContent, !substantive.isEmpty, hasBodyBeyondNavigation, ProcessInfo.processInfo.systemUptime <= deadline {
-                let whole = try probability(input.text, using: value) ?? 0
-                let meaningfulBlocks = blocks.filter { hasSemanticWords($0) && RGAdTokenizer.normalize(source.substring(with: $0.nsRange)).count >= 4 }
+                let whole = try classificationScore(input.text) ?? 0
+                let meaningfulBlocks = blocks.filter { hasSemanticWords($0) && normalize(source.substring(with: $0.nsRange)).count >= 4 }
                 // Long all-commercial cards can have slightly lower minimum-window scores.
                 // Require complete-text agreement, EVERY meaningful block >= .99, and two
                 // independently high-scoring blocks before using this whole-card threshold.
@@ -510,11 +569,11 @@ public final class RGAdSemanticClassifier {
                     // short blocks. A jointly normal introduction vetoes a whole-card cut,
                     // even when a sponsor footer dominates that score. Only score this
                     // prefix when it can prevent deletion, avoiding extra work on normal posts.
-                    let prefixBlocks = blocks.prefix { (blockScores[$0] ?? 1) <= 0.2 && hasSemanticWords($0) }
+                    let prefixBlocks = blocks.prefix { (blockScores[$0] ?? 1) <= Self.contentThreshold && hasSemanticWords($0) }
                     if prefixBlocks.count >= 3, let first = prefixBlocks.first, let last = prefixBlocks.last {
                         let prefix = source.substring(with: RGAdRange(first.lower, last.upper).nsRange)
-                        if RGAdTokenizer.normalize(prefix).unicodeScalars.filter({ CharacterSet.alphanumerics.contains($0) }).count >= 24 {
-                            normalIntroduction = (try probability(prefix, using: value) ?? 1) <= 0.2
+                        if normalize(prefix).unicodeScalars.filter({ CharacterSet.alphanumerics.contains($0) }).count >= 24 {
+                            normalIntroduction = (try classificationScore(prefix) ?? 1) <= Self.contentThreshold
                         }
                     }
                     if !normalIntroduction, ProcessInfo.processInfo.systemUptime <= deadline {
@@ -528,7 +587,7 @@ public final class RGAdSemanticClassifier {
                 if entireMessage { buttons.insert(button.id) }
                 // Callback actions (verification/moderation/polls) are opaque and
                 // cannot be inferred as ads from their short label alone.
-                else if RGAdFilter.normalizedTarget(button.target) != nil, ProcessInfo.processInfo.systemUptime <= deadline, supportsLanguage(button.title), let score = try probability(button.title, using: value), score >= value.threshold { buttons.insert(button.id) }
+                else if RGAdFilter.normalizedTarget(button.target) != nil, ProcessInfo.processInfo.systemUptime <= deadline, supportsLanguage(button.title), let score = try classificationScore(button.title), score >= value.threshold { buttons.insert(button.id) }
             }
             // A short stock/offer card may express its purchase intent in the attached action.
             // Require every action to be independently promotional, joint-text agreement,
@@ -536,13 +595,13 @@ public final class RGAdSemanticClassifier {
             // their own content even when an unrelated promotional button is removed.
             let actions = input.buttons.flatMap { $0 }
             if !entireMessage, !normalIntroduction, !actions.isEmpty, actions.count <= 4,
-               (4...64).contains(RGAdTokenizer.normalize(input.text).count),
+               (4...64).contains(normalize(input.text).count),
                !input.entities.contains(where: { [.code, .quote].contains($0.kind) }),
                actions.allSatisfy({ RGAdFilter.normalizedTarget($0.target) != nil && buttons.contains($0.id) }),
                ProcessInfo.processInfo.systemUptime <= deadline,
-               (try probability(input.text, using: value) ?? 0) >= 0.5 {
+               (try classificationScore(input.text) ?? 0) >= 0.5 {
                 let combined = input.text + "\n" + actions.map(\.title).joined(separator: "\n")
-                if let score = try probability(combined, using: value), score >= max(0.99, value.threshold) {
+                if let score = try classificationScore(combined), score >= max(0.99, value.threshold) {
                     predictions.append(RGAdPrediction(range: RGAdRange(0, source.length), confidence: score))
                     entireMessage = true
                 }

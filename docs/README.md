@@ -4,6 +4,8 @@
 
 ## 功能与使用
 
+- [ReSieve 的 iPhone 加速（b34663）](ad-filter-neural-engine-34663.md)：Neural Engine 正常内容判断、前台队列加速和同一批样本的真机对照。
+
 - [ReSieve 响应优化（b34662）](ad-filter-latency.md)：分离推理与结果刷新、毫秒级缓存复用、并发失效检查，以及实际模型对照和未验证范围。
 
 - [ReSieve 重启与样本读取优化（b34662）](ad-filter-restart-cache.md)：跨重启复用完成的模型判断、已确认样本索引、启动耗时验证，以及 IPA 构建与包校验。

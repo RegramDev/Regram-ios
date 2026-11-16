@@ -63,6 +63,18 @@ final class SemanticTests: XCTestCase {
         XCTAssertThrowsError(try classifier.probability("本机检测测试文本"))
         XCTAssertTrue(classifier.predict(RGAdInput(text: "普通内容")).predictions.isEmpty)
     }
+    func testClassificationContentShortcutsDoNotReplaceExactProbability() throws {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
+        let text = String(repeating: "今天整理了开源项目的使用文档和安装步骤，欢迎大家一起讨论遇到的问题。", count: 6)
+            + "\n\n" + String(repeating: "这是一段正常的电影介绍，讲述朋友们一起学习和生活的故事。", count: 6)
+        let exact = RGAdSemanticClassifier(resourceDirectory: directory)
+        let expected = try XCTUnwrap(exact.probability(text))
+        let classifier = RGAdSemanticClassifier(resourceDirectory: directory)
+        XCTAssertTrue(classifier.predict(RGAdInput(text: text)).completed)
+        XCTAssertEqual(try XCTUnwrap(classifier.probability(text)), expected, accuracy: 0.0000001)
+        classifier.reduceMemoryPressure()
+        XCTAssertEqual(try XCTUnwrap(classifier.probability(text)), expected, accuracy: 0.0000001)
+    }
     func testOverlappingBareDestinationEntitiesPreserveNormalSharing() throws {
         let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Resources")
         let classifier = RGAdSemanticClassifier(resourceDirectory: directory)

@@ -777,7 +777,7 @@
     "Channel topic is not inferred automatically; service-post preservation is based on reviewed training examples, not arbitrary context awareness."
   ],
   "inference": {
-    "computeUnits": "cpuOnly",
+    "computeUnits": "cpuOnly for exact scores and promotional decisions; cpuAndNeuralEngine for conservative content gating",
     "spanThreshold": 0.99164,
     "wholeCardConsensusFloor": 0.99,
     "wholeCardConsensus": "Complete text and every meaningful blank-line block >= .99, at least two blocks >= span threshold, no substantive normal content or protected code. Only complete-card cuts use this floor.",
@@ -794,29 +794,45 @@
     "paidCardContext": "A long normal-looking feature/risk paragraph can belong to a preceding independently strong offer only when both their joined text and the whole message are >= max(.99, spanThreshold). A later advertisement cannot consume earlier content.",
     "shortCommercialCards": "Short text plus URL actions require independently commercial actions, body probability >= .5, and joint probability >= max(.99, spanThreshold).",
     "wholeParagraph": "At least two substantive lines, every line and full blank-line block above threshold, link/mention destination, no real code/quote or mixed navigation.",
-    "scheduling": "Per-account utility queue, round-robin scopes, atomic message steps with 12ms between-message budget; rest at least work duration, 2x fair, 3x low-power, 7x serious; background/critical pause. Conditions change scheduling, not labels or thresholds.",
+    "scheduling": "Separate control and serial inference queues; one asynchronous message step at a time per account. Preview recovery at least work duration, 2x fair, 3x low-power, 7x serious. Foreground history/pins skip recovery with user-initiated QoS only when low-power is off and thermal state is below serious. Background/critical pauses retain unfinished work.",
     "reuse": "Shared bounded result cache across views, weak original-object validation memo, reusable Int32 tensors/provider and model score cache; known final rules/reviews bypass model work.",
     "incompleteResults": "Model unavailable/deadline/policy budget failures never cache a complete normal verdict. Confirmed cuts remain visible; active views retry with roughly 60-second backoff.",
     "orphanPromotionLinks": "Only after at least 12 meaningful body characters and 60% of body characters are removed as advertising; standalone links inherit the verdict only when all adjacent body anchors are ads. URL length is excluded. Normal references, quotes, code and explicitly preserved actions stay protected; exact manual corrections bypass inference.",
     "sponsorshipMenuContext": "An unlinked sponsorship block requires every meaningful sentence, the full block, two independently promotional adjacent menu items and their joint text to agree. Quoted variants retain separate framed-context checks.",
     "normalIntroduction": "Before whole-card deletion, three or more independently normal opening blocks totalling at least 24 alphanumeric characters must also be jointly normal to veto the cut.",
     "singleBlockFastPath": "Reuse a >= max(.999, span threshold) complete single-block score only without code, quotations, menus or opaque actions; avoids redundant sentence inference in the equivalent whole-card path.",
-    "pinnedAndPreviewScheduling": "Pinned priority 2, current history 1, home preview 0; service oldest work every fourth priority jump. Start pinned query alongside history load. Home visible top messages precede fallback history. First/pinned verdicts advance coalesced refresh, capped at five per second; remaining batch refresh stays coalesced. Thermal and low-power rest budgets unchanged.",
+    "pinnedAndPreviewScheduling": "Pinned priority 2, current history 1, home preview 0; service oldest work every fourth priority jump. Foreground interactive arrivals advance a pending recovery timer. Rules and completed caches bypass inference scheduling. View notifications coalesce at 16–50 ms; homepage local progress at 16 ms.",
     "memoryBudget": {
       "scoreReuse": {
-        "entries": 2048,
+        "stringEntries": 2048,
+        "windowEntries": 512,
         "estimatedBytes": 2097152
       },
       "messageReusePerAccount": {
         "entries": 2048,
-        "estimatedBytes": 8388608
+        "estimatedBytes": 7340032
       },
       "activeWindows": "Retained separately to avoid ads reappearing after shared-cache eviction; old window ids removed on completion.",
-      "pressure": "Reclaim shared scores and model only on actual iOS memory warnings; normal navigation keeps the model warm. Account registry is weak; cancelled work is released while paused.",
+      "pressure": "Clear string/window scores and both compute backends only on actual memory pressure. Late accelerated loads cannot restore an invalidated model. Account registry is weak; cancelled work is released while paused.",
       "samples": "Runtime knowledge loads only reviewed samples; pending records retain their disk/idempotency index.",
-      "scope": "Conservative cache payload accounting, not a process RSS limit or measured phone memory savings."
+      "scope": "Conservative cache payload accounting, not a process RSS limit or measured phone memory savings.",
+      "semanticReusePerAccount": {
+        "entries": 1024,
+        "estimatedBytes": 524288,
+        "persistent": "Exact-input salted keys, completed results, versioned namespace, seven-day TTL; no message bodies."
+      },
+      "normalizationPerPrediction": {
+        "entries": 128,
+        "estimatedBytes": 262144
+      }
     },
     "replyPreviews": "Prepare at most 128 already loaded one-hop reply targets per history/pinned request. A pure-ad target loses only the display reply header; normal reply body survives. Mixed target previews use cleaned text and original-range validation for explicit quotes. Draft reply previews share this rule, while sending ids/quotes remain unchanged. Missing targets remain unclassified.",
-    "readState": "At the fully loaded latest history bottom, extend read-through only across a contiguous confirmed hidden tail. Never cross an unread normal/unknown row, history hole, another peer/topic or search/tag view. Hidden mentions and explicit @ navigation also use AI results; homepage preview projection sends no read receipts."
+    "readState": "At the fully loaded latest history bottom, extend read-through only across a contiguous confirmed hidden tail. Never cross an unread normal/unknown row, history hole, another peer/topic or search/tag view. Hidden mentions and explicit @ navigation also use AI results; homepage preview projection sends no read receipts.",
+    "contentGate": {
+      "maximumAcceleratedProbability": 0.1,
+      "classificationContentBoundary": 0.2,
+      "loading": "Asynchronous on arm64 iOS 16+/macOS 13+, with CPU fallback while loading or on failure. Exact probability APIs always use CPU.",
+      "cache": "Content-only approximations are distinguished from exact probabilities in both string and token-window caches."
+    }
   }
 }
