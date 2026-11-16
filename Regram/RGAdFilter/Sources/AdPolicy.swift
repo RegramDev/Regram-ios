@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 4
+    public static let revision = 5
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")

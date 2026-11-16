@@ -23,6 +23,78 @@ final class AdFilterTests: XCTestCase {
         XCTAssertEqual(result.buttons.flatMap { $0 }.map(\.id), ["0:0"])
     }
 
+    func testInlineNavigationKeepsIndependentNormalLinks() throws {
+        let text = "软件介绍保留。\n🧐 合集 💬 群组 😄 恰饭 🥰联系推广\n#软件"
+        let names = ["合集", "群组", "恰饭", "联系推广"]
+        let input = RGAdInput(text: text, entities: names.enumerated().map {
+            entity(text, $0.element, kind: .link, value: "https://example.org/\($0.offset)")
+        }, hasMedia: true)
+        let rows = RGAdFilter.navigationRows(input)
+        XCTAssertEqual(rows.count, 1)
+        let units = try XCTUnwrap(rows.values.first)
+        XCTAssertEqual(units.count, 4)
+        let predictions = units.suffix(2).map { RGAdPrediction(range: $0, confidence: 1) }
+        let result = try RGAdFilter.project(input, predictions: predictions)
+        XCTAssertEqual(result.disposition, .trim)
+        XCTAssertTrue(result.text.contains("软件介绍保留。"))
+        XCTAssertTrue(result.text.contains("合集 💬 群组"))
+        XCTAssertTrue(result.text.contains("群组\n#软件"))
+        XCTAssertTrue(result.text.contains("#软件"))
+        XCTAssertFalse(result.text.contains("恰饭"))
+        XCTAssertFalse(result.text.contains("推广"))
+        XCTAssertEqual(result.entities.count, 2)
+        for kind in [RGAdEntity.Kind.quote, .code] {
+            let guarded = RGAdInput(text: text, entities: input.entities + [entity(text, "🧐 合集 💬 群组 😄 恰饭 🥰联系推广", kind: kind)])
+            XCTAssertTrue(RGAdFilter.navigationRows(guarded).isEmpty)
+            XCTAssertEqual(try RGAdFilter.project(guarded, predictions: predictions).text, text)
+        }
+        let prose = "请阅读项目文档，然后在社区讨论问题。"
+        let linkedProse = RGAdInput(text: prose, entities: [entity(prose, "项目文档", kind: .link), entity(prose, "社区讨论", kind: .link)])
+        XCTAssertTrue(RGAdFilter.navigationRows(linkedProse).isEmpty)
+    }
+
+    func testAdjacentFragmentsOfOneHyperlinkStayAtomic() throws {
+        let title = "银行开户奖励：DD入金查询指南"
+        let fragments = ["银行开户奖励：", "DD", "入金查询指南"]
+        let input = RGAdInput(text: title, entities: fragments.map {
+            entity(title, $0, kind: .link, value: "https://example.org/guide")
+        })
+        XCTAssertTrue(RGAdFilter.navigationRows(input).isEmpty)
+        let isolated = entity(title, fragments[2]).range
+        XCTAssertEqual(try RGAdFilter.project(input, predictions: [RGAdPrediction(range: isolated, confidence: 1)]).text, title)
+
+        let menu = "官网 社区 联系推广"
+        let mixed = RGAdInput(text: menu, entities: [
+            entity(menu, "官网", kind: .link, value: "https://example.org"),
+            entity(menu, "社区", kind: .link, value: "https://example.org/community"),
+            entity(menu, "联系", kind: .link, value: "https://example.org/ads"),
+            entity(menu, "推广", kind: .link, value: "https://example.org/ads")
+        ])
+        let units = try XCTUnwrap(RGAdFilter.navigationRows(mixed).values.first)
+        XCTAssertEqual(units.count, 3)
+        let projection = try RGAdFilter.project(mixed, predictions: [RGAdPrediction(range: units[2], confidence: 1)])
+        XCTAssertEqual(projection.text, "官网 社区")
+        XCTAssertEqual(projection.entities.count, 2)
+    }
+
+    func testBareDestinationOnlyFollowsSameAdjacentRemovedLink() throws {
+        let ad = "订阅套餐现在购买"
+        for (gap, url, shouldRemove) in [("\n\n", "https://example.org", true), ("\n正常来源说明\n", "https://example.org", false), ("\n", "https://example.org/docs", false)] {
+            let text = "正常正文\n" + ad + gap + url
+            let input = RGAdInput(text: text, entities: [entity(text, ad, kind: .link, value: "https://example.org/"), entity(text, url, kind: .link, value: url)])
+            let range = (text as NSString).range(of: ad)
+            let result = try RGAdFilter.project(input, confirmedRanges: [RGAdRange(range.location, NSMaxRange(range))])
+            XCTAssertTrue(result.text.contains("正常正文"))
+            XCTAssertEqual(result.text.contains(url), !shouldRemove)
+            XCTAssertTrue(try RGAdFilter.project(input, confirmedRanges: [RGAdRange(range.location, NSMaxRange(range))], inferButtons: false).text.contains(url))
+        }
+        let text = ad + "\nhttps://example.org"
+        for kind in [RGAdEntity.Kind.quote, .code] {
+            let input = RGAdInput(text: text, entities: [entity(text, ad, kind: .link, value: "https://example.org"), entity(text, "https://example.org", kind: kind)])
+            XCTAssertTrue(try RGAdFilter.project(input, confirmedRanges: [RGAdRange(0, ad.utf16.count)]).text.contains("https://example.org"))
+        }
+    }
+
     func testEntireAdvertisingCaptionHidesItsAttachment() throws {
         let input = RGAdInput(text: ad, entities: [entity(ad, "@promotion_user")], hasMedia: true)
         XCTAssertEqual(try RGAdPolicy.project(input).disposition, .hide)

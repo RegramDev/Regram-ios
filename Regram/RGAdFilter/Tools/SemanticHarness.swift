@@ -3,7 +3,8 @@ import Foundation
 // This harness executes the shipping tokenizer, Core ML engine and projection on macOS/iOS.
 // Fixtures and reports may contain real messages: callers must put them in ignored build-input.
 enum RGAdSemanticChecks {
-    struct Vector: Decodable { let text: String; let ids: [Int32]; let probability: Double }
+    struct Vector: Decodable { let text: String; let ids: [Int32]; let windows: [[Int32]]?; let probability: Double }
+    struct WindowVector: Decodable { let text: String; let windows: [[Int32]]? }
     struct Case: Decodable { let id: String; let text: String; let label: Int }
     struct Segment: Decodable { let text: String; let label: Int; let range: RGAdRange }
     struct Post: Decodable { let id: String; let kind: String; let input: RGAdInput; let segments: [Segment] }
@@ -24,6 +25,13 @@ enum RGAdSemanticChecks {
             return p
         }
         let decoder = JSONDecoder()
+        if let data = try? Data(contentsOf: fixtures.appendingPathComponent("window-vectors.json")) {
+            let vectors = try decoder.decode([WindowVector].self, from: data)
+            for vector in vectors {
+                guard tokenizer.windows(vector.text) == vector.windows else { throw RGAdFilterError.unsupportedTokenizer }
+            }
+            report["windowBoundaryVectors"] = vectors.count
+        }
         if let data = try? Data(contentsOf: fixtures.appendingPathComponent("conversion-vectors.json")) {
             let vectors = try decoder.decode([Vector].self, from: data)
             var maxError = 0.0
@@ -31,6 +39,9 @@ enum RGAdSemanticChecks {
                 // Python conversion vectors deliberately truncate at 126 tokens. Compare the
                 // matching first native window; probability parity uses untruncated short cases.
                 guard tokenizer.windows(vector.text)?.first == vector.ids else { throw RGAdFilterError.unsupportedTokenizer }
+                if let windows = vector.windows {
+                    guard tokenizer.windows(vector.text) == windows else { throw RGAdFilterError.unsupportedTokenizer }
+                }
                 if let tokens = tokenizer.tokens(vector.text), tokens.count <= 126 {
                     maxError = max(maxError, abs(try score(vector.text) - vector.probability))
                 }

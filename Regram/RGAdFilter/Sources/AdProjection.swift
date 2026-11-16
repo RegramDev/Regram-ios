@@ -13,7 +13,8 @@ public enum RGAdFilter {
               Set(allButtons.map(\.id)).count == allButtons.count else { throw RGAdFilterError.invalidInput }
         let source = input.text as NSString
         let paragraphs = paragraphRanges(input.text)
-        let modelSegments = semanticRanges(input.text)
+        let navigation = navigationRows(input).values.flatMap { $0 }
+        let modelSegments = semanticRanges(input.text) + navigation
         var ranges: [RGAdRange] = suggestedRanges + confirmedRanges
         var removedButtons = confirmedButtonIds
         let activeRules = rules.filter { !$0.pattern.isEmpty && ($0.peerId == nil || $0.peerId == input.peerId) }
@@ -50,7 +51,7 @@ public enum RGAdFilter {
                   rgAdValid(prediction.range, boundaries: boundaries),
                   modelSegments.contains(where: { $0.lower == prediction.range.lower }),
                   modelSegments.contains(where: { $0.upper == prediction.range.upper }) else { return false }
-            return source.substring(with: prediction.range.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).count >= 4
+            return navigation.contains(prediction.range) || source.substring(with: prediction.range.nsRange).trimmingCharacters(in: .whitespacesAndNewlines).count >= 4
         }.map(\.range)
         // Reject partial graphemes, protected quotations/code, and cuts through atomic entities.
         ranges = ranges.filter { range in
@@ -106,6 +107,21 @@ public enum RGAdFilter {
                !input.entities.contains(where: { ![.format, .customEmoji].contains($0.kind) && $0.range.intersects(gap) }) { ranges.append(gap) }
         }
         ranges = merge(ranges)
+        // A separately repeated bare destination belongs to the preceding removed link
+        // only when its complete normalized target matches and the gap is whitespace.
+        // Never propagate through normal prose, quotations, code or to an entire domain.
+        for paragraph in inferButtons ? paragraphs : [] {
+            guard ProcessInfo.processInfo.systemUptime < deadline else { throw RGAdFilterError.budgetExceeded }
+            let text = source.substring(with: paragraph.nsRange).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let target = normalizedTarget(text),
+                  !input.entities.contains(where: { [.code, .quote].contains($0.kind) && $0.range.intersects(paragraph) }),
+                  let previous = ranges.last(where: { $0.upper <= paragraph.lower }),
+                  source.substring(with: NSRange(location: previous.upper, length: paragraph.lower - previous.upper)).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  input.entities.contains(where: { previous.contains($0.range) && entityTarget($0, text: source) == target }),
+                  !input.entities.contains(where: { [.link, .mention, .customEmoji].contains($0.kind) && $0.range.intersects(paragraph) && !paragraph.contains($0.range) }) else { continue }
+            ranges.append(paragraph)
+            ranges = merge(ranges)
+        }
         let remaining = complement(ranges, length: source.length)
         var text = ""
         var mappedEntities: [RGAdEntity] = []
@@ -202,6 +218,53 @@ public enum RGAdFilter {
             }
         }
         if lower < offset { result.append(RGAdRange(lower, offset)) }
+        return result
+    }
+
+    /// Inline menus carry separate link labels, not a single sentence. Only split rows
+    /// made entirely of short links and decoration; ordinary linked prose stays atomic.
+    static func navigationRows(_ input: RGAdInput) -> [RGAdRange: [RGAdRange]] {
+        guard input.entities.filter({ $0.kind == .link }).count >= 2 else { return [:] }
+        let source = input.text as NSString
+        let boundaries = rgAdBoundaries(input.text)
+        let lines = paragraphRanges(input.text)
+        guard lines.count <= 128 else { return [:] }
+        var result: [RGAdRange: [RGAdRange]] = [:]
+        for line in lines {
+            let fragments = input.entities.filter {
+                $0.kind == .link && line.contains($0.range) && rgAdValid($0.range, boundaries: boundaries)
+            }.sorted { $0.range.lower < $1.range.lower }
+            // Telegram may split one visible hyperlink at script/format boundaries.
+            // Adjacent fragments of the same destination are one label, not menu items.
+            var links: [RGAdEntity] = []
+            for fragment in fragments {
+                if let previous = links.last, previous.range.upper == fragment.range.lower,
+                   let target = normalizedTarget(previous.value), target == normalizedTarget(fragment.value) {
+                    links[links.count - 1] = RGAdEntity(range: RGAdRange(previous.range.lower, fragment.range.upper), kind: .link, value: previous.value)
+                } else { links.append(fragment) }
+            }
+            guard (2...8).contains(links.count),
+                  !input.entities.contains(where: { [.quote, .code].contains($0.kind) && $0.range.intersects(line) }) else { continue }
+            var cursor = line.lower, units: [RGAdRange] = [], valid = true
+            for link in links {
+                guard link.range.lower >= cursor else { valid = false; break }
+                let label = source.substring(with: link.range.nsRange)
+                let gap = source.substring(with: NSRange(location: cursor, length: link.range.lower - cursor))
+                guard (1...12).contains(label.count), normalizedTarget(label) == nil,
+                      !gap.unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }) else { valid = false; break }
+                units.append(RGAdRange(cursor, link.range.upper)); cursor = link.range.upper
+            }
+            guard valid, let last = units.last,
+                  !source.substring(with: NSRange(location: cursor, length: line.upper - cursor)).unicodeScalars.contains(where: { CharacterSet.alphanumerics.contains($0) }) else { continue }
+            // Keep the line break when only the promotional suffix of a menu is cut.
+            var upper = line.upper
+            while upper > cursor, let scalar = UnicodeScalar(source.character(at: upper - 1)), CharacterSet.newlines.contains(scalar) { upper -= 1 }
+            units[units.count - 1] = RGAdRange(last.lower, upper)
+            guard !input.entities.contains(where: { entity in
+                [.link, .mention, .customEmoji].contains(entity.kind) && units.contains(where: { $0.intersects(entity.range) && !$0.contains(entity.range) })
+            }) else { continue }
+            result[line] = units
+        }
         return result
     }
 

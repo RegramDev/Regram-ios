@@ -13,6 +13,7 @@ import torch
 import coremltools as ct
 from coremltools.models.neural_network.quantization_utils import quantize_weights
 from transformers import BertForSequenceClassification, BertTokenizer
+from token_windows import native_windows
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--training', required=True)
@@ -57,9 +58,15 @@ for row in rows:
         expected = wrapper(x['input_ids'].int(), x['attention_mask'].int()).numpy()
     actual = native.predict({'input_ids':x['input_ids'].numpy().astype(np.int32), 'attention_mask':x['attention_mask'].numpy().astype(np.int32)})['probabilities']
     max_error = max(max_error, float(np.abs(expected-actual).max()))
-    vectors.append(dict(text=row['text'], ids=x['input_ids'][0].tolist(), probability=float(actual.reshape(-1)[1]), label=row['label']))
+    vectors.append(dict(text=row['text'], ids=x['input_ids'][0].tolist(), windows=native_windows(tokenizer.encode(row['text'], add_special_tokens=False), length), probability=float(actual.reshape(-1)[1]), label=row['label']))
 assert max_error < 0.01, max_error
 (source/'conversion-vectors.json').write_text(json.dumps(vectors, ensure_ascii=False))
+# Exercise full-window boundaries independently of the short probability probes.
+window_vectors = []
+for count in [0, 1, 125, 126, 127, 235, 236, 237, 896, 897, 1024, 1025]:
+    text = '测' * count
+    window_vectors.append(dict(text=text, windows=native_windows(tokenizer.encode(text, add_special_tokens=False), length)))
+(source/'window-vectors.json').write_text(json.dumps(window_vectors, ensure_ascii=False))
 (output/'RGAdVocabulary.txt').write_bytes((source/'checkpoint/vocab.txt').read_bytes())
 manifest = dict(version=1, architecture='MiniRBT-H256-6L', sequenceLength=length,
     weightBits=args.weight_bits,
