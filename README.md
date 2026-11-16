@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前版本 **13.2 / b34661**。新增 ReSieve 本机广告识别，覆盖频道与群聊，支持保留混合消息中的正常内容、过滤记录与手动纠错；改善主页摘要等待和过滤后的未读处理。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34661) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
+当前版本 **13.2 / b34662**。加快 ReSieve 在主页和置顶消息中的过滤反馈，已完成的识别可跨重启复用；减少样本库启动读取和重复计算，修正样本页连续刷新时旧记录覆盖新记录的问题。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
@@ -137,7 +137,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-b34661 已完成 Xcode 27.1 的完整 arm64 Release，主应用／六扩展、严格 ad-hoc 签名、三语资源、模型资源和 12 份匹配 dSYM 校验通过。86 项项目检查及过滤桥接、主页预览专项回归通过，七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34652 一致。构建源码为 `0d4d12fbce1cd3c63abaef904fdc22b01875eff2`；后续发布准备只更新文档。修正原因见[主页预览记录](docs/ad-preview-latency-34661.md)，历次更新见[更新记录](docs/changelog.md)。
+b34662 已完成 Xcode 27.1 的完整 arm64 Release，主应用／六扩展、严格 ad-hoc 签名、三语资源、模型资源和 12 份匹配 dSYM 校验通过。78 项过滤模块测试、86 项项目检查及过滤桥接、主页预览、排队与重启专项回归通过，七个 Bundle 的安装身份、完整 entitlements 及 URL schemes 与 b34661 一致。构建源码为 `479c438d7ffabaafdc4877aa5cfc35b41cdd3523`；后续提交只更新验证与发布文档。改动与对照见[响应优化](docs/ad-filter-latency.md)和[重启缓存记录](docs/ad-filter-restart-cache.md)，历次更新见[更新记录](docs/changelog.md)。
 
 ## 构建
 

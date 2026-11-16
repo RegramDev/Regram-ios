@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-**13.2 / b34661** adds ReSieve, an on-device ad classifier for channels and groups, with mixed-message cleanup, filtering records and manual corrections. It also improves chat-list preview updates and read-state handling after filtering. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34661) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
+**13.2 / b34662** improves ReSieve updates in the chat list and pinned messages, reuses completed classifications across restarts, and reduces sample-library startup work and repeated computation. It also prevents an older sample-page refresh from replacing newer records. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 
@@ -137,7 +137,7 @@ The outer Settings search and Pro home search share the catalog, aliases and set
 
 ## Build and package verification
 
-b34661 passed the full Xcode 27.1 arm64 Release build, with the main app, six extensions, strict ad-hoc signatures, three language resources, model resources and 12 matching dSYMs verified. The changes passed 86 project checks plus the filtering bridge and chat-list preview regressions. All seven bundle identities, complete entitlements and URL schemes match b34652. The app was built from `0d4d12fbce1cd3c63abaef904fdc22b01875eff2`; release preparation only adds documentation. See the [preview update record](docs/ad-preview-latency-34661.md) and [changelog](docs/changelog.md).
+b34662 passed the full Xcode 27.1 arm64 Release build, with the main app, six extensions, strict ad-hoc signatures, three language resources, model resources and 12 matching dSYMs verified. Validation includes 78 filtering unit tests, 86 project checks, and filtering bridge, chat-list preview, scheduling and restart regressions. All seven bundle identities, complete entitlements and URL schemes match b34661. The app was built from `479c438d7ffabaafdc4877aa5cfc35b41cdd3523`; later commits only update validation and release documentation. See the [response improvements](docs/ad-filter-latency.md), [restart cache record](docs/ad-filter-restart-cache.md) and [changelog](docs/changelog.md).
 
 ## Building
 

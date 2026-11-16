@@ -57,4 +57,4 @@ Xcode 27.1 下完成 `//Telegram:Regram` 的完整 arm64 Release，构建前后�
 - SHA-256：`2c8d723dda129a33a07bf8838ffb965abb189a14a33760eb0fda23a6ffdc9f03`。
 - 构建、包校验及缓存收尾记录：忽略目录 `build-input/ad-filter-34662/`。
 
-这是本地验证包，尚未上传为新的 Release。手机上的首次识别、主页显示、长时间滚动和耗电仍需用此包观察；Mac 上的缓存耗时不能作为手机首次推理的承诺。
+b34662 的安装包与校验文件见 [GitHub Release](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662)，使用上述同一份本地构建产物。手机上的首次识别、主页显示、长时间滚动和耗电仍需用此包观察；Mac 上的缓存耗时不能作为手机首次推理的承诺。

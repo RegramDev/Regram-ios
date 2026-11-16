@@ -1,12 +1,12 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34661** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34662** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
 - [ReSieve 响应优化（b34662）](ad-filter-latency.md)：分离推理与结果刷新、毫秒级缓存复用、并发失效检查，以及实际模型对照和未验证范围。
 
-- [ReSieve 重启与样本读取优化（b34662）](ad-filter-restart-cache.md)：跨重启复用完成的模型判断、已确认样本索引、启动耗时验证，以及本地 IPA 构建与包校验。
+- [ReSieve 重启与样本读取优化（b34662）](ad-filter-restart-cache.md)：跨重启复用完成的模型判断、已确认样本索引、启动耗时验证，以及 IPA 构建与包校验。
 
 - [ReSieve 本机广告识别与显示路径](ad-semantic-model.md)：b34660 的模型、混合消息与链接处理、置顶调度、未读／回复预览修正、内存预算和验证边界。
 
