@@ -4,3 +4,4 @@ coremltools==8.3.0
 numpy==1.26.4
 scikit-learn==1.7.2
 opencc-python-reimplemented==0.1.7
+regex==2026.11.9

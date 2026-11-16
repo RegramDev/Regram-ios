@@ -106,6 +106,7 @@ public final class RGAdSampleStore {
     public let directory: URL
     public private(set) var recordingFailed = false
     private var storedIds: Set<String>?
+    private var cachedSalt: String?
     public init(accountDirectory: URL) { directory = accountDirectory.appendingPathComponent("regram-ad-samples-v1", isDirectory: true) }
 
     private func prepare() throws {
@@ -119,15 +120,18 @@ public final class RGAdSampleStore {
     }
 
     public func salt() throws -> String {
+        if let cachedSalt { return cachedSalt }
         try prepare()
         let path = directory.appendingPathComponent("source-salt")
         if FileManager.default.fileExists(atPath: path.path) {
             let value = try String(contentsOf: path, encoding: .utf8)
             guard UUID(uuidString: value) != nil else { throw RGAdSampleError.damaged }
+            cachedSalt = value
             return value
         }
         let value = UUID().uuidString
         try Data(value.utf8).write(to: path, options: .atomic)
+        cachedSalt = value
         return value
     }
 
@@ -181,6 +185,10 @@ public final class RGAdSampleStore {
     public func recordDetection(input: RGAdInput, messageKey: String, mediaKinds: [String], mediaIdentity: String, projection: RGAdProjection) throws {
         guard projection.disposition != .keep else { return }
         do {
+            // load()/write() keep this validated index in sync. Repeated album and cross-view
+            // detections need no file decode, directory attributes or atomic rewrite.
+            let id = try Self.sampleId(input: input, salt: salt(), messageKey: messageKey, mediaIdentity: mediaIdentity)
+            if storedIds?.contains(id) == true { return }
             var sample = try draft(input: input, messageKey: messageKey, mediaKinds: mediaKinds, mediaIdentity: mediaIdentity)
             guard sample.reviewedAt == nil, sample.detection == nil else { return }
             sample.detection = RGAdDetection(recordedAt: Date().timeIntervalSince1970, policyRevision: RGAdPolicy.revision,

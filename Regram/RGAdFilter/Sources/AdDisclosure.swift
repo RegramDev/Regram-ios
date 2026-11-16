@@ -18,6 +18,7 @@ enum RGAdDisclosure {
     )
     private static let hashtag = try! NSRegularExpression(pattern: "[#＃][\\p{L}\\p{N}\\p{M}_]+")
     private static let url = try! NSRegularExpression(pattern: "(?:https?://|tg://|www\\.)[^\\s]+", options: .caseInsensitive)
+    private static let tagField = try! NSRegularExpression(pattern: "^[\\s\\p{So}\\p{Sk}\\p{M}]*(?:标签|標籤|tags?)\\s*[:：]\\s*$", options: .caseInsensitive)
 
     private static func onlyTagsAndDecoration(_ text: String) -> Bool {
         let stripped = hashtag.stringByReplacingMatches(in: text, range: NSRange(location: 0, length: text.utf16.count), withTemplate: "")
@@ -35,6 +36,18 @@ enum RGAdDisclosure {
         let value = source.substring(with: entity.range.nsRange)
         return !value.contains(where: { $0.isNewline || "{}[]=<>\\();".contains($0) })
             && value.unicodeScalars.filter({ (0x3400...0x9fff).contains($0.value) }).count >= 4
+    }
+
+    /// Some feeds put their prose summary in a monospace block. This is eligibility,
+    /// never an ad verdict: callers also require disclosure outside the block and a
+    /// complete semantic card decision. Programming syntax remains protected.
+    static func isProseBlock(_ entity: RGAdEntity, source: NSString) -> Bool {
+        guard entity.kind == .code, entity.range.lower >= 0, entity.range.upper <= source.length,
+              (16...1024).contains(entity.range.upper - entity.range.lower) else { return false }
+        let value = source.substring(with: entity.range.nsRange)
+        return value.split(whereSeparator: \.isNewline).count <= 24
+            && !value.contains(where: { "{}[]=<>\\();`".contains($0) })
+            && value.unicodeScalars.filter({ (0x3400...0x9fff).contains($0.value) }).count >= 16
     }
 
     static func ranges(_ input: RGAdInput) -> [RGAdRange] {
@@ -68,6 +81,15 @@ enum RGAdDisclosure {
             let prefix = text(RGAdRange(max(line.lower, sentence.lower), marker.lower))
             let suffix = text(RGAdRange(marker.upper, min(line.upper, sentence.upper)))
             let labelOnly = onlyTagsAndDecoration(text(line))
+            // Feed metadata such as "标签: #广告" explicitly describes its containing
+            // section, including the footer that follows. Ordinary inline mentions and
+            // multi-topic category rows do not receive this scope.
+            let lineText = text(line), lineRange = NSRange(location: 0, length: line.upper - line.lower)
+            let firstTag = hashtag.firstMatch(in: lineText, range: lineRange)
+            let fieldPrefix = (lineText as NSString).substring(to: firstTag?.range.location ?? 0)
+            let hasCategoryField = tagField.firstMatch(in: fieldPrefix, range: NSRange(location: 0, length: fieldPrefix.utf16.count)) != nil
+            if hasCategoryField && hashtag.numberOfMatches(in: lineText, range: lineRange) != disclosure.numberOfMatches(in: lineText, range: lineRange) { continue }
+            let categoryDeclaration = hasCategoryField && onlyTagsAndDecoration(suffix)
             // A tag embedded in prose is only actionable at the start/end of an
             // advertising sentence, never a quoted name or a word being discussed.
             guard labelOnly || onlyTagsAndDecoration(prefix) || onlyTagsAndDecoration(suffix) else { continue }
@@ -77,7 +99,13 @@ enum RGAdDisclosure {
             var lower = 0, upper = source.length
             if index > 0 {
                 for previous in lines[..<index].reversed() {
-                    if RGAdFilter.isSeparator(text(previous)) || normalTags(previous) { lower = previous.upper; break }
+                    // Leading topic tags belong to the same card. They are not a boundary that
+                    // can strand the product name above a trailing #ad disclosure.
+                    let endsEarlierBody = normalTags(previous) && lines.contains { earlier in
+                        earlier.upper <= previous.lower && !empty(earlier)
+                            && !onlyTagsAndDecoration(text(earlier)) && !RGAdFilter.isSeparator(text(earlier))
+                    }
+                    if RGAdFilter.isSeparator(text(previous)) || endsEarlierBody { lower = previous.upper; break }
                 }
             }
             if index + 1 < lines.count {
@@ -91,7 +119,9 @@ enum RGAdDisclosure {
             let before = RGAdRange(lower, line.lower), after = RGAdRange(line.upper, upper)
             // A category row embedded inside an article (for example, an ad-blocking
             // app tagged with SMS/phone/ad/blocking) is not a section disclosure.
-            if labelOnly && !empty(before) && !empty(after) {
+            if categoryDeclaration {
+                // The bounds above still stop at hard separators or other topic sections.
+            } else if labelOnly && !empty(before) && !empty(after) {
                 guard hashtag.numberOfMatches(in: text(line), range: NSRange(location: 0, length: line.upper - line.lower)) == 1 else { continue }
                 // A standalone declaration between normal sections introduces the
                 // adjacent paragraph. Do not consume later unrelated paragraphs.

@@ -2027,6 +2027,7 @@ public final class ChatListNode: ListViewImpl {
         // passed through before any lookup runs, so the list is never waiting on Postbox to render.
         let rgPreviewSubstitution = RGChatListPreviewSubstitution(context: context, queue: viewProcessingQueue)
         let rgAdPreview = RGChatListAdPreview(context: context, queue: viewProcessingQueue) // MARK: Regram
+        let rgLoadingState = RGChatListLoadingState() // MARK: Regram
         let chatListDataUpdate = self.chatListLocation.get()
         |> distinctUntilChanged
         |> mapToSignal { listLocation -> Signal<(ChatListNodeViewUpdate, ChatListFilter?), NoError> in
@@ -2035,17 +2036,19 @@ public final class ChatListNode: ListViewImpl {
             // load of an open chat also waits on. Matching previews against the filter there held
             // those loads up, so it runs where the list is processed anyway.
             |> deliverOn(viewProcessingQueue)
+            |> map { rgLoadingState.apply(to: $0, filter: listLocation.filter) } // MARK: Regram
             |> mapToSignal { update -> Signal<ChatListNodeViewUpdate, NoError> in
-                return rgPreviewSubstitution.apply(to: update)
-                |> mapToSignal { rgAdPreview.apply(to: $0) } // MARK: Regram — clean full messages before preview rendering.
-                |> then(
-                    rgContentFiltersDidChange()
-                    |> deliverOn(viewProcessingQueue)
-                    |> mapToSignal { _ -> Signal<ChatListNodeViewUpdate, NoError> in
-                        return rgPreviewSubstitution.apply(to: update)
-                        |> mapToSignal { rgAdPreview.apply(to: $0) } // MARK: Regram
-                    }
-                )
+                // MARK: Regram — observe changes while inference is pending. Repeating an
+                // Initial/UpdateVisible transaction for each verdict can reset list loading.
+                var first = true
+                return (Signal<Void, NoError>.single(()) |> then(rgContentFiltersDidChange() |> deliverOn(viewProcessingQueue)))
+                |> mapToSignal { _ -> Signal<ChatListNodeViewUpdate, NoError> in
+                    let value = first ? update : ChatListNodeViewUpdate(list: update.list, type: .Generic, scrollPosition: nil)
+                    first = false
+                    return rgPreviewSubstitution.apply(to: value)
+                    |> mapToSignal { rgAdPreview.apply(to: $0) }
+                }
+                |> rgChatListPreviewUpdates()
             }
             |> map { update in
                 return (update, listLocation.filter)

@@ -3,6 +3,7 @@
 
 No account files or model predictions are used as ground truth. The fixture ads use an
 existing precise policy rule so these checks isolate integration, cancellation and albums.
+Semantic availability is an explicit adapter; model correctness has its own native harness.
 """
 from pathlib import Path
 import runpy, subprocess, tempfile
@@ -37,7 +38,8 @@ struct RGContentFilterState {
     var isEmpty: Bool { Self.keyword == nil }
     func shouldHide(message: EngineMessage) -> Bool { Self.keyword.map { message.message.text.contains($0) } ?? false }
 }
-struct ChatListNodeViewUpdate { let list: EngineChatList; let type: Int; let scrollPosition: Int? }
+enum ViewUpdateType { case Initial, Generic, UpdateVisible }; typealias ChatListFilter = Int
+struct ChatListNodeViewUpdate { let list: EngineChatList; let type: ViewUpdateType; let scrollPosition: Int? }
 struct EngineChatList: Equatable {
     struct Item: Equatable {
         enum Id: Hashable { case chatList(PeerId), forum(Int64) }
@@ -96,7 +98,7 @@ checks = r'''
             EngineChatList.Item(id: .chatList(messages.first!.id.peerId), index: index, messages: messages.map(EngineMessage.init), METADATA_ARGS)
         }
         func update(_ items: [EngineChatList.Item]) -> ChatListNodeViewUpdate {
-            ChatListNodeViewUpdate(list: EngineChatList(items: items, groupItems: [], additionalItems: [], hasEarlier: true, hasLater: false, isLoading: false), type: 2, scrollPosition: 19)
+            ChatListNodeViewUpdate(list: EngineChatList(items: items, groupItems: [], additionalItems: [], hasEarlier: true, hasLater: false, isLoading: false), type: .Initial, scrollPosition: 19)
         }
         func apply(_ update: ChatListNodeViewUpdate, using helper: RGChatListAdPreview? = nil) -> ChatListNodeViewUpdate {
             var last: ChatListNodeViewUpdate?, done = false
@@ -109,9 +111,27 @@ checks = r'''
         let body = cleaned.list.items[0].messages[0].message
         precondition(body.text == "正常电影简介👋\n" && body.media.count == 1 && body.textEntitiesAttribute!.entities.isEmpty)
         precondition(rgAdOriginalMessage(body) === mixed)
-        precondition(cleaned.type == original.type && cleaned.scrollPosition == original.scrollPosition && cleaned.list.hasEarlier)
+        precondition(cleaned.type == .Generic && cleaned.scrollPosition == nil && cleaned.list.hasEarlier)
         let expected = EngineChatList.Item(id: original.list.items[0].id, index: 777, messages: cleaned.list.items[0].messages, METADATA_ARGS)
         precondition(cleaned.list.items[0] == expected, "preview changed metadata or unread/draft state")
+        // A delayed projection may change content, but must never replay initial loading/scroll.
+        var updates: [ChatListNodeViewUpdate] = []
+        let originalCopy = ChatListNodeViewUpdate(list: original.list, type: .Initial, scrollPosition: 19)
+        let chain = (Signal<ChatListNodeViewUpdate, NoError>.single(original)
+            |> then(.single(originalCopy)) |> then(.single(cleaned)) |> rgChatListPreviewUpdates()).start(next: { updates.append($0) })
+        precondition(updates.count == 2 && updates[0].type == .Initial && updates[0].scrollPosition == 19)
+        precondition(updates[1].type == .Generic && updates[1].scrollPosition == nil)
+        chain.dispose()
+        let loading = RGChatListLoadingState()
+        func emptyView(loading: Bool) -> ChatListNodeViewUpdate {
+            ChatListNodeViewUpdate(list: EngineChatList(items: [], groupItems: [], additionalItems: [], hasEarlier: false, hasLater: false, isLoading: loading), type: .Initial, scrollPosition: nil)
+        }
+        _ = loading.apply(to: original, filter: 1)
+        let retained = loading.apply(to: emptyView(loading: true), filter: 1)
+        precondition(retained.list.items == original.list.items && retained.type == .Generic && retained.scrollPosition == nil, "transient load blanked home rows")
+        precondition(loading.apply(to: emptyView(loading: false), filter: 1).list.items.isEmpty, "genuinely empty list retained stale chats")
+        _ = loading.apply(to: original, filter: 1)
+        precondition(loading.apply(to: emptyView(loading: true), filter: 2).list.items.isEmpty, "another folder exposed previous chats")
         let pure = message(10, ad, image: true), normal = message(8, "正常消息", image: true)
         context.engine.messages.history[normal.id.peerId] = [EngineMessage(message(11, "未来消息")), EngineMessage(pure), EngineMessage(normal)]
         let fallback = apply(update([item([pure])]))
@@ -124,7 +144,7 @@ checks = r'''
         let noHistory = message(12, ad, peer: 101, image: true)
         precondition(apply(update([item([noHistory])])).list.items[0].messages.isEmpty, "pure ad leaks image or notice")
         let topic = EngineChatList.Item(id: .forum(7), index: 901, messages: [EngineMessage(pure)], METADATA_ARGS)
-        let surfaces = ChatListNodeViewUpdate(list: EngineChatList(items: [topic], groupItems: [EngineChatList.GroupItem(id: 1, topMessage: EngineMessage(pure), items: [8], unreadCount: 99)], additionalItems: [EngineChatList.AdditionalItem(item: item([pure]), promoInfo: 42)], hasEarlier: false, hasLater: true, isLoading: false), type: 3, scrollPosition: nil)
+        let surfaces = ChatListNodeViewUpdate(list: EngineChatList(items: [topic], groupItems: [EngineChatList.GroupItem(id: 1, topMessage: EngineMessage(pure), items: [8], unreadCount: 99)], additionalItems: [EngineChatList.AdditionalItem(item: item([pure]), promoInfo: 42)], hasEarlier: false, hasLater: true, isLoading: false), type: .UpdateVisible, scrollPosition: nil)
         let projectedSurfaces = apply(surfaces)
         precondition(projectedSurfaces.list.items[0].messages.isEmpty, "topic preview kept a pure ad")
         precondition(projectedSurfaces.list.items[0].index == 901 && projectedSurfaces.list.hasLater)
@@ -184,6 +204,14 @@ checks = r'''
         }, completed: { deepDone = true })
         spin { deepDone }; deep.dispose()
         precondition(deepResult!.list.items[0].messages.map(\.id) == [deepNormal.id])
+        // A temporarily unavailable model must not certify an older unknown preview as normal.
+        let retryTop = message(120, ad, peer: 800), retryNormal = message(119, "模型恢复后展示的正常消息", peer: 800)
+        context.engine.messages.history[retryNormal.id.peerId] = [retryTop, retryNormal].map(EngineMessage.init)
+        RGAdSemanticClassifier.shared.available = false
+        let waiting = apply(update([item([retryTop])]))
+        precondition(waiting.list.items.count == 1 && waiting.list.items[0].messages.isEmpty)
+        RGAdSemanticClassifier.shared.available = true
+        precondition(apply(update([item([retryTop])])).list.items[0].messages.map(\.id) == [retryNormal.id], "incomplete model work was permanently cached")
         context.engine.messages.delayed = true
         var completedCancelled = false
         let cancelled = helper.apply(to: update([item([message(50, ad, peer: 500)])])).start(completed: { completedCancelled = true })
@@ -204,10 +232,25 @@ checks = r'''
 enum ChecksHelper { static var value: RGChatListAdPreview? }
 '''.replace('METADATA_ARGS',args)
 helper = (root/'submodules/ChatListUI/Sources/Node/RGChatListAdPreview.swift').read_text()
+helper += '\n' + (root/'submodules/ChatListUI/Sources/Node/RGChatListPreviewUpdates.swift').read_text()
 helper = '\n'.join(x for x in helper.splitlines() if not x.startswith('import '))
 with tempfile.TemporaryDirectory(prefix='regram-chat-list-') as directory:
     path = Path(directory); swift = path/'Checks.swift'
     swift.write_text(adapters+'\n'+extras+'\n'+bridge['bridge']+'\n'+helper+'\n'+checks)
-    sources = list((root/'Regram/RGAdFilter/Sources').glob('*.swift')) + list((root/'submodules/SSignalKit/SwiftSignalKit/Source').glob('*.swift'))
+    model = path/'SemanticAvailability.swift'
+    contract = (root/'Regram/RGAdFilter/Sources/AdSemanticClassifier.swift').read_text().split('/// A bundled, trained transformer.')[0]
+    model.write_text(contract + '''
+final class RGAdSemanticClassifier {
+    static let shared = RGAdSemanticClassifier()
+    private let lock = NSLock()
+    private var ready = true
+    var available: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return ready }
+        set { lock.lock(); ready = newValue; lock.unlock() }
+    }
+    func predict(_ input: RGAdInput) -> RGAdSemanticResult { RGAdSemanticResult(completed: available) }
+}
+''')
+    sources = [p for p in (root/'Regram/RGAdFilter/Sources').glob('*.swift') if p.name != 'AdSemanticClassifier.swift'] + [model] + list((root/'submodules/SSignalKit/SwiftSignalKit/Source').glob('*.swift'))
     subprocess.run(['xcrun','swiftc','-swift-version','5','-parse-as-library',*map(str,sources),str(swift),'-o',str(path/'checks')],check=True)
     subprocess.run([str(path/'checks')],check=True,timeout=60)

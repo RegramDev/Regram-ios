@@ -2,7 +2,7 @@ import Foundation
 
 /// Shared policy bundled in every app. Predictions never become human-reviewed training truth.
 public enum RGAdPolicy {
-    public static let revision = 6
+    public static let revision = 7
     private static let warning = try! NSRegularExpression(pattern: "警惕|谨防|诈骗|騙|骗局|报道|報道|曝光|反诈|不要|切勿|案例|举报|舉報|新闻|新聞")
     private static let promotion = try! NSRegularExpression(pattern: "0\\s*充值.{0,24}(免费体验|免費體驗).{0,24}(中奖可提现|中獎可提現)|实力飞投.{0,24}超高限红.{0,24}大额无忧|實力飛投.{0,24}超高限紅.{0,24}大額無憂")
     private static let signup = try! NSRegularExpression(pattern: "新人注册送\\s*[0-9]+\\s*[uU]|新人註冊送\\s*[0-9]+\\s*[uU]")
@@ -97,6 +97,15 @@ public enum RGAdPolicy {
             return sample.mediaLabel != .ad || sample.hasUncertainty
         }
 
+        /// Human corrections and deterministic whole-message disclosures are already final.
+        /// Mixed/unknown messages still use the same semantic model and projection thresholds.
+        public func resolve(_ input: RGAdInput, sourceGroup: String = "", sampleId: String? = nil,
+                            classify: (RGAdInput) -> RGAdSemanticResult) throws -> RGAdProjection {
+            let initial = try project(input, sourceGroup: sourceGroup, sampleId: sampleId)
+            if initial.disposition == .hide || review(input, sourceGroup: sourceGroup, sampleId: sampleId) != nil { return initial }
+            return try project(input, sourceGroup: sourceGroup, semantic: classify(input), sampleId: sampleId)
+        }
+
         public func project(_ input: RGAdInput, sourceGroup: String = "", semantic: RGAdSemanticResult = RGAdSemanticResult(), sampleId: String? = nil) throws -> RGAdProjection {
             guard input.text.utf16.count <= 65_536 else { throw RGAdFilterError.inputTooLong }
             guard input.entities.count <= 2048, input.buttons.count <= 128, input.buttons.flatMap({ $0 }).count <= 128 else { throw RGAdFilterError.invalidInput }
@@ -161,7 +170,7 @@ public enum RGAdPolicy {
                     }
                 }
             }
-            let result = try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage || disclosedWhole, disclosedRanges: disclosed)
+            let result = try RGAdFilter.project(input, predictions: semantic.predictions, threshold: semantic.threshold, suggestedRanges: ranges, confirmedButtonIds: removedButtons, preservedButtonIds: preservedButtons, entireMessageIsAd: semantic.entireMessage || disclosedWhole, disclosedRanges: disclosed, promotionalQuoteRanges: semantic.promotionalQuotes)
             // A caption independently classified entirely as advertising describes its attachment.
             // Previously line-level decisions cleared the caption but stranded the advertising
             // image. Normal text/buttons and explicit human media corrections veto this upgrade.

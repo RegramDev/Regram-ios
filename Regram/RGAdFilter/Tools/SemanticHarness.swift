@@ -7,7 +7,10 @@ enum RGAdSemanticChecks {
     struct WindowVector: Decodable { let text: String; let windows: [[Int32]]? }
     struct Case: Decodable { let id: String; let text: String; let label: Int }
     struct Segment: Decodable { let text: String; let label: Int; let range: RGAdRange }
-    struct Post: Decodable { let id: String; let kind: String; let input: RGAdInput; let segments: [Segment] }
+    struct Post: Decodable {
+        let id: String; let kind: String; let input: RGAdInput; let segments: [Segment]
+        let sourceGroup: String?; let snapshotId: String?; let reviewedSamples: [RGAdSample]?
+    }
     static func run(resources: URL, fixtures: URL, output: URL) throws {
         let classifier = RGAdSemanticClassifier(resourceDirectory: resources)
         let tokenizer = try RGAdTokenizer(vocabulary: String(contentsOf: resources.appendingPathComponent("RGAdVocabulary.txt"), encoding: .utf8))
@@ -63,10 +66,19 @@ enum RGAdSemanticChecks {
         if let data = try? Data(contentsOf: fixtures.appendingPathComponent("channel-evaluation.json")) {
             let posts = try decoder.decode([Post].self, from: data)
             var rows: [[String: Any]] = []
+            let defaultKnowledge = RGAdPolicy.Knowledge()
             for post in posts {
+                // Optional, explicit human corrections exercise the production personalization
+                // path. Report them separately; they are not model-inferred successes.
+                let knowledge = post.reviewedSamples.map { RGAdPolicy.Knowledge(samples: $0) } ?? defaultKnowledge
                 let predictionStarted = ProcessInfo.processInfo.systemUptime
-                let semantic = classifier.predict(post.input)
-                let projection = try RGAdPolicy.project(post.input, semantic: semantic)
+                var semantic = RGAdSemanticResult()
+                var modelInvoked = false
+                let projection = try knowledge.resolve(post.input, sourceGroup: post.sourceGroup ?? "", sampleId: post.snapshotId) { input in
+                    modelInvoked = true
+                    semantic = classifier.predict(input)
+                    return semantic
+                }
                 let predictionMilliseconds = (ProcessInfo.processInfo.systemUptime - predictionStarted) * 1000
                 var retainedNormal = 0, removedAds = 0, removedNormal = 0, retainedAds = 0, partialAds = 0
                 var segments: [[String: Any]] = []
@@ -89,7 +101,7 @@ enum RGAdSemanticChecks {
                 let contextScores = try RGAdFilter.contextRanges(post.input.text).map { range -> [String: Any] in
                     ["range": [range.lower, range.upper], "probability": try score((post.input.text as NSString).substring(with: range.nsRange))]
                 }
-                rows.append(["id": post.id, "kind": post.kind, "disposition": projection.disposition.rawValue, "semanticWhole": semantic.entireMessage, "wholeProbability": try score(post.input.text), "contextScores": contextScores, "normalKept": retainedNormal, "normalCut": removedNormal, "adCut": removedAds, "adKept": retainedAds, "adPartial": partialAds, "segments": segments, "buttonsKept": projection.buttons.flatMap { $0 }.map(\.id), "projection": projection.text, "predictionMilliseconds": predictionMilliseconds])
+                rows.append(["id": post.id, "kind": post.kind, "reviewedKnowledge": post.reviewedSamples != nil, "disposition": projection.disposition.rawValue, "semanticWhole": semantic.entireMessage, "modelInvoked": modelInvoked, "modelCompleted": semantic.completed, "wholeProbability": try score(post.input.text), "contextScores": contextScores, "normalKept": retainedNormal, "normalCut": removedNormal, "adCut": removedAds, "adKept": retainedAds, "adPartial": partialAds, "segments": segments, "buttonsKept": projection.buttons.flatMap { $0 }.map(\.id), "projection": projection.text, "predictionMilliseconds": predictionMilliseconds])
             }
             report["posts"] = rows
         }

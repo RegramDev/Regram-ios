@@ -1,5 +1,5 @@
 {
-  "modelVersion": "2026-11-16.4",
+  "modelVersion": "2026-11-16.9",
   "purpose": "Chinese channel and group text under reviewed promotional-intent policy. Preserve normal sharing, official benefits, and reviewed channel-related service/package information. No general channel-topic inference or ad-free guarantee.",
   "base": {
     "repository": "https://huggingface.co/hfl/minirbt-h256",
@@ -53,41 +53,41 @@
     "checkpointSelection": "Public validation precision >= .985 and FPR <= .005, then domain false positives, domain recall, public recall. Test labels never fitted.",
     "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split.",
     "thresholdCalibration": {
-      "previousThreshold": 0.99368,
+      "previousThreshold": 0.99221,
       "validation": {
-        "threshold": 0.99221,
-        "precision": 0.9853076216712581,
-        "recall": 0.3074498567335244,
-        "f1": 0.4686612797554051,
-        "tn": 3497,
-        "fp": 16,
-        "fn": 2417,
-        "tp": 1073,
-        "false_positive_rate": 0.004554511813265016
+        "threshold": 0.962,
+        "precision": 0.9866429207479964,
+        "recall": 0.3174785100286533,
+        "f1": 0.480381530457403,
+        "tn": 3498,
+        "fp": 15,
+        "fn": 2382,
+        "tp": 1108,
+        "false_positive_rate": 0.004269854824935952
       },
       "domainValidation": {
-        "threshold": 0.99221,
+        "threshold": 0.962,
         "precision": 1.0,
-        "recall": 0.8,
-        "f1": 0.8888888888888888,
+        "recall": 0.92,
+        "f1": 0.9583333333333334,
         "tn": 30,
         "fp": 0,
-        "fn": 5,
-        "tp": 20,
+        "fn": 2,
+        "tp": 23,
         "false_positive_rate": 0.0
       },
       "test": {
-        "threshold": 0.99221,
-        "precision": 0.978742249778565,
-        "recall": 0.32576650943396224,
-        "f1": 0.488829904888299,
-        "tn": 3247,
-        "fp": 24,
-        "fn": 2287,
-        "tp": 1105,
-        "false_positive_rate": 0.007337205747477835
+        "threshold": 0.962,
+        "precision": 0.9733218588640276,
+        "recall": 0.3334316037735849,
+        "f1": 0.49670619235836627,
+        "tn": 3240,
+        "fp": 31,
+        "fn": 2261,
+        "tp": 1131,
+        "false_positive_rate": 0.009477224090492203
       },
-      "method": "Per-epoch validation-only fine grid; checkpoint selection uses public precision/FPR constraints and authored-domain protection/recall. Reused public test is a longitudinal benchmark, not a fresh external evaluation."
+      "method": "Per-epoch validation-only selection with public precision/FPR constraints; reused test is a longitudinal benchmark, not a new external evaluation."
     },
     "preDeviceContextAuthoredRows": 614,
     "preDeviceContextExamplesSHA256": "b1cb0c8249e50d31f45ab304cc9309673552d7fd2662c1dbb543fa0a7d41306f",
@@ -298,59 +298,288 @@
       "partition": "Training and inspected development, including repeated templates; not unseen accuracy.",
       "preservedPreviousSevenKeepCases": true,
       "policy": "Preserve normal software sharing, official benefits, group verification, requests for advice and reviewed channel-related services. Remove commercial spans; complete author disclosure tags scope a whole card or bounded section. Uncertain image-only and ambiguous records excluded."
+    },
+    "falsePositiveAndPerformanceAdaptation": {
+      "build": 34659,
+      "sourceBuild": 34658,
+      "stages": [
+        {
+          "stage": "22",
+          "parent": "21",
+          "epochs": 2,
+          "selectedEpoch": 1,
+          "learningRate": 8e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 72.0
+          },
+          "focus": {
+            "sha256": "e9f6ca36e274cf2ab54c4f653db000adcedbf4e6a81810550488904707c7cdcc",
+            "normalizedRows": 740,
+            "weightMultiplier": 5
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "23",
+          "parent": "22",
+          "epochs": 2,
+          "selectedEpoch": 1,
+          "learningRate": 5e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "92e26849558f32b75db0fbab7dc46bb11eb5d6748d36f4a0aed013593cd1b2ed",
+            "normalizedRows": 752,
+            "weightMultiplier": 5
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "24",
+          "parent": "23",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 8e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "6c4f28e2d82f81938f8704952e1e1f30c99d3f6de378b4d764d8c40d094ed419",
+            "normalizedRows": 144,
+            "weightMultiplier": 5
+          },
+          "onAcceptedLineage": false
+        },
+        {
+          "stage": "25",
+          "parent": "23",
+          "epochs": 3,
+          "selectedEpoch": 2,
+          "learningRate": 5e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "e9a0fd9294bc151ae2373a85eb6238c92da14fac5d8e02f4dae53156654dfe6c",
+            "normalizedRows": 316,
+            "weightMultiplier": 5
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "26",
+          "parent": "25",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 5e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "6a3835196ec3f2ecc568066ba6e15634b8dca65c5def3df3c9fffa311cd4ca25",
+            "normalizedRows": 330,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "27",
+          "parent": "26",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 5e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "0e37866cdad850bc822ccc9d19ccf7a28ae934c5cd57ab92de17493cf36a34d0",
+            "normalizedRows": 362,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "28",
+          "parent": "27",
+          "epochs": 1,
+          "selectedEpoch": 1,
+          "learningRate": 2e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "2b800a88aa50e5fc1c29e549e94db1883146efa2da6a3deaa86f1b068ab8c91e",
+            "normalizedRows": 374,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": false
+        },
+        {
+          "stage": "29",
+          "parent": "27",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 3e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "fbd9b8822be5e3c01b8eb2f6395d6e42e62567604476f79ead7e40d745bb8f87",
+            "normalizedRows": 456,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "30",
+          "parent": "29",
+          "epochs": 2,
+          "selectedEpoch": 2,
+          "learningRate": 3e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "d7e702feeb21bd0fd493a1727215c4531ffd0cf146651d9135359a5c21534691",
+            "normalizedRows": 349,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "31",
+          "parent": "30",
+          "epochs": 2,
+          "selectedEpoch": 1,
+          "learningRate": 2e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "bbd35e684e4e9b83896b50be3e78e63cfa3c1a26501c04c10541cb5f0eca52c6",
+            "normalizedRows": 357,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        },
+        {
+          "stage": "32",
+          "parent": "31",
+          "epochs": 1,
+          "selectedEpoch": 1,
+          "learningRate": 1e-06,
+          "samplingWeights": {
+            "content": 72.0,
+            "promotion": 100.0
+          },
+          "focus": {
+            "sha256": "ac7b21b44a903903e300e24c730a3ff6ba2526ec3e70d6765c7b95d512aa0455",
+            "normalizedRows": 361,
+            "weightMultiplier": 20.0
+          },
+          "onAcceptedLineage": true
+        }
+      ],
+      "exportedRecords": 783,
+      "sourceGroups": 47,
+      "newRecords": 166,
+      "newReviewedSourceGroups": 22,
+      "newReviewedRecords": 166,
+      "additionalReviewedRecords": 204,
+      "ambiguousRecordsExcluded": 2,
+      "reviewedKinds": {
+        "normal": 29,
+        "mixed": 323,
+        "pure": 18
+      },
+      "rawExportSHA256": "134fe03cd84e765e778ac46893393b96e5f3f2cc6928caaec2b270765ddc7ead",
+      "reviewedNewSHA256": "f77b93423c4fa67044ff1c16632a5cd4ca15b106aa82cef7a3a1759a26564128",
+      "reviewedAuditSHA256": "6f64350343f3707d34d720d9ff7776294f76884bc9840a3b377a0e861c87eeca",
+      "examplesSHA256": "5d56f68aa1413423be237005d63e110b1b58adcc00a27881efeaed6f37eefb9c",
+      "finalAugmentedRows": 11347,
+      "replayRows": 7899,
+      "focus": {
+        "sha256": "ac7b21b44a903903e300e24c730a3ff6ba2526ec3e70d6765c7b95d512aa0455",
+        "normalizedRows": 361,
+        "weightMultiplier": 20.0
+      },
+      "exactNativeWindowRows": 142,
+      "automaticLabelsUsedAsTruth": false,
+      "rawMessagesCommitted": false,
+      "rawMessagesUploaded": false,
+      "quoteContextFramingSHA256": "659074bd22491deb20271fca97b784d0815fc939e35ae2f14f1bf6c3206f085b",
+      "partition": "Inspected development and selected supervised adaptation; not unseen testing. Preserve normal discussions, ad-blocking tools, official benefits, verification and previously reviewed service-related exceptions."
     }
   },
   "evaluation": {
     "publicTextClassifier": {
-      "threshold": 0.99221,
-      "precision": 0.978742249778565,
-      "recall": 0.32576650943396224,
-      "f1": 0.488829904888299,
-      "tn": 3247,
-      "fp": 24,
-      "fn": 2287,
-      "tp": 1105,
-      "false_positive_rate": 0.007337205747477835
+      "threshold": 0.962,
+      "precision": 0.9733218588640276,
+      "recall": 0.3334316037735849,
+      "f1": 0.49670619235836627,
+      "tn": 3240,
+      "fp": 31,
+      "fn": 2261,
+      "tp": 1131,
+      "false_positive_rate": 0.009477224090492203
     },
     "domainValidationAuthored": {
-      "threshold": 0.99221,
+      "threshold": 0.962,
       "precision": 1.0,
-      "recall": 0.8,
-      "f1": 0.8888888888888888,
+      "recall": 0.92,
+      "f1": 0.9583333333333334,
       "tn": 30,
       "fp": 0,
-      "fn": 5,
-      "tp": 20,
+      "fn": 2,
+      "tp": 23,
       "false_positive_rate": 0.0
     },
-    "warning": "Public spam labels are noisy and differ from promotional intent. Scores are not calibrated correctness probabilities. Development regression results are not unseen generalization accuracy. End-to-end projection includes language/context/range safeguards.",
+    "warning": "Inspected development cases, including training and repeated templates. Not unseen accuracy. Partial contact-only removal counts as advertising remaining. Public spam labels are not the user advertising policy.",
     "externalBotDevelopment": {
-      "fn": 27,
-      "fp": 0,
-      "tn": 48,
-      "tp": 12
+      "fn": 23,
+      "fp": 1,
+      "tn": 47,
+      "tp": 16
     },
     "nativeDevelopmentRegression": {
-      "posts": 518,
-      "normalBearing": 440,
+      "posts": 931,
+      "reviewedOverrideCases": 4,
+      "normalBearing": 813,
       "normalDamaged": 0,
-      "adBearing": 307,
-      "completeAdRemoval": 307,
+      "adBearing": 681,
       "adRemaining": 0,
-      "pureAds": 78,
-      "pureHidden": 78,
-      "mixed": 234,
-      "mixedFullyCleaned": 234,
+      "pureAds": 117,
+      "pureHidden": 117,
+      "mixed": 575,
+      "mixedFullyCleaned": 575,
       "buttonErrors": [],
+      "incomplete": 0,
       "failures": [],
       "latency": {
-        "median": 60.33929163822904,
-        "p95": 196.16525003220886,
-        "maximum": 493.0386249907315
+        "median": 55.7543333270587,
+        "p95": 192.16862501343712
       },
-      "scope": "518 development cases: previous 426, two user-confirmed public ads, 21 authored contrasts, 11 visible-phone normal observations, 58 independently reviewed phone snapshots. Every fixture has an explicit button expectation. Advertising spans count as removed only when all non-whitespace characters disappear."
+      "scope": "Inspected development cases, with reviewed spans and button expectations. Not unseen accuracy; latency includes score reuse."
     },
-    "physicalDevice": {
+    "livePhoneInspection": {
+      "installedBuild": 34658,
+      "exportedSnapshots": 783,
+      "sourceGroups": 47,
+      "homeBlankReproduced": false,
+      "scope": "Exported original snapshots locally using Xcode before code-side work; observed home rows present. Current version requires post-install behavior checks."
+    },
+    "previousPhysicalDevice_b34658": {
       "device": "iPhone 16 Pro",
       "os": "Version 27.0.1 (Build 24A446)",
       "posts": 518,
@@ -368,12 +597,28 @@
       "allTextAndButtonExpectationsPassed": true,
       "scope": "Same production model/tokenizer/policy/projector in Xcode diagnostic app; includes cache reuse, not app scrolling latency or complete IPA upgrade."
     },
-    "livePhoneInspection": {
-      "installedBuild": 34657,
-      "viewedChannelCount": 3,
-      "viewedGroupCount": 1,
-      "visibleNormalObservations": 11,
-      "scope": "Xcode UI inspection of resource/movie/technology channels and Stash group; locally exported snapshots span more source groups. Displayed normal text alone is not raw-message completeness evidence."
+    "latestPhoneReview": {
+      "totalExported": 816,
+      "additionalRecords": 33,
+      "uniqueInputs": 22,
+      "additionalSourceGroups": 14,
+      "originalExportSHA256": "9d81e6a958d764555a2205cc823aa69db6dd151b2c6cca22486df3ab5b953d07",
+      "reviewedSHA256": "1d337cd7ba187adf900f809429951330e3474f940777476c2a9d72e5a7a3c0d3",
+      "policy": "User confirmed preserving Long Emby welcome/help content and related official service links; two emoji banners follow pre-existing explicit personal correction, not global semantic inference.",
+      "priorAnnotationCorrections": 2,
+      "reviewedOverrideCases": 4
+    },
+    "physicalDevice": {
+      "performed": false,
+      "scope": "This revision validated on macOS production engine and independently compiled for iOS. No current phone thermal/battery or installed-app verification claimed."
+    },
+    "nativeConversion": {
+      "parity": {
+        "maxProbabilityError": 0,
+        "vectors": 100
+      },
+      "windowBoundaryVectors": 12,
+      "modelSHA256": "239500a96c527296cd84d8623a72767be1abdb844ae69b0c8811e34a4e0950aa"
     }
   },
   "privacy": "No network or message upload in inference. Real-device messages and raw corpora are excluded from the repository. Classification outputs cannot generate original training messages.",
@@ -387,15 +632,24 @@
   ],
   "inference": {
     "computeUnits": "cpuOnly",
-    "spanThreshold": 0.99221,
+    "spanThreshold": 0.962,
     "wholeCardConsensusFloor": 0.99,
     "wholeCardConsensus": "Complete text and every meaningful blank-line block >= .99, at least two blocks >= span threshold, no substantive normal content or protected code. Only complete-card cuts use this floor.",
     "privacy": "On-device, bounded background inference; no network requests.",
     "inlineNavigation": "Distinct menu links classified independently; adjacent same-target entity fragments coalesced; normal navigation protected; short-label expansion requires own score >=.99 plus adjacent/combined agreement.",
     "sameDestination": "Whitespace-adjacent repeated bare destination can follow a fully removed matching link; disabled for manual reviewed snapshots.",
-    "policyRevision": 6,
+    "policyRevision": 7,
     "authorDisclosure": "35 explicit Chinese/English tags, case-insensitive full hashtag boundaries, including ad/ads/sponsored/promotion. Scope at message/section/paragraph/sentence boundaries; protect URL fragments, actual code, quoted tag examples and embedded multi-topic rows. Entire-message semantic decisions still require their independent content guards.",
     "shortNormalLead": "A confidently normal short introduction with its own reference URL vetoes whole-message removal when later promotional blocks link elsewhere.",
-    "callbackButtons": "Opaque verification/moderation/poll callbacks are not classified from their label alone; still removed with a complete ad or explicit reviewed correction."
+    "callbackButtons": "Opaque verification/moderation/poll callbacks are not classified from their label alone; still removed with a complete ad or explicit reviewed correction.",
+    "quotedCommercialFooters": "Complete quoted block with at least two commercial lines, two independently strong promotional links in the adjacent menu, and separately framed quotation-intent probability >= max(.99, threshold). Normal introductory quotation, long quotations and code retain protection. Framing is trained with sponsorship versus report/test contrasts.",
+    "monospaceProse": "Short natural-language code blocks may join a semantic whole-ad verdict only with author disclosure outside the block; programming syntax, ordinary examples and unclassified fragments stay protected.",
+    "interactiveContent": "Confidently normal linked entries or header blocks veto whole-message deletion in interactive search/menu results.",
+    "paidCardContext": "A long normal-looking feature/risk paragraph can belong to a preceding independently strong offer only when both their joined text and the whole message are >= max(.99, spanThreshold). A later advertisement cannot consume earlier content.",
+    "shortCommercialCards": "Short text plus URL actions require independently commercial actions, body probability >= .5, and joint probability >= max(.99, spanThreshold).",
+    "wholeParagraph": "At least two substantive lines, every line and full blank-line block above threshold, link/mention destination, no real code/quote or mixed navigation.",
+    "scheduling": "Per-account utility queue, round-robin scopes, atomic message steps with 12ms between-message budget; rest at least work duration, 2x fair, 3x low-power, 7x serious; background/critical pause. Conditions change scheduling, not labels or thresholds.",
+    "reuse": "Shared bounded result cache across views, weak original-object validation memo, reusable Int32 tensors/provider and model score cache; known final rules/reviews bypass model work.",
+    "incompleteResults": "Model unavailable/deadline/policy budget failures never cache a complete normal verdict. Confirmed cuts remain visible; active views retry with roughly 60-second backoff."
   }
 }

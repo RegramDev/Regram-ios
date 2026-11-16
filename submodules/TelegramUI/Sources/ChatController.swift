@@ -7903,6 +7903,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 }
             }
             
+            let rgPinnedAdFilter = RGAdFilterSession.get(context) // MARK: Regram
+            let rgPinnedAdWork = RGAdFilterWorkScope(session: rgPinnedAdFilter, scope: .pinnedView(UUID())) // MARK: Regram
             topPinnedMessage = combineLatest(queue: .mainQueue(),
                 adjustedReplyHistory,
                 topMessage,
@@ -7931,20 +7933,20 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 var topMessage = topMessage
                 // MARK: Regram — the same local model and original-preserving projection cover
                 // pinned captions/buttons. Keep this scope separate from the scrolling window.
-                let rgAdFilter = RGAdFilterSession.get(context)
+                let rgAdFilter = rgPinnedAdFilter
                 var rgPinnedSources = pinnedMessages.messages.map(\.message)
                 if let topMessage { rgPinnedSources.append(topMessage.message) }
-                rgAdFilter.prepare(rgPinnedSources, accountPeerId: context.account.peerId, scope: .pinned)
-                let rgHiddenPinnedAds = rgAdFilter.hiddenMessageIds(in: rgPinnedSources, accountPeerId: context.account.peerId, scope: .pinned) // MARK: Regram — keep album decisions consistent.
+                rgPinnedAdWork.prepare(rgPinnedSources, accountPeerId: context.account.peerId)
+                let rgHiddenPinnedAds = rgAdFilter.hiddenMessageIds(in: rgPinnedSources, accountPeerId: context.account.peerId, scope: rgPinnedAdWork.scope) // MARK: Regram — keep album decisions consistent.
                 pinnedMessages.messages = pinnedMessages.messages.compactMap { entry in
                     if rgHiddenPinnedAds.contains(entry.message.id) { return nil }
                     var entry = entry
-                    entry.message = rgAdFilter.display(entry.message, accountPeerId: context.account.peerId, scope: .pinned)
+                    entry.message = rgAdFilter.display(entry.message, accountPeerId: context.account.peerId, scope: rgPinnedAdWork.scope)
                     return entry
                 }
                 if let value = topMessage {
                     if rgHiddenPinnedAds.contains(value.message.id) { topMessage = nil }
-                    else { topMessage?.message = rgAdFilter.display(value.message, accountPeerId: context.account.peerId, scope: .pinned) }
+                    else { topMessage?.message = rgAdFilter.display(value.message, accountPeerId: context.account.peerId, scope: rgPinnedAdWork.scope) }
                 }
                 let rgContentFilter = RGContentFilterState(accountPeerId: context.account.peerId)
                 if !rgContentFilter.isEmpty {

@@ -19,9 +19,11 @@ ap.add_argument('--content-weight',type=float,default=18);ap.add_argument('--pro
 ap.add_argument('--learning-rate',type=float,default=3e-5)
 ap.add_argument('--focus-examples',help='Reviewed difficult training examples (content/promotion arrays); never validation inputs')
 ap.add_argument('--focus-all-windows',action='store_true',help='Replay exact native token windows for focused training examples')
+ap.add_argument('--focus-weight-multiplier',type=float,default=5,help='Sampling multiplier for explicitly reviewed difficult training examples')
 a=ap.parse_args();source=Path(a.source);out=Path(a.output);out.mkdir(parents=True,exist_ok=True)
 assert 0 < a.content_weight <= 100 and 0 < a.promotion_weight <= 100
 assert 0 < a.learning_rate <= 1e-3
+assert 1 <= a.focus_weight_multiplier <= 50
 assert not a.focus_all_windows or a.focus_examples, 'Window replay requires explicit reviewed focus examples'
 random.seed(34657);np.random.seed(34657);torch.manual_seed(34657);torch.set_num_threads(3)
 splits=json.loads((source/'split.json').read_text());original=json.loads((source/'metrics.json').read_text());examples=json.loads(Path(a.examples).read_text());cc=OpenCC('s2t')
@@ -36,7 +38,7 @@ for label,key in [(0,'content'),(1,'promotion')]:
   for variant in (text,cc.convert(text)):
    text=normalize(variant)
    if (label,text) in seen:continue
-   seen.add((label,text));additions.append(dict(text=text,label=label,group=f'authored-{key}-{i}',weight=(a.promotion_weight if label else a.content_weight)*(5 if (label,text) in focus else 1)))
+   seen.add((label,text));additions.append(dict(text=text,label=label,group=f'authored-{key}-{i}',weight=(a.promotion_weight if label else a.content_weight)*(a.focus_weight_multiplier if (label,text) in focus else 1)))
 assert focus.issubset(seen), 'Focused examples must already have reviewed training labels'
 assert not {t for label,t in seen if label==0}.intersection(t for label,t in seen if label==1), 'Normalized training label conflict; review before fitting'
 # Replay is drawn only from training. No validation/test input is promoted into training.
@@ -113,6 +115,6 @@ r=dict(cleaning=original['cleaning'],history=history,selected=selected,test=metr
 if a.domain_validation:r['adaptation']['domain_validation_sha256']=hashlib.sha256(Path(a.domain_validation).read_bytes()).hexdigest()
 r['adaptation']['samplingWeights']={'content':a.content_weight,'promotion':a.promotion_weight}
 r['adaptation']['learningRate']=a.learning_rate
-if a.focus_examples:r['adaptation']['focus']={'sha256':hashlib.sha256(Path(a.focus_examples).read_bytes()).hexdigest(),'normalizedRows':len(focus),'weightMultiplier':5}
+if a.focus_examples:r['adaptation']['focus']={'sha256':hashlib.sha256(Path(a.focus_examples).read_bytes()).hexdigest(),'normalizedRows':len(focus),'weightMultiplier':a.focus_weight_multiplier}
 r['adaptation']['exactNativeWindowRows']=len(window_rows)
 (out/'metrics.json').write_text(json.dumps(r,indent=2));print(json.dumps(dict(final_test=r['test'])),flush=True)

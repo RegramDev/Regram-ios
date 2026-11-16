@@ -44,7 +44,7 @@ final class RGChatListAdPreview {
         // Render cached verdicts immediately, then wait off-thread for the full source messages.
         return .single(project(update)) |> then(prepare(update) |> mapToSignal { [self] _ in
             return loadMissing(update)
-        })
+        }) |> rgChatListPreviewUpdates()
     }
 
     private func sourceMessages(_ update: ChatListNodeViewUpdate) -> [Message] {
@@ -65,10 +65,10 @@ final class RGChatListAdPreview {
     private func prepare(_ update: ChatListNodeViewUpdate) -> Signal<Void, NoError> {
         let messages = sourceMessages(update)
         return Signal { [self] subscriber in
-            session.prepare(messages, accountPeerId: context.account.peerId, scope: scope) {
+            let request = session.prepare(messages, accountPeerId: context.account.peerId, scope: scope) {
                 subscriber.putNext(()); subscriber.putCompletion()
             }
-            return EmptyDisposable
+            return ActionDisposable { request.cancel() }
         } |> deliverOn(queue)
     }
 

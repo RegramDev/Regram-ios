@@ -2118,6 +2118,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         // order and never dropped: the first update of a view carries its scroll position.
         let rgFilterAccountPeerId = context.account.peerId
         let rgAdFilter = RGAdFilterSession.get(context) // MARK: Regram — local asynchronous ad projection.
+        let rgAdWork = RGAdFilterWorkScope(session: rgAdFilter, scope: .historyView(UUID())) // MARK: Regram — cancel obsolete windows and release on disposal.
         let rgFilterQueue = Queue(name: "regram.chat-history-filter", qos: .userInitiated)
         let rgProcessor = self.rgMessageProcessor ?? RGChatHistoryMessageProcessor(accountPeerId: rgFilterAccountPeerId)
         self.rgMessageProcessor = rgProcessor
@@ -2127,7 +2128,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
                 return .single(update)
             }
             let enabled = RGSimpleSettings.shared.mediaLoadingExperiment
-            rgAdFilter.prepare(view.entries.map(\.message), accountPeerId: rgFilterAccountPeerId) // MARK: Regram
+            rgAdWork.prepare(view.entries.map(\.message), accountPeerId: rgFilterAccountPeerId) // MARK: Regram
             if !enabled && RGContentFilterState(accountPeerId: rgFilterAccountPeerId).isEmpty { return .single(update) }
             let queue = enabled ? RGChatHistoryMessageProcessor.queue : rgFilterQueue
             // MARK: Regram — snapshot preprocessing and filter verdict preparation

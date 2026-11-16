@@ -159,6 +159,39 @@ final class Box<T> { var value: T; init(_ value: T) { self.value = value } }
         let selected = (cleaned.text as NSString).range(of: "正常尾部👋")
         precondition(rgAdOriginalRange(cleaned, range: selected) == (mixedText as NSString).range(of: "正常尾部👋"), "quote offset was not restored")
         precondition(rgAdOriginalRange(cleaned, range: NSRange(location: 0, length: NSMaxRange(selected))) == nil, "discontinuous text must not become a forged quote")
+        let cancelledMessage = Message(id: 21001, text: "商业套餐说明\n#ad")
+        let cancelledScope = RGAdFilterSession.Scope.chatList(UUID())
+        let cancelledCompletion = Box(false)
+        let cancelled = session.prepare([cancelledMessage], accountPeerId: account, scope: cancelledScope) { cancelledCompletion.value = true }
+        cancelled.cancel()
+        let barrier = Box(false)
+        session.perform({ _ in true }) { _ in barrier.value = true }; spin { barrier.value }; settle()
+        precondition(!cancelledCompletion.value && !session.isPrepared(cancelledMessage, accountPeerId: account, scope: cancelledScope), "disposed preview still classified its obsolete message")
+        session.prepare([cancelledMessage], accountPeerId: account, scope: cancelledScope)
+        spin { session.shouldHide(cancelledMessage, accountPeerId: account, scope: cancelledScope) }
+        // A server edit must invalidate the identity memo, even before the new batch finishes.
+        let edited = Message(id: 21001, text: "今天讨论开源去广告规则", version: 2)
+        precondition(!session.shouldHide(edited, accountPeerId: account, scope: cancelledScope), "old verdict leaked onto an edited message")
+        precondition(session.display(edited, accountPeerId: account, scope: cancelledScope) === edited)
+        let editedReady = Box(false)
+        session.prepare([edited], accountPeerId: account, scope: cancelledScope) { editedReady.value = true }
+        spin { editedReady.value }
+        precondition(!session.shouldHide(edited, accountPeerId: account, scope: cancelledScope))
+        // This isolated bridge has no bundled model. Failure must not become a cached keep.
+        precondition(!session.isPrepared(edited, accountPeerId: account, scope: cancelledScope), "unavailable classifier was cached as normal")
+        session.release(scope: cancelledScope)
+        let entered = DispatchSemaphore(value: 0), releaseQueue = DispatchSemaphore(value: 0)
+        session.perform({ _ in entered.signal(); _ = releaseQueue.wait(timeout: .now() + 3) }) { _ in }
+        precondition(entered.wait(timeout: .now() + 3) == .success)
+        var retiredWindow: RGAdFilterWorkScope? = RGAdFilterWorkScope(session: session, scope: .historyView(UUID()))
+        let activeWindow = RGAdFilterWorkScope(session: session, scope: .historyView(UUID()))
+        let retiredMessage = Message(id: 22001, text: "已离开页面的商业卡片\n#ad")
+        let activeMessage = Message(id: 22002, text: "仍在显示的商业卡片\n#ad")
+        retiredWindow?.prepare([retiredMessage], accountPeerId: account)
+        activeWindow.prepare([activeMessage], accountPeerId: account)
+        retiredWindow = nil; releaseQueue.signal()
+        spin { session.shouldHide(activeMessage, accountPeerId: account, scope: activeWindow.scope) }
+        precondition(!session.isPrepared(retiredMessage, accountPeerId: account), "retired history window kept running")
         print("Ad bridge checks passed: original restoration, display versions, entities, buttons, media, translation, privacy eligibility, reveal controls, corrections and bounded-cache refresh stability.")
     }
 }
