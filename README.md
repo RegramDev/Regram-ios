@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-最新公开版本 **13.2 / b34662**。加快 ReSieve 在主页和置顶消息中的过滤反馈，已完成的识别可跨重启复用；减少样本库启动读取和重复计算，修正样本页连续刷新时旧记录覆盖新记录的问题。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34662) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
+最新公开版本 **13.2 / b34663**。ReSieve 在支持的 iPhone 上使用 Neural Engine 加速识别明确正常的文本，并优先处理当前聊天与置顶消息。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34663) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
@@ -137,7 +137,7 @@ Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击�
 
 ## 构建与校验
 
-当前源码已完成 b34663 的 iPhone 推理加速：使用 Neural Engine 判断明确正常的文本，广告候选仍由 CPU 复核。939 条样本的真机对照结果一致。b34663 本地测试包通过完整 arm64 Release、主应用／六扩展、签名、模型资源和 12 份匹配 dSYM 校验；80 项过滤模块测试和 86 项项目检查通过。具体耗时、冷启动边界和构建记录见 [iPhone 加速说明](docs/ad-filter-neural-engine-34663.md)。
+b34663 在 iPhone 16 Pro 的独立诊断应用中完成 939 条样本对照，过滤结果一致。完整 arm64 Release 构建及主应用、六个扩展、签名、模型资源和 12 份匹配 dSYM 校验通过。80 项过滤模块测试和 86 项项目检查通过。具体耗时、冷启动边界和构建记录见 [iPhone 加速说明](docs/ad-filter-neural-engine-34663.md)。
 
 ## 构建
 

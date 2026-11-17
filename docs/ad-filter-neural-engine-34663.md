@@ -45,4 +45,4 @@ b34662 的神经网络只在 CPU 上执行。macOS 已经使用 Neural Engine �
 
 2026-11-17，b34663 完整 arm64 Release 构建成功，Xcode 27.1，构建前后 38,259 份源码摘要一致。构建源码提交为 `2a1be5a8b1b3d97f23d851ceaf28fcf253f69ff5`。86 项项目检查通过。最终 IPA 已校验主应用和六扩展、严格 ad-hoc 签名、零描述文件、三语资源、模型资源及 12 份匹配 dSYM；七个 Bundle 的安装身份、完整 entitlements 和 URL schemes 与 b34662 一致。验证用的真实消息和诊断夹具未进入 IPA。
 
-本地测试包为 `Regram-13.2-b34663.ipa`，103,770,565 字节，SHA-256 为 `cbe79789a1176eccf539e93edd3298df1ec400b6566265fa24afc9ae19da62e8`。安装包、校验文件、符号和验证记录已保存到构建缓存以外；闲置 Bazel 服务已关闭，可复用缓存保留。本次生成本地测试包，GitHub 最新公开版本仍为 b34662。
+发布包为 `Regram-13.2-b34663.ipa`，103,770,565 字节，SHA-256 为 `cbe79789a1176eccf539e93edd3298df1ec400b6566265fa24afc9ae19da62e8`。安装包、校验文件、符号和验证记录已保存到构建缓存以外；闲置 Bazel 服务已关闭，可复用缓存保留。[版本说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34663)。
