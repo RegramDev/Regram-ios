@@ -2584,7 +2584,7 @@ func peerInfoIsCopyProtected(data: PeerInfoScreenData, sharedMediaFromForumTopic
         return data.sharedMediaPeer?.isCopyProtectionEnabled ?? false
     }
     var isCopyProtected = false
-    if let cachedUserData = data.cachedData as? CachedUserData, cachedUserData.flags.contains(.copyProtectionEnabled) || cachedUserData.flags.contains(.myCopyProtectionEnabled) {
+    if let cachedUserData = data.cachedData as? CachedUserData, cachedUserData.rgIsCopyProtectionEnabled { // MARK: Regram
         isCopyProtected = true
     } else if let peer = data.peer, peer.isCopyProtectionEnabled {
         isCopyProtected = true

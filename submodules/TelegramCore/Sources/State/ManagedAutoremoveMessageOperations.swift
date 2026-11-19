@@ -85,9 +85,20 @@ func managedAutoremoveMessageOperations(network: Network, postbox: Postbox, isRe
                     if let message = transaction.getMessage(entry.messageId) {
                         // MARK: Regram — Anti auto-delete / anti self-destruct. Leave the message
                         // (and its media) in the local database when the timer fires. Secret-chat
-                        // messages are the self-destruct case; the rest are TTL auto-delete.
+                        // messages are the self-destruct case, and so is view-once / self-destructing
+                        // media in cloud chats (the autoclear pass, `tag == 1`); that pass also
+                        // keeps honouring the auto-delete switch, which covered it before. A chat's
+                        // auto-delete period (`tag == 0`) is TTL auto-delete.
                         let rgIsSecretChat = message.id.peerId.namespace == Namespaces.Peer.SecretChat
-                        if rgIsSecretChat ? RGSimpleSettings.shared.antiSelfDestruct : RGSimpleSettings.shared.antiAutoDelete {
+                        let rgKeep: Bool
+                        if rgIsSecretChat {
+                            rgKeep = RGSimpleSettings.shared.antiSelfDestruct
+                        } else if tag == 1 {
+                            rgKeep = RGSimpleSettings.shared.antiSelfDestruct || RGSimpleSettings.shared.antiAutoDelete
+                        } else {
+                            rgKeep = RGSimpleSettings.shared.antiAutoDelete
+                        }
+                        if rgKeep {
                             // Consume this queue entry without erasing TTL/privacy metadata or media.
                             transaction.updateMessage(message.id, update: { current in
                                 let attributes: [MessageAttribute] = current.attributes.map { attribute in

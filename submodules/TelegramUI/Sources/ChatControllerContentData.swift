@@ -976,8 +976,9 @@ extension ChatControllerImpl {
                             }
                         }
                         if let cachedUserData = peerView.cachedData as? CachedUserData {
-                            copyProtectionEnabled = cachedUserData.flags.contains(.copyProtectionEnabled) || cachedUserData.flags.contains(.myCopyProtectionEnabled)
-                            myCopyProtectionEnabled = cachedUserData.flags.contains(.myCopyProtectionEnabled)
+                            copyProtectionEnabled = cachedUserData.rgIsCopyProtectionEnabled // MARK: Regram
+                            // MARK: Regram — the chat's save/capture gates also read this one.
+                            myCopyProtectionEnabled = cachedUserData.flags.contains(.myCopyProtectionEnabled) && !RGSimpleSettings.shared.allowSavingProtectedContent
                         } else {
                             copyProtectionEnabled = peer.isCopyProtectionEnabled
                         }

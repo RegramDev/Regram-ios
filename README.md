@@ -45,7 +45,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 ### 翻译、总结与语音识别
 
-- Telegram、Apple、Google、Google CN、Microsoft、Yandex、腾讯 TranSmart 等翻译路径。
+- Telegram、Apple、Google、Yandex、腾讯 TranSmart 等翻译路径。
 - LLM 翻译：OpenAI Chat Completions／Anthropic Messages 格式，自定义接口、模型列表、模型测试、提示词、温度及可选聊天上下文。
 - 单条消息、聊天内容、发送前及应用内网页翻译，保护链接、代码和文字格式；网页可取消翻译或恢复原文。
 - 消息总结默认关闭，使用独立接口、模型、提示词及密钥；支持最近一小时、今天、最近一天、自定义时间范围，以及单条或多选文字，提交前确认上传内容。

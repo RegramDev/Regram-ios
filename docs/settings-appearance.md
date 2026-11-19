@@ -62,7 +62,7 @@ Pro 首页的九类入口复用 Telegram 设置图标并分组；搜索结果将
 
 搜索在底栏「显示项目」中开关，默认关闭；开关行保持紧凑单行，按文字宽度分配空间，必要时缩小文字，沿用 Swiftgram 的 `TabBarComponent.Search` / `NavigationSearchView`，不作为导航标签或独立的第二个 TabBarComponent。聊天、联系人和设置页的底部入口展开原生输入框并绑定当前页的搜索；普通顶部入口仍使用自己的输入框。通话页沿用新通话联系人选择器。搜索不会替换真实导航页的选中状态。
 
-启用搜索时，已有独立导航项只在渲染时并入主胶囊，偏好保持，关闭搜索恢复其位置。旧 `bottomBarLayout` 的搜索显隐值、备份字段及 `bottomSearch` / `searchMode` 链接继续兼容；遗留 `tabBarSearchEnabled` 注册默认值不作为迁移依据。
+启用搜索时，已有独立导航项只在渲染时并入主胶囊，偏好保持，关闭搜索恢复其位置。旧 `bottomBarLayout` 的搜索显隐值、备份字段及 `bottomSearch` / `searchMode` 链接继续兼容；遗留的 `tabBarSearchEnabled` 设置已移除，不作为迁移依据。
 
 自动宽度参考 [Swiftgram cf8b23b](https://github.com/Swiftgram/Telegram-iOS/blob/cf8b23beaaac4126a396337ac2d5be13f9f76b66/submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift#L657)：按导航项数量收紧整体底栏，无搜索时再减少 56 pt，搜索展开时使用全部可用宽度；按导航项数预留最小宽度预算，保留 500 pt 上限及手动宽度；不据此保证任意标签组合下每项都具有相同点击宽度。由共享布局策略计算一次，原生组件仅在其中预留搜索占位。
 

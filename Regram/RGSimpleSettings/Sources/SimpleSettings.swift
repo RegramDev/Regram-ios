@@ -36,7 +36,9 @@ public class RGSimpleSettings {
     
     private func migrate() {
         // MARK: Regram — Google/GTranslate now share one backend, including imported old settings.
-        if self.translationBackend == "gtranslate" { self.translationBackend = TranslationBackend.google.rawValue }
+        if TranslationBackend.retiredRawValues.contains(self.translationBackend) { self.translationBackend = TranslationBackend.google.rawValue }
+        // MARK: Regram — a stored retired preview host would otherwise count as a custom override.
+        if RGLinkPreviewRules.retiredInstagramHosts.contains(self.linkPreviewInstagramHost) { self.linkPreviewInstagramHost = RGLinkPreviewRules.defaultInstagramHost }
         // MARK: Regram — remove the high-load tier while preserving an enabled download boost.
         if self.downloadSpeedBoost == "maximum" { self.downloadSpeedBoost = DownloadSpeedBoostValues.enabled.rawValue }
         if self.storedCustomAppBadge == RGAppBadgeNames.legacyHiddenName {
@@ -294,7 +296,6 @@ public class RGSimpleSettings {
         case nyStyle
         case wideTabBar
         case tabBarWidthPercent // MARK: Regram
-        case tabBarSearchEnabled
         case hideStories
         case disableAllAds
         case antiRevoke
@@ -390,13 +391,16 @@ public class RGSimpleSettings {
     public enum TranslationBackend: String, CaseIterable {
         case `default`
         case google
-        case googleCN
-        case microsoft
         case yandex
         case transmart
         case llm
         case system
         // Make sure to update TranslationConfiguration
+
+        /// MARK: Regram — retired services whose free endpoints stopped working (translate.google.cn
+        /// returns 404; Microsoft's Edge token endpoint has returned 404 since 2026-08). Saved and
+        /// imported values move to Google, the same provider family the Google CN route used.
+        public static let retiredRawValues: Set<String> = ["gtranslate", "googleCN", "microsoft"]
     }
 
     public enum DefaultOutgoingFormat: String, CaseIterable {
@@ -542,7 +546,6 @@ public class RGSimpleSettings {
         Keys.nyStyle.rawValue: NYStyle.default.rawValue,
         Keys.wideTabBar.rawValue: false,
         Keys.tabBarWidthPercent.rawValue: Int32(0),
-        Keys.tabBarSearchEnabled.rawValue: true,
         Keys.hideStories.rawValue: false,
         Keys.disableAllAds.rawValue: false,
         Keys.antiRevoke.rawValue: false,
@@ -755,7 +758,15 @@ public class RGSimpleSettings {
 
     /// Never report an online presence. Sending a message still puts you online — that is server-side.
     @UserDefault(key: Keys.ghostDontSendOnline.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
-    public var ghostDontSendOnline: Bool
+    public var ghostDontSendOnline: Bool {
+        didSet {
+            if ghostDontSendOnline != oldValue { NotificationCenter.default.post(name: Self.ghostOnlinePresenceDidChange, object: nil) }
+        }
+    }
+
+    /// MARK: Regram — lets the presence manager re-report at once in either direction, instead of
+    /// waiting for the next foreground/background change after the switch is turned off.
+    public static let ghostOnlinePresenceDidChange = Notification.Name("RGSimpleSettings.ghostOnlinePresenceDidChange")
 
     /// Stop sending input activities: typing, recording, choosing a sticker, upload progress.
     @UserDefault(key: Keys.ghostDontSendTyping.rawValue, userDefaults: APP_GROUP_USER_DEFAULTS ?? .standard)
@@ -920,6 +931,7 @@ public class RGSimpleSettings {
         if touches("automaticallyRevealSpoilers") { center.post(name: Self.spoilerSettingsDidChange, object: nil) }
         if touches("revokedMarkerStyle", "revokedMarkerText", "revokedMarkerColor", "revokedMarkerDimMessages", "antiRevoke", "antiRevokePeerIds") { center.post(name: Self.revokedMarkerDidChange, object: nil) }
         if touches("messageSummaryEnabled") { center.post(name: Self.summarySettingsDidChange, object: nil) }
+        if touches("ghostDontSendOnline") { center.post(name: Self.ghostOnlinePresenceDidChange, object: nil) }
         if touches(RGNotificationExperiment.key) { center.post(name: RGNotificationExperiment.changed, object: nil) }
         if touches("features.enablePanguOnReceiving") || touches(Keys.hideMessageForwardButton.rawValue) { center.post(name: Self.featureMessagePresentationDidChange, object: nil) }
         if touches("sendWithReturnKey") { center.post(name: Self.inputSettingsDidChange, object: nil) }
@@ -1752,9 +1764,6 @@ public class RGSimpleSettings {
             if tabBarWidthPercent != oldValue { NotificationCenter.default.post(name: RGTabBarLayoutPolicy.settingsChanged, object: nil) }
         }
     }
-    
-    @UserDefault(key: Keys.tabBarSearchEnabled.rawValue)
-    public var tabBarSearchEnabled: Bool
 }
 
 extension RGSimpleSettings {
@@ -1769,14 +1778,14 @@ extension RGSimpleSettings {
 
 extension RGSimpleSettings {
     public var translationBackendEnum: RGSimpleSettings.TranslationBackend {
-        return translationBackend == "gtranslate" ? .google : (TranslationBackend(rawValue: translationBackend) ?? .default)
+        return TranslationBackend.retiredRawValues.contains(translationBackend) ? .google : (TranslationBackend(rawValue: translationBackend) ?? .default)
     }
 
     /// Backends served by a third-party web endpoint rather than by Telegram or by the OS. Those
     /// translate a plain string, so messages have to be routed through the via-text path.
     public var translationBackendIsExternal: Bool {
         switch translationBackendEnum {
-        case .google, .googleCN, .microsoft, .yandex, .transmart, .llm:
+        case .google, .yandex, .transmart, .llm:
             return true
         case .default, .system:
             return false

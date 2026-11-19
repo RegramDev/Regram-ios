@@ -3,6 +3,7 @@ internal import TelegramApi
 import Postbox
 import SwiftSignalKit
 import MtProtoKit
+import RGSimpleSettings // MARK: Regram
 
 private typealias SignalKitTimer = SwiftSignalKit.Timer
 
@@ -17,10 +18,22 @@ private final class AccountPresenceManagerImpl {
     private var onlineTimer: SignalKitTimer?
     
     private var wasOnline: Bool = false
+    private var rgGhostObserver: NSObjectProtocol?
     
     init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {
         self.queue = queue
         self.network = network
+
+        // MARK: Regram — re-report the current state when ghost mode's presence switch changes, so
+        // turning it off restores online at once and turning it on goes offline at once.
+        self.rgGhostObserver = NotificationCenter.default.addObserver(forName: RGSimpleSettings.ghostOnlinePresenceDidChange, object: nil, queue: nil, using: { [weak self] _ in
+            queue.async {
+                guard let self, self.wasOnline else {
+                    return
+                }
+                self.updatePresence(true)
+            }
+        })
         
         self.shouldKeepOnlinePresenceDisposable = (shouldKeepOnlinePresence
         |> distinctUntilChanged
@@ -37,6 +50,9 @@ private final class AccountPresenceManagerImpl {
     
     deinit {
         assert(self.queue.isCurrent())
+        if let rgGhostObserver = self.rgGhostObserver {
+            NotificationCenter.default.removeObserver(rgGhostObserver)
+        }
         self.shouldKeepOnlinePresenceDisposable?.dispose()
         self.currentRequestDisposable.dispose()
         self.onlineTimer?.invalidate()

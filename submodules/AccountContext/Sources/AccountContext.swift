@@ -2269,7 +2269,7 @@ public struct TranslationConfiguration {
     public static func with(appConfiguration: AppConfiguration) -> TranslationConfiguration {
         // MARK: Regram — an explicitly selected local/external backend overrides Telegram's availability flags.
         switch RGSimpleSettings.shared.translationBackendEnum {
-        case .google, .googleCN, .microsoft, .yandex, .transmart, .llm:
+        case .google, .yandex, .transmart, .llm:
             return TranslationConfiguration(manual: .enabled, auto: .enabled)
         case .system:
             return TranslationConfiguration(manual: .system, auto: .system)

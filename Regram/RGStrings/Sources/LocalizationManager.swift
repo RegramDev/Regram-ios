@@ -12,6 +12,8 @@ public class RGLocalizationManager {
     
     private let appBundle: Bundle
     private var localizations: [String: [String: String]] = [:]
+    // MARK: Regram — written by the download callback, read from any thread that formats a string.
+    private let webLocalizationsLock = NSLock()
     private var webLocalizations: [String: [String: String]] = [:]
     private let fallbackMappings: [String: String] = [
         // "from": "to"
@@ -81,10 +83,10 @@ public class RGLocalizationManager {
         
         DispatchQueue.global(qos: .background).async {
             if let localeDict = NSDictionary(contentsOf: url) as? [String: String] {
-                DispatchQueue.main.async {
-                    self.webLocalizations[sanitizedLocale] = localeDict
-                    RGLogger.shared.log("Strings", "Successfully downloaded locale \(sanitizedLocale)")
-                }
+                self.webLocalizationsLock.lock()
+                self.webLocalizations[sanitizedLocale] = localeDict
+                self.webLocalizationsLock.unlock()
+                RGLogger.shared.log("Strings", "Successfully downloaded locale \(sanitizedLocale)")
             } else {
                 RGLogger.shared.log("Strings", "Failed to download \(sanitizedLocale)")
             }
@@ -112,7 +114,10 @@ public class RGLocalizationManager {
         if let string = self.localizations[locale]?[key], !string.isEmpty {
             return string
         }
-        if let string = self.webLocalizations[locale]?[key], !string.isEmpty {
+        self.webLocalizationsLock.lock()
+        let webString = self.webLocalizations[locale]?[key]
+        self.webLocalizationsLock.unlock()
+        if let string = webString, !string.isEmpty {
             return string
         }
         if let fallbackLocale = self.fallbackMappings[locale] {

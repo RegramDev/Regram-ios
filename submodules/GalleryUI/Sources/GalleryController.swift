@@ -879,7 +879,7 @@ public class GalleryController: ViewController, StandalonePresentableController,
                     if let peer = message.peers[message.id.peerId] as? TelegramGroup, let migrationPeerId = peer.migrationReference?.peerId, let migrationPeer = transaction.getPeer(migrationPeerId) {
                         return (message, migrationPeer.isCopyProtectionEnabled)
                     } else if let peer = message.peers[message.id.peerId] as? TelegramUser, let cachedUserData = transaction.getPeerCachedData(peerId: peer.id) as? CachedUserData {
-                        return (message, cachedUserData.flags.contains(.copyProtectionEnabled) || cachedUserData.flags.contains(.myCopyProtectionEnabled))
+                        return (message, cachedUserData.rgIsCopyProtectionEnabled) // MARK: Regram
                     }
                     return (message, false)
                 }

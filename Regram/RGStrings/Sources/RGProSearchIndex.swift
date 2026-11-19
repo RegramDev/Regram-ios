@@ -6,7 +6,7 @@ public enum RGProSearchIndex {
     public static let keys: [String: [String]] = [
         "sttSettings": ["RG.STTSettings", "speech transcription whisper openai model voice audio round video 语音 转写 识别 圆视频 模型 密钥 音频 語音 辨識"],
         "transcriptionSettings": ["Settings.Category.transcription", "Settings.Transcription.Backend", "speech voice telegram apple 语音 转写 识别"],
-        "translationSettings": ["Settings.Category.translation", "translation google microsoft yandex transmart llm 翻译"],
+        "translationSettings": ["Settings.Category.translation", "translation google yandex transmart llm 翻译"],
         "llmSettings": ["LLMTranslation.Title", "LLMTranslation.Model", "openai anthropic prompt temperature context 大模型 提示词 温度 上下文"],
         "linkPreviewSettings": ["LinkPreview.Repair", "preview x twitter instagram reddit pixiv tiktok 链接 预览 修复 连结 連結"],
         "messageActionsSettings": ["Settings.Category.messageActions", "DoubleTap.Action", "Settings.ShowMessageId", "Settings.ShowForwardedMessageDate", "menu double tap id forwarded 消息 菜单 双击 时间 转发"],

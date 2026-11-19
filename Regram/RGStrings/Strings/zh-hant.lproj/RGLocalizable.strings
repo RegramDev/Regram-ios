@@ -530,8 +530,6 @@
 "LLMTranslation.KeySaveFailed" = "API Key 無法儲存到鑰匙圈。";
 "LLMTranslation.ConnectionNotice" = "請求傳送到你設定的服務。API Key 只儲存在本機鑰匙圈，不包含在設定備份中。位址留空時使用所選 API 格式的預設位址。";
 "LLMTranslation.PromptNotice" = "@text 表示訊息，@toLang 表示目標語言。開啟上下文後，會傳送同一對話或話題中之前最多 5 條訊息，每條最多 800 字。";
-"Settings.Translation.Backend.googleCN" = "Google CN";
-"Settings.Translation.Backend.microsoft" = "Microsoft";
 "Settings.Translation.Backend.yandex" = "Yandex";
 "Settings.Translation.Backend.transmart" = "騰訊 TranSmart";
 "Settings.Translation.Backend.llm" = "LLM";

@@ -100,6 +100,19 @@ tests = r'''
    RGSimpleSettings.shared.antiAutoDelete = false
    precondition(reopened.automaticTimestampBasedAttribute == nil)
   }
+  // View-once media in a cloud chat (the autoclear pass) follows the self-destruct switch too.
+  do {
+   let cloud = PeerId(namespace: 0, value: 1)
+   for (tag, kept) in [(UInt16(1), true), (UInt16(0), false)] {
+    let id = MessageId(peerId: cloud, namespace: 0, id: 9), transaction = Transaction()
+    let ttl: MessageAttribute = tag == 0 ? AutoremoveTimeoutMessageAttribute(timeout: 10, countdownBeginTime: 1) : AutoclearTimeoutMessageAttribute(timeout: 10, countdownBeginTime: 1)
+    transaction.messages[id] = Message(id: id, timestamp: 1, attributes: [ttl], media: ["view-once"])
+    RGSimpleSettings.shared.antiAutoDelete = false; RGSimpleSettings.shared.antiSelfDestruct = true
+    runDue(transaction: transaction, entry: TimestampBasedMessageAttributesEntry(messageId: id, tag: tag, index: 30), tag: tag)
+    precondition((transaction.processed.isEmpty) == kept, "Self-destruct keeps view-once media only, never a chat's auto-delete period")
+   }
+   RGSimpleSettings.shared.antiSelfDestruct = false
+  }
   let transaction = Transaction()
   for id: Int32 in 1...4 {
    let key = MessageId(peerId: cloud, namespace: 0, id: id)

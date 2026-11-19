@@ -3163,7 +3163,10 @@ final class NotificationService: UNNotificationServiceExtension {
         self.currentRequestIdentifier = request.identifier
         self.contentHandler = contentHandler
         self.recoveryEnabled = recoveryEnabled
-        self.recoveryPreferences = recoveryEnabled ? RGNotificationPreferenceSnapshot(defaults: groupUserDefaults) : nil
+        // MARK: Regram — read the shared preferences for every request, not only in the recovery
+        // experiment: iOS reuses this process, so process-wide caches would keep pre-change settings
+        // (pinned/mention policies are process-wide constants otherwise).
+        self.recoveryPreferences = RGNotificationPreferenceSnapshot(defaults: groupUserDefaults)
         self.rgDeadlineWorkItem = deadline
         self.completionLock.unlock()
 

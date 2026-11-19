@@ -587,8 +587,6 @@ Matching is case-insensitive.";
 "LLMTranslation.KeySaveFailed" = "Unable to save the API key in Keychain.";
 "LLMTranslation.ConnectionNotice" = "Requests go to the configured service. The API key is stored only in this device’s Keychain and is excluded from settings backups. Leave URLs empty to use the selected API format’s defaults.";
 "LLMTranslation.PromptNotice" = "Use @text for the message and @toLang for the target language. Chat context includes up to five earlier messages from the same chat/topic (800 characters each), sent only when this option is enabled.";
-"Settings.Translation.Backend.googleCN" = "Google CN";
-"Settings.Translation.Backend.microsoft" = "Microsoft";
 "Settings.Translation.Backend.yandex" = "Yandex";
 "Settings.Translation.Backend.transmart" = "Tencent TranSmart";
 "Settings.Translation.Backend.llm" = "LLM";

@@ -45,7 +45,7 @@ public final class RGLinkMetadata {
 
     private init() {
         let cached = Self.decodeMessages(UserDefaults.standard.stringArray(forKey: Self.cacheKey) ?? [])
-        self.pagePreviewDomains = cached.pages.isEmpty ? Self.defaultPagePreviewDomains : cached.pages
+        self.pagePreviewDomains = Self.mergedWithDefaults(cached.pages)
         self.inlineRules = cached.inline.isEmpty ? Self.defaultInlineBotRules : cached.inline
     }
 
@@ -134,7 +134,7 @@ public final class RGLinkMetadata {
             let decoded = Self.decodeMessages(messages)
             guard !decoded.pages.isEmpty || !decoded.inline.isEmpty else { return }
             self.lock.lock()
-            if !decoded.pages.isEmpty { self.pagePreviewDomains = decoded.pages }
+            if !decoded.pages.isEmpty { self.pagePreviewDomains = Self.mergedWithDefaults(decoded.pages) }
             if !decoded.inline.isEmpty { self.inlineRules = decoded.inline }
             self.lock.unlock()
             UserDefaults.standard.set(messages, forKey: Self.cacheKey)
@@ -146,6 +146,13 @@ public final class RGLinkMetadata {
             self?.lock.unlock()
             holder.dispose()
         }))
+    }
+
+    /// MARK: Regram — the feed overrides built-in domains it names; domains it omits (including any
+    /// whose rules were dropped as invalid) keep the built-in rule instead of losing repair entirely.
+    private static func mergedWithDefaults(_ pages: [RGPagePreviewDomain]) -> [RGPagePreviewDomain] {
+        let named = Set(pages.map { $0.domain.lowercased() })
+        return pages + Self.defaultPagePreviewDomains.filter { !named.contains($0.domain.lowercased()) }
     }
 
     private static func decodeMessages(_ messages: [String]) -> (pages: [RGPagePreviewDomain], inline: [RGInlineBotRule]) {
@@ -168,6 +175,10 @@ public final class RGLinkMetadata {
             return false
         }
         return item.rules.allSatisfy { rule in
+            // MARK: Regram — a feed still pointing at a dead fixer falls back to the built-in host.
+            if RGLinkPreviewRules.retiredInstagramHosts.contains(where: { rule.replace.lowercased().contains($0) }) {
+                return false
+            }
             guard !rule.regex.isEmpty, rule.regex.count <= 512, rule.replace.count <= 512, !rule.replace.contains("\n"), !rule.replace.contains("\r") else {
                 return false
             }
@@ -180,9 +191,12 @@ public final class RGLinkMetadata {
         .init(domain: "twitter.com", rules: [.init(regex: "twitter\\.com", replace: "fxtwitter.com")], regex: false),
         .init(domain: "coolapk.com", rules: [.init(regex: "coolapk\\.com", replace: "coolapk1s.com")], regex: false),
         .init(domain: "www.coolapk.com", rules: [.init(regex: "coolapk\\.com", replace: "coolapk1s.com")], regex: false),
-        .init(domain: "www.instagram.com", rules: [.init(regex: "www\\.instagram\\.com", replace: "ddinstagram.com")], regex: false),
+        .init(domain: "www.instagram.com", rules: [.init(regex: "www\\.instagram\\.com", replace: RGLinkPreviewRules.defaultInstagramHost)], regex: false),
+        .init(domain: "instagram.com", rules: [.init(regex: "instagram\\.com", replace: RGLinkPreviewRules.defaultInstagramHost)], regex: false),
         .init(domain: "vm.tiktok.com", rules: [.init(regex: "vm\\.tiktok\\.com", replace: "vm.vxtiktok.com")], regex: false),
+        .init(domain: "www.tiktok.com", rules: [.init(regex: "www\\.tiktok\\.com", replace: "www.vxtiktok.com")], regex: false),
         .init(domain: "www.reddit.com", rules: [.init(regex: "www\\.reddit\\.com", replace: "www.vxreddit.com")], regex: false),
+        .init(domain: "reddit.com", rules: [.init(regex: "reddit\\.com", replace: "vxreddit.com")], regex: false),
         .init(domain: "bsky.app", rules: [.init(regex: "bsky\\.app", replace: "fxbsky.app")], regex: false),
         .init(domain: "www.pixiv.net", rules: [.init(regex: "www\\.pixiv\\.net", replace: "www.phixiv.net")], regex: false),
         .init(domain: "www.miyoushe.com", rules: [.init(regex: "www\\.miyoushe\\.com", replace: "www.miyoushe.pp.ua")], regex: false),

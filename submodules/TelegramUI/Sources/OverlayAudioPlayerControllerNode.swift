@@ -5,6 +5,7 @@ import AsyncDisplayKit
 import ComponentFlow
 import SwiftSignalKit
 import TelegramCore
+import RGSimpleSettings // MARK: Regram
 import TelegramPresentationData
 import TelegramUIPreferences
 import AccountContext
@@ -547,10 +548,12 @@ final class OverlayAudioPlayerControllerNode: ViewControllerTracingNode, ASGestu
                     TelegramEngine.EngineData.Item.Peer.CopyProtectionEnabled(id: peerId),
                     TelegramEngine.EngineData.Item.Peer.MyCopyProtectionEnabled(id: peerId)
                 ) |> map { copyProtectionEnabled, myCopyProtectionEnabled in
-                    return copyProtectionEnabled || myCopyProtectionEnabled
+                    // MARK: Regram — these engine items stay raw for forwarding decisions.
+                    return !RGSimpleSettings.shared.allowSavingProtectedContent && (copyProtectionEnabled || myCopyProtectionEnabled)
                 }
             } else {
                 copyProtectionEnabled = context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.CopyProtectionEnabled(id: peerId))
+                |> map { $0 && !RGSimpleSettings.shared.allowSavingProtectedContent } // MARK: Regram
             }
         } else {
             copyProtectionEnabled = .single(false)

@@ -552,8 +552,6 @@
 "LLMTranslation.KeySaveFailed" = "API Key 无法保存到钥匙串。";
 "LLMTranslation.ConnectionNotice" = "请求发送到你配置的服务。API Key 只保存在本机钥匙串，不包含在设置备份中。地址留空时使用所选 API 格式的默认地址。";
 "LLMTranslation.PromptNotice" = "@text 表示消息，@toLang 表示目标语言。开启上下文后，将发送同一会话或话题中之前最多 5 条消息，每条最多 800 字。";
-"Settings.Translation.Backend.googleCN" = "Google CN";
-"Settings.Translation.Backend.microsoft" = "Microsoft";
 "Settings.Translation.Backend.yandex" = "Yandex";
 "Settings.Translation.Backend.transmart" = "腾讯 TranSmart";
 "Settings.Translation.Backend.llm" = "LLM";

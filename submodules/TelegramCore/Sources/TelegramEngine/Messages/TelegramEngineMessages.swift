@@ -307,8 +307,8 @@ public extension TelegramEngine {
         }
 
         public func addSecretChatMessageScreenshot(peerId: PeerId) -> Signal<Never, NoError> {
-            // MARK: Regram — Anti-screenshot. Every screenshot detection site (chat, gallery,
-            // secret media preview) funnels through here, so suppressing it here covers them all.
+            // MARK: Regram — Anti-screenshot for secret chats. View-once media in private chats posts
+            // its own historyScreenshot message from SecretMediaPreviewController, gated there.
             if RGSimpleSettings.shared.antiScreenshotNotification {
                 return .complete()
             }
@@ -2370,10 +2370,6 @@ func rgExternalTranslate(_ text: String, _ toLang: String, fromLang: String? = n
     case .google, .default, .system:
         // Telegram's own and the system backends fall back to Google.
         return googleTranslate(text, toLang)
-    case .googleCN:
-        return googleCNTranslate(text, toLang)
-    case .microsoft:
-        return microsoftTranslate(text, toLang)
     case .yandex:
         return yandexTranslate(text, toLang, fromLang: fromLang)
     case .transmart:

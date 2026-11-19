@@ -144,7 +144,7 @@ b34641 使用原生分组列表、人物摘要、独立群组筛选行、导航�
 
 | 能力 | 当前范围 |
 | --- | --- |
-| 翻译后端 | Telegram、Apple、Google、Google CN、Microsoft、Yandex、腾讯 TranSmart、LLM；重复旧服务值合并迁移 |
+| 翻译后端 | Telegram、Apple、Google、Yandex、腾讯 TranSmart、LLM；已失效的 Google CN 与 Microsoft 已移除，原选择和旧备份自动迁移到 Google |
 | LLM | OpenAI Chat Completions／Anthropic Messages 格式，自定义地址、模型列表、测试、提示词和温度 |
 | 可选上下文 | 默认关闭；开启后最多附带同一会话／话题之前 5 条本机消息，每条最多 800 字 |
 | 翻译入口 | 单条、聊天及置顶内容、发送前翻译；可记住账号／会话目标语言 |

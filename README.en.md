@@ -45,7 +45,7 @@ Anti-revoke and edit history retain content already received or observed on this
 
 ### Translation, summaries and speech recognition
 
-- Telegram, Apple, Google, Google CN, Microsoft, Yandex and Tencent TranSmart translation routes.
+- Telegram, Apple, Google, Yandex and Tencent TranSmart translation routes.
 - LLM translation using OpenAI Chat Completions or Anthropic Messages formats, custom endpoints, model lists/tests, prompts, temperature and optional chat context.
 - Message, chat, pre-send and in-app webpage translation, preserving links, code and formatting. Web translation can be canceled or reverted.
 - Summaries are off by default and use a separate endpoint, model, prompt and credential. Collect text from the last hour, today, last day or a custom interval, or use single/selected messages. Review the upload before submitting.

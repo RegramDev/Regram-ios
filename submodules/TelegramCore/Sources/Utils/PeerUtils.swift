@@ -659,3 +659,15 @@ public extension PeerId {
         return self.namespace == Namespaces.Peer.SecretChat
     }
 }
+
+// MARK: Regram — private chats keep their copy protection in cached data ("Disable Sharing", set by
+// either side), so `Peer.isCopyProtectionEnabled` never sees it. Gates that decide what this device
+// may save, copy or capture read this instead; the server's forwarding refusal is unaffected.
+public extension CachedUserData {
+    var rgIsCopyProtectionEnabled: Bool {
+        if RGSimpleSettings.shared.allowSavingProtectedContent {
+            return false
+        }
+        return self.flags.contains(.copyProtectionEnabled) || self.flags.contains(.myCopyProtectionEnabled)
+    }
+}
