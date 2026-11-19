@@ -588,4 +588,34 @@ final class AdFilterTests: XCTestCase {
         XCTAssertEqual(sample.id, try RGAdSampleStore.sampleId(input: input, salt: storage.salt(), messageKey: "42:1", mediaIdentity: "ad-image"))
     }
 
+    func testMidGraphemeEntitiesAlignToCharacterBoundaries() throws {
+        let arrow = "\u{27A1}\u{FE0F}"
+        let text = "优惠购买 \(arrow)【点击这里进入】\n官方群组 \(arrow)【点击这里加入】\n\n#推广"
+        let ns = text as NSString
+        let firstVs = ns.range(of: "\u{FE0F}")
+        let secondArrow = ns.range(of: "\(arrow)【点击这里加入")
+        let midSecond = RGAdRange(secondArrow.location + 1, NSMaxRange(secondArrow))
+        let unalignedEntities = [
+            RGAdEntity(range: RGAdRange(firstVs.location, NSMaxRange(firstVs)), kind: .link, value: "https://example.com/a"),
+            RGAdEntity(range: midSecond, kind: .link, value: "https://example.com/b"),
+        ]
+        let input = RGAdInput(text: text, entities: unalignedEntities)
+        XCTAssertEqual(input.entities[0].range, RGAdRange(firstVs.location - 1, NSMaxRange(firstVs)))
+        XCTAssertEqual(input.entities[1].range, RGAdRange(secondArrow.location, NSMaxRange(secondArrow)))
+        let projection = try RGAdPolicy.project(input)
+        XCTAssertEqual(projection.disposition, .hide)
+
+        let rawJSON = """
+        {"text":"优惠购买 \\u27A1\\uFE0F【点击这里进入】","entities":[{"range":{"lower":6,"upper":7},"kind":"link","value":"https://example.com/a"}],"buttons":[],"hasMedia":false}
+        """
+        let decoded = try JSONDecoder().decode(RGAdInput.self, from: Data(rawJSON.utf8))
+        XCTAssertEqual(decoded.entities[0].range, RGAdRange(5, 7))
+        XCTAssertEqual(try RGAdPolicy.project(decoded).disposition, .keep)
+
+        let outOfBounds = RGAdInput(text: "abc", entities: [RGAdEntity(range: RGAdRange(0, 10), kind: .link, value: "https://example.com")])
+        XCTAssertThrowsError(try RGAdPolicy.project(outOfBounds)) { error in
+            XCTAssertEqual(error as? RGAdFilterError, .invalidInput)
+        }
+    }
+
 }

@@ -38,9 +38,26 @@ public struct RGAdInput: Codable, Equatable, Hashable {
     public let buttons: [[RGAdButton]]
     public let hasMedia: Bool
     public let previewTarget: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case text, peerId, entities, buttons, hasMedia, previewTarget
+    }
+
     public init(text: String, peerId: Int64? = nil, entities: [RGAdEntity] = [], buttons: [[RGAdButton]] = [], hasMedia: Bool = false, previewTarget: String? = nil) {
-        self.text = text; self.peerId = peerId; self.entities = entities
+        self.text = text; self.peerId = peerId
+        self.entities = rgAdAlignEntities(entities, in: text)
         self.buttons = buttons; self.hasMedia = hasMedia; self.previewTarget = previewTarget
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let text = try container.decode(String.self, forKey: .text)
+        self.text = text
+        self.peerId = try container.decodeIfPresent(Int64.self, forKey: .peerId)
+        self.entities = rgAdAlignEntities(try container.decode([RGAdEntity].self, forKey: .entities), in: text)
+        self.buttons = try container.decode([[RGAdButton]].self, forKey: .buttons)
+        self.hasMedia = try container.decode(Bool.self, forKey: .hasMedia)
+        self.previewTarget = try container.decodeIfPresent(String.self, forKey: .previewTarget)
     }
 }
 
@@ -84,11 +101,48 @@ public enum RGAdFilterError: Error, Equatable {
     case invalidInput, invalidModel, unsupportedTokenizer, inputTooLong, invalidPrediction, budgetExceeded
 }
 
-func rgAdBoundaries(_ text: String) -> Set<Int> {
-    var result: Set<Int> = [0]
+private func rgAdBoundaryList(_ text: String) -> [Int] {
+    var result: [Int] = [0]
+    result.reserveCapacity(text.count + 1)
     var offset = 0
-    for character in text { offset += String(character).utf16.count; result.insert(offset) }
+    for character in text { offset += String(character).utf16.count; result.append(offset) }
     return result
+}
+
+private func rgAdSearchBoundary(_ value: Int, in boundaries: [Int], floor: Bool) -> Int {
+    var lo = 0, hi = boundaries.count - 1
+    while lo < hi {
+        if floor {
+            let mid = (lo + hi + 1) / 2
+            if boundaries[mid] <= value { lo = mid } else { hi = mid - 1 }
+        } else {
+            let mid = (lo + hi) / 2
+            if boundaries[mid] >= value { hi = mid } else { lo = mid + 1 }
+        }
+    }
+    return boundaries[lo]
+}
+
+/// Snaps valid in-bounds UTF-16 entity ranges that split inside a multi-codeunit grapheme
+/// cluster (such as an emoji followed by U+FE0F) onto enclosing Swift `Character` boundaries.
+func rgAdAlignEntities(_ entities: [RGAdEntity], in text: String) -> [RGAdEntity] {
+    guard !entities.isEmpty else { return entities }
+    let boundaries = rgAdBoundaryList(text)
+    let boundarySet = Set(boundaries)
+    let length = boundaries[boundaries.count - 1]
+    return entities.map { entity in
+        let lower = entity.range.lower, upper = entity.range.upper
+        guard lower >= 0, upper > lower, upper <= length else { return entity }
+        if boundarySet.contains(lower) && boundarySet.contains(upper) { return entity }
+        let alignedLower = rgAdSearchBoundary(lower, in: boundaries, floor: true)
+        let alignedUpper = rgAdSearchBoundary(upper, in: boundaries, floor: false)
+        guard alignedUpper > alignedLower else { return entity }
+        return RGAdEntity(range: RGAdRange(alignedLower, alignedUpper), kind: entity.kind, value: entity.value)
+    }
+}
+
+func rgAdBoundaries(_ text: String) -> Set<Int> {
+    Set(rgAdBoundaryList(text))
 }
 
 func rgAdValid(_ range: RGAdRange, boundaries: Set<Int>) -> Bool {

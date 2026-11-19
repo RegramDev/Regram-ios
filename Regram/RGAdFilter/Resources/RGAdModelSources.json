@@ -1,5 +1,5 @@
 {
-  "modelVersion": "2026-11-16.10",
+  "modelVersion": "2026-11-18.2",
   "purpose": "Chinese channel and group text under reviewed promotional-intent policy. Preserve normal sharing, official benefits, and reviewed channel-related service/package information. No general channel-topic inference or ad-free guarantee.",
   "base": {
     "repository": "https://huggingface.co/hfl/minirbt-h256",
@@ -53,39 +53,39 @@
     "checkpointSelection": "Public validation precision >= .985 and FPR <= .005, then domain false positives, domain recall, public recall. Test labels never fitted.",
     "grouping": "Normalized deduplication, conflicting labels removed, near-duplicate TF-IDF char 3/4-grams grouped before split; not a channel-level split.",
     "thresholdCalibration": {
-      "previousThreshold": 0.962,
+      "previousThreshold": 0.99164,
       "validation": {
-        "threshold": 0.99164,
-        "precision": 0.9853768278965129,
-        "recall": 0.2510028653295129,
-        "f1": 0.40009134505594884,
-        "tn": 3500,
-        "fp": 13,
-        "fn": 2614,
-        "tp": 876,
-        "false_positive_rate": 0.003700540848277825
+        "threshold": 0.9835,
+        "precision": 0.9857512953367875,
+        "recall": 0.2180515759312321,
+        "f1": 0.3571093383388081,
+        "tn": 3502,
+        "fp": 11,
+        "fn": 2729,
+        "tp": 761,
+        "false_positive_rate": 0.0031312268716196983
       },
       "domainValidation": {
-        "threshold": 0.99164,
+        "threshold": 0.9835,
         "precision": 1.0,
-        "recall": 0.84,
-        "f1": 0.9130434782608695,
+        "recall": 0.76,
+        "f1": 0.8636363636363636,
         "tn": 30,
         "fp": 0,
-        "fn": 4,
-        "tp": 21,
+        "fn": 6,
+        "tp": 19,
         "false_positive_rate": 0.0
       },
       "test": {
-        "threshold": 0.99164,
-        "precision": 0.9758149316508938,
-        "recall": 0.27358490566037735,
-        "f1": 0.42735436334331106,
-        "tn": 3248,
-        "fp": 23,
-        "fn": 2464,
-        "tp": 928,
-        "false_positive_rate": 0.007031488841332926
+        "threshold": 0.9835,
+        "precision": 0.981549815498155,
+        "recall": 0.23525943396226415,
+        "f1": 0.37954815695600475,
+        "tn": 3256,
+        "fp": 15,
+        "fn": 2594,
+        "tp": 798,
+        "false_positive_rate": 0.0045857535921736475
       },
       "method": "Per-epoch validation-only selection with public precision/FPR constraints; repeatedly observed test is a longitudinal benchmark, not a new external evaluation."
     },
@@ -116,13 +116,37 @@
           "name": "commercial-context",
           "epochs": 4,
           "selectedEpoch": 1
+        },
+        {
+          "stage": "38e",
+          "parent": "38d (from 38c/38a/37)",
+          "epochs": 4,
+          "selectedEpoch": 1,
+          "learningRate": 3e-06,
+          "samplingWeights": {
+            "content": 100.0,
+            "promotion": 65.0
+          },
+          "focus": {
+            "sha256": "7217838159e4e5b8c7f5e378c4d56ba7d1cc074d4794e9d195beb5b11678c4a8",
+            "normalizedRows": 1077,
+            "weightMultiplier": 6.0
+          },
+          "priority": {
+            "sha256": "ac7ece32195b24337838aee2f787ae29c949d79d41e46246b7530197441a9fa8",
+            "normalizedRows": 55,
+            "weightMultiplier": 4.0
+          },
+          "examplesSHA256": "cce9204efc5a03e763952a0abf8db066a2d9733e14d290967a01019140c0b586",
+          "exactNativeWindowRows": 384,
+          "onAcceptedLineage": true
         }
       ],
       "additionalRejectedStage": {
         "epochs": 4,
         "reason": "Authored domain validation recall regressed; not selected for shipping"
       },
-      "finalAugmentedRows": 6988,
+      "finalAugmentedRows": 12302,
       "replayRows": 7899,
       "samplingWeights": {
         "content": 18.0,
@@ -132,7 +156,8 @@
       "exportSHA256": "27157de936e22510c7e1531ad62576e0a617e005d22d299fd67aa60335f559be",
       "policy": "Normal software sharing, open source recommendations, official free credits and benefits retained; commercial promotion spans reviewed independently.",
       "trainingPartitionRecords": 199,
-      "textTrainingPosts": 197
+      "textTrainingPosts": 197,
+      "exactNativeWindowRows": 384
     },
     "deviceAdaptation": {
       "exportedRecords": 325,
@@ -646,29 +671,43 @@
       "automaticLabelsUsedAsTruth": false,
       "rejectedExperiments": "Stage 33, later stage-34 epoch exports and lower-threshold probe were development candidates, not shipping weights. Stage 35 descends from validation-selected stage-34 epoch 1.",
       "scope": "Eight explicit user labels plus reviewed earlier residual-ad and normal-content contrasts. Real data remains local. These inspected examples are development/training material, not an unseen accuracy test."
+    },
+    "selectedStage": "39e",
+    "latestAdditionalBatches": {
+      "exports": 3,
+      "rawRows": 1546,
+      "uniqueNovelCasesEvaluated": 699,
+      "trainingExamplesSHA256": "099bf41898112d14991dca32befe772da47a8fb659996fe5225f0da10d6437ec",
+      "focusExamplesSHA256": "84a1cf58ffe78fb0abff4d7020be284771594f0d3f5a3f3632db07db0a3e6d1f",
+      "priorityExamplesSHA256": "c0ceed5b4fdbf2d206fc4f33770af37d11463c6525ad0b0dff86ad194ebd7f1d",
+      "replayRows": 7899,
+      "augmentedRows": 12502,
+      "exactNativeWindowRows": 412,
+      "rawMessagesCommitted": false,
+      "rawMessagesUploaded": false
     }
   },
   "evaluation": {
     "publicTextClassifier": {
-      "threshold": 0.99164,
-      "precision": 0.9758149316508938,
-      "recall": 0.27358490566037735,
-      "f1": 0.42735436334331106,
-      "tn": 3248,
-      "fp": 23,
-      "fn": 2464,
-      "tp": 928,
-      "false_positive_rate": 0.007031488841332926
+      "threshold": 0.9835,
+      "precision": 0.981549815498155,
+      "recall": 0.23525943396226415,
+      "f1": 0.37954815695600475,
+      "tn": 3256,
+      "fp": 15,
+      "fn": 2594,
+      "tp": 798,
+      "false_positive_rate": 0.0045857535921736475
     },
     "domainValidationAuthored": {
-      "threshold": 0.99164,
+      "threshold": 0.9835,
       "precision": 1.0,
-      "recall": 0.84,
-      "f1": 0.9130434782608695,
+      "recall": 0.76,
+      "f1": 0.8636363636363636,
       "tn": 30,
       "fp": 0,
-      "fn": 4,
-      "tp": 21,
+      "fn": 6,
+      "tp": 19,
       "false_positive_rate": 0.0
     },
     "warning": "Inspected development cases, including training and repeated templates. Not unseen accuracy. Partial contact-only removal counts as advertising remaining. Public spam labels are not the user advertising policy.",
@@ -680,23 +719,24 @@
     },
     "nativeDevelopmentRegression": {
       "posts": 939,
-      "reviewedOverrideCases": 4,
-      "normalBearing": 813,
+      "normalBearing": 814,
       "normalDamaged": 0,
-      "adBearing": 689,
-      "adRemaining": 0,
+      "adBearing": 700,
+      "adRemaining": 3,
       "pureAds": 125,
-      "pureHidden": 125,
+      "pureHidden": 122,
       "mixed": 575,
       "mixedFullyCleaned": 575,
-      "buttonErrors": [],
+      "buttonErrors": [
+        "phone-34659-139"
+      ],
       "incomplete": 0,
-      "failures": [],
       "latency": {
-        "median": 54.844750033225864,
-        "p95": 197.03050004318357
+        "count": 7954,
+        "median": 0.22241659462451935,
+        "p95": 19.913708325475454
       },
-      "scope": "Human-reviewed development cases, including training and repeated templates; not unseen accuracy."
+      "scope": "Human-reviewed development cases, including training and repeated templates; phone-34659-139 remains kept due to 3-Han-character wholeLanguageSupported guard."
     },
     "livePhoneInspection": {
       "installedBuild": 34658,
@@ -744,7 +784,7 @@
         "vectors": 100
       },
       "windowBoundaryVectors": 12,
-      "modelSHA256": "317fb694c4d81160af90ffeb87ceedc8e5f6e120442f3105b1b0ddcd90e31b49"
+      "modelSHA256": "cc22ed4e6b12635a72ebed20c407cd53d8a5af0d498884eb73ec9c082b401e10"
     },
     "linkedUserExamples": {
       "posts": 8,
@@ -761,10 +801,31 @@
       "scope": "Xcode inspection of the installed previous app, used to obtain original message entities. Final model evaluation did not reuse its personal correction; no final-IPA thermal or UI claim."
     },
     "integrationChecks": {
-      "unitTests": 66,
+      "unitTests": 80,
       "filteredReadAssertions": 36,
       "replyBridge": "Normal/outgoing replies, whole-ad headers/media, mixed quote/text, restoration, source edits and unloaded targets checked with production bridge adapters.",
       "scope": "macOS native and adapter tests; app compilation and device UI remain separate."
+    },
+    "nativeNewBatchEvaluation": {
+      "posts": 227,
+      "normalBearing": 153,
+      "normalDamaged": 0,
+      "adBearing": 173,
+      "adRemaining": 3,
+      "pureAds": 74,
+      "pureHidden": 71,
+      "mixed": 99,
+      "mixedFullyCleaned": 99,
+      "buttonErrors": [
+        "new-34664-069"
+      ],
+      "incomplete": 0,
+      "latency": {
+        "count": 1521,
+        "median": 0.20929158199578524,
+        "p95": 19.708333420567214
+      },
+      "scope": "227 reviewed novel posts from Regram-ad-samples-with-pending.jsonl (3 ambiguous posts excluded); new-34664-069 exceeds 8-window / 1024-token ceiling."
     }
   },
   "privacy": "No network or message upload in inference. Real-device messages and raw corpora are excluded from the repository. Classification outputs cannot generate original training messages.",
@@ -778,7 +839,7 @@
   ],
   "inference": {
     "computeUnits": "cpuOnly for exact scores and promotional decisions; cpuAndNeuralEngine for conservative content gating",
-    "spanThreshold": 0.99164,
+    "spanThreshold": 0.9835,
     "wholeCardConsensusFloor": 0.99,
     "wholeCardConsensus": "Complete text and every meaningful blank-line block >= .99, at least two blocks >= span threshold, no substantive normal content or protected code. Only complete-card cuts use this floor.",
     "privacy": "On-device, bounded background inference; no network requests.",
