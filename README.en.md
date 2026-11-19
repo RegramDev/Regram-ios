@@ -4,7 +4,7 @@ English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
 Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
 
-The latest public release, **13.2 / b34663**, uses the Neural Engine on supported iPhones to help ReSieve identify clearly normal text faster and gives the current chat and pinned messages priority. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34663) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
+The latest public release, **13.2 / b34665**, updates the ReSieve model to 1.3.0 and fixes notification settings that applied late, saving view-once media and protected private-chat content, screenshot notices and ghost-mode presence. It also removes the defunct Google CN and Microsoft translation services. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34665) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
 `master` builds sideload reference IPAs; TestFlight runs from `regram-beta`. See the [CI guide](build-system/ci/README.md).
 

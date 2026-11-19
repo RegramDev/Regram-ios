@@ -4,7 +4,7 @@
 
 Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-最新公开版本 **13.2 / b34663**。ReSieve 在支持的 iPhone 上使用 Neural Engine 加速识别明确正常的文本，并优先处理当前聊天与置顶消息。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34663) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
+最新公开版本 **13.2 / b34665**。更新 ReSieve 1.3.0 模型；修复通知设置不及时生效、阅后即焚与受保护私聊内容的保存、截图通知和幽灵模式在线状态等问题，移除已失效的 Google CN 与 Microsoft 翻译。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34665) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
