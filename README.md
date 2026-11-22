@@ -4,9 +4,7 @@
 
 Reza 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
 
-当前开发版本 **Reza 13.2 / b34666** 使用橘猫主图标，新增频道和群聊的 ReSieve 过滤记录入口。
-
-最新公开版本 **13.2 / b34665**。更新 ReSieve 1.3.0 模型；修复通知设置不及时生效、阅后即焚与受保护私聊内容的保存、截图通知和幽灵模式在线状态等问题，移除已失效的 Google CN 与 Microsoft 翻译。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34665) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
+最新公开版本 **Reza 13.2 / b34666** 使用橘猫主图标，在频道和群聊资料页新增「ReSieve 过滤记录」。从 b34665 或更早版本首次升级，请手动下载 IPA 并沿用原安装身份覆盖安装。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34666) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
 `master` 用于侧载参考 IPA；TestFlight 使用 `regram-beta` 分支，发布入口及分支约定见 [CI 说明](build-system/ci/README.md)。
 
