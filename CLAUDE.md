@@ -4,9 +4,9 @@ This file provides guidance to AI assistants when working with code in this repo
 
 ## Build
 
-The public build steps are in [README.md](README.md). Use the Regram app target **//Telegram:Regram** and keep all local configuration, API credentials and signing files in ignored **build-input/**. The tracked rules_apple compatibility patch is documented in [build-system/patches/README.md](build-system/patches/README.md).
+The public build steps are in [README.md](README.md). Use the Reza app target **//Telegram:Reza** and keep all local configuration, API credentials and signing files in ignored **build-input/**. The tracked rules_apple compatibility patch is documented in [build-system/patches/README.md](build-system/patches/README.md).
 
-The Make.py wrapper can generate an Xcode project or build a device IPA. Specify a local configuration path and the signing mode for your environment; do not assume another developer's certificate repository, shell startup file or simulator exists. When testing a change, run the smallest relevant Bazel target if its platform is configured correctly, then run a full Regram build for integration-sensitive work. See [docs/ui-testing.md](docs/ui-testing.md) for UI test setup.
+The Make.py wrapper can generate an Xcode project or build a device IPA. Specify a local configuration path and the signing mode for your environment; do not assume another developer's certificate repository, shell startup file or simulator exists. When testing a change, run the smallest relevant Bazel target if its platform is configured correctly, then run a full Reza build for integration-sensitive work. See [docs/ui-testing.md](docs/ui-testing.md) for UI test setup.
 
 For a simulator run, select an available device with xcrun simctl list devices available. Use the generated project or install a fresh simulator build; never replace another developer's installed app bundle by path. A successful compile does not prove notification extensions, data migration or device-only behavior.
 

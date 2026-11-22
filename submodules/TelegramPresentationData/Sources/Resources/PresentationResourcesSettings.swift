@@ -19,7 +19,7 @@ private func renderMessageBookmarksArtwork() -> UIImage? {
     }.withRenderingMode(.alwaysOriginal)
 }
 // MARK: Regram
-private func renderRegramSettingsArtwork(name: String, dark: Bool? = nil) -> UIImage? {
+private func renderRezaSettingsArtwork(name: String, dark: Bool? = nil) -> UIImage? {
     let traits = dark.map { UITraitCollection(userInterfaceStyle: $0 ? .dark : .light) }
     guard let image = UIImage(named: name, in: getAppBundle(), compatibleWith: traits)?.cgImage else { return nil }
     return generateImage(CGSize(width: 30.0, height: 30.0), contextGenerator: { size, context in
@@ -145,16 +145,16 @@ let colorViolet = UIColor(rgb: 0x5E5CE6)
 
 public struct PresentationResourcesSettings {
     // MARK: Regram — preserve the supplied artwork rather than treating it as a monochrome glyph.
-    public static let regram = renderRegramSettingsArtwork(name: "RegramSettings")
-    public static let regramPro = renderRegramSettingsArtwork(name: "RegramPro")
-    public static let regramAppIconDidChange = Notification.Name("Regram.AppIconDidChange")
+    public static let reza = renderRezaSettingsArtwork(name: "RezaSettings")
+    public static let rezaPro = renderRezaSettingsArtwork(name: "RezaPro")
+    public static let rezaAppIconDidChange = Notification.Name("Regram.AppIconDidChange")
     // MARK: Regram — use the same thumbnail as the app icon picker, preserving its colors.
-    private static let regramAppIconCache = NSCache<NSString, UIImage>()
-    public static func regramProIcon(imageName: String, dark: Bool) -> UIImage? {
+    private static let rezaAppIconCache = NSCache<NSString, UIImage>()
+    public static func rezaProIcon(imageName: String, dark: Bool) -> UIImage? {
         let key = "\(imageName).\(dark ? "dark" : "light")" as NSString
-        if let image = regramAppIconCache.object(forKey: key) { return image }
-        guard let image = renderRegramSettingsArtwork(name: imageName, dark: dark) ?? renderRegramSettingsArtwork(name: "RegramPro", dark: dark) else { return nil }
-        regramAppIconCache.setObject(image, forKey: key)
+        if let image = rezaAppIconCache.object(forKey: key) { return image }
+        guard let image = renderRezaSettingsArtwork(name: imageName, dark: dark) ?? renderRezaSettingsArtwork(name: "RezaPro", dark: dark) else { return nil }
+        rezaAppIconCache.setObject(image, forKey: key)
         return image
     }
     public static let proxy = renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [colorGreen])

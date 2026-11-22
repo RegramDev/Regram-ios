@@ -17,10 +17,10 @@ class ReleaseChecks(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
-        self.ipa = self.root / 'ipa' / 'Regram-13.0-b40001.ipa'
+        self.ipa = self.root / 'ipa' / 'Reza-13.0-b40001.ipa'
         self.ipa.parent.mkdir()
         with zipfile.ZipFile(self.ipa, 'w') as archive:
-            archive.writestr('Payload/Regram.app/Info.plist', plistlib.dumps({
+            archive.writestr('Payload/Reza.app/Info.plist', plistlib.dumps({
                 'CFBundleShortVersionString': '13.0', 'CFBundleVersion': '40001'}))
         self.digest = hashlib.sha256(self.ipa.read_bytes()).hexdigest()
         self.request = {'repository': 'RegramDev/Regram-ios', 'filename': self.ipa.name,
@@ -56,16 +56,16 @@ class ReleaseChecks(unittest.TestCase):
                 release.prepare('RegramDev/Regram-ios', '123', self.ipa.name, self.request_path)
 
     def test_rejects_wrong_filename_digest_and_embedded_build(self):
-        for request in [self.request | {'sha256': '0' * 64}, self.request | {'filename': 'Regram-13.0-b40002.ipa'}]:
+        for request in [self.request | {'sha256': '0' * 64}, self.request | {'filename': 'Reza-13.0-b40002.ipa'}]:
             with self.assertRaises(ValueError):
                 release.verify_ipa(self.ipa, request)
         with zipfile.ZipFile(self.ipa, 'w') as archive:
-            archive.writestr('Payload/Regram.app/Info.plist', plistlib.dumps({
+            archive.writestr('Payload/Reza.app/Info.plist', plistlib.dumps({
                 'CFBundleShortVersionString': '13.0', 'CFBundleVersion': '40002'}))
         changed = self.request | {'sha256': hashlib.sha256(self.ipa.read_bytes()).hexdigest()}
         with self.assertRaisesRegex(ValueError, 'version/build'):
             release.verify_ipa(self.ipa, changed)
-        for filename in ['../Regram-13.0-b40001.ipa', 'Regram-13.0-b40001-LCSign-reference.ipa', 'Regram-Other-13.0-b40001.ipa']:
+        for filename in ['../Reza-13.0-b40001.ipa', 'Reza-13.0-b40001-LCSign-reference.ipa', 'Reza-Other-13.0-b40001.ipa']:
             with self.assertRaises(ValueError):
                 release.filename_parts(filename)
 

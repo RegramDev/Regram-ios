@@ -6,13 +6,13 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 load("@rules_shell//shell:sh_binary.bzl", "sh_binary")
 
 rgsrc = [
-    "//Regram/RGAppBadgeOffset:RGAppBadgeOffset"
+    "//Reza/RGAppBadgeOffset:RGAppBadgeOffset"
 ]
 
 rgdeps = [
     "//submodules/Utils/DeviceModel",
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGTypography:RGTypography",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGTypography:RGTypography",
 ]
 
 swift_library(

@@ -8,11 +8,11 @@
 
 ## 回归和编译
 
-新增 `//Regram/RGSettingsUI:RGSettingsLeadingButtonsTests`，直接编译生产控件，与真实 `NavigationButtonComponent`、AsyncDisplayKit 和 UIKit 一起在 iPhone 17／iOS 26.5 模拟器运行。旧生产代码在同一组 4 项测试中全部因无法命中子按钮失败；修复后 4 项全部通过，覆盖两个动作独立触发、点击区边缘与辅助功能、主题更新、取消触摸及重新挂载。
+新增 `//Reza/RGSettingsUI:RGSettingsLeadingButtonsTests`，直接编译生产控件，与真实 `NavigationButtonComponent`、AsyncDisplayKit 和 UIKit 一起在 iPhone 17／iOS 26.5 模拟器运行。旧生产代码在同一组 4 项测试中全部因无法命中子按钮失败；修复后 4 项全部通过，覆盖两个动作独立触发、点击区边缘与辅助功能、主题更新、取消触摸及重新挂载。
 
-这些测试执行真实 UIKit 命中测试及合成触摸序列；没有登录真实账号，也没有执行完整应用真机、真实扫码或覆盖升级验收。现有 `check-regram-features.py` 的 70 项检查通过，包含底栏、根设置手势、返回转场、设置运行时和导航颜色。旧 `run-hidden-tab-checks.py` 仍依赖上游 13.1.1 之前的 getter 签名，提取失败，本轮不计为通过；本次生产触摸路径由新增 UIKit 回归覆盖。
+这些测试执行真实 UIKit 命中测试及合成触摸序列；没有登录真实账号，也没有执行完整应用真机、真实扫码或覆盖升级验收。现有 `check-reza-features.py` 的 70 项检查通过，包含底栏、根设置手势、返回转场、设置运行时和导航颜色。旧 `run-hidden-tab-checks.py` 仍依赖上游 13.1.1 之前的 getter 签名，提取失败，本轮不计为通过；本次生产触摸路径由新增 UIKit 回归覆盖。
 
-Xcode 27.1（27A9275）完成 `//Telegram:Regram` 的完整 arm64 Release；构建前后已跟踪文件、构建配置与 rules_apple 兼容补丁摘要一致。主应用和六扩展、arm64、零描述文件、严格 ad-hoc 签名、资源及 12 份匹配 dSYM 校验通过；七个 bundle 的标识和完整 entitlements 与 b34633 一致。
+Xcode 27.1（27A9275）完成 `//Telegram:Reza` 的完整 arm64 Release；构建前后已跟踪文件、构建配置与 rules_apple 兼容补丁摘要一致。主应用和六扩展、arm64、零描述文件、严格 ad-hoc 签名、资源及 12 份匹配 dSYM 校验通过；七个 bundle 的标识和完整 entitlements 与 b34633 一致。
 
 构建源码及 Release 目标：`741d3d90801345db5d4b0288f29d7a2b000c732a`。后续文档提交只更新介绍和本轮记录，不改变应用源码或交付包。
 

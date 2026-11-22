@@ -511,7 +511,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
             return
         }
         // MARK: Regram — handle current application schemes.
-        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        if let scheme = parsedUrl.scheme, (["tg", "reza", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             if parsedUrl.host == "tonsite" {
                 if let value = URL(string: "tonsite:/" + parsedUrl.path) {
                     parsedUrl = value
@@ -519,7 +519,7 @@ private func openCheckedExternalUrl(context: AccountContext, urlContext: OpenURL
             }
         }
         
-        if let scheme = parsedUrl.scheme, (["tg", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
+        if let scheme = parsedUrl.scheme, (["tg", "reza", "rg", "regram"].contains(scheme) || scheme == context.sharedContext.applicationBindings.appSpecificScheme) {
             var convertedUrl: String?
             let host = parsedUrl.host?.lowercased() ?? ""
             if host == "debug", parsedUrl.path == "/crash_reports" {

@@ -291,7 +291,7 @@ class BazelCommandLine:
         if self.custom_target is not None:
             combined_arguments += [self.custom_target]
         else:
-            combined_arguments += ['Telegram/Regram']
+            combined_arguments += ['//Telegram:Reza']
 
         if self.continue_on_error:
             combined_arguments += ['--keep_going']
@@ -660,30 +660,30 @@ def build(bazel, arguments):
 
     # App Store review rejects a non-public libicucore function, and nothing before it does (ICUImportCheck.py).
     # bazel-bin is this build's configuration now; a --target build makes no .ipa.
-    built_ipa_path = 'bazel-bin/Telegram/Telegram.ipa'
-    if os.path.exists(built_ipa_path) and ICUImportCheck.run([built_ipa_path]) != 0:
+    built_ipa_path = 'bazel-bin/Telegram/Reza.ipa'
+    if arguments.target in (None, '//Telegram:Reza') and os.path.exists(built_ipa_path) and ICUImportCheck.run([built_ipa_path]) != 0:
         sys.exit(1)
 
     if arguments.outputBuildArtifactsPath is not None:
         artifacts_path = os.path.abspath(arguments.outputBuildArtifactsPath)
-        if os.path.exists(artifacts_path + '/Regram.ipa'):
-            os.remove(artifacts_path + '/Regram.ipa')
+        if os.path.exists(artifacts_path + '/Reza.ipa'):
+            os.remove(artifacts_path + '/Reza.ipa')
         if os.path.exists(artifacts_path + '/DSYMs'):
             shutil.rmtree(artifacts_path + '/DSYMs')
         os.makedirs(artifacts_path, exist_ok=True)
         os.makedirs(artifacts_path + '/DSYMs', exist_ok=True)
 
         built_ipa_path_prefix = 'bazel-bin/Telegram'
-        ipa_paths = glob.glob('{}/Regram.ipa'.format(built_ipa_path_prefix))
+        ipa_paths = glob.glob('{}/Reza.ipa'.format(built_ipa_path_prefix))
         if len(ipa_paths) == 0:
-            print(f'Could not find the IPA at {built_ipa_path_prefix}/Regram.ipa')
+            print(f'Could not find the IPA at {built_ipa_path_prefix}/Reza.ipa')
             sys.exit(1)
         elif len(ipa_paths) > 1:
             print('Multiple matching IPA files found: {}'.format(ipa_paths))
             sys.exit(1)
-        shutil.copyfile(ipa_paths[0], artifacts_path + '/Regram.ipa')
+        shutil.copyfile(ipa_paths[0], artifacts_path + '/Reza.ipa')
 
-        dsym_paths = glob.glob('bazel-bin/Telegram/*.dSYM') + glob.glob('bazel-out/watchos_arm64_32-opt-watchos-arm64_32-min7.0-applebin_watchos-ST-*/bin/Telegram/RegramWatchApp_dsyms/*.dSYM') + glob.glob('bazel-out/watchos_armv7k-opt-watchos-armv7k-min7.0-applebin_watchos-ST-*/bin/Telegram/RegramWatchApp_dsyms/*.dSYM') 
+        dsym_paths = glob.glob('bazel-bin/Telegram/*.dSYM') + glob.glob('bazel-out/watchos_arm64_32-opt-watchos-arm64_32-min7.0-applebin_watchos-ST-*/bin/Telegram/RezaWatchApp_dsyms/*.dSYM') + glob.glob('bazel-out/watchos_armv7k-opt-watchos-armv7k-min7.0-applebin_watchos-ST-*/bin/Telegram/RezaWatchApp_dsyms/*.dSYM')
         for dsym_path in dsym_paths:
             file_name = os.path.basename(dsym_path)
             shutil.copytree(dsym_path, artifacts_path + '/DSYMs/{}'.format(file_name))
@@ -691,7 +691,7 @@ def build(bazel, arguments):
         os.chdir(artifacts_path)
         run_executable_with_output('zip', arguments=[
             '-r',
-            'Regram.DSYMs.zip',
+            'Reza.DSYMs.zip',
             './DSYMs'
         ], check_result=True)
         os.chdir(previous_directory)

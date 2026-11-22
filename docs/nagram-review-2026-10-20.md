@@ -31,12 +31,12 @@
 验证命令：
 
 ```sh
-python3 Regram/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py --baseline
-python3 Regram/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py
-python3 build-system/check-regram-features.py --output build-input/pin-fix-checks
+python3 Reza/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py --baseline
+python3 Reza/RGSimpleSettings/Tests/run-local-pinned-chats-checks.py
+python3 build-system/check-reza-features.py --output build-input/pin-fix-checks
 ```
 
-第一条专门验证旧版失败，预期非零退出；第二条验证修正后行为。完整本地检查共 37 项通过，五个变动 Swift 文件通过语法检查。尚未完整编译 `//Telegram:Regram`，未生成新版 IPA，也未在真机持续一至两天验收。已被旧版彻底删除的本地记录无法由服务端补回，升级后可能需要重新置顶一次。
+第一条专门验证旧版失败，预期非零退出；第二条验证修正后行为。完整本地检查共 37 项通过，五个变动 Swift 文件通过语法检查。尚未完整编译 `//Telegram:Reza`，未生成新版 IPA，也未在真机持续一至两天验收。已被旧版彻底删除的本地记录无法由服务端补回，升级后可能需要重新置顶一次。
 
 Nagram 最近的[文件夹置顶未读数修复](https://github.com/NextAlone/Nagram-iOS/commit/9acb93bae0cd)解决重复计数，与本次丢失不同；其[本地突破置顶上限需求](https://github.com/NextAlone/Nagram-iOS/issues/63)也不能作为已有修复引用。本次修正依据 Regram 自己的数据路径实现。
 

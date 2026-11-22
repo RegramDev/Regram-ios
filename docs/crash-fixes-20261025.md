@@ -43,17 +43,17 @@ replayFinalState
 - 生产 GCDAsyncSocket 已使用 Xcode 27.1 编译为 arm64 iOS 对象（`-O2 -Werror`）；生产 Postbox 编解码器及 PreferencesEntry 已通过 arm64 iOS 模块编译（`-warnings-as-errors`）。
 - 现有代理连接、DNS 策略／报文及消息保留回归通过。
 
-本轮已完成完整 `//Telegram:Regram` arm64 Release 构建与正式发布，交付信息见下节。未在真机或真实账号执行覆盖升级、VPN／飞行模式和冷启动验收；模拟器压力测试不能替代原设备验收。没有修改安装身份或清除任何账号、数据库、设置及可复用构建缓存。
+本轮已完成完整 `//Telegram:Reza` arm64 Release 构建与正式发布，交付信息见下节。未在真机或真实账号执行覆盖升级、VPN／飞行模式和冷启动验收；模拟器压力测试不能替代原设备验收。没有修改安装身份或清除任何账号、数据库、设置及可复用构建缓存。
 
 复验入口：
 
 ```sh
 # 先选择完整 Xcode，并准备一个已启动的 iOS 模拟器。
 python3 submodules/MtProtoKit/Tests/run-cfstream-checks.py --simulator <SIMULATOR_UUID>
-python3 Regram/RGChatListPlacement/Tests/run-placement-checks.py
+python3 Reza/RGChatListPlacement/Tests/run-placement-checks.py
 python3 submodules/MtProtoKit/Tests/run-proxy-connection-checks.py
 python3 submodules/MtProtoKit/Tests/run-dns-policy-checks.py
-python3 build-system/check-regram-retention.py
+python3 build-system/check-reza-retention.py
 ```
 
 ## b34637 构建与正式发布
@@ -61,7 +61,7 @@ python3 build-system/check-regram-retention.py
 2026-10-25 发布 [v13.1.1-b34637](https://github.com/RegramDev/Regram-ios/releases/tag/v13.1.1-b34637)，Release ID 为 `423108434`，稳定版、非草稿并已设为 Latest。
 
 - 构建源码及正式 tag 的目标提交：`613a41cb8e8e9aaa314fd885d15ad4021155dbaf`。后续发布记录提交仅修改文档，不代表另一份应用构建。
-- Xcode 27.1（27A9275）完成 `//Telegram:Regram` 的完整 arm64 Release，退出码 0，构建前后源码与配置摘要一致。
+- Xcode 27.1（27A9275）完成 `//Telegram:Reza` 的完整 arm64 Release，退出码 0，构建前后源码与配置摘要一致。
 - 70 项现有功能检查通过，前述专项回归的源码摘要与构建源码一致。
 - 主程序及六扩展、严格 ad-hoc 签名、arm64、资源、三语文案及 12 份匹配 dSYM 校验通过；七个 bundle 的完整 entitlements 与已发布 b34636 一致。
 - 文件：`Regram-13.1.1-b34637.ipa`，77,969,678 字节。

@@ -2,8 +2,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGTranscription:RGTranscription",
-    "//Regram/RGSimpleSettings:RGSimpleSettings" 
+    "//Reza/RGTranscription:RGTranscription",
+    "//Reza/RGSimpleSettings:RGSimpleSettings"
 ]
 
 

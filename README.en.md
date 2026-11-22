@@ -1,8 +1,10 @@
-# Regram
+# Reza
 
 English · [简体中文](README.md) · [LINUX DO Community](https://linux.do/)
 
-Regram is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
+Reza is an unofficial Telegram client maintained on top of Telegram for iOS, with message management, privacy controls, translation and speech recognition, appearance customization, and in-app updates.
+
+The current development build, **Reza 13.2 / b34666**, adds the orange tabby icon and per-chat ReSieve records for groups and channels.
 
 The latest public release, **13.2 / b34665**, updates the ReSieve model to 1.3.0 and fixes notification settings that applied late, saving view-once media and protected private-chat content, screenshot notices and ghost-mode presence. It also removes the defunct Google CN and Microsoft translation services. [Release notes and downloads](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34665) · [Feature catalog](docs/features.md) · [Changelog](docs/changelog.md)
 
@@ -30,7 +32,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 ### Filters and privacy
 
 - Keyword and regex filters with hide/allow rules, global or per-chat scope, testing, import and export.
-- ReSieve on-device ad filtering for channels, groups, pinned messages and chat-list previews. Enable it in Regram Pro → Privacy and Filters → Message Filter. Original messages are preserved, detections can be reviewed and corrected, and messages stay on the device. See the [model notes and limitations](docs/ad-semantic-model.md) and [model repository](https://github.com/RegramDev/ReSieve).
+- ReSieve on-device ad filtering for channels, groups, pinned messages and chat-list previews. Enable it in Reza Pro → Privacy and Filters → Message Filter. Open ReSieve Filter Records on a group or channel profile to review and correct records for that chat. Messages stay on the device. See the [model notes and limitations](docs/ad-semantic-model.md) and [model repository](https://github.com/RegramDev/ReSieve).
 - Hide selected senders, disable rule filtering for a chat, or temporarily reveal hidden content.
 - Hide a member only in a selected group, separately for each account; manage selections from the member avatar menu or group profile.
 - Group member alerts notify when selected members post. Hidden and filtered messages stay excluded; background alerts depend on Telegram push delivery and system notification permissions.
@@ -39,7 +41,7 @@ The [implementation checklist](docs/chat-and-interface-tools.md) lists share-she
 - Ghost controls for story read reporting, online presence and typing activity.
 - User-ID mention links, hidden phone numbers in settings, profile IDs, DC regions and estimated registration dates.
 - Notification content filtering, pin/mention/reply policies, empty-notification recovery and entitlement diagnostics.
-- Experimental notification recovery in Regram Pro → Notifications, off by default and retaining existing preferences, with search, settings links and notification-category backup support. `tg://rg/rgdebug` retains the cache cleanup tool, keeping accounts, databases, settings, certificates and update packages.
+- Experimental notification recovery in Reza Pro → Notifications, off by default and retaining existing preferences, with search, settings links and notification-category backup support. `tg://rg/rgdebug` retains the cache cleanup tool, keeping accounts, databases, settings, certificates and update packages.
 
 Anti-revoke and edit history retain content already received or observed on this device. Ghost mode does not suppress ordinary chat read receipts. Client preferences cannot grant permissions enforced by Telegram or iOS.
 
@@ -73,8 +75,8 @@ Preview availability depends on Telegram and third-party services. A sticker arc
 
 ### Appearance and input
 
-- Settings and Regram feature pages share Telegram themes, grouped lists and glass navigation while preserving back gestures. Older systems use the upstream fallback.
-- App icons and screenshot App Badges. The Regram Pro entry follows the selected app icon; login artwork and update Live Activities use Regram artwork.
+- Settings and Reza feature pages share Telegram themes, grouped lists and glass navigation while preserving back gestures. Older systems use the upstream fallback.
+- Orange Tabby is the default app icon. Settings → Appearance also offers Calico, Siamese, Tuxedo and all 11 previous icons. The Reza Pro entry follows the selected icon. Onboarding and update Live Activities use Orange Tabby.
 - Confirmed icon selections persist across launches and restore the Pro entry and Appearance selection while delayed system reads reconcile. Failed changes and stale callbacks do not replace the saved choice.
 - Upstream Telegram bottom-bar components, animations and gestures, with live preview, drag ordering, label visibility, standalone buttons and automatic/manual width.
 - Chats and Settings must remain visible. The centered bar automatically narrows with fewer navigation items. Search is an opt-in control under Display Items, using the Swiftgram native right-side button and expanding field for the current page; Calls opens the new-call picker. Settings remains reachable while hidden. Swipe right from the Settings content area to return to Chats with finger-tracked motion and cancellation; unhiding applies immediately.
@@ -102,7 +104,7 @@ IP policies apply to native Telegram DC and SOCKS5/MTProto proxy connections. We
 - No local account-count cap; Telegram login and abuse-prevention rules still apply.
 - Category-based JSON settings backup/restore with an import preview, excluding sessions, chat databases, certificates, API keys and font files.
 - Local Premium display, cache management, five-second auto-lock after leaving, and confirmed local-data erasure, with startup handling to avoid blank screens and disappearing prompts.
-- One Regram IPA from this repository's GitHub Releases, with stable-version, size, SHA-256, package-structure and installation-identity checks.
+- One client IPA from this repository's GitHub Releases, with stable-version, size, SHA-256, package-structure and installation-identity checks.
 - Check for updates without certificates. A separate button opens the release page. Automatic checks are off by default; disabling them suppresses global reminders.
 - Optional automatic download: accept the update prompt to download and prepare quietly, then receive an installation prompt. Verified files survive restarts without repeating downloads or new-version prompts.
 - Certificate installation: select P12/PFX and profiles together, enter the password, then validate and persist locally. Sign on the device and use LCSign's manifest service to hand installation to iOS.
@@ -110,11 +112,11 @@ IP policies apply to native Telegram DC and SOCKS5/MTProto proxy connections. We
 - System background downloads and optional Lock Screen/Dynamic Island Live Activities on iOS 16.1+. Tap to return to updates. Signing continues in the foreground; installation requires confirmation.
 - Optional exit after the complete package is handed off. On the new version's first launch, remove downloaded/signed IPAs while retaining certificates.
 
-Local customization is in **Settings → Regram Pro → Show Off**: local Premium display, Stars/TON, gifts and appearance, phone display, signed ratings and the TON profile card. Gift purchases keep direct checkout; limited local gifts can be upgraded in the native details sheet. Quote colors and the chat-list gift status follow the same local appearance. These settings only affect this device.
+Local customization is in **Settings → Reza Pro → Show Off**: local Premium display, Stars/TON, gifts and appearance, phone display, signed ratings and the TON profile card. Gift purchases keep direct checkout; limited local gifts can be upgraded in the native details sheet. Quote colors and the chat-list gift status follow the same local appearance. These settings only affect this device.
 
 ## Settings
 
-Feature preferences are under **Settings → Regram Pro**, organized into nine categories and the Show Off section:
+Feature preferences are under **Settings → Reza Pro**, organized into nine categories and the Show Off section:
 
 | Category | Contents |
 | --- | --- |
@@ -129,7 +131,7 @@ Feature preferences are under **Settings → Regram Pro**, organized into nine c
 | Show Off | Local Premium, Stars/TON gifts and upgrades, appearance, phone display, ratings and the TON card |
 | Management & Tools | Backups, updates, data cleanup |
 
-Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Regram Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
+Basic controls appear within their category. Chats and media use the native chat-folder tab bar within the same screen; the bottom bar editor is under Reza Pro → Appearance & Interface → Bottom Bar Layout. Specialised editors remain separate pages.
 
 Within Pro, global settings search is on the home page, covering categories and advanced pages. Results open and focus the setting; category pages do not duplicate search or frequently used shortcuts. Long-press a setting to copy a deep link containing only its page and control identifier. Bookmarks have a separate entry below Saved Messages on the outer Settings page.
 
@@ -141,11 +143,11 @@ A standalone diagnostic app on iPhone 16 Pro produced identical filtering result
 
 ## Building
 
-Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Regram**. See the [13.1.1 upstream integration record](docs/upstream-sync-20261023.md) for compatibility and verification scope.
+Use macOS, full Xcode 27.1, Python 3, and Git. Tool versions are listed in [versions.json](versions.json). The app target is **//Telegram:Reza**. See the [13.1.1 upstream integration record](docs/upstream-sync-20261023.md) for compatibility and verification scope.
 
 ```sh
-git clone --recursive https://github.com/RegramDev/Regram-ios.git
-cd Regram-ios
+git clone --recursive https://github.com/RegramDev/Regram-ios.git Reza-ios
+cd Reza-ios
 git submodule update --init --recursive
 ```
 
@@ -160,7 +162,7 @@ Copy the configuration template into ignored `build-input/` and supply your own 
 
 ```sh
 mkdir -p build-input
-cp build-system/template_minimal_development_configuration.json build-input/regram-development.json
+cp build-system/template_minimal_development_configuration.json build-input/reza-development.json
 ```
 
 Generate a simulator project:
@@ -169,7 +171,7 @@ Generate a simulator project:
 python3 build-system/Make/Make.py --overrideXcodeVersion \
   --cacheDir="$PWD/build-input/bazel-cache" \
   generateProject \
-  --configurationPath=build-input/regram-development.json \
+  --configurationPath=build-input/reza-development.json \
   --xcodeManagedCodesigning --disableProvisioningProfiles
 ```
 
@@ -179,13 +181,13 @@ Build a device IPA with matching signing material for the main app and all six e
 python3 build-system/Make/Make.py --overrideXcodeVersion \
   --cacheDir="$PWD/build-input/bazel-cache" \
   build \
-  --configurationPath=build-input/regram-development.json \
+  --configurationPath=build-input/reza-development.json \
   --codesigningInformationPath=build-input/codesigning \
   --buildNumber=10001 --configuration=release_arm64 \
-  --target=//Telegram:Regram
+  --target=//Telegram:Reza
 ```
 
-The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging guide](docs/lcsign-reference-packaging.md) when preparing an ad-hoc reference IPA for LCSign or another signing tool. Keep the application identity and data container unchanged for an in-place upgrade.
+The output is `bazel-bin/Telegram/Reza.ipa`. Follow the [reference packaging guide](docs/lcsign-reference-packaging.md) when preparing an ad-hoc reference IPA for LCSign or another signing tool. Keep the application identity and data container unchanged for an in-place upgrade.
 
 `--overrideXcodeVersion` skips the version check; it does not guarantee toolchain compatibility. Never commit API credentials, certificates, provisioning profiles, IPAs, or real account data.
 
@@ -199,8 +201,8 @@ The output is `bazel-bin/Telegram/Regram.ipa`. Follow the [reference packaging g
 - [UI testing](docs/ui-testing.md)
 - [Contributing](.github/CONTRIBUTING.md)
 
-Regram is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
+Reza is not affiliated with the official Telegram project. Follow this repository's and its dependencies' licenses when distributing a modified client, and identify it clearly as unofficial.
 
 ## Community and acknowledgements
 
-Thanks to the [LINUX DO](https://linux.do/) community for providing a place to share and discuss open-source projects. Community members are welcome to share their experience with Regram and suggest improvements.
+Thanks to the [LINUX DO](https://linux.do/) community for providing a place to share and discuss open-source projects. Community members are welcome to share their experience with Reza and suggest improvements.

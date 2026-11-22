@@ -904,7 +904,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 }
             }
         }, changed: {
-            NotificationCenter.default.post(name: PresentationResourcesSettings.regramAppIconDidChange, object: nil)
+            NotificationCenter.default.post(name: PresentationResourcesSettings.rezaAppIconDidChange, object: nil)
         }, canApply: { application.applicationState == .active })
         // MARK: Regram — reset a removed system icon once, even if persistence already resolves to nil.
         var resettingRetiredIcon = false
@@ -1092,7 +1092,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }, dismissNativeController: {
             self.window?.rootViewController?.dismiss(animated: true, completion: nil)
         }, getAvailableAlternateIcons: {
-            // MARK: Regram — the bubble identity is primary; the former primary is an alternate.
+            // MARK: Regram — present the four cat icons with the orange tabby first.
             return RGAppIconNames.allNames.map { name in
                 PresentationAppIcon(name: name, imageName: RGAppIconNames.previewName(name == RGAppIconNames.primaryName ? nil : name), isDefault: name == RGAppIconNames.primaryName)
             }
@@ -1707,9 +1707,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         if let url = launchOptions?[.url] {
             // MARK: Regram — recognize current application links at launch.
-            if let url = url as? URL, url.scheme == "tg" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
+            if let url = url as? URL, url.scheme == "tg" || url.scheme == "reza" || url.scheme == "rg" || url.scheme == "regram" || url.scheme == "ton" || url.scheme == buildConfig.appSpecificUrlScheme || WalletContext.isTonConnectUrl(url.absoluteString) {
                 self.openUrlWhenReady(url: rgActionRequestHandlerSanitizer(url), external: true)
-            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
+            } else if let urlString = url as? String, urlString.lowercased().hasPrefix("tg:") || urlString.lowercased().hasPrefix("reza:") || urlString.lowercased().hasPrefix("rg:") || urlString.lowercased().hasPrefix("regram:") || urlString.lowercased().hasPrefix("ton:") || urlString.lowercased().hasPrefix("\(buildConfig.appSpecificUrlScheme):") || WalletContext.isTonConnectUrl(urlString), let url = URL(string: urlString) {
                 self.openUrlWhenReady(url: url, external: true)
             }
         }

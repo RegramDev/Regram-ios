@@ -1,18 +1,18 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGLocalGifts", # MARK: Regram
-        "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
-        "//Regram/RGJoinedChatFolderPicker", # MARK: Regram
-    "//Regram/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
-    "//Regram/RGSettingsUI:RGSettingsUI",
-    "//Regram/RGStrings:RGStrings",
-    "//Regram/RGProfileBadge:RGProfileBadge", # MARK: Regram
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGLocalGifts", # MARK: Regram
+        "//Reza/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+        "//Reza/RGJoinedChatFolderPicker", # MARK: Regram
+    "//Reza/RGCommonGroupMessagesUI:RGCommonGroupMessagesUI", # MARK: Regram
+    "//Reza/RGSettingsUI:RGSettingsUI",
+    "//Reza/RGStrings:RGStrings",
+    "//Reza/RGProfileBadge:RGProfileBadge", # MARK: Regram
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
 
-    "//Regram/RGRegDate:RGRegDate",
-    "//Regram/RGRegDateScheme:RGRegDateScheme",
-    "//Regram/RGDebugUI:RGDebugUI",
+    "//Reza/RGRegDate:RGRegDate",
+    "//Reza/RGRegDateScheme:RGRegDateScheme",
+    "//Reza/RGDebugUI:RGDebugUI",
 ]
 
 

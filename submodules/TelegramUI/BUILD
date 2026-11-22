@@ -6,43 +6,43 @@ load(
 )
 
 rgdeps = [
-    "//Regram/RGVoiceMessages", # MARK: Regram
-    "//Regram/RGLocalGifts", # MARK: Regram
-    "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
-    "//Regram/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
-    "//Regram/RGSettingsUI:RGSettingsUI",
-    "//Regram/RGLinkMetadata:RGLinkMetadata",
-    "//Regram/RGAppUpdate:RGAppUpdate", # MARK: Regram
-    "//Regram/RGConfig:RGConfig",
-    "//Regram/RGAPIWebSettings:RGAPIWebSettings",
-    "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGTranscription:RGTranscription",
-    "//Regram/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
-    "//Regram/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
-    "//Regram/RGLogging:RGLogging",
-    "//Regram/RGStrings:RGStrings",
-    "//Regram/RGActionRequestHandlerSanitizer:RGActionRequestHandlerSanitizer",
-    "//Regram/Wrap:Wrap",
-    "//Regram/RGDeviceToken:RGDeviceToken",
-    "//Regram/RGDebugUI:RGDebugUI",
-    "//Regram/RGProUI:RGProUI",
-    "//Regram/RGStickerSave:RGStickerSave", # MARK: Regram
-    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
-    "//Regram/RGGHSettings:RGGHSettings",
-    "//Regram/RGPangu:RGPangu",
-    # "//Regram/RGContentAnalysis:RGContentAnalysis"
+    "//Reza/RGVoiceMessages", # MARK: Regram
+    "//Reza/RGLocalGifts", # MARK: Regram
+    "//Reza/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+    "//Reza/RGNotificationRecovery:RGNotificationRecovery", # MARK: Regram
+    "//Reza/RGSettingsUI:RGSettingsUI",
+    "//Reza/RGLinkMetadata:RGLinkMetadata",
+    "//Reza/RGAppUpdate:RGAppUpdate", # MARK: Regram
+    "//Reza/RGConfig:RGConfig",
+    "//Reza/RGAPIWebSettings:RGAPIWebSettings",
+    "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGTranscription:RGTranscription",
+    "//Reza/RGChatHistoryProcessing:RGChatHistoryProcessing", # MARK: Regram
+    "//Reza/SFSafariViewControllerPlus:SFSafariViewControllerPlus",
+    "//Reza/RGLogging:RGLogging",
+    "//Reza/RGStrings:RGStrings",
+    "//Reza/RGActionRequestHandlerSanitizer:RGActionRequestHandlerSanitizer",
+    "//Reza/Wrap:Wrap",
+    "//Reza/RGDeviceToken:RGDeviceToken",
+    "//Reza/RGDebugUI:RGDebugUI",
+    "//Reza/RGProUI:RGProUI",
+    "//Reza/RGStickerSave:RGStickerSave", # MARK: Regram
+    "//Reza/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
+    "//Reza/RGGHSettings:RGGHSettings",
+    "//Reza/RGPangu:RGPangu",
+    # "//Reza/RGContentAnalysis:RGContentAnalysis"
 ]
 
 rgsrcs = [
-    "//Regram/RGVoiceMessages:ChatVoiceImport", # MARK: Regram
-    "//Regram/RGAppIconSelection:RGAppIconSelection", # MARK: Regram
-    "//Regram/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
-    "//Regram/RGDBReset:RGDBReset",
-    "//Regram/RGShowMessageJson:RGShowMessageJson",
-    "//Regram/ChatControllerImplExtension:ChatControllerImplExtension",
-    "//Regram/RGOutgoingTranslationLanguageSelection:RGOutgoingTranslationLanguageSelection",
-    "//Regram/RGSafariControllerUrlOpening:RGSafariControllerUrlOpening"
+    "//Reza/RGVoiceMessages:ChatVoiceImport", # MARK: Regram
+    "//Reza/RGAppIconSelection:RGAppIconSelection", # MARK: Regram
+    "//Reza/RGAuthorMessagesUI:RGAuthorMessagesUI", # MARK: Regram
+    "//Reza/RGDBReset:RGDBReset",
+    "//Reza/RGShowMessageJson:RGShowMessageJson",
+    "//Reza/ChatControllerImplExtension:ChatControllerImplExtension",
+    "//Reza/RGOutgoingTranslationLanguageSelection:RGOutgoingTranslationLanguageSelection",
+    "//Reza/RGSafariControllerUrlOpening:RGSafariControllerUrlOpening"
 ]
 
 filegroup(
@@ -50,7 +50,7 @@ filegroup(
     srcs = glob([
         "Sounds/**/*",
         "Resources/**/*",
-    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]) + ["//Regram/RGUpdateSigner:Licenses"], # MARK: Regram
+    ], exclude = ["Sounds/**/.*", "Resources/**/.*"]) + ["//Reza/RGUpdateSigner:Licenses"], # MARK: Regram
     visibility = ["//visibility:public"],
 )
 

@@ -4,9 +4,9 @@ load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 rgdeps = [
-    "//Regram/RGGTranslate:RGGTranslate",
-    "//Regram/RGTranslationLangFix", # MARK: Regram
-    "//Regram/RGSimpleSettings:RGSimpleSettings"
+    "//Reza/RGGTranslate:RGGTranslate",
+    "//Reza/RGTranslationLangFix", # MARK: Regram
+    "//Reza/RGSimpleSettings:RGSimpleSettings"
 ]
 
 swift_library(

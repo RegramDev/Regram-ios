@@ -20,9 +20,9 @@ def api(path):
 
 
 def filename_parts(filename):
-    match = re.fullmatch(r'Regram-(\d+(?:\.\d+){1,3})-b([1-9]\d*)\.ipa', filename)
+    match = re.fullmatch(r'Reza-(\d+(?:\.\d+){1,3})-b([1-9]\d*)\.ipa', filename)
     if not match:
-        raise ValueError('Use the exact Regram-version-bbuild.ipa filename')
+        raise ValueError('Use the exact Reza-version-bbuild.ipa filename')
     return match.groups()
 
 
@@ -33,7 +33,7 @@ def prepare(repository, run_id, filename, request_path):
     run = api(f'repos/{repository}/actions/runs/{run_id}')
     if (run['status'], run['conclusion'], run['head_branch'], run['path']) != (
             'completed', 'success', 'master', '.github/workflows/build.yml'):
-        raise ValueError('Select a successful master run of Build Regram')
+        raise ValueError('Select a successful master run of Build Reza')
     if run['event'] not in ('push', 'workflow_dispatch') or run['head_repository']['full_name'] != repository:
         raise ValueError('Release artifacts must come from this repository master')
     sha = run['head_sha']
@@ -99,7 +99,7 @@ def publish(request_path, directory, confirmed):
     notes.write_text(f"{request['filename']}\n\nBuilt from `{request['source_commit']}`.\n\n"
                      f"[Build details]({request['run_url']})\n\nSHA-256: `{digest}`\n")
     command(['gh', 'release', 'create', tag, str(files[0]), '--repo', repository,
-             '--target', request['source_commit'], '--title', f"Regram {request['version']} (b{request['build']})",
+             '--target', request['source_commit'], '--title', f"Reza {request['version']} (b{request['build']})",
              '--notes-file', str(notes), '--draft'])
     release = json.loads(command(['gh', 'release', 'view', tag, '--repo', repository,
                                   '--json', 'isDraft,assets']))

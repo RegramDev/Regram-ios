@@ -1512,6 +1512,8 @@ public protocol SharedAccountContext: AnyObject {
     func makeRGRecentChatsController(context: AccountContext) -> ViewController
     // MARK: Regram — the bookmarks manager has one entry on the outer Settings page.
     func makeRGBookmarksController(context: AccountContext) -> ViewController
+    // MARK: Regram — open the current peer's ReSieve records from its profile.
+    func makeRGAdRecordsController(context: AccountContext, peerId: EnginePeer.Id) -> ViewController
 
     var currentInAppNotificationSettings: Atomic<InAppNotificationSettings> { get }
     var currentMediaInputSettings: Atomic<MediaInputSettings> { get }

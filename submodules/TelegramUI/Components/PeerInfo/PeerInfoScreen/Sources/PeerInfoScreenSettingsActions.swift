@@ -61,7 +61,7 @@ extension PeerInfoScreenNode {
         case .rgFeatureContacts:
             push(ContactsController(context: self.context, rgFeatureIsPushed: true))
         // MARK: Regram — both current and legacy actions resolve to the single settings hub.
-        case .regram, .regramPro:
+        case .reza, .rezaPro:
             self.controller?.push(self.context.sharedContext.makeRGProController(context: self.context))
         case .avatar:
             self.controller?.openAvatarForEditing()

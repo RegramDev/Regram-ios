@@ -2,13 +2,13 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGStrings:RGStrings",
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGStrings:RGStrings",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
     "//submodules/TranslateUI:TranslateUI"
 ]
 
 rgsrc = [
-    "//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction"
+    "//Reza/RGDoubleTapMessageAction:RGDoubleTapMessageAction"
 ]
 
 swift_library(

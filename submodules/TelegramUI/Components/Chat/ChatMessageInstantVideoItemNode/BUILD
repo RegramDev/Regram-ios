@@ -4,14 +4,14 @@ swift_library(
     name = "ChatMessageInstantVideoItemNode",
     module_name = "ChatMessageInstantVideoItemNode",
     # MARK: Regram
-    srcs = ["//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction"] + glob([
+    srcs = ["//Reza/RGDoubleTapMessageAction:RGDoubleTapMessageAction"] + glob([
         "Sources/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
+        "//Reza/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/SSignalKit/SwiftSignalKit",

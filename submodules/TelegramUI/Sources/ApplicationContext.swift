@@ -640,7 +640,7 @@ final class AuthorizedApplicationContext {
                 switch prompt.kind {
                 case .available:
                     title = "AppUpdate.Available".i18n(lang)
-                    message = "Regram \(prompt.release.version) (\(prompt.release.build))"
+                    message = "Reza \(prompt.release.version) (\(prompt.release.build))"
                     actionTitle = "AppUpdate.Update".i18n(lang)
                 case .ready:
                     title = "AppUpdate.Ready".i18n(lang)

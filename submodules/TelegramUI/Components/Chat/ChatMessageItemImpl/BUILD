@@ -2,7 +2,7 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
     "//submodules/TranslateUI:TranslateUI"
 ]
 

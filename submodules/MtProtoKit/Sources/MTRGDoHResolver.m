@@ -72,7 +72,7 @@ NSNotificationName const MTRGDNSFailureChangedNotification = @"Regram.DNS.Failur
     url.queryItems = @[[NSURLQueryItem queryItemWithName:@"name" value:hostname], [NSURLQueryItem queryItemWithName:@"type" value:[NSString stringWithFormat:@"%u", type]], [NSURLQueryItem queryItemWithName:@"random_padding" value:padding]];
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url.URL];
     [request setValue:@"application/dns-json" forHTTPHeaderField:@"Accept"];
-    [request setValue:@"Regram DNS" forHTTPHeaderField:@"User-Agent"];
+    [request setValue:@"Reza DNS" forHTTPHeaderField:@"User-Agent"];
     return request;
 }
 + (NSString *)lastFailureForEndpoint:(NSString *)endpoint {

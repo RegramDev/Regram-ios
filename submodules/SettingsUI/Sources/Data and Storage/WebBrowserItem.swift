@@ -1,3 +1,4 @@
+import RGSimpleSettings // MARK: Regram
 import Foundation
 import UIKit
 import Display
@@ -156,7 +157,7 @@ private final class WebBrowserItemNode: ListViewItemNode {
                     } else {
                         let icons = item.context.sharedContext.applicationBindings.getAvailableAlternateIcons()
                         let current = item.context.sharedContext.applicationBindings.getAlternateIconName()
-                        let currentIcon = icons.first(where: { $0.name == current })?.imageName ?? icons.first(where: { $0.isDefault })?.imageName ?? "RGConversationPreview" // MARK: Regram
+                        let currentIcon = icons.first(where: { $0.name == current })?.imageName ?? icons.first(where: { $0.isDefault })?.imageName ?? RGAppIconNames.previewName(nil) // MARK: Regram
                         if let image = UIImage(named: currentIcon, in: getAppBundle(), compatibleWith: nil) {
                             updatedIconSignal = openInAppIcon(engine: item.context.engine, appIcon: .image(image: image))
                         }

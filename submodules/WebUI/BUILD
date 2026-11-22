@@ -2,9 +2,9 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGAPIWebSettings:RGAPIWebSettings",
-    "//Regram/RGConfig:RGConfig",
-    "//Regram/RGLogging:RGLogging"
+    "//Reza/RGAPIWebSettings:RGAPIWebSettings",
+    "//Reza/RGConfig:RGConfig",
+    "//Reza/RGLogging:RGLogging"
 ]
 
 swift_library(

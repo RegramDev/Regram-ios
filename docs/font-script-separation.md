@@ -15,10 +15,10 @@ CoreText 的字符集限制与 cascade list 合成一个字体对象，供 UIKit
 
 旧设置迁移：原 Latin 字族留在英文栏，中文默认系统；原 IBM Plex Sans SC 选择移到中文栏，英文恢复系统。已经保存了独立中文选项的用户不会被迁移覆盖。
 
-实现入口：[选择与范围](../Regram/RGSimpleSettings/Sources/FontSettings.swift)、[持久化和迁移](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift)、[字符集与合成](../Regram/RGTypography/Sources/RGFontCascade.swift)、[字体加载](../Regram/RGTypography/Sources/RGTypography.swift)、[设置界面](../Regram/RGProUI/Sources/RGFontSettingsController.swift)。Noto Serif SC 的 OFL 原文和上游提交／文件 SHA-256 随资源记录保留。
+实现入口：[选择与范围](../Reza/RGSimpleSettings/Sources/FontSettings.swift)、[持久化和迁移](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift)、[字符集与合成](../Reza/RGTypography/Sources/RGFontCascade.swift)、[字体加载](../Reza/RGTypography/Sources/RGTypography.swift)、[设置界面](../Reza/RGProUI/Sources/RGFontSettingsController.swift)。Noto Serif SC 的 OFL 原文和上游提交／文件 SHA-256 随资源记录保留。
 
 验证：Foundation 范围／迁移／缓存键检查通过。主机上的 CoreText 检查使用生产合成代码，覆盖 12 组 Latin／Chinese／字重组合、中文与全角标点、ASCII 数字、彩色表情、扩展汉字字符集和可变字体轴；检查通过。按用户要求未运行模拟器或真机验证。
 
-b34580 的 `//Telegram:Regram` arm64 release 构建通过（主程序和六个扩展）。最终参考 IPA 已重新解包检查：12 个 Mach-O 严格 ad-hoc 签名通过、12 份 dSYM 匹配、0 个描述文件；身份与 App Group／entitlements 匹配 b34579，最低 iOS 均为 15.0。83 个字体文件、11 份许可文件的包内 SHA-256 匹配来源记录。
+b34580 的 `//Telegram:Reza` arm64 release 构建通过（主程序和六个扩展）。最终参考 IPA 已重新解包检查：12 个 Mach-O 严格 ad-hoc 签名通过、12 份 dSYM 匹配、0 个描述文件；身份与 App Group／entitlements 匹配 b34579，最低 iOS 均为 15.0。83 个字体文件、11 份许可文件的包内 SHA-256 匹配来源记录。
 
 参考 IPA SHA-256：`0575277f3ab9cb329f64e612ceadaa9f528fced28b8504596377fb55fdfc50cd`。

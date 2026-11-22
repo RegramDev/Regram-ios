@@ -103,7 +103,7 @@
     MTSocksProxySettings *proxy = [[MTSocksProxySettings alloc] initWithIp:ip port:_proxy.port username:_proxy.username password:_proxy.password secret:_proxy.secret];
     _child = [[MTTcpConnection alloc] initRGWithContext:context datacenterId:_dcId scheme:self.scheme interface:self.interface usageCalculationInfo:_usage getLogPrefix:self.getLogPrefix proxyOverride:proxy];
     _child.delegate = self;
-    if (MTLogEnabled()) MTLog(@"[Regram proxy attempt %lu/%lu IPv%d]", (unsigned long)_index, (unsigned long)_addresses.count, [ip containsString:@":"] ? 6 : 4);
+    if (MTLogEnabled()) MTLog(@"[Reza proxy attempt %lu/%lu IPv%d]", (unsigned long)_index, (unsigned long)_addresses.count, [ip containsString:@":"] ? 6 : 4);
     __weak MTRGProxyConnection *weakSelf = self;
     __weak MTTcpConnection *attempt = _child;
     _attemptTimer = [[MTTimer alloc] initWithTimeout:4.0 repeat:false completion:^{

@@ -11,8 +11,8 @@ swift_library(
     ],
     deps = [
         # MARK: Regram — 权限警告隐藏开关
-        "//Regram/RGFeatureSignals:RGFeatureSignals",
-        "//Regram/RGStrings:RGStrings",
+        "//Reza/RGFeatureSignals:RGFeatureSignals",
+        "//Reza/RGStrings:RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

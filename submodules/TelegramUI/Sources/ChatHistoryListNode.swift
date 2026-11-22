@@ -2119,7 +2119,7 @@ public final class ChatHistoryListNodeImpl: ASDisplayNode, ChatHistoryNode, Chat
         let rgFilterAccountPeerId = context.account.peerId
         let rgAdFilter = RGAdFilterSession.get(context) // MARK: Regram — local asynchronous ad projection.
         let rgAdWork = RGAdFilterWorkScope(session: rgAdFilter, scope: .historyView(UUID())) // MARK: Regram — cancel obsolete windows and release on disposal.
-        let rgFilterQueue = Queue(name: "regram.chat-history-filter", qos: .userInitiated)
+        let rgFilterQueue = Queue(name: "reza.chat-history-filter", qos: .userInitiated)
         let rgProcessor = self.rgMessageProcessor ?? RGChatHistoryMessageProcessor(accountPeerId: rgFilterAccountPeerId)
         self.rgMessageProcessor = rgProcessor
         historyViewUpdate = historyViewUpdate

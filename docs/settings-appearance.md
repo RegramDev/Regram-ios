@@ -8,8 +8,8 @@
 - 正式 Release ID 为 `419618371`，标签 `v13.0-b34624` 固定指向 `65b490725f193453b4b39afa523788324c8b0b48`。该提交与构建源码之间仅有 7 份 Markdown 文档更新；发布使用用户确认的原包，未重新构建。
 - 正式 Release 与 Latest 核对通过，仅公开 IPA 和 SHA-256 校验附件。完整公开下载的字节数、SHA-256 及校验附件均与下表原包一致；dSYM 作为本地调试产物保留，未上传 Release。
 - 真实生产 `RGUpdateRelease.parseGitHub` 对公开发布数据的 7/7 检查通过：b34623 可更新，相同或更新构建不误报更新／降级，版本、构建号、大小与校验值均匹配。
-- Xcode 27 完整 `//Telegram:Regram` arm64 Release 构建成功，包含主应用及六个扩展；12 个 arm64 Mach-O 与 12 份 dSYM UUID 匹配。
-- 构建前后源码摘要一致。构建环境保留已记录的本地 MacWindow `Telegram/BUILD` 依赖与 `Regram/RGMacWindow/` 文件，以及 rules_apple 兼容补丁；因此不将该包描述为仅由干净提交构建。命名检查辅助文件也作为本地例外保留。dav1d 使用主分支已提交的等价 Xcode 路径修复。
+- Xcode 27 完整 `//Telegram:Reza` arm64 Release 构建成功，包含主应用及六个扩展；12 个 arm64 Mach-O 与 12 份 dSYM UUID 匹配。
+- 构建前后源码摘要一致。构建环境保留已记录的本地 MacWindow `Telegram/BUILD` 依赖与 `Reza/RGMacWindow/` 文件，以及 rules_apple 兼容补丁；因此不将该包描述为仅由干净提交构建。命名检查辅助文件也作为本地例外保留。dav1d 使用主分支已提交的等价 Xcode 路径修复。
 - 独立包与源码审计 **35/35 通过**，覆盖源码来源、版本、归档结构、六扩展、签名／架构、权限与身份基线、调试符号、字体资源／许可和三语资源。这不是 35 项 UI 或设备测试。
 - 集成回归覆盖底栏模型／宽度、原生搜索状态清理、隐藏与恢复、设置目录／深链／焦点、分组／手势、JSON 导入、共同群组导航及本地置顶；右划过渡另通过真实 UIKit 的 iOS 15 目标类型检查。性能优化仅为固定快照阴影轮廓，未改变跟手、视差、取消与完成动画，也未量化 FPS。
 - 交付包为 LCSign 兼容 ad-hoc 参考包，不含 Apple 描述文件。普通 iOS 安装需匹配身份与设备的有效重签；已配置的 TrollStore 路径不要求证书或重签。通用流程见[参考包说明](lcsign-reference-packaging.md)。

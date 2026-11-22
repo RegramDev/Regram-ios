@@ -50,7 +50,7 @@ filegroup(
 )
 
 rgdeps = [
-    "//Regram/RGStrings:RGStrings"
+    "//Reza/RGStrings:RGStrings"
 ]
 
 swift_library(

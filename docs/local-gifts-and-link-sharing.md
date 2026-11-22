@@ -53,7 +53,7 @@ Telegram 星星／TON 余额页、外层设置余额、礼物页面与购买确�
 本地手机号分组修正版仍为 **13.1.1 / b34631**，保存在 `build/artifacts/phone-display-13.1.1-b34631/`：
 
 - 构建源码 `2a5f21b98d35931e229f6cfa196526c3d5872fb0`，构建前后源码摘要一致；后续提交仅更新交付文档。
-- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Regram` 构建成功。
+- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Reza` 构建成功。
 - 61 项自动检查通过。新增回归直接执行生产账本、显示函数和 Telegram mask 插入函数，覆盖 Fragment 四位分组、保留全部数字、其他国家号码交给原生格式化、账号／环境隔离以及关闭后还原；不等同于真机显示测试。
 - 最终 IPA 中 Telegram 国家分组资源与源码一致，三种语言各 35 个本地定制资源键完整。
 - 主 App 与 6 个扩展、12 个 Mach-O 与匹配 dSYM 完整，严格签名和架构校验通过。与 b34630 正式包、上一份礼物完整性 b34631 测试包的 7 个 Bundle 安装标识和完整 entitlements 一致。
@@ -65,7 +65,7 @@ Telegram 星星／TON 余额页、外层设置余额、礼物页面与购买确�
 本轮“显摆一下”与礼物完整性修正版仍为 **13.1.1 / b34631**，保存在 `build/artifacts/complete-gifts-13.1.1-b34631/`：
 
 - 构建源码 `71c6252336c094eadc8d8de18cb1c23a5b09a8f9`，最终构建前后源码摘要一致；后续提交仅更新交付文档。
-- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Regram` 构建成功。
+- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Reza` 构建成功。
 - 60 项综合检查通过；最终首页入口专项、购买／资料来源边界、Postbox 导入检查通过。Foundation 回归包含旧账本迁移、独立 TON 扣款、精确小数、手机号隔离与开关、隐藏礼物及删除装扮。
 - 主 App 与 6 个扩展保留，12 个 Mach-O 与 12 份 dSYM 匹配；严格签名、架构、字体许可、通知及实时活动声明校验通过。
 - 与 b34630 正式包及上一份原生购买 b34631 包对比，7 个 Bundle 的安装标识和完整 entitlements 一致。未执行真机覆盖升级。
@@ -84,7 +84,7 @@ Telegram 星星／TON 余额页、外层设置余额、礼物页面与购买确�
 上一份原生购买版仍为 **13.1.1 / b34631**，保存在 `build/artifacts/native-gifts-13.1.1-b34631/`：
 
 - 构建源码 `7c878b2b2de8bead0af036aeb47933844dc4ebe9`，构建前后源码摘要一致，后续提交仅补充文档。
-- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Regram` 构建成功。
+- Xcode 27.1（27A9275）完整 arm64 Release 目标 `//Telegram:Reza` 构建成功。
 - 60 项现有功能检查全部通过，最终原生购买和确认框边界检查、Postbox 导入检查通过。
 - 主应用和全部 6 个扩展保留，12 个 Mach-O 和 12 份 dSYM 匹配；严格签名、架构、字体与许可、通知和实时活动声明校验通过。
 - 与 b34630 正式包、上一份 b34631 测试包分别比较，7 个 Bundle 的安装标识及完整 entitlements 均一致；此为静态校验，未验证真机覆盖升级。

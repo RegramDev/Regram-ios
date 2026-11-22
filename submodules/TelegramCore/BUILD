@@ -4,19 +4,19 @@ load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 rgdeps = [
-    "//Regram/RGGTranslate:RGGTranslate",
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGTranslationLangFix:RGTranslationLangFix",
-    "//Regram/RGWebSettingsScheme:RGWebSettingsScheme",
-    "//Regram/RGGHSettingsScheme:RGGHSettingsScheme",
-    "//Regram/RGConfig:RGConfig",
-    "//Regram/RGLogging:RGLogging",
+    "//Reza/RGGTranslate:RGGTranslate",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGTranslationLangFix:RGTranslationLangFix",
+    "//Reza/RGWebSettingsScheme:RGWebSettingsScheme",
+    "//Reza/RGGHSettingsScheme:RGGHSettingsScheme",
+    "//Reza/RGConfig:RGConfig",
+    "//Reza/RGLogging:RGLogging",
 ]
 
 rgsrc = [
-    "//Regram/RGChatListPlacement:RGChatListPlacement", # MARK: Regram
-    "//Regram/RGRecurringMessages:RGRecurringMessages", # MARK: Regram
-    "//Regram/RGIQTP:RGIQTP",
+    "//Reza/RGChatListPlacement:RGChatListPlacement", # MARK: Regram
+    "//Reza/RGRecurringMessages:RGRecurringMessages", # MARK: Regram
+    "//Reza/RGIQTP:RGIQTP",
 ]
 
 swift_library(

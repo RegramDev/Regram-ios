@@ -2,7 +2,7 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgsrc = [
-    "//Regram/RGSwiftSignalKit:RGSwiftSignalKit"
+    "//Reza/RGSwiftSignalKit:RGSwiftSignalKit"
 ]
 
 swift_library(

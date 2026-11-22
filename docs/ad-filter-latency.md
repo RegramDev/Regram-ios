@@ -41,10 +41,10 @@
 检查命令：
 
 ```sh
-swift test --package-path Regram/RGAdFilter
-python3 Regram/RGAdFilter/Tools/run-bridge-checks.py
-python3 Regram/RGAdFilter/Tools/run-chat-list-checks.py
-python3 Regram/RGAdFilter/Tools/run-latency-checks.py
+swift test --package-path Reza/RGAdFilter
+python3 Reza/RGAdFilter/Tools/run-bridge-checks.py
+python3 Reza/RGAdFilter/Tools/run-chat-list-checks.py
+python3 Reza/RGAdFilter/Tools/run-latency-checks.py
 ```
 
 第一阶段 68 项 Swift 测试、生产桥接及主页预览回归通过；加入重启缓存和样本索引后共有 78 项 Swift 测试，结果见[后续验证](ad-filter-restart-cache.md)。延迟检查还覆盖推理进行时的编辑、取消、页面释放、人工纠正、混合消息中间状态、跨页面完整结果优先和自动记录。样本页通过 Swift 语法检查，并随最终应用完成 arm64 Release 编译。第一阶段真实输入、报告和基准辅助文件留在忽略目录 `build-input/ad-filter-milliseconds-20261116/`，不提交原始消息。

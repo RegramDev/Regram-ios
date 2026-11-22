@@ -239,7 +239,7 @@ new_git_repository(
     name = "flex_sdk",
     remote = "https://github.com/FLEXTool/FLEX.git",
     commit = "2bfba6715eff664ef84a02e8eb0ad9b5a609c684",
-    build_file = "@//Regram/FLEX:FLEX.BUILD"
+    build_file = "@//Reza/FLEX:FLEX.BUILD"
 )
 
 # Must be registered here: only the root module outranks rules_cc's generic

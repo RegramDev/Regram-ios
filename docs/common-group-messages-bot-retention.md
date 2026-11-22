@@ -32,7 +32,7 @@ Xcode 27.1 / iPhoneOS 27.1 SDK 已完成 `RGSimpleSettings`、`RGStrings`、`Tel
 ## b34641 构建与安装包
 
 - 构建源码：`a21427927fdeb7f0ad18f0ce2d26d4989bbb1fca`；后续文档提交不改变应用源码。
-- Xcode 27.1 / iPhoneOS 27.1 SDK 完成 `//Telegram:Regram` 的完整 arm64 Release。构建前后 34,472 份工作区源码摘要一致，复用既有输出缓存；未清理输出或磁盘缓存，Bazel 服务已关闭。
+- Xcode 27.1 / iPhoneOS 27.1 SDK 完成 `//Telegram:Reza` 的完整 arm64 Release。构建前后 34,472 份工作区源码摘要一致，复用既有输出缓存；未清理输出或磁盘缓存，Bazel 服务已关闭。
 - 最终参考 IPA 再次解包通过主应用、六扩展、arm64、最低 iOS 15.0、零描述文件、严格 ad-hoc 签名、12 个 Mach-O／12 份匹配 dSYM、字体许可及三语资源检查。七个 Bundle 的标识和完整 entitlement 与 b34640 一致。
 - 最终包的 TelegramUIFramework 已核对到机器人排除和温控查询的功能键；新增三语键完整，符号 ZIP CRC 检查通过。
 - 文件：`Regram-13.1.1-b34641.ipa`，78,594,715 字节；SHA-256：`85735f8b8b83fbe5ad4714e12592a543ba41fd3de0fb8118f511daa6eb761b5a`。

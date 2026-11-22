@@ -84,7 +84,7 @@ public final class AuthorizationSequenceSplashController: ViewController {
 
         super.init(navigationBarPresentationData: nil)
         // MARK: Regram — use the same artwork as the Regram Pro entry.
-        self.controller.regramArtwork = UIImage(bundleImageName: "RegramPro")
+        self.controller.rezaArtwork = UIImage(bundleImageName: "RezaPro")
         
         self._hasGlassStyle = true
         

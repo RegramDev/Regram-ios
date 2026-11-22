@@ -52,7 +52,7 @@ public extension Peer {
         // MARK: Regram
         let chatId = self.id.id._internalGetInt64Value()
         if contentSettings.appConfiguration.rgWebSettings.global.forceReasons.contains(chatId) {
-            return "Unavailable in Regram due to App Store Guidelines"
+            return "Unavailable in Reza due to App Store Guidelines"
         } else if contentSettings.appConfiguration.rgWebSettings.global.unforceReasons.contains(chatId) {
             return nil
         }

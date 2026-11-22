@@ -1633,9 +1633,9 @@
             UIViewController *parentViewController = [self.delegate parentControllerForPresentation];
             if (parentViewController) {
                 // MARK: Regram — use our application scheme; the bot's start payload is external.
-                NSURL *url = [NSURL URLWithString:@"regram://resolve?domain=TelescopyBot&start=sgconvertdemo"];
+                NSURL *url = [NSURL URLWithString:@"reza://resolve?domain=TelescopyBot&start=sgconvertdemo"];
                 // Create UIAlertController
-                UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Convert in @TelescopyBot" message:@"by Regram" preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Convert in @TelescopyBot" message:@"by Reza" /* MARK: Regram */ preferredStyle:UIAlertControllerStyleAlert];
                 // Add an OK action with a handler to open the URL and then dismiss the parent view controller
                 UIAlertAction *okAction = [UIAlertAction actionWithTitle:TGLocalized(@"WebApp.OpenBot") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
                     // Check if the URL can be opened

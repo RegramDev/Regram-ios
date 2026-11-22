@@ -10,7 +10,7 @@
 
 ## 构建与校验
 
-- Xcode 27.1（27A9275）、Bazel 9.2.0，`//Telegram:Regram` 完整 arm64 Release 成功，构建前后源码与本地配置摘要一致。
+- Xcode 27.1（27A9275）、Bazel 9.2.0，`//Telegram:Reza` 完整 arm64 Release 成功，构建前后源码与本地配置摘要一致。
 - 74 项发行回归检查通过；图标选择持久化、独立 actool 资源编译与 iPhone／iPad 图标声明检查通过。
 - 最终 IPA 的四个 XChat 图标 rendition 与独立源资源编译的摘要一致，默认与深色预览及三语 XChat 名称均存在。
 - 主应用与六个扩展、12 个 arm64 Mach-O、12 份匹配 dSYM、严格 ad-hoc 签名、零描述文件、字体目录与许可证、通知过滤、分享权限及实时活动声明校验通过。

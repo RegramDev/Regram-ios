@@ -10,8 +10,8 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGStickerSave", # MARK: Regram
-        "//Regram/RGStrings",
+        "//Reza/RGStickerSave", # MARK: Regram
+        "//Reza/RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

@@ -32,7 +32,7 @@ public extension Network {
                     let holder = MetaDisposable()
                     request.set(holder)
                     let signal = worker.request(Api.functions.help.getNearestDc(), automaticFloodWait: false)
-                    |> timeout(8, queue: .mainQueue(), alternate: .fail(MTRpcError(errorCode: 408, errorDescription: "REGRAM_PROBE_TIMEOUT")))
+                    |> timeout(8, queue: .mainQueue(), alternate: .fail(MTRpcError(errorCode: 408, errorDescription: "REZA_PROBE_TIMEOUT")))
                     |> deliverOnMainQueue
                     holder.set(signal.start(next: { value in
                         guard !cancelled.with({ $0 }) else { return }

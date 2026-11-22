@@ -202,5 +202,5 @@ NSString *TGLocalizedInternal(NSString *s)
 // MARK: Regram
 NSString *TGLocalized(NSString *s) {
     NSString *result = TGLocalizedInternal(s);
-    return [result stringByReplacingOccurrencesOfString:@"Telegram" withString:@"Regram"];
+    return [result stringByReplacingOccurrencesOfString:@"Telegram" withString:@"Reza"];
 }

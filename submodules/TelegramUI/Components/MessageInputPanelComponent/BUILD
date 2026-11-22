@@ -1,8 +1,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgDeps = [
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGInputToolbar:RGInputToolbar"
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGInputToolbar:RGInputToolbar"
 ]
 
 

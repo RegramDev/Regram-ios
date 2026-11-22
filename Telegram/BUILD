@@ -282,7 +282,7 @@ filegroup(
     name = "AppStringResources",
     srcs = [
         "Telegram-iOS/en.lproj/Localizable.strings",
-        "//Regram/RGStrings:RGLocalizableStrings",
+        "//Reza/RGStrings:RGLocalizableStrings",
     ] + [
         "{}.lproj/Localizable.strings".format(language) for language in empty_languages
     ],
@@ -311,7 +311,7 @@ filegroup(
     ], exclude = ["Telegram-iOS/Icons.xcassets/**/.*"]),
 )
 
-# MARK: Regram — B1/B2 appearance-aware app icons live in //Regram/RGBranding.
+# MARK: Regram — Reza cat app icons live in //Reza/RGBranding.
 
 filegroup(
     name = "LaunchScreen",
@@ -328,7 +328,7 @@ objc_library(
     ],
 )
 
-RGRESOURCES = ["//Regram/RGTypography:Fonts", "//Regram/RGSettingsUI:RGUIAssets", "//Regram/RGAppBadgeAssets:RGAppBadgeAssets", "//Regram/RGNY:RGNYAssets", "//Regram/RGBranding:Images", "//Regram/RGAdFilter:ModelResources"] # MARK: Regram — bundled offline model.
+RGRESOURCES = ["//Reza/RGTypography:Fonts", "//Reza/RGSettingsUI:RGUIAssets", "//Reza/RGAppBadgeAssets:RGAppBadgeAssets", "//Reza/RGNY:RGNYAssets", "//Reza/RGBranding:Images", "//Reza/RGAdFilter:ModelResources"] # MARK: Regram — bundled offline model.
 
 swift_library(
     name = "Lib",
@@ -407,6 +407,7 @@ plist_fragment(
             <string>{telegram_bundle_id}.custom</string>
             <key>CFBundleURLSchemes</key>
             <array>
+                <string>reza</string>
                 <string>regram</string>
                 <string>rg</string>
             </array>
@@ -639,7 +640,7 @@ plist_fragment(
     template =
     """
     <key>CFBundleDisplayName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     """
 )
 
@@ -1039,7 +1040,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Share</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1089,7 +1090,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI",
         "//submodules/PasscodeCore",
         "//submodules/TelegramUI/Components/ShareExtensionContext"
@@ -1146,7 +1147,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationContent</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1191,7 +1192,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI:TelegramUI",
         "//submodules/PasscodeCore",
         ":NotificationContentExtensionLink",
@@ -1236,7 +1237,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.Widget</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1272,8 +1273,8 @@ swift_library(
         ":WidgetAssets",
     ],
     deps = [
-        "//Regram/RGUpdateActivity", # MARK: Regram
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGUpdateActivity", # MARK: Regram
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/BuildConfig:BuildConfig",
         "//submodules/WidgetItems:WidgetItems_iOS14",
         "//submodules/WidgetItemsUtils:WidgetItemsUtils",
@@ -1336,7 +1337,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.SiriIntents</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1396,7 +1397,7 @@ swift_library(
         ":IntentsAssets"
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Postbox:Postbox",
         "//submodules/TelegramCore:TelegramCore",
@@ -1472,7 +1473,7 @@ ios_extension(
 )
 
 # MARK: Regram
-# TODO(regram): Localize CFBundleDisplayName
+# TODO(reza): Localize CFBundleDisplayName
 plist_fragment(
     name = "RGActionRequestHandlerInfoPlist",
     extension = "plist",
@@ -1483,9 +1484,9 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.RGActionRequestHandler</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundleDisplayName</key>
-    <string>Open in Regram</string>
+    <string>Open in Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
 	<key>NSExtension</key>
@@ -1528,7 +1529,7 @@ plist_fragment(
     )
 )
 
-# TODO(regram): Proper icon
+# TODO(reza): Proper icon
 filegroup(
     name = "RGActionRequestHandlerAssets",
     srcs = glob(["RGActionRequestHandler/Media.xcassets/**"]),
@@ -1603,7 +1604,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.BroadcastUpload</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1630,7 +1631,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
         "//submodules/TelegramUI:TelegramUI",
         "//submodules/TelegramVoip:TelegramVoip",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
@@ -1679,7 +1680,7 @@ plist_fragment(
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}.NotificationService</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>NSExtension</key>
@@ -1751,11 +1752,11 @@ plist_fragment(
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundleIdentifier</key>
     <string>{telegram_bundle_id}</string>
     <key>CFBundleName</key>
-    <string>Regram</string>
+    <string>Reza</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -1815,17 +1816,17 @@ plist_fragment(
     <key>NSCameraUsageDescription</key>
     <string>We need this so that you can take and share photos and videos.</string>
     <key>NSContactsUsageDescription</key>
-    <string>Regram stores your contacts heavily encrypted in the Telegram cloud to let you connect with your friends across all your devices.</string>
+    <string>Reza stores your contacts heavily encrypted in the Telegram cloud to let you connect with your friends across all your devices.</string>
     <key>NSFaceIDUsageDescription</key>
     <string>You can use Face ID to unlock the app.</string>
     <key>NSLocationAlwaysUsageDescription</key>
-    <string>When you send your location to your friends, Regram needs access to show them a map. You also need this to send locations from an Apple Watch.</string>
+    <string>When you send your location to your friends, Reza needs access to show them a map. You also need this to send locations from an Apple Watch.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>When you send your location to your friends, Regram needs access to show them a map.</string>
+    <string>When you send your location to your friends, Reza needs access to show them a map.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>We need this so that you can record and share voice messages and videos with sound.</string>
     <key>NSMotionUsageDescription</key>
-    <string>When you send your location to your friends, Regram needs access to show them a map.</string>
+    <string>When you send your location to your friends, Reza needs access to show them a map.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
     <string>We need this so that you can share photos and videos from your photo library.</string>
     <key>NSPhotoLibraryUsageDescription</key>
@@ -1948,7 +1949,7 @@ xcode_provisioning_profile(
 )
 
 apple_prebuilt_watchos_application(
-    name = "RegramWatchApp",
+    name = "RezaWatchApp",
     # Watch bundle id tracks the host config ("<host>.watchkitapp"). The rule passes it
     # to xcodebuild as PRODUCT_BUNDLE_IDENTIFIER (baked + signed); the watch Info.plist
     # derives WKCompanionAppBundleIdentifier from it via $(PRODUCT_BUNDLE_IDENTIFIER:base),
@@ -1961,7 +1962,7 @@ apple_prebuilt_watchos_application(
 )
 
 ios_application(
-    name = "Regram",
+    name = "Reza",
     bundle_id = "{telegram_bundle_id}".format(
         telegram_bundle_id = telegram_bundle_id,
     ),
@@ -1972,7 +1973,7 @@ ios_application(
         "//conditions:default": ":Telegram_xcode_profile" if telegram_use_xcode_managed_codesigning else "@build_configuration//provisioning:Telegram.mobileprovision",
     }),
     entitlements = select({
-        "//Regram/RGAppGroupIdentifier:sandboxOnlySetting": ":TelegramSandboxEntitlements.entitlements",
+        "//Reza/RGAppGroupIdentifier:sandboxOnlySetting": ":TelegramSandboxEntitlements.entitlements",
         "//conditions:default": ":TelegramEntitlements.entitlements",
     }),
     infoplists = [
@@ -1982,13 +1983,13 @@ ios_application(
         ":RequiredDeviceCapabilitiesPlist",
         ":UrlTypesInfoPlist",
     ],
-    # MARK: Regram — actool declares both appiconsets and their native appearance variants.
-    primary_app_icon = "RGConversation",
-    app_icons = ["//Regram/RGBranding:AppIcons"],
+    # MARK: Regram — actool declares the four cat appiconsets and their native appearance variants.
+    primary_app_icon = "RGCatOrange",
+    app_icons = ["//Reza/RGBranding:AppIcons"],
     resources = [
         ":LaunchScreen",
         # MARK: Regram — the STT test uses getAppBundle(), which resolves the main app.
-        "//Regram/RGTranscription:TestAudio",
+        "//Reza/RGTranscription:TestAudio",
     ],
     frameworks = [
         ":MtProtoKitFramework",
@@ -2001,7 +2002,7 @@ ios_application(
         ":AppStringResources",
     ],
     # MARK: Regram
-    settings_bundle = "//Regram/RGSettingsBundle:RGSettingsBundle",
+    settings_bundle = "//Reza/RGSettingsBundle:RGSettingsBundle",
     extensions = select({
         ":disableExtensionsSetting": [],
         "//conditions:default": [
@@ -2018,7 +2019,7 @@ ios_application(
     # --//Telegram:embedWatchApp is set (Make.py sets it for device configs when
     # --embedWatchApp is passed). Off by default, so simulator/dev builds are unaffected.
     watch_application = select({
-        ":embedWatchAppSetting": ":RegramWatchApp",
+        ":embedWatchAppSetting": ":RezaWatchApp",
         "//conditions:default": None,
     }),
     deps = [
@@ -2032,10 +2033,10 @@ xcodeproj(
     name = "Telegram_xcodeproj",
     bazel_path = telegram_bazel_path,
     bazel_env = {"LANG": "en_US.UTF-8","PATH": "/opt/homebrew/bin:/usr/local/bin:/bin:/usr/bin"}, # MARK: Regram, otherwise Bazel through xcode does not see ccache
-    project_name = "Regram",
+    project_name = "Reza",
     tags = ["manual"],
     top_level_targets = [
-        top_level_target(":Regram", target_environments = ["device", "simulator"]),
+        top_level_target(":Reza", target_environments = ["device", "simulator"]),
         ":iOSAppUITestSuite",
     ],
     xcode_configurations = {
@@ -2077,7 +2078,7 @@ ios_ui_test_suite(
         ":iPhone-17__26.2",
     ],
     tags = ["manual"],
-    test_host = "//Telegram:Regram", # MARK: Regram
+    test_host = "//Telegram:Reza", # MARK: Regram
     visibility = ["@rules_xcodeproj//xcodeproj:generated"],
     deps = [":iOSAppUITestSuite.library"],
 )

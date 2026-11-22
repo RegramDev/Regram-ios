@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       build_run_id:
-        description: Successful Build Regram run ID
+        description: Successful Build Reza run ID
         required: true
         type: string
       ipa_filename:
-        description: Exact approved filename (Regram-13.0-b34608.ipa)
+        description: Exact approved filename (Reza-13.2-b34666.ipa)
         required: true
         type: string
       confirm_publish:
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: regram-release
+  group: reza-release
   cancel-in-progress: false
 
 jobs:

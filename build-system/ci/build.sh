@@ -40,7 +40,7 @@ git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-loca
 
 # Limit parallel compilation for the standard 7 GB arm64 runner; keep cached build configuration
 # and all six extensions. No simulator or personal signing identity is needed.
-"$bazel_path" --nohome_rc --host_jvm_args=-Xmx1536m build //Telegram:Regram \
+"$bazel_path" --nohome_rc --host_jvm_args=-Xmx1536m build //Telegram:Reza \
   --ios_signing_cert_name=- --xcode_version="$xcode_selector" \
   --action_env="XCODE_VERSION_OVERRIDE=$DEVELOPER_DIR" \
   --define="buildNumber=$build_number" -c opt --ios_multi_cpus=arm64 \
@@ -51,8 +51,8 @@ git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-loca
   --jobs=2 --local_resources=memory=4096 --local_resources=cpu=2 \
   --@build_bazel_rules_swift//swift:copt=-num-threads --@build_bazel_rules_swift//swift:copt=2 \
   --disk_cache="$PWD/build-input/ci-cache" \
-  --//Telegram:disableExtensions=false --//Regram/RGAppGroupIdentifier:sandboxOnly=false \
-  --//Regram/RGSimpleSettings:mediaLoadingExperimentDefault=true
+  --//Telegram:disableExtensions=false --//Reza/RGAppGroupIdentifier:sandboxOnly=false \
+  --//Reza/RGSimpleSettings:mediaLoadingExperimentDefault=true
 
-python3 build-system/ci/package.py --ipa bazel-bin/Telegram/Regram.ipa \
+python3 build-system/ci/package.py --ipa bazel-bin/Telegram/Reza.ipa \
   --symbols bazel-bin/Telegram --output build/artifacts --build-number "$build_number"

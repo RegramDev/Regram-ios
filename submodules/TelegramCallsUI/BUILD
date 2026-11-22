@@ -44,7 +44,7 @@ apple_resource_bundle(
 )
 
 rgdeps = [
-    "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier"
+    "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier"
 ]
 
 swift_library(

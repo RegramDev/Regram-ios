@@ -532,7 +532,7 @@ private final class ThemeSettingsControllerImpl: ItemListController, ThemeSettin
     var refreshAppIcon: (() -> Void)?
     private var iconObservers: [NSObjectProtocol] = []
     func observeAppIcon() {
-        for name in [PresentationResourcesSettings.regramAppIconDidChange, UIApplication.didBecomeActiveNotification] {
+        for name in [PresentationResourcesSettings.rezaAppIconDidChange, UIApplication.didBecomeActiveNotification] {
             iconObservers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.refreshAppIcon?() })
         }
     }

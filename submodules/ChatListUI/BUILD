@@ -3,18 +3,18 @@ load("@build_bazel_rules_apple//apple:ios.bzl", "ios_unit_test")
 load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl", "ios_test_runner")
 
 rgdeps = [
-    "//Regram/RGAdFilter:RGAdFilter", # MARK: Regram
-    "//Regram/RGLocalGifts", # MARK: Regram
-    "//Regram/RGSearchLink:RGSearchLink", # MARK: Regram
-    "//Regram/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGAPIWebSettings:RGAPIWebSettings",
-    "//Regram/RGAPIToken:RGAPIToken",
-    "//Regram/RGStrings:RGStrings",
-    "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
+    "//Reza/RGAdFilter:RGAdFilter", # MARK: Regram
+    "//Reza/RGLocalGifts", # MARK: Regram
+    "//Reza/RGSearchLink:RGSearchLink", # MARK: Regram
+    "//Reza/RGFeatureSignals:RGFeatureSignals", # MARK: Regram
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGAPIWebSettings:RGAPIWebSettings",
+    "//Reza/RGAPIToken:RGAPIToken",
+    "//Reza/RGStrings:RGStrings",
+    "//Reza/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker", # MARK: Regram
 ]
 rgsrcs = [
-    "//Regram/RGChatListSimpleSettingsSignal:RGChatListSimpleSettingsSignal",
+    "//Reza/RGChatListSimpleSettingsSignal:RGChatListSimpleSettingsSignal",
 ]
 
 swift_library(

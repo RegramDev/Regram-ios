@@ -8,6 +8,6 @@
 
 旧系统及非灵动岛设备沿用应用内显示；关闭 badge 会撤销独立窗口并恢复原视图归属。
 
-验证：新窗口代码通过 iOS 类型检查（warnings-as-errors），完整 `//Telegram:Regram` arm64 Release 构建通过，包含全部六个扩展及 dSYM。
+验证：新窗口代码通过 iOS 类型检查（warnings-as-errors），完整 `//Telegram:Reza` arm64 Release 构建通过，包含全部六个扩展及 dSYM。
 
 这是兼容处理，尚未证明 iOS 27.0.1 的具体系统滤镜就是根因。按用户要求未使用模拟器，实际遮罩消失、键盘焦点、灵动岛活动、横竖屏切换及前后台显示仍需在 iPhone 16 Pro 上确认。参考包校验结果见该构建的 BUILD-MANIFEST.json。

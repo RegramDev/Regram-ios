@@ -1,4 +1,4 @@
-name: Build Regram
+name: Build Reza
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: regram-build-${{ github.ref }}
+  group: reza-build-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -30,16 +30,16 @@ jobs:
 
       - name: Prepare encrypted configuration
         env:
-          REGRAM_BUILD_CONFIGURATION: ${{ secrets.REGRAM_BUILD_CONFIGURATION }}
+          REZA_BUILD_CONFIGURATION: ${{ secrets.REZA_BUILD_CONFIGURATION || secrets.REGRAM_BUILD_CONFIGURATION }}
         run: |
           set -euo pipefail
           mkdir -p build-input/ci
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          value = os.environ.get('REGRAM_BUILD_CONFIGURATION', '')
+          value = os.environ.get('REZA_BUILD_CONFIGURATION', '')
           if not value:
-              raise SystemExit('Configure the REGRAM_BUILD_CONFIGURATION repository Secret before building')
+              raise SystemExit('Configure the REZA_BUILD_CONFIGURATION repository Secret before building')
           try:
               json.loads(value)
           except ValueError:
@@ -67,12 +67,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build-input/ci-cache
-          key: regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-${{ github.sha }}
+          key: reza-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-${{ github.sha }}
           restore-keys: |
+            reza-xcode27-arm64-
             regram-xcode27-arm64-${{ hashFiles('versions.json', 'MODULE.bazel', 'MODULE.bazel.lock', '.bazelrc', 'build-system/patches/*.patch') }}-
             regram-xcode27-arm64-
 
-      - name: Build and package Regram arm64 reference IPA
+      - name: Build and package Reza arm64 reference IPA
         run: bash build-system/ci/build.sh
 
       - name: Upload the IPA file

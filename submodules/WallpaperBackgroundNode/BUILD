@@ -42,11 +42,11 @@ apple_resource_bundle(
 )
 
 rgdeps = [
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
 ]
 
 rgsrcs = [
-    "//Regram/RGNY:RGNY"
+    "//Reza/RGNY:RGNY"
 ]
 
 swift_library(

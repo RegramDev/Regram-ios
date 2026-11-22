@@ -2,8 +2,8 @@ submodules/**/.build/*
 regram-scripts
 # MARK: Regram — retain the ignore rule for existing local scripts.
 swiftgram-scripts
-Regram/Playground/custom_bazel_path.bzl
-Regram/Playground/codesigning
+Reza/Playground/custom_bazel_path.bzl
+Reza/Playground/codesigning
 buildServer.json
 
 fastlane/README.md

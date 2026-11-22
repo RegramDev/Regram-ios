@@ -24,8 +24,8 @@ enum SettingsSection: Int, CaseIterable {
     case myProfile
     case wallet
     case proxy
-    case regram
-    case regramPro
+    case reza
+    case rezaPro
     case apps
     case shortcuts
     case advanced
@@ -232,11 +232,11 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
     let hasNewRGProFeatures = {
         return false
     }
-    let regramProLabel: PeerInfoScreenDisclosureItem.Label
+    let rezaProLabel: PeerInfoScreenDisclosureItem.Label
     if hasNewRGProFeatures() {
-        regramProLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
+        rezaProLabel = .titleBadge(presentationData.strings.Settings_New, presentationData.theme.list.itemAccentColor)
     } else {
-        regramProLabel = .none
+        rezaProLabel = .none
     }
     
     
@@ -246,9 +246,9 @@ func settingsItems(showProfileId: Bool, data: PeerInfoScreenData?, context: Acco
         let appIcons = context.sharedContext.applicationBindings.getAvailableAlternateIcons()
         let selectedName = context.sharedContext.applicationBindings.getAlternateIconName()
         let selectedIcon = appIcons.first(where: { selectedName == nil ? $0.isDefault : $0.name == selectedName })
-        let proIcon = PresentationResourcesSettings.regramProIcon(imageName: selectedIcon?.imageName ?? "RGConversationPreview", dark: presentationData.theme.overallDarkAppearance)
-        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 0, label: regramProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: proIcon, action: {
-            interaction.openSettings(.regramPro)
+        let proIcon = PresentationResourcesSettings.rezaProIcon(imageName: selectedIcon?.imageName ?? RGAppIconNames.previewName(nil), dark: presentationData.theme.overallDarkAppearance)
+        items[.reza]!.append(PeerInfoScreenDisclosureItem(id: 0, label: rezaProLabel, text: "Settings.Pro.Title".i18n(presentationData.strings.primaryComponent.languageCode), icon: proIcon, action: {
+            interaction.openSettings(.rezaPro)
         }))
     }
 

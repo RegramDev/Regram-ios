@@ -9,7 +9,7 @@ declared by hand links. This check reads every Mach-O binary of the built .ipa (
 frameworks and its extensions) with `xcrun dyld_info -imports`, and fails on any symbol bound to
 libicucore that no SDK header declares.
 
-Make.py runs it after `build`, on bazel-bin/Telegram/Telegram.ipa. To run it alone:
+Make.py runs it after `build`, on bazel-bin/Telegram/Reza.ipa. To run it alone:
     python3 build-system/Make/ICUImportCheck.py <.ipa, .app or Mach-O binary> ...
 """
 

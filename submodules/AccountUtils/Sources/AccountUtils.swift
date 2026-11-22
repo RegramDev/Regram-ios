@@ -5,10 +5,10 @@ import TelegramUIPreferences
 import AccountContext
 
 // MARK: Regram
-public let maximumRegramNumberOfAccounts = Int.max
+public let maximumRezaNumberOfAccounts = Int.max
 public let maximumSafeNumberOfAccounts = 6
-public let maximumNumberOfAccounts = maximumRegramNumberOfAccounts
-public let maximumPremiumNumberOfAccounts = maximumRegramNumberOfAccounts
+public let maximumNumberOfAccounts = maximumRezaNumberOfAccounts
+public let maximumPremiumNumberOfAccounts = maximumRezaNumberOfAccounts
 
 public func activeAccountsAndPeers(context: AccountContext, includePrimary: Bool = false) -> Signal<((AccountContext, EnginePeer)?, [(AccountContext, EnginePeer, Int32)]), NoError> {
     let sharedContext = context.sharedContext

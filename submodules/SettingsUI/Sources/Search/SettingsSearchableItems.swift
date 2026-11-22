@@ -33,7 +33,7 @@ import DeviceModel
 import DebugSettingsUI
 
 enum SettingsSearchableItemIcon {
-    case regram // MARK: Regram — use the selected brand artwork, separate from Appearance.
+    case reza // MARK: Regram — use the selected brand artwork, separate from Appearance.
     case profile
     case proxy
     case savedMessages

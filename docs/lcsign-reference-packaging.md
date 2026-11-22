@@ -1,14 +1,14 @@
 # LCSign 兼容参考包
 
-本文面向已经完成 Regram 真机 IPA 构建、需要交给第三方签名工具重新签名的维护者。它描述如何从 Bazel 原始产物生成**不包含 Apple 描述文件、保留 ad-hoc 代码签名**的 IPA，并检查升级所需的包声明。普通开发者请先阅读[构建说明](../README.md)。
+本文面向已经完成 Reza 真机 IPA 构建、需要交给第三方签名工具重新签名的维护者。它描述如何从 Bazel 原始产物生成**不包含 Apple 描述文件、保留 ad-hoc 代码签名**的 IPA，并检查升级所需的包声明。普通开发者请先阅读[构建说明](../README.md)。
 
 这里的 ad-hoc 是 codesign 的无证书签名（Signature=adhoc），不是 Apple 的 Ad Hoc 分发证书。生成的参考包并不等于已经用开发者证书签好的可分发应用；真机安装仍取决于后续签名工具、相匹配的描述文件及设备信任状态。
 
 ## 构建前确认
 
-1. 使用你自己的 Bundle ID、Telegram API 凭据和签名材料，按 README 构建 **//Telegram:Regram**。原始 IPA 位于 **bazel-bin/Telegram/Regram.ipa**。
+1. 使用你自己的 Bundle ID、Telegram API 凭据和签名材料，按 README 构建 **//Telegram:Reza**。原始 IPA 位于 **bazel-bin/Telegram/Reza.ipa**。
 2. 构建时保留主 App 和 6 个扩展。当前构建规则在真机目标上需要描述文件；不要为绕过配置而启用 **//Telegram:disableProvisioningProfiles** 或关闭扩展。
-3. 如需覆盖安装并保留原账号，必须保持与旧包相同的 Bundle ID、App Group 和数据目录。当前默认构建设置 **//Regram/RGAppGroupIdentifier:sandboxOnly=false** 使用 App Group 中的 **telegram-data**；切换到私有沙盒会让旧数据不可见。
+3. 如需覆盖安装并保留原账号，必须保持与旧包相同的 Bundle ID、App Group 和数据目录。当前默认构建设置 **//Reza/RGAppGroupIdentifier:sandboxOnly=false** 使用 App Group 中的 **telegram-data**；切换到私有沙盒会让旧数据不可见。
 4. 准备一份已能正常使用的旧 IPA 作对照。它应来自相同应用身份和数据容器配置，不能拿其他 Bundle ID 的变体作升级基准。
 
 本仓库不存放个人证书、描述文件、真实 API 凭据或已签名的发布包。
@@ -19,9 +19,9 @@
 
 ~~~sh
 set -e
-raw_ipa="$PWD/bazel-bin/Telegram/Regram.ipa"
+raw_ipa="$PWD/bazel-bin/Telegram/Reza.ipa"
 output_dir="$PWD/build/artifacts"
-output_ipa="$output_dir/Regram-LCSign-reference.ipa"
+output_ipa="$output_dir/Reza-LCSign-reference.ipa"
 
 test -f "$raw_ipa"
 mkdir -p "$output_dir"
@@ -58,7 +58,7 @@ shasum -a 256 "$output_ipa"
 必须对**最终 IPA 再次解包**检查，而不是只看打包前的工作目录。下面的命令检查归档、主 App、扩展、描述文件及代码签名；例子中的临时目录由命令单独创建。
 
 ~~~sh
-output_ipa="$PWD/build/artifacts/Regram-LCSign-reference.ipa"
+output_ipa="$PWD/build/artifacts/Reza-LCSign-reference.ipa"
 verify_dir=$(mktemp -d)
 unzip -tq "$output_ipa"
 unzip -q "$output_ipa" -d "$verify_dir"

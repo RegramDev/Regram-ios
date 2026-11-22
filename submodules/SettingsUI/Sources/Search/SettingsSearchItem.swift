@@ -1,3 +1,4 @@
+import RGSimpleSettings // MARK: Regram
 import Foundation
 import UIKit
 import Display
@@ -17,10 +18,10 @@ import ComponentFlow
 import ComponentDisplayAdapters
 
 extension SettingsSearchableItemIcon {
-    func image(regramImage: UIImage? = nil) -> UIImage? {
+    func image(rezaImage: UIImage? = nil) -> UIImage? {
         switch self {
-            case .regram: // MARK: Regram
-                return regramImage ?? PresentationResourcesSettings.regramPro
+            case .reza: // MARK: Regram
+                return rezaImage ?? PresentationResourcesSettings.rezaPro
             case .profile:
                 return PresentationResourcesSettings.privateChats
             case .proxy:
@@ -267,7 +268,7 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
     
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
-    private var regramIconObserver: NSObjectProtocol? // MARK: Regram
+    private var rezaIconObserver: NSObjectProtocol? // MARK: Regram
     private let presentationDataPromise: Promise<PresentationData>
     
     public init(
@@ -445,12 +446,12 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
                 // MARK: Regram — use the same persisted selection and theme as the settings home.
                 let selectedName = context.sharedContext.applicationBindings.getAlternateIconName()
                 let selectedIcon = context.sharedContext.applicationBindings.getAvailableAlternateIcons().first { selectedName == nil ? $0.isDefault : $0.name == selectedName }
-                let regramImage = PresentationResourcesSettings.regramProIcon(imageName: selectedIcon?.imageName ?? "RGConversationPreview", dark: presentationData.theme.overallDarkAppearance)
+                let rezaImage = PresentationResourcesSettings.rezaProIcon(imageName: selectedIcon?.imageName ?? RGAppIconNames.previewName(nil), dark: presentationData.theme.overallDarkAppearance)
                 var previousIcon: SettingsSearchableItemIcon?
                 for item in items {
                     var image: UIImage?
                     if previousIcon != item.icon {
-                        image = item.icon.image(regramImage: regramImage)
+                        image = item.icon.image(rezaImage: rezaImage)
                     }
                     entries.append(.result(index: entries.count, item: item, icon: image))
                     previousIcon = item.icon
@@ -464,7 +465,7 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
         }))
 
         // MARK: Regram — changing the icon while search stays open must refresh its current rows.
-        self.regramIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.regramAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
+        self.rezaIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.rezaAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
             self.presentationDataPromise.set(.single(self.presentationData))
         }
@@ -495,7 +496,7 @@ public final class SettingsSearchContainerNode: SearchDisplayControllerContentNo
     
     deinit {
         // MARK: Regram
-        if let observer = self.regramIconObserver { NotificationCenter.default.removeObserver(observer) }
+        if let observer = self.rezaIconObserver { NotificationCenter.default.removeObserver(observer) }
         self.searchDisposable.dispose()
         self.recentDisposable?.dispose()
         self.presentationDataDisposable?.dispose()

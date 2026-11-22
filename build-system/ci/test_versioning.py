@@ -47,16 +47,17 @@ class VersioningChecks(unittest.TestCase):
             environment = self.root / f'env-{run}'
             env = dict(os.environ, GITHUB_RUN_NUMBER=run, GITHUB_RUN_ATTEMPT=attempt)
             env.pop('REGRAM_BUILD_NUMBER', None)
+            env.pop('REZA_BUILD_NUMBER', None)
             output = subprocess.check_output(['python3', str(Path(versioning.__file__)), '--github-env', str(environment)], env=env, text=True)
             self.assertEqual(output.strip(), versioning.build_number())
-            self.assertEqual(environment.read_text(), f'REGRAM_BUILD_NUMBER={versioning.build_number()}\n')
+            self.assertEqual(environment.read_text(), f'REZA_BUILD_NUMBER={versioning.build_number()}\n')
 
     def test_ci_script_rejects_override_before_tools_or_credentials(self):
         env = dict(os.environ, REGRAM_BUILD_NUMBER='40007')
         script = Path(versioning.__file__).with_name('build.sh')
         result = subprocess.run(['bash', str(script)], env=env, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('REGRAM_BUILD_NUMBER must match', result.stderr)
+        self.assertIn('REZA_BUILD_NUMBER must match', result.stderr)
         self.assertNotIn('xcode', result.stdout)
 
 

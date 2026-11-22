@@ -29,12 +29,12 @@
 ## 验证
 
 ```sh
-python3 build-system/check-regram-branding.py --compiled-icons-plist build-input/icon-backup-performance-20261022/icon-assets.plist
-python3 Regram/RGSimpleSettings/Tests/run-app-icon-checks.py
-python3 Regram/RGAppIconSelection/Tests/run-selection-checks.py
-python3 Regram/RGSimpleSettings/Tests/run-settings-runtime-checks.py
-python3 Regram/RGSettingsUI/Tests/run-settings-import-menu-checks.py
-python3 Regram/RGAppBadgeOffset/Tests/run-rendering-checks.py --simulator <SIMULATOR_UDID>
+python3 build-system/check-reza-branding.py --compiled-icons-plist build-input/icon-backup-performance-20261022/icon-assets.plist
+python3 Reza/RGSimpleSettings/Tests/run-app-icon-checks.py
+python3 Reza/RGAppIconSelection/Tests/run-selection-checks.py
+python3 Reza/RGSimpleSettings/Tests/run-settings-runtime-checks.py
+python3 Reza/RGSettingsUI/Tests/run-settings-import-menu-checks.py
+python3 Reza/RGAppBadgeOffset/Tests/run-rendering-checks.py --simulator <SIMULATOR_UDID>
 ```
 
 上述为 b34629 打包前的专项检查，另核对 Swift 语法、三种语言资源格式和 `git diff --check`。b34629 随后完成完整 arm64 Release 构建并生成本地测试包；iOS 18.2.1、iPad 真机及覆盖升级仍未验证。夹具在测试后移除自己的模拟器应用，不触碰 Regram 或实际账户数据。
@@ -52,7 +52,7 @@ python3 Regram/RGAppBadgeOffset/Tests/run-rendering-checks.py --simulator <SIMUL
 
 ### b34630 构建与交付
 
-- 源码提交 `8d5d2e24fd13c2b8f5d56ea3c0e15eb8103d7a9f`，Xcode 27.0（27A266a）、固定 Bazel 9.2.0，目标 `//Telegram:Regram`。完整 arm64 Release 构建成功，构建前后源码、兼容补丁及生成配置摘要一致；其他未提交改动未进入构建。
+- 源码提交 `8d5d2e24fd13c2b8f5d56ea3c0e15eb8103d7a9f`，Xcode 27.0（27A266a）、固定 Bazel 9.2.0，目标 `//Telegram:Reza`。完整 arm64 Release 构建成功，构建前后源码、兼容补丁及生成配置摘要一致；其他未提交改动未进入构建。
 - 51 项现有回归通过；设置目录定位专项再次通过。独立 UIKit 夹具在 iOS 26.5 模拟器通过 35 项检查，覆盖应用深色／系统浅色、相同几何下的主题切换、配色预览、旧标记及独立书签图标。
 - 最终 IPA 重新解包后核对 iPhone／iPad 主图标与八个备用图标声明、九套图标及预览的默认／深色 rendition、八套截图标记的六种外观／倍率资源，以及 Regram、知秋两份原图。三语资源与源码一致。
 - 主应用及六扩展、12 个 arm64 Mach-O 的签名和匹配 dSYM 通过；不包含描述文件。应用身份及选定 entitlement 与 b34629 本地测试包一致。
@@ -73,7 +73,7 @@ python3 Regram/RGAppBadgeOffset/Tests/run-rendering-checks.py --simulator <SIMUL
 
 用户明确以线上正式 b34628 为基准，本次使用 b34629；此前其他构建号为本地测试记录，未公开发布。
 
-- 源码提交 `d4d1aa225ad57a2e8df647573b592eaeb21a0a52`，复用同一项目缓存，以 Xcode 27.0（27A266a）、固定 Bazel 9.2.0 完成 `//Telegram:Regram` 的完整 arm64 Release 构建。构建前后源码、补丁和配置摘要一致；其他未提交改动未进入构建。
+- 源码提交 `d4d1aa225ad57a2e8df647573b592eaeb21a0a52`，复用同一项目缓存，以 Xcode 27.0（27A266a）、固定 Bazel 9.2.0 完成 `//Telegram:Reza` 的完整 arm64 Release 构建。构建前后源码、补丁和配置摘要一致；其他未提交改动未进入构建。
 - 最终包的主应用及六扩展均为 b34629。严格签名、12 个 arm64 Mach-O 与匹配 dSYM、零描述文件、字体许可、三语资源及通知／实时活动声明校验通过；安装身份及选定 entitlement 与正式 b34628 参考包一致。
 - 最终 `Assets.car` 的 36 个 App Icon rendition 与当前独立图标编译结果一致；35 个深色图片 rendition（截图标记各倍率、九套预览与产品入口）与独立 iPhoneOS 资源编译结果一致。浅色及原画的 65 个源文件摘要保持不变。
 - 重新打包前，独立 UIKit 夹具已通过上述 35 项调色检查。另尝试将最终 iPhoneOS 资源目录载入模拟器夹具，但启动超时，未取得该次运行结果；没有将此尝试记为通过，也未在真机或真实账号运行完整应用。

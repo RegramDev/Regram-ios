@@ -189,7 +189,7 @@ public func legacyAssetPickerItemGenerator() -> ((Any?, NSAttributedString?, Str
                     result["item" as NSString] = LegacyAssetItemWrapper(item: .video(data: .tempFile(path: url, dimensions: dimensions, duration: 4.0), thumbnail: thumbnail, cover: cover, adjustments: dict["adjustments"] as? TGVideoEditAdjustments, caption: caption, asFile: false, asAnimation: true, stickers: stickers), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
                 }
             } else {
-                result["item" as NSString] = LegacyAssetItemWrapper(item: .image(data: .image(image), thumbnail: thumbnail, caption: caption, stickers: stickers, video: nil, adjustments: nil), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, forceHd: forceHd, isPastedPhoto: (dict["regramPastedPhoto"] as? NSNumber)?.boolValue ?? false, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
+                result["item" as NSString] = LegacyAssetItemWrapper(item: .image(data: .image(image), thumbnail: thumbnail, caption: caption, stickers: stickers, video: nil, adjustments: nil), timer: (dict["timer"] as? NSNumber)?.intValue, spoiler: (dict["spoiler"] as? NSNumber)?.boolValue, price: price, forceHd: forceHd, isPastedPhoto: (dict["rezaPastedPhoto"] as? NSNumber)?.boolValue ?? false, groupedId: (dict["groupedId"] as? NSNumber)?.int64Value, uniqueId: uniqueId)
             }
             return result
         } else if (dict["type"] as! NSString) == "cloudPhoto" {

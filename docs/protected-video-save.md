@@ -21,26 +21,26 @@ HLS 保存菜单另外沿用播放器的编码选择；播放器支持的软件 
 
 ## 验证与边界
 
-`Regram/RGGalleryUI/Tests/run-save-checks.py` 使用生产保存函数和实际 SwiftSignalKit，覆盖 10 个保存场景：PhotoKit 确认、失败、兼容导出重试、复制失败、权限拒绝、取消、临时文件清理及导入期间的后续下载状态。另调用生产 HLS 画质选择，核对两种表示顺序及仅 AV1 表示的回退。已接入 `build-system/check-regram-features.py`。
+`Reza/RGGalleryUI/Tests/run-save-checks.py` 使用生产保存函数和实际 SwiftSignalKit，覆盖 10 个保存场景：PhotoKit 确认、失败、兼容导出重试、复制失败、权限拒绝、取消、临时文件清理及导入期间的后续下载状态。另调用生产 HLS 画质选择，核对两种表示顺序及仅 AV1 表示的回退。已接入 `build-system/check-reza-features.py`。
 
 基线复现命令：
 
 ```sh
-python3 Regram/RGGalleryUI/Tests/run-save-checks.py --baseline 91c3dea32d
+python3 Reza/RGGalleryUI/Tests/run-save-checks.py --baseline 91c3dea32d
 ```
 
 基线按预期失败，错误为 `A rejected Photos transaction must not display saved or 100%`。修复后上述回归、现有图库播放回归及语言管理回归通过，三个修改后的 UI 源文件通过 Swift 语法解析。
 
 另将生产保存函数编译为 arm64 iOS 模拟器夹具，使用系统 Photos／AVFoundation 在独立 iOS 27.0 模拟器执行：有效 H.264 MP4 保存成功，视频资源数从 0 增至 1；损坏视频和缺失文件均返回失败，未新增相册条目。夹具、原生编译产物与结果位于本轮忽略目录 `build-input/protected-video-save/`，不包含真实账号数据。
 
-首次源码排查阶段未编译完整 `//Telegram:Regram` 或其 UI 模块，未生成 IPA 或发布，也未在真机和真实频道／群组中验证用户原视频。原生夹具验证了保存函数的系统 API 和实际写入结果，不能替代完整应用验收；成功兼容导出的回退路径由隔离适配器回归覆盖。
+首次源码排查阶段未编译完整 `//Telegram:Reza` 或其 UI 模块，未生成 IPA 或发布，也未在真机和真实频道／群组中验证用户原视频。原生夹具验证了保存函数的系统 API 和实际写入结果，不能替代完整应用验收；成功兼容导出的回退路径由隔离适配器回归覆盖。
 
 
 ## b34644 安装包（2026-11-02）
 
 按用户要求生成本地侧载参考 IPA，版本为 **13.1.2 / b34644**，分支为 `protected-video-save-34644`，构建源码提交为 `e9122bf4e86e1200922c2b056c922ca3dd812ec2`。首次完整编译发现图库和分享页调用了另一个模块定义的语言扩展；改为直接调用 `RGStrings` 本地化接口，并明确保存信号的类型后，两个模块及完整应用均编译通过。构建失败尝试与最终成功记录分别保留。
 
-Xcode 27.1（27A9275）完成 `//Telegram:Regram` 的完整 arm64 Release，退出码 0，最终一次耗时 768.63 秒；本次修改的保存接口、图库菜单、分享页及消息菜单均包含在完整应用编译中。构建前后 34482 份跟踪文件、全部子模块状态及生成配置摘要一致。本节的后续文档提交不改变安装包源码。
+Xcode 27.1（27A9275）完成 `//Telegram:Reza` 的完整 arm64 Release，退出码 0，最终一次耗时 768.63 秒；本次修改的保存接口、图库菜单、分享页及消息菜单均包含在完整应用编译中。构建前后 34482 份跟踪文件、全部子模块状态及生成配置摘要一致。本节的后续文档提交不改变安装包源码。
 
 - 修正后重新执行的 80 项完整功能自动检查全部通过，包含视频保存、HLS 保存编码、图库播放及三语资源检查；另有 5 项版本规则与 7 项构建配置检查通过。
 - 最终包的主应用和六扩展、12 个 arm64 Mach-O、严格 ad-hoc 签名、12 份匹配 dSYM、符号归档 CRC、零描述文件、三语资源、字体许可、通知过滤及实时活动声明校验通过。

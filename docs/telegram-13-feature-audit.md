@@ -72,19 +72,19 @@
 | `downloadSpeedBoost` | 下载分块与并发 | 源码仍接入；依赖服务、媒体或网络能力 | [FetchV2.swift](../submodules/TelegramCore/Sources/Network/FetchV2.swift) |
 | `mediaLoadingExperiment` | 媒体加载试验 | 源码仍接入 | [FetchManagerImpl.swift](../submodules/FetchManagerImpl/Sources/FetchManagerImpl.swift) |
 | `defaultVideoQuality` | 默认视频画质 | 源码仍接入；依赖服务、媒体或网络能力 | [UniversalVideoNode.swift](../submodules/AccountContext/Sources/UniversalVideoNode.swift) |
-| `bottomTabStyle` | 旧底部分组样式 | 旧存储兼容；无入口／无有效消费者，已删死分支 | [SimpleSettings.swift](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift) |
+| `bottomTabStyle` | 旧底部分组样式 | 旧存储兼容；无入口／无有效消费者，已删死分支 | [SimpleSettings.swift](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift) |
 | `rememberLastFolder` | 记住分组 | 源码仍接入 | [ChatListController.swift](../submodules/ChatListUI/Sources/ChatListController.swift) |
 | `lastAccountFolders` | 各账户上次分组 | 内部状态／缓存；现行路径接入 | [ChatListController.swift](../submodules/ChatListUI/Sources/ChatListController.swift) |
 | `localDNSForProxyHost` | 代理系统DNS | 源码仍接入 | ProxyListSettingsController.swift（历史路径：`../submodules/SettingsUI/Sources/Data%20and%20Storage/ProxyListSettingsController.swift`） |
 | `sendLargePhotos` | 发送大尺寸照片 | 源码仍接入 | [TGMediaEditingContext.m](../submodules/LegacyComponents/Sources/TGMediaEditingContext.m) |
 | `outgoingPhotoQuality` | 照片压缩质量 | 源码仍接入 | [LegacyMediaPickers.swift](../submodules/LegacyMediaPickerUI/Sources/LegacyMediaPickers.swift) |
 | `storyStealthMode` | 旧快拍隐身 | 源码仍接入；入口受远端配置限制 | [TelegramEngineMessages.swift](../submodules/TelegramCore/Sources/TelegramEngine/Messages/TelegramEngineMessages.swift) |
-| `canUseStealthMode` | 隐身远端入口条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Regram/RGAPIWebSettings/Sources/File.swift) |
+| `canUseStealthMode` | 隐身远端入口条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Reza/RGAPIWebSettings/Sources/File.swift) |
 | `disableSwipeToRecordStory` | 禁止侧滑拍快拍 | 源码仍接入 | [ChatListControllerNode.swift](../submodules/ChatListUI/Sources/ChatListControllerNode.swift) |
 | `quickTranslateButton` | 消息快速翻译 | 源码仍接入 | [ChatMessageItemImpl.swift](../submodules/TelegramUI/Components/Chat/ChatMessageItemImpl/Sources/ChatMessageItemImpl.swift) |
-| `outgoingLanguageTranslation` | 各账户会话发送前翻译 | 源码仍接入；依赖服务、媒体或网络能力 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
+| `outgoingLanguageTranslation` | 各账户会话发送前翻译 | 源码仍接入；依赖服务、媒体或网络能力 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
 | `hideReactions` | 隐藏回应 | 源码仍接入 | [ChatMessageDateAndStatusNode.swift](../submodules/TelegramUI/Components/Chat/ChatMessageDateAndStatusNode/Sources/ChatMessageDateAndStatusNode.swift) |
-| `showRepostToStory` | 旧转发快拍键 | 仅旧共享设置迁移到v2 | [SimpleSettings.swift](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift) |
+| `showRepostToStory` | 旧转发快拍键 | 仅旧共享设置迁移到v2 | [SimpleSettings.swift](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift) |
 | `showRepostToStoryV2` | 转发到快拍 | 源码仍接入 | [SharePeersContainerNode.swift](../submodules/ShareController/Sources/SharePeersContainerNode.swift) |
 | `contextShowSelectFromUser` | 选择此人消息 | 源码仍接入 | [ChatInterfaceStateContextMenus.swift](../submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift) |
 | `contextShowSaveToCloud` | 收藏消息 | 源码仍接入 | [ChatInterfaceStateContextMenus.swift](../submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift) |
@@ -122,43 +122,43 @@
 | `hideTabBar` | 隐藏底栏 | 源码仍接入 | [ChatListController.swift](../submodules/ChatListUI/Sources/ChatListController.swift) |
 | `showDC` | 资料数据中心 | 源码仍接入 | [PeerInfoProfileItems.swift](../submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift) |
 | `showCreationDate` | 群组频道创建日期 | 源码仍接入 | [PeerInfoProfileItems.swift](../submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoProfileItems.swift) |
-| `showRegDate` | 注册时间 | 源码仍接入；依赖服务、媒体或网络能力 | [RGRegDate.swift](../Regram/RGRegDate/Sources/RGRegDate.swift) |
-| `regDateCache` | 注册时间缓存 | 内部状态／缓存；现行路径接入 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
+| `showRegDate` | 注册时间 | 源码仍接入；依赖服务、媒体或网络能力 | [RGRegDate.swift](../Reza/RGRegDate/Sources/RGRegDate.swift) |
+| `regDateCache` | 注册时间缓存 | 内部状态／缓存；现行路径接入 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
 | `compactChatList` | 紧凑列表 | 源码仍接入 | [ChatListItem.swift](../submodules/ChatListUI/Sources/Node/ChatListItem.swift) |
-| `chatListLines` | 列表预览行数 | 源码仍接入 | [RGCompactMessagePreviewLayout.swift](../Regram/RGChatListSimpleSettingsSignal/Sources/RGCompactMessagePreviewLayout.swift) |
+| `chatListLines` | 列表预览行数 | 源码仍接入 | [RGCompactMessagePreviewLayout.swift](../Reza/RGChatListSimpleSettingsSignal/Sources/RGCompactMessagePreviewLayout.swift) |
 | `compactFolderNames` | 分组间距 | 源码仍接入 | [ChatListFilterTabContainerNode.swift](../submodules/TelegramUI/Components/ChatList/ChatListFilterTabContainerNode/Sources/ChatListFilterTabContainerNode.swift) |
 | `allChatsTitleLengthOverride` | 所有对话标题 | 源码仍接入 | [ChatListControllerNode.swift](../submodules/ChatListUI/Sources/ChatListControllerNode.swift) |
 | `allChatsHidden` | 隐藏所有对话 | 源码仍接入 | [ChatListController.swift](../submodules/ChatListUI/Sources/ChatListController.swift) |
 | `defaultEmojisFirst` | 标准表情优先 | 源码仍接入 | [EntityKeyboard.swift](../submodules/TelegramUI/Components/EntityKeyboard/Sources/EntityKeyboard.swift) |
-| `messageDoubleTapActionOutgoing` | 双击本人消息编辑 | 源码仍接入 | [RGDoubleTapMessageAction.swift](../Regram/RGDoubleTapMessageAction/Sources/RGDoubleTapMessageAction.swift) |
+| `messageDoubleTapActionOutgoing` | 双击本人消息编辑 | 源码仍接入 | [RGDoubleTapMessageAction.swift](../Reza/RGDoubleTapMessageAction/Sources/RGDoubleTapMessageAction.swift) |
 | `wideChannelPosts` | 频道气泡加宽 | 源码仍接入 | [ChatMessageBubbleItemNode.swift](../submodules/TelegramUI/Components/Chat/ChatMessageBubbleItemNode/Sources/ChatMessageBubbleItemNode.swift) |
 | `forceEmojiTab` | 默认表情页 | 源码仍接入 | [ChatEntityKeyboardInputNode.swift](../submodules/TelegramUI/Components/ChatEntityKeyboardInputNode/Sources/ChatEntityKeyboardInputNode.swift) |
 | `forceBuiltInMic` | 内置麦克风 | 源码仍接入 | [ManagedAudioSession.swift](../submodules/TelegramAudio/Sources/ManagedAudioSession.swift) |
 | `secondsInMessages` | 消息时间秒数 | 源码仍接入 | [DateFormat.swift](../submodules/TextFormat/Sources/DateFormat.swift) |
 | `hideChannelBottomButton` | 频道底部按钮 | 源码仍接入 | [ChatControllerNode.swift](../submodules/TelegramUI/Sources/ChatControllerNode.swift) |
-| `forceSystemSharing` | 系统分享 | 源码仍接入 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
+| `forceSystemSharing` | 系统分享 | 源码仍接入 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
 | `confirmCalls` | 呼叫前确认 | 源码仍接入 | [AccountContext.swift](../submodules/TelegramUI/Sources/AccountContext.swift) |
-| `legacyNotificationsFix` | 旧通知强制兼容 | 源码仍接入 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
-| `messageFilterKeywords` | 旧关键词数据 | 仅旧数据迁移到规则v2 | [SimpleSettings.swift](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift) |
+| `legacyNotificationsFix` | 旧通知强制兼容 | 源码仍接入 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
+| `messageFilterKeywords` | 旧关键词数据 | 仅旧数据迁移到规则v2 | [SimpleSettings.swift](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift) |
 | `messageFilterRules` | 关键词正则规则 | 源码仍接入 | [RGContentFilter.swift](../submodules/AccountContext/Sources/RGContentFilter.swift) |
 | `blockedPeerIds` | 隐藏发送者 | 源码仍接入 | [RGContentFilter.swift](../submodules/AccountContext/Sources/RGContentFilter.swift) |
 | `messageFilterDisabledPeerIds` | 单会话规则关闭 | 源码仍接入 | [RGContentFilter.swift](../submodules/AccountContext/Sources/RGContentFilter.swift) |
 | `antiRevokePeerIds` | 单会话防撤回 | 源码仍接入 | [AccountStateManagementUtils.swift](../submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift) |
-| `inputToolbar` | 格式工具栏 | 源码仍接入 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
+| `inputToolbar` | 格式工具栏 | 源码仍接入 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
 | `pinnedMessageNotifications` | 置顶通知策略 | 源码仍接入 | [NotificationService.swift](../Telegram/NotificationService/Sources/NotificationService.swift) |
 | `mentionsAndRepliesNotifications` | 提及回复通知策略 | 源码仍接入 | [NotificationService.swift](../Telegram/NotificationService/Sources/NotificationService.swift) |
-| `primaryUserId` | Pro主账户标识 | 内部状态／缓存；现行路径接入 | [RGDebugUI.swift](../Regram/RGDebugUI/Sources/RGDebugUI.swift) |
-| `status` | 本地Pro状态 | 内部状态／缓存；现行路径接入 | RGStatus.swift（历史路径：`../Regram/RGStatus/Sources/RGStatus.swift`） |
+| `primaryUserId` | Pro主账户标识 | 内部状态／缓存；现行路径接入 | [RGDebugUI.swift](../Reza/RGDebugUI/Sources/RGDebugUI.swift) |
+| `status` | 本地Pro状态 | 内部状态／缓存；现行路径接入 | RGStatus.swift（历史路径：`../Reza/RGStatus/Sources/RGStatus.swift`） |
 | `dismissedSGSuggestions` | 关闭的客户端提示 | 内部状态／缓存；现行路径接入 | [Suggestions.swift](../submodules/TelegramCore/Sources/Suggestions.swift) |
-| `duckyAppIconAvailable` | 图标远端条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Regram/RGAPIWebSettings/Sources/File.swift) |
+| `duckyAppIconAvailable` | 图标远端条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Reza/RGAPIWebSettings/Sources/File.swift) |
 | `transcriptionBackend` | 语音转写后端 | 源码仍接入；依赖服务、媒体或网络能力 | [ChatMessageInteractiveFileNode.swift](../submodules/TelegramUI/Components/Chat/ChatMessageInteractiveFileNode/Sources/ChatMessageInteractiveFileNode.swift) |
 | `translationBackend` | 翻译后端 | 源码仍接入；依赖服务、媒体或网络能力 | [TelegramEngineMessages.swift](../submodules/TelegramCore/Sources/TelegramEngine/Messages/TelegramEngineMessages.swift) |
 | `customAppBadge` | 截图AppBadge | 源码仍接入 | [WindowContent.swift](../submodules/Display/Source/WindowContent.swift) |
-| `canUseNY` | 节日效果远端条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Regram/RGAPIWebSettings/Sources/File.swift) |
-| `nyStyle` | 节日效果样式 | 源码仍接入；入口受远端配置限制 | [RGNY.swift](../Regram/RGNY/Sources/RGNY.swift) |
-| `wideTabBar` | 旧宽底栏选择 | 旧选择迁移到宽度百分比；存储键兼容保留 | [SimpleSettings.swift](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift) |
-| `tabBarSearchEnabled` | 旧搜索按钮开关 | 已移除入口与布局影响；存储键兼容保留 | [SimpleSettings.swift](../Regram/RGSimpleSettings/Sources/SimpleSettings.swift) |
-| `hideStories` | 隐藏快拍 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
+| `canUseNY` | 节日效果远端条件 | 源码仍接入；入口受远端配置限制 | [File.swift](../Reza/RGAPIWebSettings/Sources/File.swift) |
+| `nyStyle` | 节日效果样式 | 源码仍接入；入口受远端配置限制 | [RGNY.swift](../Reza/RGNY/Sources/RGNY.swift) |
+| `wideTabBar` | 旧宽底栏选择 | 旧选择迁移到宽度百分比；存储键兼容保留 | [SimpleSettings.swift](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift) |
+| `tabBarSearchEnabled` | 旧搜索按钮开关 | 已移除入口与布局影响；存储键兼容保留 | [SimpleSettings.swift](../Reza/RGSimpleSettings/Sources/SimpleSettings.swift) |
+| `hideStories` | 隐藏快拍 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
 | `disableAllAds` | 隐藏赞助消息 | 源码仍接入 | [AdMessages.swift](../submodules/TelegramCore/Sources/TelegramEngine/Messages/AdMessages.swift) |
 | `antiRevoke` | 全局防撤回 | 源码仍接入 | [AccountStateManagementUtils.swift](../submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift) |
 | `antiAutoDelete` | 跳过普通聊天本地TTL | 源码仍接入 | [ManagedAutoremoveMessageOperations.swift](../submodules/TelegramCore/Sources/State/ManagedAutoremoveMessageOperations.swift) |
@@ -170,19 +170,19 @@
 | `ghostDontSendOnline` | 不上报主动在线状态 | 源码仍接入 | [ManagedAccountPresence.swift](../submodules/TelegramCore/Sources/State/ManagedAccountPresence.swift) |
 | `ghostDontSendTyping` | 不上报输入状态 | 源码仍接入 | [ManagedLocalInputActivities.swift](../submodules/TelegramCore/Sources/State/ManagedLocalInputActivities.swift) |
 | `panguSpacing` | 盘古空格 | 源码仍接入 | [ChatControllerNode.swift](../submodules/TelegramUI/Sources/ChatControllerNode.swift) |
-| `warnOnStoriesOpen` | 快拍打开确认 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
-| `showProfileId` | 资料ID | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
-| `sendWithReturnKey` | 返回键发送 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
+| `warnOnStoriesOpen` | 快拍打开确认 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
+| `showProfileId` | 资料ID | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
+| `sendWithReturnKey` | 返回键发送 | 源码仍接入 | SharedAccountContext+RGUISettingsMigration.swift（历史路径：`../Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift`） |
 | `tabBarWidthPercent` | 可调节底栏宽度 | 新增并接入 | [TabBarComponent.swift](../submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift) |
 | `fontFamily` | 英文字体选择 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
 | `fontApplyToMessages` | 聊天内容字体范围 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
 | `fontApplyToInterface` | 主要界面字体范围 | 新增并接入 | [Font.swift](../submodules/Display/Source/Font.swift) |
-| `fontChineseFamily` | 独立中文字体选择 | b34580 新增并接入 | [RGTypography.swift](../Regram/RGTypography/Sources/RGTypography.swift) |
+| `fontChineseFamily` | 独立中文字体选择 | b34580 新增并接入 | [RGTypography.swift](../Reza/RGTypography/Sources/RGTypography.swift) |
 
 ## 验证与剩余范围
 
 - 已通过：底栏百分比／迁移／1–4 标签／长文本／窄屏边界与字体范围策略回归；媒体预加载、播放器、HLS、翻译及通知的现有纯策略回归；82 个字体文件 PostScript 名、预览字符和上游 SHA-256；英文／简体／繁体 strings 语法检查。
-- `//Telegram:Regram` arm64 release **b34579** 构建通过（Xcode 27.0 / iPhoneOS SDK 27.0），包含主程序与六个扩展。
+- `//Telegram:Reza` arm64 release **b34579** 构建通过（Xcode 27.0 / iPhoneOS SDK 27.0），包含主程序与六个扩展。
 - 最终 LCSign 参考 IPA 已重新解包验收：12 个 arm64 Mach-O 均通过严格 ad-hoc 签名校验；12 份 dSYM，主程序和扩展 UUID 匹配；0 个描述文件。Bundle ID／App Group／entitlements 与 b34578 相同，七个包的最低 iOS 均为 15.0；82 个字体文件与 10 份许可文件的包内 SHA-256 均匹配来源记录。
 - 字体 UIKit 测试宿主及测试代码已编译。Xcode runner 未启动实际测试；按用户要求停止模拟器验证，不计为通过。
 - 尚未执行：真机覆盖安装、实际 Telegram 账号的消息发送／撤回／TTL、系统推送与 CallKit、联网翻译和转写、网络性能对照。不能将本报告理解为所有条件性功能均已真机通过。

@@ -28,7 +28,7 @@
 ### 构建与包
 
 - 构建源码与 Release 目标提交均为 `e8f5b4cd095ca2fdabb796b7382dbb7ae6c86dfd`，构建前后已提交源码及配置摘要一致。后续发布记录仅修改文档，不代表另一份应用构建。
-- Xcode 27.1（27A9275）完成 `//Telegram:Regram` 的完整 arm64 Release，退出码 0。
+- Xcode 27.1（27A9275）完成 `//Telegram:Reza` 的完整 arm64 Release，退出码 0。
 - 主程序和六个扩展、arm64 架构、严格 ad-hoc 签名、资源及三语文案校验通过，12 份 dSYM 与对应二进制 UUID 匹配。
 - 七个 bundle 的标识与完整 entitlements 静态比对均与已发布 b34634 和本地 b34635 一致。
 - 文件：`Regram-13.1.1-b34636.ipa`，77,970,372 字节。

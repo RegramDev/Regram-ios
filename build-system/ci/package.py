@@ -64,11 +64,11 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
     version = json.loads((root / 'versions.json').read_text())['app']
     if config['telegram_bundle_id'] != 'app.swiftgram.ios':
         raise RuntimeError('Only the original Swiftgram installation identity is supported')
-    filename = f'Regram-{version}-b{build_number}.ipa'
+    filename = f'Reza-{version}-b{build_number}.ipa'
     final = destination / filename
     if final.exists():
         raise RuntimeError('Refusing to replace an existing reference IPA')
-    with tempfile.TemporaryDirectory(prefix='regram-ci-package-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='reza-ci-package-') as temporary:
         work = Path(temporary)
         staging = work / 'staging'
         app = extract(ipa, staging)
@@ -104,13 +104,13 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
             verify_share_access_entitlements(info(bundle)['CFBundleIdentifier'], entitlements)
         if list(verified.rglob('embedded.mobileprovision')):
             raise RuntimeError('Reference package must not contain provisioning profiles')
-        catalog = root / 'Regram/RGTypography/RGFontCatalog.json'
+        catalog = root / 'Reza/RGTypography/RGFontCatalog.json'
         if checksum(verified / catalog.name) != checksum(catalog):
             raise RuntimeError('Font catalog does not match source')
         for entry in json.loads(catalog.read_text())['files']:
             if (verified / entry['file']).exists():
                 raise RuntimeError('Downloadable fonts must not be embedded')
-        for entry in json.loads((root / 'Regram/RGTypography/FONT-SOURCES.json').read_text())['files']:
+        for entry in json.loads((root / 'Reza/RGTypography/FONT-SOURCES.json').read_text())['files']:
             if entry['file'].startswith('Licenses/'):
                 packed = verified / Path(entry['file']).name
                 if not packed.exists() or checksum(packed) != entry['sha256']:
@@ -128,22 +128,30 @@ def package(ipa, symbols, destination, build_number, configuration, report_path)
             if run(['xcrun', 'lipo', '-archs', str(path)]).strip() != b'arm64':
                 raise RuntimeError('Unexpected Mach-O architecture')
             uuids[str(path.relative_to(verified))] = run(['xcrun', 'dwarfdump', '--uuid', str(path)]).decode().split()[1]
-        dsym_sources = sorted(symbols.glob('*.dSYM'))
+        dsym_sources = []
         symbol_uuids = set()
-        for source in dsym_sources:
+        needed_uuids = set(uuids.values())
+        # An incremental output directory can contain symbols from earlier product names.
+        for source in sorted(symbols.glob('*.dSYM')):
+            matches = set()
             for dwarf in (source / 'Contents/Resources/DWARF').iterdir():
                 for line in run(['xcrun', 'dwarfdump', '--uuid', str(dwarf)]).decode().splitlines():
-                    symbol_uuids.add(line.split()[1])
+                    uuid = line.split()[1]
+                    if uuid in needed_uuids:
+                        matches.add(uuid)
+            if matches:
+                dsym_sources.append(source)
+                symbol_uuids.update(matches)
         if len(uuids) != 12 or len(dsym_sources) != 12 or not set(uuids.values()) <= symbol_uuids:
             raise RuntimeError('All 12 binaries must have matching debug symbols')
         if archive.stat().st_size >= 105 * 1024 * 1024:
             raise RuntimeError('Reference IPA is unexpectedly large')
         for language in ['en', 'zh-hans', 'zh-hant']:
-            source = root / 'Regram/RGStrings/Strings' / (language + '.lproj') / 'RGLocalizable.strings'
+            source = root / 'Reza/RGStrings/Strings' / (language + '.lproj') / 'RGLocalizable.strings'
             packed = verified / (language + '.lproj') / 'RGLocalizable.strings'
             if plistlib.loads(run(['plutil', '-convert', 'xml1', '-o', '-', str(source)])) != plistlib.loads(run(['plutil', '-convert', 'xml1', '-o', '-', str(packed)])):
                 raise RuntimeError('Packaged localization differs from source')
-        symbol_output = destination / f'Regram-{version}-b{build_number}.DSYMs.zip'
+        symbol_output = destination / f'Reza-{version}-b{build_number}.DSYMs.zip'
         symbol_work = work / 'symbols/DSYMs'
         symbol_work.mkdir(parents=True)
         for symbol in dsym_sources: shutil.copytree(symbol, symbol_work / symbol.name)

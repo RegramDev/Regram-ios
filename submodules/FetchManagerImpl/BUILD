@@ -11,7 +11,7 @@ swift_library(
     ],
     deps = [
         # MARK: Regram — media loading experiment policy and settings.
-        "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Reza/RGSimpleSettings:RGSimpleSettings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Postbox:Postbox",
         "//submodules/TelegramCore:TelegramCore",

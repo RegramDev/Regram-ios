@@ -251,8 +251,8 @@ enum PeerInfoContextSubject {
 enum PeerInfoSettingsSection {
     case rgFeatureContacts // MARK: Regram
 
-    case regram
-    case regramPro
+    case reza
+    case rezaPro
     case avatar
     case edit
     case proxy
@@ -643,7 +643,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
         }
         // MARK: Regram — refresh an existing settings page after UIKit accepts an icon change.
         if self.isSettings {
-            self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.regramAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
+            self.rgAppIconObserver = NotificationCenter.default.addObserver(forName: PresentationResourcesSettings.rezaAppIconDidChange, object: nil, queue: .main) { [weak self] _ in
                 self?.rgRefreshAppIcon()
             }
             // MARK: Regram — resync a retained settings page after returning to the foreground.
@@ -6016,7 +6016,7 @@ final class PeerInfoScreenNode: ViewControllerTracingNode, PeerInfoScreenNodePro
                         }
                         return (sectionId, filteredSectionItems)
                     }
-                    let insertionIndex = items.firstIndex(where: { $0.0 == AnyHashable(InfoSection.regram) }) ?? items.endIndex
+                    let insertionIndex = items.firstIndex(where: { $0.0 == AnyHashable(InfoSection.reza) }) ?? items.endIndex
                     items.insert(contentsOf: filteredEditItems, at: insertionIndex)
                 }
             }
@@ -7854,7 +7854,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
 
         // MARK: Regram
         #if DEBUG
-        items.append(.action(ContextMenuActionItem(text: "Regram Debug", icon: { theme in
+        items.append(.action(ContextMenuActionItem(text: "Reza Debug", icon: { theme in
             return generateTintedImage(image: nil, color: theme.contextMenu.primaryColor)
         }, action: { [weak self] _, f in
             guard let self = self else {
@@ -8268,7 +8268,7 @@ extension PeerInfoScreenImpl {
 
         // MARK: Regram
         #if DEBUG
-        items.append(.action(ContextMenuActionItem(text: "Regram Debug", icon: { theme in
+        items.append(.action(ContextMenuActionItem(text: "Reza Debug", icon: { theme in
             return generateTintedImage(image: nil, color: theme.contextMenu.primaryColor)
         }, action: { [weak self] _, f in
             guard let self = self else {

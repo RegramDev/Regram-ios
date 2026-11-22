@@ -34,7 +34,7 @@ swift_library(
         "//submodules/TelegramUI/Components/GlassBarButtonComponent",
         "//submodules/TelegramUI/Components/PlainButtonComponent",
         "//submodules/TelegramUI/Components/EmojiStatusComponent",
-        "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker",
+        "//Reza/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker",
     ],
     visibility = [
         "//visibility:public",

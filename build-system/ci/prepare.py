@@ -90,11 +90,11 @@ def prepare(configuration, destination, bazel):
     bundle = config['telegram_bundle_id']
     # These profiles satisfy build-time metadata requirements only. No Apple identity, private
     # signing certificate or real device UDID is used. The final reference IPA strips them.
-    with tempfile.TemporaryDirectory(prefix='regram-ci-profile-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='reza-ci-profile-') as temporary:
         work = Path(temporary)
         key, certificate, der = (work / name for name in ['key.pem', 'certificate.pem', 'certificate.der'])
         run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '730',
-             '-subj', '/CN=Regram CI reference metadata', '-keyout', str(key), '-out', str(certificate)])
+             '-subj', '/CN=Reza CI reference metadata', '-keyout', str(key), '-out', str(certificate)])
         run(['openssl', 'x509', '-in', str(certificate), '-outform', 'DER', '-out', str(der)])
         for name, suffix in PROFILE_SUFFIXES.items():
             entitlements = {
@@ -119,7 +119,7 @@ def prepare(configuration, destination, bazel):
                     'com.apple.developer.ubiquity-kvstore-identifier': team + '.' + bundle,
                 })
             payload = {
-                'AppIDName': 'Regram CI reference', 'Name': 'Regram CI reference ' + name,
+                'AppIDName': 'Reza CI reference', 'Name': 'Reza CI reference ' + name,
                 'UUID': str(uuid.uuid4()).upper(), 'Version': 1, 'Platform': ['iOS'],
                 'TimeToLive': 730,
                 'TeamIdentifier': [team], 'TeamName': 'CI reference metadata',

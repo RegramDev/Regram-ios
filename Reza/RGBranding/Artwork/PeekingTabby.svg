@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="168" viewBox="0 0 48 28">
+  <defs>
+    <clipPath id="ledge">
+      <rect width="48" height="21.8"/>
+    </clipPath>
+    <path id="head" d="M8.6 22.6 C7.8 19.2 8.2 15.6 9.6 12.8
+      C9.8 9.3 10.8 4.5 12.7 2.5 C13.5 1.65 14.4 1.75 15.35 2.5
+      C17.15 3.8 18.65 5.6 20.0 7.4 C23.0 6.65 26.1 6.9 29.3 8.0
+      C31.4 6.4 34.15 4.95 35.8 5.15 C37.6 5.4 37.6 9.5 37.35 14.0
+      C39.0 17.25 39.3 21.0 38.1 24.0 Z"/>
+    <clipPath id="tabby"><use href="#head"/></clipPath>
+  </defs>
+  <g clip-path="url(#ledge)">
+    <use href="#head" fill="#FFB663"/>
+    <g clip-path="url(#tabby)" fill="none" stroke="#E98C3D" stroke-width="1.85" stroke-linecap="round">
+      <path d="M20.4 6.5 Q20.2 8.25 19.6 9.4 M24.05 6.4 Q23.85 8.45 23.1 10.45 M27.45 7.1 Q27.2 8.7 26.6 9.75"/>
+    </g>
+    <g fill="#F49A58">
+      <path d="M11.65 10.4 Q12.05 6.65 13.3 4.75 Q13.65 4.3 14.15 4.75 L16.6 7.7 Q13.85 8.45 11.65 10.4Z"/>
+      <path d="M31.9 8.95 Q34.15 7.45 35.55 7.1 Q36 7.0 36.0 7.65 L35.9 11.5 Q34.1 9.8 31.9 8.95Z"/>
+    </g>
+    <g fill="#57331B">
+      <ellipse cx="18.1" cy="14.85" rx="1.45" ry="2.1" transform="rotate(9 18.1 14.85)"/>
+      <ellipse cx="29.05" cy="16.05" rx="1.45" ry="2.1" transform="rotate(9 29.05 16.05)"/>
+    </g>
+    <path d="M21.2 18.15 Q22.05 19.6 23.45 18.4 Q24.3 20.0 25.7 19.05"
+          fill="none" stroke="#57331B" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <path d="M2.7 22.15 H45.3" fill="none" stroke="#9A7053" stroke-width="1.4" stroke-linecap="round"/>
+  <g fill="#FFD197" stroke="#DB914D" stroke-width=".7" stroke-linejoin="round">
+    <path d="M9.15 22.05 C9.25 20.55 10.4 19.85 12.1 19.95
+      C14.0 20.05 15.0 21.2 14.7 23.15 C14.4 25.3 13.6 26.55 11.9 26.35
+      C10.3 26.2 8.95 24.8 9.15 22.05Z"/>
+    <path d="M33.15 22.25 C33.4 20.8 34.6 20.25 36.2 20.55
+      C38.1 20.85 38.8 21.95 38.4 23.5 C37.95 25.25 36.9 25.95 35.35 25.6
+      C34.05 25.35 32.9 24.0 33.15 22.25Z"/>
+  </g>
+  <path d="M11.5 23.65 l-.1 1.65 M35.6 23.35 l-.22 1.25"
+        fill="none" stroke="#E5A36B" stroke-width=".68" stroke-linecap="round"/>
+</svg>

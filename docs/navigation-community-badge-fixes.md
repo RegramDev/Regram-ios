@@ -18,9 +18,9 @@
 
 ## 本地测试包记录
 
-最终构建源码为 `21b719f4a6bc6ef63a4131dce24a99d2a5b0e892`，Xcode 27.0（27A266a）、Bazel 9.2.0，以 `//Telegram:Regram` 完成 arm64 Release 构建，耗时 1189.147 秒。构建前后 30 项应用及构建路径的内容一致。
+最终构建源码为 `21b719f4a6bc6ef63a4131dce24a99d2a5b0e892`，Xcode 27.0（27A266a）、Bazel 9.2.0，以 `//Telegram:Reza` 完成 arm64 Release 构建，耗时 1189.147 秒。构建前后 30 项应用及构建路径的内容一致。
 
-沿用此前本机构建例外：未提交的 `Telegram/BUILD`、`Regram/RGMacWindow/` 和已记录的 rules_apple 兼容补丁；不是仅凭提交即可复现的干净工作树构建。这些内容的构建前后哈希记录在被忽略的 `build-input/navigation-community-badge-20261022/` 中，未提交凭据、配置或构建产物。
+沿用此前本机构建例外：未提交的 `Telegram/BUILD`、`Reza/RGMacWindow/` 和已记录的 rules_apple 兼容补丁；不是仅凭提交即可复现的干净工作树构建。这些内容的构建前后哈希记录在被忽略的 `build-input/navigation-community-badge-20261022/` 中，未提交凭据、配置或构建产物。
 
 参考 IPA 按 [LCSign 打包流程](lcsign-reference-packaging.md) 生成。主应用与六扩展的版本均为 34627，12 个 Mach-O 与 12 份 dSYM 匹配，ad-hoc 签名、arm64 架构、资源与三语文案检查通过；七个 bundle 的安装身份及选定权限声明与 b34626 一致。这些静态结果不代表真机覆盖安装或功能验收。
 

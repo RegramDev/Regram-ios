@@ -13,8 +13,8 @@ swift_library(
         "//submodules/Camera:CameraBundle",
     ],
     deps = [
-        "//Regram/RGCameraSupport", # MARK: Regram
-        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
+        "//Reza/RGCameraSupport", # MARK: Regram
+        "//Reza/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/Camera",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/Display:Display",

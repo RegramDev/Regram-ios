@@ -1702,7 +1702,7 @@ static TGVideoEditAdjustments *TGMediaAssetsPatchedLivePhotoAdjustments(PGPhotoE
                     NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
                     dict[@"type"] = @"editedPhoto";
                     // MARK: Regram — pasted photos use the high-quality upload path.
-                    dict[@"regramPastedPhoto"] = @YES;
+                    dict[@"rezaPastedPhoto"] = @YES;
                     dict[@"hd"] = @YES;
                     dict[@"image"] = image;
                     
@@ -1753,7 +1753,7 @@ static TGVideoEditAdjustments *TGMediaAssetsPatchedLivePhotoAdjustments(PGPhotoE
                     NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
                     dict[@"type"] = @"editedPhoto";
                     // MARK: Regram — pasted photos use the high-quality upload path.
-                    dict[@"regramPastedPhoto"] = @YES;
+                    dict[@"rezaPastedPhoto"] = @YES;
                     dict[@"hd"] = @YES;
                     dict[@"image"] = image;
                     

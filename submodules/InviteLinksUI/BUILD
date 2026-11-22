@@ -11,7 +11,7 @@ swift_library(
     ],
     deps = [
         # MARK: Regram
-        "//Regram/RGStrings:RGStrings",
+        "//Reza/RGStrings:RGStrings",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
         "//submodules/Display:Display",

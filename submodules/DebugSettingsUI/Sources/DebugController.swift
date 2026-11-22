@@ -686,7 +686,7 @@ private enum DebugLogAction {
 }
 
 private enum DebugControllerSection: Int32 {
-    case regram // MARK: Regram
+    case reza // MARK: Regram
     case appInfo
     case logs
     case accounts
@@ -794,7 +794,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
     var section: ItemListSectionId {
         switch self {
         case .sendRGLogs, .RGDebug:
-            return DebugControllerSection.regram.rawValue
+            return DebugControllerSection.reza.rawValue
         case .testStickerImport:
             return DebugControllerSection.sticker.rawValue
         case .logsHeader, .logsInfo, .sendLogs:
@@ -1054,7 +1054,7 @@ private enum DebugControllerEntry: ItemListNodeEntry {
         let arguments = arguments as! DebugControllerArguments
         switch self {
         case .RGDebug:
-            return ItemListDisclosureItem(presentationData: presentationData, title: "Regram Debug", label: "", sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, title: "Reza Debug", label: "", sectionId: self.section, style: .blocks, action: {
                 guard let context = arguments.context else {
                     return
                 }
@@ -1094,10 +1094,10 @@ private enum DebugControllerEntry: ItemListNodeEntry {
             var fileName = "Log-iOS-Short.txt"
             var appName = "Telegram"
             if case .sendRGLogs(_) = self {
-                title = "Send Regram Logs"
+                title = "Send Reza Logs"
                 logCollectionSignal = RGLogger.shared.collectLogs()
-                fileName = "Log-iOS-Regram.txt"
-                appName = "Regram"
+                fileName = "Log-iOS-Reza.txt"
+                appName = "Reza"
             }
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: title, label: "", sectionId: self.section, style: .blocks, action: {
                 let _ = (logCollectionSignal

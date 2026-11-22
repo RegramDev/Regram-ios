@@ -1,8 +1,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 rgdeps = [
-    "//Regram/RGStrings:RGStrings",
-    "//Regram/RGQrLoginSupport:RGQrLoginSupport", # MARK: Regram
+    "//Reza/RGStrings:RGStrings",
+    "//Reza/RGQrLoginSupport:RGQrLoginSupport", # MARK: Regram
 ]
 
 swift_library(

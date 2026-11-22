@@ -24,10 +24,10 @@
 
 ## 回归入口
 
-`python3 build-system/check-regram-features.py --output build-input/<本轮目录>` 现在包含富文本工具、真实 Postbox 编码、真实 SwiftSignalKit 分段调度、范围总结失败、过期队列和动态标志持久化等专项检查。偏好使用随机隔离的 UserDefaults suite。
+`python3 build-system/check-reza-features.py --output build-input/<本轮目录>` 现在包含富文本工具、真实 Postbox 编码、真实 SwiftSignalKit 分段调度、范围总结失败、过期队列和动态标志持久化等专项检查。偏好使用随机隔离的 UserDefaults suite。
 
 输入组件使用现有 `RichTextEditor/Host` 测试应用，选取 `DoubleReturnExitTests` 与 `EngineComposerHostTests`；所有模拟器测试命令带 `-parallel-testing-enabled NO`。原生编辑器共 56 个场景通过，包含软件回车、硬件回车、输入法确认和多行插入。
 
-69 项离线检查及 56 个编辑器模拟器场景通过，`//Telegram:Regram` 完整 arm64 Release 构建通过。工具链、源文件摘要、命令、回归结果、构建日志及缓存收尾记录保存在本轮忽略目录 `build-input/functional-fixes-34632-20261024/`。执行范围是隔离数据和编辑器模拟器，账号端交互需随安装包继续验证。
+69 项离线检查及 56 个编辑器模拟器场景通过，`//Telegram:Reza` 完整 arm64 Release 构建通过。工具链、源文件摘要、命令、回归结果、构建日志及缓存收尾记录保存在本轮忽略目录 `build-input/functional-fixes-34632-20261024/`。执行范围是隔离数据和编辑器模拟器，账号端交互需随安装包继续验证。
 
 用户已反馈：无真实 Premium 的账号普通文字可发送，原生标题／表格发送失败。本轮没有改变既有发送流程或错误处理，也不将本地会员显示当作服务端 Premium 授权。

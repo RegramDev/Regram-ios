@@ -133,10 +133,10 @@ public final class RGAdFilterSession {
         return session
     }
 
-    private let queue = DispatchQueue(label: "regram.ad-filter", qos: .utility)
+    private let queue = DispatchQueue(label: "reza.ad-filter", qos: .utility)
     // MARK: Regram — an atomic Core ML call must never block cached/rule results or refreshes.
-    private let inferenceQueue = DispatchQueue(label: "regram.ad-filter.inference", qos: .utility)
-    private static let cacheIOQueue = DispatchQueue(label: "regram.ad-filter.cache-io", qos: .utility)
+    private let inferenceQueue = DispatchQueue(label: "reza.ad-filter.inference", qos: .utility)
+    private static let cacheIOQueue = DispatchQueue(label: "reza.ad-filter.cache-io", qos: .utility)
     private let lock = NSLock()
     private let store: RGAdSampleStore
     private var knowledge = RGAdPolicy.Knowledge()

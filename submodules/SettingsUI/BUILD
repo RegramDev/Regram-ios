@@ -5,13 +5,13 @@ load("@build_bazel_rules_apple//apple/testing/default_runner:ios_test_runner.bzl
 
 rgdeps = [
     "//submodules/BuildConfig:BuildConfig",
-    "//Regram/RGSimpleSettings:RGSimpleSettings",
-    "//Regram/RGStrings:RGStrings"
+    "//Reza/RGSimpleSettings:RGSimpleSettings",
+    "//Reza/RGStrings:RGStrings"
 ]
 
 rgsrc = [
-    "//Regram/RGRecentSessionApiId:RGRecentSessionApiId",
-    "//Regram/RGSettingsSearch:RGSettingsSearch",
+    "//Reza/RGRecentSessionApiId:RGRecentSessionApiId",
+    "//Reza/RGSettingsSearch:RGSettingsSearch",
 ]
 
 swift_library(

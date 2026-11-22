@@ -11,7 +11,7 @@ swift_library(
     ],
     deps = [
         # MARK: Regram — automatic spoiler display preference.
-        "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Reza/RGSimpleSettings:RGSimpleSettings",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",
         "//submodules/TelegramCore",

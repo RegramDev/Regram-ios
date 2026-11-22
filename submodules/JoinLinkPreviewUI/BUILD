@@ -27,7 +27,7 @@ swift_library(
         "//submodules/ComponentFlow",
         "//submodules/TelegramUI/Components/EmojiStatusComponent",
         "//submodules/TelegramUI/Components/PeerManagement/OldChannelsController",
-        "//Regram/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker",
+        "//Reza/RGJoinedChatFolderPicker:RGJoinedChatFolderPicker",
     ],
     visibility = [
         "//visibility:public",

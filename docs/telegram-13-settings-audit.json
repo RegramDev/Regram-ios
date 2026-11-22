@@ -17,11 +17,11 @@
           "line": 257
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 327
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 366
         }
       ]
@@ -40,11 +40,11 @@
           "line": 373
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 178
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 369
         }
       ]
@@ -67,7 +67,7 @@
           "line": 968
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 264
         }
       ]
@@ -109,11 +109,11 @@
           "line": 485
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 317
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 412
         }
       ]
@@ -174,11 +174,11 @@
           "line": 421
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 322
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 566
         }
       ]
@@ -189,7 +189,7 @@
       "status": "旧存储兼容；无入口／无有效消费者，已删死分支",
       "references": [
         {
-          "file": "Regram/RGSimpleSettings/Sources/SimpleSettings.swift",
+          "file": "Reza/RGSimpleSettings/Sources/SimpleSettings.swift",
           "line": 1
         }
       ]
@@ -204,11 +204,11 @@
           "line": 4119
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 189
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 402
         }
       ]
@@ -261,11 +261,11 @@
           "line": 233
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 253
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 404
         }
       ]
@@ -307,11 +307,11 @@
           "line": 2015
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 216
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 406
         }
       ]
@@ -322,11 +322,11 @@
       "status": "源码仍接入；入口受远端配置限制",
       "references": [
         {
-          "file": "Regram/RGAPIWebSettings/Sources/File.swift",
+          "file": "Reza/RGAPIWebSettings/Sources/File.swift",
           "line": 16
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 215
         }
       ]
@@ -345,11 +345,11 @@
           "line": 619
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 212
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 408
         }
       ]
@@ -364,11 +364,11 @@
           "line": 414
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 230
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 410
         }
       ]
@@ -379,7 +379,7 @@
       "status": "源码仍接入；依赖服务、媒体或网络能力",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 139
         },
         {
@@ -406,11 +406,11 @@
           "line": 1551
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 316
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 416
         }
       ]
@@ -421,7 +421,7 @@
       "status": "仅旧共享设置迁移到v2",
       "references": [
         {
-          "file": "Regram/RGSimpleSettings/Sources/SimpleSettings.swift",
+          "file": "Reza/RGSimpleSettings/Sources/SimpleSettings.swift",
           "line": 1
         }
       ]
@@ -436,11 +436,11 @@
           "line": 167
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 214
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 418
         }
       ]
@@ -455,11 +455,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 420
         }
       ]
@@ -474,11 +474,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 422
         }
       ]
@@ -493,11 +493,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 424
         }
       ]
@@ -512,11 +512,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 426
         }
       ]
@@ -531,11 +531,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 448
         }
       ]
@@ -550,11 +550,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 450
         }
       ]
@@ -569,11 +569,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 452
         }
       ]
@@ -588,11 +588,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 454
         }
       ]
@@ -607,11 +607,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 456
         }
       ]
@@ -626,11 +626,11 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 460
         }
       ]
@@ -645,7 +645,7 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         }
       ]
@@ -660,7 +660,7 @@
           "line": 2531
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 113
         }
       ]
@@ -675,15 +675,15 @@
           "line": 2527
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 124
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 128
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGContextMenuOrderController.swift",
           "line": 158
         }
       ]
@@ -702,11 +702,11 @@
           "line": 936
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 205
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 465
         }
       ]
@@ -721,11 +721,11 @@
           "line": 240
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 72
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 131
         }
       ]
@@ -744,11 +744,11 @@
           "line": 318
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 78
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 135
         }
       ]
@@ -782,11 +782,11 @@
           "line": 190
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 75
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 133
         }
       ]
@@ -843,11 +843,11 @@
           "line": 1169
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 314
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 428
         }
       ]
@@ -862,11 +862,11 @@
           "line": 1823
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 315
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 430
         }
       ]
@@ -885,11 +885,11 @@
           "line": 5530
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 195
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 196
         }
       ]
@@ -931,11 +931,11 @@
           "line": 782
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 312
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 313
         }
       ]
@@ -958,7 +958,7 @@
           "line": 956
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 313
         }
       ]
@@ -973,11 +973,11 @@
           "line": 851
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 311
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 444
         }
       ]
@@ -992,11 +992,11 @@
           "line": 931
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 310
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 446
         }
       ]
@@ -1015,11 +1015,11 @@
           "line": 435
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 258
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 535
         }
       ]
@@ -1038,11 +1038,11 @@
           "line": 436
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 259
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 458
         }
       ]
@@ -1080,11 +1080,11 @@
           "line": 5361
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 86
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 157
         }
       ]
@@ -1145,11 +1145,11 @@
           "line": 957
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 200
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 473
         }
       ]
@@ -1164,11 +1164,11 @@
           "line": 1020
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 203
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 475
         }
       ]
@@ -1179,7 +1179,7 @@
       "status": "源码仍接入；依赖服务、媒体或网络能力",
       "references": [
         {
-          "file": "Regram/RGRegDate/Sources/RGRegDate.swift",
+          "file": "Reza/RGRegDate/Sources/RGRegDate.swift",
           "line": 26
         },
         {
@@ -1187,11 +1187,11 @@
           "line": 1042
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 201
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 477
         }
       ]
@@ -1202,11 +1202,11 @@
       "status": "内部状态／缓存；现行路径接入",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 129
         },
         {
-          "file": "Regram/RGRegDate/Sources/RGRegDate.swift",
+          "file": "Reza/RGRegDate/Sources/RGRegDate.swift",
           "line": 32
         }
       ]
@@ -1225,11 +1225,11 @@
           "line": 2300
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 193
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 479
         }
       ]
@@ -1240,15 +1240,15 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGChatListSimpleSettingsSignal/Sources/RGCompactMessagePreviewLayout.swift",
+          "file": "Reza/RGChatListSimpleSettingsSignal/Sources/RGCompactMessagePreviewLayout.swift",
           "line": 7
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 194
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 482
         }
       ]
@@ -1267,11 +1267,11 @@
           "line": 1190
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 187
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 485
         }
       ]
@@ -1286,11 +1286,11 @@
           "line": 1601
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 188
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 604
         }
       ]
@@ -1313,7 +1313,7 @@
           "line": 1211
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 183
         }
       ]
@@ -1328,11 +1328,11 @@
           "line": 574
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 325
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 491
         }
       ]
@@ -1343,15 +1343,15 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGDoubleTapMessageAction/Sources/RGDoubleTapMessageAction.swift",
+          "file": "Reza/RGDoubleTapMessageAction/Sources/RGDoubleTapMessageAction.swift",
           "line": 11
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 308
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 493
         }
       ]
@@ -1393,11 +1393,11 @@
           "line": 263
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 324
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 497
         }
       ]
@@ -1412,11 +1412,11 @@
           "line": 1174
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 242
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 499
         }
       ]
@@ -1431,11 +1431,11 @@
           "line": 145
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 307
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 503
         }
       ]
@@ -1450,11 +1450,11 @@
           "line": 1895
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 305
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 501
         }
       ]
@@ -1465,11 +1465,11 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 70
         },
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 95
         },
         {
@@ -1488,11 +1488,11 @@
           "line": 1101
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 207
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 505
         }
       ]
@@ -1503,11 +1503,11 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 78
         },
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 97
         },
         {
@@ -1526,7 +1526,7 @@
       "status": "仅旧数据迁移到规则v2",
       "references": [
         {
-          "file": "Regram/RGSimpleSettings/Sources/SimpleSettings.swift",
+          "file": "Reza/RGSimpleSettings/Sources/SimpleSettings.swift",
           "line": 1
         }
       ]
@@ -1629,7 +1629,7 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 100
         },
         {
@@ -1656,11 +1656,11 @@
           "line": 47
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 97
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 163
         }
       ]
@@ -1675,11 +1675,11 @@
           "line": 49
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 98
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 176
         }
       ]
@@ -1690,7 +1690,7 @@
       "status": "内部状态／缓存；现行路径接入",
       "references": [
         {
-          "file": "Regram/RGDebugUI/Sources/RGDebugUI.swift",
+          "file": "Reza/RGDebugUI/Sources/RGDebugUI.swift",
           "line": 180
         },
         {
@@ -1713,11 +1713,11 @@
       "status": "内部状态／缓存；现行路径接入",
       "references": [
         {
-          "file": "Regram/RGStatus/Sources/RGStatus.swift",
+          "file": "Reza/RGStatus/Sources/RGStatus.swift",
           "line": 24
         },
         {
-          "file": "Regram/RGStatus/Sources/RGStatus.swift",
+          "file": "Reza/RGStatus/Sources/RGStatus.swift",
           "line": 30
         },
         {
@@ -1751,7 +1751,7 @@
       "status": "源码仍接入；入口受远端配置限制",
       "references": [
         {
-          "file": "Regram/RGAPIWebSettings/Sources/File.swift",
+          "file": "Reza/RGAPIWebSettings/Sources/File.swift",
           "line": 17
         },
         {
@@ -1759,7 +1759,7 @@
           "line": 1080
         },
         {
-          "file": "Regram/RGProUI/Sources/AppBadgeSelectorController.swift",
+          "file": "Reza/RGProUI/Sources/AppBadgeSelectorController.swift",
           "line": 32
         }
       ]
@@ -1774,11 +1774,11 @@
           "line": 424
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 235
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 655
         }
       ]
@@ -1816,11 +1816,11 @@
           "line": 453
         },
         {
-          "file": "Regram/RGProUI/Sources/AppBadgeSelectorController.swift",
+          "file": "Reza/RGProUI/Sources/AppBadgeSelectorController.swift",
           "line": 69
         },
         {
-          "file": "Regram/RGProUI/Sources/AppBadgeSelectorController.swift",
+          "file": "Reza/RGProUI/Sources/AppBadgeSelectorController.swift",
           "line": 83
         }
       ]
@@ -1831,11 +1831,11 @@
       "status": "源码仍接入；入口受远端配置限制",
       "references": [
         {
-          "file": "Regram/RGAPIWebSettings/Sources/File.swift",
+          "file": "Reza/RGAPIWebSettings/Sources/File.swift",
           "line": 18
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 158
         }
       ]
@@ -1846,19 +1846,19 @@
       "status": "源码仍接入；入口受远端配置限制",
       "references": [
         {
-          "file": "Regram/RGNY/Sources/RGNY.swift",
+          "file": "Reza/RGNY/Sources/RGNY.swift",
           "line": 25
         },
         {
-          "file": "Regram/RGNY/Sources/RGNY.swift",
+          "file": "Reza/RGNY/Sources/RGNY.swift",
           "line": 60
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 160
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 161
         }
       ]
@@ -1869,7 +1869,7 @@
       "status": "旧选择迁移到宽度百分比；存储键兼容保留",
       "references": [
         {
-          "file": "Regram/RGSimpleSettings/Sources/SimpleSettings.swift",
+          "file": "Reza/RGSimpleSettings/Sources/SimpleSettings.swift",
           "line": 1
         }
       ]
@@ -1880,7 +1880,7 @@
       "status": "已移除入口与布局影响；存储键兼容保留",
       "references": [
         {
-          "file": "Regram/RGSimpleSettings/Sources/SimpleSettings.swift",
+          "file": "Reza/RGSimpleSettings/Sources/SimpleSettings.swift",
           "line": 1
         }
       ]
@@ -1891,19 +1891,19 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
+          "file": "Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
           "line": 36
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 25
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 34
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGSettingsController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGSettingsController.swift",
           "line": 211
         }
       ]
@@ -2068,11 +2068,11 @@
           "line": 5295
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 84
         },
         {
-          "file": "Regram/RGProUI/Sources/RGProUI.swift",
+          "file": "Reza/RGProUI/Sources/RGProUI.swift",
           "line": 144
         }
       ]
@@ -2083,7 +2083,7 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
+          "file": "Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
           "line": 40
         },
         {
@@ -2095,7 +2095,7 @@
           "line": 1339
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 27
         }
       ]
@@ -2106,7 +2106,7 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
+          "file": "Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
           "line": 44
         },
         {
@@ -2118,7 +2118,7 @@
           "line": 2491
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 26
         }
       ]
@@ -2129,7 +2129,7 @@
       "status": "源码仍接入",
       "references": [
         {
-          "file": "Regram/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
+          "file": "Reza/RGSharedAccountContextMigration/Sources/SharedAccountContext+RGUISettingsMigration.swift",
           "line": 48
         },
         {
@@ -2137,11 +2137,11 @@
           "line": 678
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 28
         },
         {
-          "file": "submodules/TelegramUIPreferences/Sources/Regram/RGUISettings.swift",
+          "file": "submodules/TelegramUIPreferences/Sources/Reza/RGUISettings.swift",
           "line": 37
         }
       ]
@@ -2156,11 +2156,11 @@
           "line": 372
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGTabBarWidthController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGTabBarWidthController.swift",
           "line": 96
         },
         {
-          "file": "Regram/RGSettingsUI/Sources/RGTabBarWidthController.swift",
+          "file": "Reza/RGSettingsUI/Sources/RGTabBarWidthController.swift",
           "line": 155
         }
       ]
@@ -2240,11 +2240,11 @@
       "status": "新增并接入；与英文字体合成并按勾选范围应用",
       "references": [
         {
-          "file": "Regram/RGTypography/Sources/RGTypography.swift",
+          "file": "Reza/RGTypography/Sources/RGTypography.swift",
           "line": 46
         },
         {
-          "file": "Regram/RGProUI/Sources/RGFontSettingsController.swift",
+          "file": "Reza/RGProUI/Sources/RGFontSettingsController.swift",
           "line": 97
         }
       ]

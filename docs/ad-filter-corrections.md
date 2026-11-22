@@ -42,7 +42,7 @@ b34662 另加可重建的已确认记录索引，减少启动时对待确认文�
 
 ## 验证
 
-`swift test --package-path Regram/RGAdFilter` 检查正文保留、实体偏移、链接和引用边界、整条媒体判定、分词一致性、存储和账号隔离。`Tools/run-bridge-checks.py` 使用生产桥接逻辑验证独立开关、原文恢复、稳定刷新、滚动缓存和置顶缓存隔离。`Tools/run-chat-list-checks.py` 使用生产桥接、预览逻辑和 SwiftSignalKit 检查回退、取消、编辑、相册、群聊和元数据保留。`Tools/run-semantic-checks.py` 使用实际 Core ML 模型验证分词、转换误差和整条消息投影；同一 Swift 检查器可编译到 iPhone，输入和报告留在忽略目录。
+`swift test --package-path Reza/RGAdFilter` 检查正文保留、实体偏移、链接和引用边界、整条媒体判定、分词一致性、存储和账号隔离。`Tools/run-bridge-checks.py` 使用生产桥接逻辑验证独立开关、原文恢复、稳定刷新、滚动缓存和置顶缓存隔离。`Tools/run-chat-list-checks.py` 使用生产桥接、预览逻辑和 SwiftSignalKit 检查回退、取消、编辑、相册、群聊和元数据保留。`Tools/run-semantic-checks.py` 使用实际 Core ML 模型验证分词、转换误差和整条消息投影；同一 Swift 检查器可编译到 iPhone，输入和报告留在忽略目录。
 
 本轮另复核手机新增 33 条快照（22 个不同输入、14 个来源组）；用户明确要求保留 Long Emby 欢迎／使用说明及相关官方入口。已确认的表情广告沿用同一来源的既有人工纠错，单独记录为个性化规则验证，不能算作文字模型识别图片的能力。
 

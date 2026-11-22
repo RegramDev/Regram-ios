@@ -15,7 +15,7 @@
 
 ## 构建与校验
 
-- Xcode 27.1（27A9275），完整 `//Telegram:Regram` arm64 Release。
+- Xcode 27.1（27A9275），完整 `//Telegram:Reza` arm64 Release。
 - 70 项自动检查通过；主程序、六扩展、严格签名、架构、资源及 12 份匹配 dSYM 核对通过，安装身份与 b34632 一致。
 - 构建前后源码摘要一致；Release 后续提交只同步项目文档。
 

@@ -6,9 +6,9 @@
 
 ```sh
 xcrun simctl list devices available
-xcodebuild -list -project Telegram/Regram.xcodeproj
+xcodebuild -list -project Telegram/Reza.xcodeproj
 xcodebuild test \
-  -project Telegram/Regram.xcodeproj \
+  -project Telegram/Reza.xcodeproj \
   -scheme iOSAppUITestSuite \
   -destination 'platform=iOS Simulator,id=<SIMULATOR_UDID>'
 ```

@@ -12,7 +12,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Reza/RGSimpleSettings:RGSimpleSettings",
         "//submodules/UrlWhitelist",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve the declared Regram build number, independent of Actions run counters."""
+"""Resolve the declared Reza build number, independent of Actions run counters."""
 import argparse
 import json
 import os
@@ -14,7 +14,7 @@ def build_number(versions=VERSIONS, expected=None):
         raise ValueError('versions.json must define a positive integer build number')
     number = str(value)
     if expected is not None and expected != number:
-        raise ValueError('REGRAM_BUILD_NUMBER must match the build number declared in versions.json')
+        raise ValueError('REZA_BUILD_NUMBER must match the build number declared in versions.json')
     return number
 
 
@@ -22,10 +22,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--github-env', type=Path)
     args = parser.parse_args()
-    number = build_number(expected=os.environ.get('REGRAM_BUILD_NUMBER'))
+    number = build_number(expected=os.environ.get('REZA_BUILD_NUMBER'))
+    if 'REGRAM_BUILD_NUMBER' in os.environ:
+        build_number(expected=os.environ['REGRAM_BUILD_NUMBER'])
     if args.github_env:
         with args.github_env.open('a') as stream:
-            stream.write(f'REGRAM_BUILD_NUMBER={number}\n')
+            stream.write(f'REZA_BUILD_NUMBER={number}\n')
     print(number)
 
 

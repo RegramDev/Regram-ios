@@ -4,7 +4,7 @@ swift_library(
     name = "ChatMessageStickerItemNode",
     module_name = "ChatMessageStickerItemNode",
     srcs = [
-        "//Regram/RGDoubleTapMessageAction:RGDoubleTapMessageAction", # MARK: Regram
+        "//Reza/RGDoubleTapMessageAction:RGDoubleTapMessageAction", # MARK: Regram
     ] + glob([
         "Sources/**/*.swift",
     ]),
@@ -12,7 +12,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGSimpleSettings:RGSimpleSettings",
+        "//Reza/RGSimpleSettings:RGSimpleSettings",
         "//submodules/TelegramUI/Components/StaticGlassBackground",
         "//submodules/AsyncDisplayKit",
         "//submodules/Display",

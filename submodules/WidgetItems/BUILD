@@ -10,7 +10,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
     ],
     visibility = [
         "//visibility:public",
@@ -27,7 +27,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGAppGroupIdentifier:RGAppGroupIdentifier",
+        "//Reza/RGAppGroupIdentifier:RGAppGroupIdentifier",
     ],
     visibility = [
         "//visibility:public",

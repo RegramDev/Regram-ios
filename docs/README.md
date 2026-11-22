@@ -1,6 +1,6 @@
 # 文档导航
 
-先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34665** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
+先阅读根目录的[中文 README](../README.md)／[English README](../README.en.md)。当前功能与流程按 **13.2 / b34666** 整理，构建要求以 [versions.json](../versions.json)、现行 BUILD 文件及根 README 为准。
 
 ## 功能与使用
 
@@ -59,7 +59,7 @@
 - [Telegram 13.1.2 同步与全局搜索输入](upstream-sync/13.1.2.md)：基于 b34641 同步官方上游，合并快速输入查询并将日期解析移到后台，包含回归、模拟器输入夹具及完整 arm64 Release 编译记录。
 - [b34637 网络与启动崩溃修复](crash-fixes-20261025.md)：三份崩溃日志的符号化结果、CFStream 观察流清理及 Postbox 字典解码修正，包含回归和编译范围。
 - [Telegram 13.1.1 上游同步](upstream-sync-20261023.md)：同步范围、现有 UI 保留、功能兼容修正及 b34630 构建与交付记录。
-- [图标与截图标记](../Regram/RGBranding/README.md)：絮语、合流及各配色从同一源派生明确的深浅资源，原默认图标改为备用；截图标记跟随应用主题，保留 Regram、知秋原图。
+- [图标与截图标记](../Reza/RGBranding/README.md)：四款猫图标的原图、桌面和设置预览资源，及独立的截图标记。
 - [GitHub Actions](github-actions-build.md)：读取版本、构建一份 IPA、校验报告与确认发布流程。
 - [LCSign 兼容打包](lcsign-reference-packaging.md)：从构建 IPA 生成可重新签名的 ad-hoc 参考包，并核对结构、权限及调试符号。
 - [UI 测试](ui-testing.md)：测试环境与 XCUITest 使用方式，不能替代真实账号和设备验收。
@@ -78,6 +78,6 @@
 
 [二维码与证书导入修正](qr-login-and-certificate-import.md)、[13.0 功能审查](telegram-13-feature-audit.md)、带构建号的问题分析，以及其他专项记录，保留当时的排查背景。与当前功能文档冲突时，按现行源码、功能清单及更新说明判断。
 
-[上游同步方案](regram-upstream-sync.md)属于设计建议，不代表仓库已经全面采用其中的分支模型。`superpowers/` 保存早期设计与实施笔记，不是现行发布或构建说明。
+[上游同步方案](reza-upstream-sync.md)属于设计建议，不代表仓库已经全面采用其中的分支模型。`superpowers/` 保存早期设计与实施笔记，不是现行发布或构建说明。
 
 本地凭据、证书、描述文件、生成配置及真实账号数据不得提交。示例路径需要替换为读者自己的环境，生成物保存在被忽略的 `build-input/` 或 `build/`。

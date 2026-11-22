@@ -36,7 +36,7 @@ NSFW 首屏改为入口列表：推荐、Nv、MissAV、黄果、JAV Ranking。�
 
 可变字重映射 Regular／Medium／Semibold／Bold，光学尺寸按实际字号限制在支持范围内。独立斜体使用实际斜体文件，Google Sans Flex 使用其 slnt 轴。下载后保存离线缓存，选择状态及应用范围沿用既有设置。
 
-实现：[字体目录](../Regram/RGTypography/RGFontCatalog.json)、[存储与字体选择标识](../Regram/RGTypography/Sources/RGFontStore.swift)、[变量轴加载](../Regram/RGTypography/Sources/RGTypography.swift)、[字体设置](../Regram/RGProUI/Sources/RGFontSettingsController.swift)。
+实现：[字体目录](../Reza/RGTypography/RGFontCatalog.json)、[存储与字体选择标识](../Reza/RGTypography/Sources/RGFontStore.swift)、[变量轴加载](../Reza/RGTypography/Sources/RGTypography.swift)、[字体设置](../Reza/RGProUI/Sources/RGFontSettingsController.swift)。
 
 ## 验证边界
 

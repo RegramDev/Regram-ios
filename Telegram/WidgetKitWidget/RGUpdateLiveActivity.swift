@@ -25,7 +25,7 @@ struct RGUpdateLiveActivity: Widget {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             RGUpdateActivityIcon(size: 22)
-                            Text("Regram").font(.headline).lineLimit(1)
+                            Text("Reza").font(.headline).lineLimit(1)
                             Spacer(minLength: 6)
                             Text(verbatim: "\(context.attributes.version) · b\(context.attributes.build)")
                                 .font(.caption2).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
@@ -51,7 +51,7 @@ struct RGUpdateLiveActivity: Widget {
 private struct RGUpdateActivityIcon: View {
     let size: CGFloat
     var body: some View {
-        Image("RegramUpdateIcon").renderingMode(.original).resizable().scaledToFit()
+        Image("RezaUpdateIcon").renderingMode(.original).resizable().scaledToFit()
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: size * 0.23, style: .continuous))
     }

@@ -4,9 +4,9 @@
 
 b34575 只包含预取和资源调度。当前实现补充了五块机制；自动下载任务数量与视频播放数量分别管理。未新增独立视频信息流页面。
 
-入口：**设置 → Regram Pro**，搜索“媒体加载优化（实验）”。修改立即生效；同一安装包可以开启、关闭做对照。
+入口：**设置 → Reza Pro**，搜索“媒体加载优化（实验）”。修改立即生效；同一安装包可以开启、关闭做对照。
 
-常规构建默认关闭。试验构建通过 `--//Regram/RGSimpleSettings:mediaLoadingExperimentDefault=true` 设置首次使用默认开启；用户已保存的开关选择优先。
+常规构建默认关闭。试验构建通过 `--//Reza/RGSimpleSettings:mediaLoadingExperimentDefault=true` 设置首次使用默认开启；用户已保存的开关选择优先。
 
 ## 实现
 
@@ -17,7 +17,7 @@ b34575 只包含预取和资源调度。当前实现补充了五块机制；自�
 - 可见资源、预加载资源和播放资源的优先级进入 MTProto 请求调度。页面使用独立 owner，播放使用引用计数，避免旧页面退出或一个播放器释放时影响其他页面/播放器。
 - Native 和 HLS 播放器在播放及播放中的缓冲阶段持有优先级，暂停和销毁时释放。HLS 同时标记其 playlist 与 quality 资源。
 - 分类下载调度保留一个手动下载执行位置，最多执行两个自动任务；直接流播放期间限制为一个可见自动任务，暂缓其他自动下载。完成、暂停或失败后重新选择；过期完成回调不能删除后来重建的请求。
-- 消息快照在共享 `.userInitiated` 串行队列上预处理，复用 Regram 的规则过滤缓存，并预热翻译资格缓存；缓存按消息版本失效、每聊天最多 4096 项。排版和节点操作保持在主线程。无过滤且关闭开关时保留原有直接通过路径。
+- 消息快照在共享 `.userInitiated` 串行队列上预处理，复用 Reza 的规则过滤缓存，并预热翻译资格缓存；缓存按消息版本失效、每聊天最多 4096 项。排版和节点操作保持在主线程。无过滤且关闭开关时保留原有直接通过路径。
 - 自动翻译批次记录在途消息，重复滚动不重复提交；切换语言、聊天或关闭开关会取消对应请求。旧批次完成不能解除新批次的在途状态；未完成翻译可在冷却后重试。消息编辑和新增翻译属性通过版本变化重新计算。
 - 聊天按可见比例、视口中心距离、声音/用户发起状态和已有准入协调最多两个自动播放视频；页面不活跃、App 在后台或达到 critical 热状态时撤销准入。同一轮可见性/布局变化通过零延迟计时器合并。
 - 最后订阅者离开时，聊天自动播放的播放器可以进入保留池：全局最多一个、每 session 最多一个，活跃 inline 与保留池共享三个 holder 的容量预算。重入复用原播放器，画廊交接保留指定内容；内存警告、后台、critical 温度、关闭开关及会话销毁清理保留池。
@@ -26,9 +26,9 @@ b34575 只包含预取和资源调度。当前实现补充了五块机制；自�
 - Native 与 HLS 增加独立的解码帧就绪信号，缩略图 ready 不会替代该信号。聊天继续用原 ready 将节点加入层级，避免等待首帧却没有显示层级的循环；保留封面直到首帧可显示。画廊返回先恢复目标视频，收到首帧或 0.1 秒协调回退后恢复普通准入。
 - 累积滚动超过原有 14 点阈值后，即使方向相同，也通过额外回调合并可见资源窗口和播放准入更新。等本轮滚动更新节点位置后再读取范围；相同范围不强制重复处理。仅在试验开关开启时使用，保留原有方向变化回调。
 
-另在 **设置 → Regram 设置 → 其他 → 默认视频画质** 增加自动、最高可用、最低可用三个选择。默认自动，可与试验开关独立设置；最高/最低等待播放器公布多个可用版本后选择对应质量。单视频手动选择会取消待应用的全局默认，并在该视频节点重新取得播放器时保留；主动修改全局设置会重新应用偏好。不能把降低画质后的首帧变化算作同画质提速。
+另在 **设置 → Reza 设置 → 其他 → 默认视频画质** 增加自动、最高可用、最低可用三个选择。默认自动，可与试验开关独立设置；最高/最低等待播放器公布多个可用版本后选择对应质量。单视频手动选择会取消待应用的全局默认，并在该视频节点重新取得播放器时保留；主动修改全局设置会重新应用偏好。不能把降低画质后的首帧变化算作同画质提速。
 
-普通视频部分预加载时长为 4 秒。分类任务限额、排序和准入恢复由 Regram 的媒体加载策略控制。消息侧按 Regram 的过滤规则判定。
+普通视频部分预加载时长为 4 秒。分类任务限额、排序和准入恢复由 Reza 的媒体加载策略控制。消息侧按 Reza 的过滤规则判定。
 
 ## 开发检查
 
@@ -37,17 +37,17 @@ b34575 只包含预取和资源调度。当前实现补充了五块机制；自�
 ```sh
 mkdir -p build-input/media-loading-checks
 xcrun swiftc -warnings-as-errors \
-  Regram/RGSimpleSettings/Sources/MediaLoadingPolicy.swift \
-  Regram/RGSimpleSettings/Sources/VideoLoadingPolicy.swift \
-  Regram/RGSimpleSettings/Sources/MessageProcessingPolicy.swift \
-  Regram/RGSimpleSettings/Sources/VideoQualityPolicy.swift \
-  Regram/RGSimpleSettings/Sources/NotificationPolicy.swift \
-  Regram/RGSimpleSettings/Tests/MediaLoadingPolicyTests.swift \
+  Reza/RGSimpleSettings/Sources/MediaLoadingPolicy.swift \
+  Reza/RGSimpleSettings/Sources/VideoLoadingPolicy.swift \
+  Reza/RGSimpleSettings/Sources/MessageProcessingPolicy.swift \
+  Reza/RGSimpleSettings/Sources/VideoQualityPolicy.swift \
+  Reza/RGSimpleSettings/Sources/NotificationPolicy.swift \
+  Reza/RGSimpleSettings/Tests/MediaLoadingPolicyTests.swift \
   -o build-input/media-loading-checks/policy-tests
 build-input/media-loading-checks/policy-tests
 ```
 
-加 `-DREGRAM_MEDIA_LOADING_EXPERIMENT` 可同时检查试验构建的默认开关。App 编译目标为 `//Telegram:Regram`，保持主 App 和六个扩展。
+加 `-DREZA_MEDIA_LOADING_EXPERIMENT` 可同时检查试验构建的默认开关。App 编译目标为 `//Telegram:Reza`，保持主 App 和六个扩展。
 
 ## 真机对照
 
@@ -63,7 +63,7 @@ build-input/media-loading-checks/policy-tests
 
 ## 已完成验证（构建 34575）
 
-2026-09-30：常规与试验默认配置的独立策略回归均通过；`//Telegram:Regram` 完整 arm64 优化构建通过，包含六个扩展。同一构建还移除了会话备份页面、Pro 功能介绍、Keychain 备份模块及相关资源。
+2026-09-30：常规与试验默认配置的独立策略回归均通过；`//Telegram:Reza` 完整 arm64 优化构建通过，包含六个扩展。同一构建还移除了会话备份页面、Pro 功能介绍、Keychain 备份模块及相关资源。
 
 最终 LCSign 参考包已重新解包验证：13 个 Mach-O 的 ad-hoc 签名和七个 bundle 配置通过检查，Bundle ID 与 entitlements 与 34574 参考包一致。新包包含试验开关，不含会话备份实现或相关本地化键；检查了 37 份本地化资源。
 
@@ -71,7 +71,7 @@ build-input/media-loading-checks/policy-tests
 
 ## 已完成验证（构建 34576）
 
-2026-09-30：上述五块补充机制已接入同一个试验开关。常规默认与试验默认的扩展策略回归均通过，最终源码语法检查及 `git diff --check` 通过；`//Telegram:Regram` 完整 arm64 优化构建与最终源码的增量一致性构建通过，包含六个扩展。
+2026-09-30：上述五块补充机制已接入同一个试验开关。常规默认与试验默认的扩展策略回归均通过，最终源码语法检查及 `git diff --check` 通过；`//Telegram:Reza` 完整 arm64 优化构建与最终源码的增量一致性构建通过，包含六个扩展。
 
 最终 LCSign 参考 IPA 经重新解包校验：13 个 Mach-O 均为 arm64、ad-hoc 签名有效；主 App 和六个扩展的 Bundle ID、entitlements 与现存 b34574 参考包及保存的 b34575 声明一致；最低 iOS 13.0，包中没有描述文件。消息串行处理模块确已链接到产物；全部二进制不含会话备份控制器/Keychain 备份模块，37 份本地化资源中也没有相关键。
 
@@ -83,7 +83,7 @@ build-input/media-loading-checks/policy-tests
 
 2026-09-30：在 b34576 的五块机制上增加全局画质偏好及同方向滚动通知。默认画质为自动；滚动通知合并到本轮布局完成后的更新，相同可见范围不强制重复处理。通知处理包括账户打开重试、控制消息标记、跨进程账户快照刷新、注册顺序、非阻塞日志配置、处理期限及请求归属保护。
 
-常规默认与试验默认的策略回归通过；`//Telegram:Regram` 完整 arm64 优化构建、增量构建及最后通知分支的重编译通过。42 个修改的 Swift/BUILD/strings 文件与最终源码快照一致。最终 LCSign 参考 IPA 已重新解包检查：主 App 和六个扩展、13 个 arm64 Mach-O 的 ad-hoc 签名及可执行权限有效；没有描述文件，应用身份及 entitlements 与 b34576 和保存的 b34575 声明一致。
+常规默认与试验默认的策略回归通过；`//Telegram:Reza` 完整 arm64 优化构建、增量构建及最后通知分支的重编译通过。42 个修改的 Swift/BUILD/strings 文件与最终源码快照一致。最终 LCSign 参考 IPA 已重新解包检查：主 App 和六个扩展、13 个 arm64 Mach-O 的 ad-hoc 签名及可执行权限有效；没有描述文件，应用身份及 entitlements 与 b34576 和保存的 b34575 声明一致。
 
 通知回退、全局画质和额外滚动回调已链接；消息后台处理模块保留，会话备份控制器及 Keychain 备份模块仍未出现在二进制中。37 份本地化资源通过检查，其中九个维护语言包含全部画质键。Xcode 26.6（17F113）、iPhoneOS SDK 26.5；最低 iOS 13.0。
 

@@ -153,7 +153,7 @@ typedef enum {
     UIView *_startButton;
     
     bool _loadedView;
-    UIImageView *_regramArtworkView; // MARK: Regram
+    UIImageView *_rezaArtworkView; // MARK: Regram
     
     NSInteger _accessibilityPendingPage;
 }
@@ -262,7 +262,7 @@ typedef enum {
 
 - (void)startTimer
 {
-    if (_regramArtworkView != nil) return; // MARK: Regram — static artwork needs no render timer.
+    if (_rezaArtworkView != nil) return; // MARK: Regram — static artwork needs no render timer.
     if (_updateAndRenderTimer == nil)
     {
         _updateAndRenderTimer = [NSTimer timerWithTimeInterval:1.0f / 60.0f target:self selector:@selector(updateAndRender) userInfo:nil repeats:true];
@@ -281,7 +281,7 @@ typedef enum {
 
 - (void)animateIn {
     // MARK: Regram — use the same entrance and transition geometry for app artwork.
-    UIView *artworkView = _regramArtworkView ?: _glkView;
+    UIView *artworkView = _rezaArtworkView ?: _glkView;
     CGPoint logoTargetPosition = artworkView.center;
     artworkView.center = CGPointMake(self.view.bounds.size.width / 2.0, self.view.bounds.size.height / 2.0);
     
@@ -325,14 +325,14 @@ typedef enum {
 - (void)loadGL
 {
     // MARK: Regram — preserve the welcome layout while replacing the tour illustration.
-    if (self.regramArtwork != nil) {
-        if (_regramArtworkView == nil) {
-            _regramArtworkView = [[UIImageView alloc] initWithImage:self.regramArtwork];
-            _regramArtworkView.contentMode = UIViewContentModeScaleAspectFill;
-            _regramArtworkView.clipsToBounds = true;
-            _regramArtworkView.userInteractionEnabled = false;
-            _regramArtworkView.isAccessibilityElement = false;
-            [self.view insertSubview:_regramArtworkView atIndex:0];
+    if (self.rezaArtwork != nil) {
+        if (_rezaArtworkView == nil) {
+            _rezaArtworkView = [[UIImageView alloc] initWithImage:self.rezaArtwork];
+            _rezaArtworkView.contentMode = UIViewContentModeScaleAspectFill;
+            _rezaArtworkView.clipsToBounds = true;
+            _rezaArtworkView.userInteractionEnabled = false;
+            _rezaArtworkView.isAccessibilityElement = false;
+            [self.view insertSubview:_rezaArtworkView atIndex:0];
         }
         return;
     }
@@ -416,9 +416,9 @@ typedef enum {
     [self loadGL];
 
     // MARK: Regram
-    if (self.regramArtwork != nil && _headlines.count > 0) {
+    if (self.rezaArtwork != nil && _headlines.count > 0) {
         NSMutableArray *headlines = [_headlines mutableCopy];
-        headlines[0] = @"Regram";
+        headlines[0] = @"Reza";
         _headlines = headlines;
     }
     
@@ -470,12 +470,12 @@ typedef enum {
 
 - (UIView *)createAnimationSnapshot {
     // MARK: Regram — keep the welcome-to-login transition consistent with the visible artwork.
-    if (_regramArtworkView != nil) {
-        UIImageView *imageView = [[UIImageView alloc] initWithImage:_regramArtworkView.image];
-        imageView.frame = _regramArtworkView.frame;
-        imageView.contentMode = _regramArtworkView.contentMode;
+    if (_rezaArtworkView != nil) {
+        UIImageView *imageView = [[UIImageView alloc] initWithImage:_rezaArtworkView.image];
+        imageView.frame = _rezaArtworkView.frame;
+        imageView.contentMode = _rezaArtworkView.contentMode;
         imageView.clipsToBounds = true;
-        imageView.layer.cornerRadius = _regramArtworkView.layer.cornerRadius;
+        imageView.layer.cornerRadius = _rezaArtworkView.layer.cornerRadius;
         return imageView;
     }
     UIImage *image = _glkView.snapshot;
@@ -640,10 +640,10 @@ typedef enum {
     _pageControl.frame = CGRectMake(0, pageControlY, self.view.bounds.size.width, 7);
     _glkView.frame = CGRectChangedOriginY(_glkView.frame, glViewY - statusBarHeight);
     // MARK: Regram
-    if (_regramArtworkView != nil) {
+    if (_rezaArtworkView != nil) {
         CGFloat side = [UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad ? 240.0 : 200.0;
-        _regramArtworkView.frame = CGRectMake(floor((self.view.bounds.size.width - side) / 2.0), glViewY - statusBarHeight, side, side);
-        _regramArtworkView.layer.cornerRadius = side * 0.23;
+        _rezaArtworkView.frame = CGRectMake(floor((self.view.bounds.size.width - side) / 2.0), glViewY - statusBarHeight, side, side);
+        _rezaArtworkView.layer.cornerRadius = side * 0.23;
     }
     
     CGFloat startButtonWidth = MIN(430.0 - 48.0, self.view.bounds.size.width - 48.0f);

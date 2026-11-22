@@ -9,7 +9,7 @@
 ## 提交改动
 
 1. 阅读[构建说明](../README.md)和相关[技术文档](../docs/README.md)，从当前分支创建功能分支。
-2. 尽量把 Regram 功能放在 **Regram/**；必须修改 Telegram 上游文件时，标注 **MARK: Regram** 并解释原因。
+2. 尽量把 Regram 功能放在 **Reza/**；必须修改 Telegram 上游文件时，标注 **MARK: Regram** 并解释原因。
 3. 一个 PR 只解决一个明确问题。数据格式、设置默认值或 App Group 行为有变化时，说明旧版本的升级方式。
 4. 运行与改动相关的编译或测试，至少检查 **git diff --check**；在 PR 中写明验证范围和未验证的真机场景。
 5. 不提交 **build-input/** 中的本地配置、签名材料、IPA、日志、真实账号数据或 API 密钥。

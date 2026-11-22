@@ -1,6 +1,6 @@
-# Regram 自动更新与安装
+# Reza 自动更新与安装
 
-入口：**设置 → Regram Pro → 管理与工具 → Regram 更新**。本文按 b34633 的现行实现整理；发行一份 Regram IPA，包含主应用及六个扩展。
+入口：**设置 → Reza Pro → 管理与工具 → Reza 更新**。本文按 b34666 的实现整理；发行一份 Reza IPA，包含主应用及六个扩展。
 
 ## 更新来源与网络
 
@@ -10,7 +10,9 @@
 https://api.github.com/repos/RegramDev/Regram-ios/releases/latest
 ```
 
-发布标签使用 `v13.0-b34619` 形式，IPA 使用 `Regram-13.0-b34619.ipa` 形式。版本比较、标签、唯一候选文件名、下载路径、文件大小及 GitHub 资产 `digest: sha256:…` 均需通过检查；缺少 SHA-256、草稿、预发布、降级或重复候选不会用于更新。文件下载后继续检查包内版本、主应用及扩展结构与安装身份。
+发布标签使用 `v13.2-b34666` 形式，IPA 使用 `Reza-13.2-b34666.ipa` 形式。版本比较、标签、唯一候选文件名、下载路径、文件大小及 GitHub 资产 `digest: sha256:…` 均需通过检查；缺少 SHA-256、草稿、预发布、降级或重复候选不会用于更新。文件下载后继续检查包内版本、主应用及扩展结构与安装身份。
+
+b34665 及更早版本的更新器仅识别旧文件名前缀。首次升级到只提供 `Reza-13.2-b34666.ipa` 的版本时，手动下载并使用原安装身份覆盖安装。b34666 起可识别新旧两种文件名。
 
 **检查更新不要求导入证书。**「打开 GitHub Release」是独立按钮，点击才打开发布页；检查到新版本身不会跳浏览器。
 
@@ -57,7 +59,7 @@ IPA 交给系统后台 `URLSession` 下载，保存任务与目标资产信息�
 
 证书、私钥、密码和描述文件保存在本机非同步 Keychain，不进入设置备份；IPA、证书及密码不上传给 LCSign。签名器的 OpenSSL 使用 `RGUpdateSSL_` 独立符号，避免与 Telegram 网络的 BoringSSL 混用；构建和回归检查保持这两套加密实现隔离。
 
-签名器来源及许可证见 [zsign 适配说明](../Regram/RGUpdateSigner/Vendor/zsign/UPSTREAM.md)。这些匹配检查不代替 Apple 签名信任、证书准入及设备安装资格。
+签名器来源及许可证见 [zsign 适配说明](../Reza/RGUpdateSigner/Vendor/zsign/UPSTREAM.md)。这些匹配检查不代替 Apple 签名信任、证书准入及设备安装资格。
 
 ## LCSign 清单与 iOS 安装
 
@@ -88,23 +90,23 @@ IPA 交给系统后台 `URLSession` 下载，保存任务与目标资产信息�
 iOS 16.1 及以上支持「在灵动岛与锁屏显示更新进度」，默认开启。具有灵动岛的设备提供紧凑、最小及展开视图，其他支持实时活动的设备使用锁屏视图。
 
 - 使用 Regram 图片，显示目标版本、实际下载进度、校验、签名或准备完成状态；非下载阶段不制造百分比。
-- 后台下载完成但还需签名时提示打开 Regram 完成准备。
+- 后台下载完成但还需签名时提示打开 Reza 完成准备。
 - 点击通过已配置并注册的应用 URL Scheme 进入更新页，避免误选网页协议而打开空白浏览器。
 - 展开布局避开摄像头区域，版本按原字符串展示；取消、失败、关闭显示或新版启动后结束旧活动。
 - 由本机 ActivityKit 更新，不依赖 APNs 或额外推送服务器，不授予额外后台执行时间。系统暂停期间可能显示上次状态。
 
 ## 发布与验证
 
-Actions 构建和人工确认发布是两条流程，详见 [GitHub Actions](github-actions-build.md)。正常发行只提供一份 `Regram-版本-b构建号.ipa`，更新器不选择多身份资产；身份、权限及文件校验仍保留。
+Actions 构建和人工确认发布是两条流程，详见 [GitHub Actions](github-actions-build.md)。正常发行只提供一份 `Reza-版本-b构建号.ipa`，更新器不选择多身份资产；身份、权限及文件校验仍保留。
 
 | 验证范围 | 可复现入口 |
 | --- | --- |
-| 发布解析、版本、缓存及提示阶段 | [更新测试目录](../Regram/RGAppUpdate/Tests) 中的 `UpdateReleaseTests`、`UpdateCacheTests`、`UpdatePromptTests` |
-| 委托进度、异常响应、大小及取消 | [下载进度检查](../Regram/RGAppUpdate/Tests/run-download-progress-checks.py) |
-| 后台任务恢复、文件校验及旧回调 | [后台下载检查](../Regram/RGAppUpdate/Tests/run-background-download-checks.py) |
-| 活动阶段、权限、前后台及异步结束 | [实时活动检查](../Regram/RGAppUpdate/Tests/run-live-activity-checks.py) |
+| 发布解析、版本、缓存及提示阶段 | [更新测试目录](../Reza/RGAppUpdate/Tests) 中的 `UpdateReleaseTests`、`UpdateCacheTests`、`UpdatePromptTests` |
+| 委托进度、异常响应、大小及取消 | [下载进度检查](../Reza/RGAppUpdate/Tests/run-download-progress-checks.py) |
+| 后台任务恢复、文件校验及旧回调 | [后台下载检查](../Reza/RGAppUpdate/Tests/run-background-download-checks.py) |
+| 活动阶段、权限、前后台及异步结束 | [实时活动检查](../Reza/RGAppUpdate/Tests/run-live-activity-checks.py) |
 | HEAD／GET／Range、交付、安装 URL 及 TrollStore | 更新测试目录中的 `LocalUpdateServerTests`、`UpdateDeliveryTrackerTests`、`TrollStoreInstallationTests` |
-| 合成证书、通配符权限、主应用及扩展签名 | [签名检查](../Regram/RGUpdateSigner/Tests/check_signer.py)，不读取正式证书 |
+| 合成证书、通配符权限、主应用及扩展签名 | [签名检查](../Reza/RGUpdateSigner/Tests/check_signer.py)，不读取正式证书 |
 
 b34619 的完整构建、IPA 身份／签名／调试符号校验和 SHA-256 校验通过；通知实验、预览行数及图标持久化尚待真机验收。
 

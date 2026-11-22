@@ -35,11 +35,11 @@
 首次处理未缓存输入仍需要模型。测试期间主机负载有明显波动，因此不使用这轮首次批量耗时来宣称模型本身提速。
 
 ```sh
-swift test --package-path Regram/RGAdFilter
-python3 Regram/RGAdFilter/Tools/run-restart-checks.py
-python3 Regram/RGAdFilter/Tools/run-store-latency-checks.py
-python3 Regram/RGAdFilter/Tools/run-bridge-checks.py
-python3 Regram/RGAdFilter/Tools/run-latency-checks.py
+swift test --package-path Reza/RGAdFilter
+python3 Reza/RGAdFilter/Tools/run-restart-checks.py
+python3 Reza/RGAdFilter/Tools/run-store-latency-checks.py
+python3 Reza/RGAdFilter/Tools/run-bridge-checks.py
+python3 Reza/RGAdFilter/Tools/run-latency-checks.py
 ```
 
 78 项 Swift 测试通过。独立进程回归使用生产桥接、存储和缓存，模型替换为可计数的确定性适配器，验证重启不重复调用、人工纠正优先、消息编辑重判、版本变化失效，以及缓存损坏且模型不可用时保留未完成状态。桥接和排队回归另行检查原有显示行为；适配器耗时不作为 Core ML 性能结论。
@@ -48,7 +48,7 @@ python3 Regram/RGAdFilter/Tools/run-latency-checks.py
 
 ## b34662 构建与包校验
 
-Xcode 27.1 下完成 `//Telegram:Regram` 的完整 arm64 Release，构建前后的源码与配置摘要一致。78 项过滤模块单元测试、生产桥接、主页预览、排队与重启专项回归通过；86 项项目检查通过。通用检查首次有设置目录和消息总结范围两项超时，保持原 180 秒限制单独重跑，分别用时 92.6 秒、5.6 秒通过，原失败日志保留。
+Xcode 27.1 下完成 `//Telegram:Reza` 的完整 arm64 Release，构建前后的源码与配置摘要一致。78 项过滤模块单元测试、生产桥接、主页预览、排队与重启专项回归通过；86 项项目检查通过。通用检查首次有设置目录和消息总结范围两项超时，保持原 180 秒限制单独重跑，分别用时 92.6 秒、5.6 秒通过，原失败日志保留。
 
 最终 IPA 重新解包后验证：主应用与六扩展、arm64 架构、严格 ad-hoc 签名、12 个二进制与 12 份 dSYM UUID、三种语言、应用图标和模型资源均通过。七个 Bundle 的完整 entitlements 及 URL schemes 与 b34661 相同，模型组件与独立 iOS 编译结果一致。打包完成后已关闭闲置 Bazel 服务，保留构建缓存。
 

@@ -5491,6 +5491,11 @@ extension SharedAccountContextImpl {
         return rgRecentChatsController(context: context)
     }
 
+    // MARK: Regram — peer profiles share the ReSieve record viewer with settings.
+    public func makeRGAdRecordsController(context: AccountContext, peerId: EnginePeer.Id) -> ViewController {
+        return rgAdSamplesController(context: context, peerId: peerId.toInt64())
+    }
+
     // MARK: Regram
     public func makeRGBookmarksController(context: AccountContext) -> ViewController {
         return rgBookmarksController(context: context)

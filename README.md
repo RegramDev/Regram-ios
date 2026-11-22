@@ -1,8 +1,10 @@
-# Regram
+# Reza
 
 [English](README.en.md) · 简体中文 · [LINUX DO 社区](https://linux.do/)
 
-Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
+Reza 是基于 Telegram iOS 源码维护的非官方客户端，提供消息管理、隐私控制、翻译与语音识别、界面定制和应用内更新。
+
+当前开发版本 **Reza 13.2 / b34666** 使用橘猫主图标，新增频道和群聊的 ReSieve 过滤记录入口。
 
 最新公开版本 **13.2 / b34665**。更新 ReSieve 1.3.0 模型；修复通知设置不及时生效、阅后即焚与受保护私聊内容的保存、截图通知和幽灵模式在线状态等问题，移除已失效的 Google CN 与 Microsoft 翻译。[发布说明与下载](https://github.com/RegramDev/Regram-ios/releases/tag/v13.2-b34665) · [功能清单](docs/features.md) · [更新记录](docs/changelog.md)
 
@@ -30,7 +32,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 ### 过滤与隐私
 
 - 关键词及正则过滤，支持隐藏／保留规则、全局或会话范围、规则测试、导入与导出。
-- ReSieve 本机广告识别：在「Regram Pro → 隐私与过滤 → 消息过滤器」启用，处理频道、群聊、置顶和主页摘要中的推广内容。原文保留，过滤记录可查看和纠正，消息不上传；[模型与使用边界](docs/ad-semantic-model.md)和[模型仓库](https://github.com/RegramDev/ReSieve)公开提供。
+- ReSieve 本机广告识别：在「Reza Pro → 隐私与过滤 → 消息过滤器」启用，处理频道、群聊、置顶和主页摘要中的推广内容。在频道或群聊资料页点「ReSieve 过滤记录」可查看并纠正当前会话的记录。消息保存在本机；[模型与使用边界](docs/ad-semantic-model.md)和[模型仓库](https://github.com/RegramDev/ReSieve)公开提供。
 - 隐藏指定发送者，按会话关闭规则过滤，或临时显示被隐藏内容。
 - 群内定向屏蔽：只隐藏指定成员在所选群中的消息，按账号保存；群内长按头像或从群资料页管理。
 - 群聊特别提醒：指定成员发言时提醒，屏蔽及过滤优先；后台提醒取决于 Telegram 推送与系统通知权限。
@@ -39,7 +41,7 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 - 幽灵模式：控制动态浏览、在线状态及输入状态上报。
 - 用户 ID 提及链接、设置页手机号隐藏、资料 ID、DC 地区及注册日期估算。
 - 通知内容过滤，置顶及提及／回复通知策略，空提醒容错与过滤权限诊断。
-- Regram Pro → 通知与提醒提供实验性通知恢复，默认关闭并保留旧配置；`tg://rg/rgdebug` 仍提供缓存清理，保留账号、数据库、设置、证书和更新包。
+- Reza Pro → 通知与提醒提供实验性通知恢复，默认关闭并保留旧配置；`tg://rg/rgdebug` 仍提供缓存清理，保留账号、数据库、设置、证书和更新包。
 
 防撤回和编辑历史只能保留本机已经收到或观察到的内容。幽灵模式不包含普通聊天已读回执屏蔽；客户端选项不能授予 Telegram 服务端或 iOS 尚未授权的能力。
 
@@ -74,8 +76,8 @@ Regram 是基于 Telegram iOS 源码维护的非官方客户端，提供消息�
 
 ### 外观与输入
 
-- 设置及 Regram 新增功能页统一使用 Telegram 主题、分组列表与玻璃导航，保留原有返回手势；旧系统沿用上游回退样式。
-- 应用图标、截图 App Badge；Regram Pro 入口跟随当前 App 图标，登录欢迎页及更新实时活动使用 Regram 图片。
+- 设置及 Reza 新增功能页统一使用 Telegram 主题、分组列表与玻璃导航，保留原有返回手势；旧系统沿用上游回退样式。
+- 默认图标是橘猫，可在「设置 → 外观」选择三花猫、暹罗猫、黑白猫，也可继续使用原有的 11 款图标。Reza Pro 入口跟随当前图标，登录欢迎页和更新实时活动使用橘猫。
 - 图标切换成功后同步并保存选中项，冷启动恢复 Pro 入口与外观页图标，延后校对系统读值；切换失败及过期回调不覆盖已有选择。
 - 底栏沿用上游 Telegram 的组件、动画与手势，支持实时预览、拖动排序、标签显隐、独立按钮及自动／手动宽度。
 - 聊天与设置必须保留，底栏整体居中，自动宽度随导航项数量收紧。搜索开关位于「显示项目」，默认关闭；使用 Swiftgram 原生右侧按钮与展开输入框，搜索当前页，通话页打开新通话选择器。隐藏后仍可进入设置，从内容区域右滑返回聊天，过渡跟随手指并支持取消回弹；取消隐藏即时恢复。
@@ -104,7 +106,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 - 不设本机登录账号数量上限；服务端登录及风控规则仍适用。
 - 按类别备份／恢复 JSON 设置，支持导入预览；不包含登录会话、聊天数据库、证书、API Key 或字体文件。
 - 本地 Premium 显示、缓存管理、离开 5 秒自动锁定及清除全部本地数据；清除前确认，避免启动阶段白屏和弹窗提前消失。
-- 更新源为本项目 GitHub Releases，发行一份 Regram IPA，核对正式版本、文件大小、SHA-256、包结构和安装身份。
+- 更新源为本项目 GitHub Releases，发行一份客户端 IPA，核对正式版本、文件大小、SHA-256、包结构和安装身份。
 - 没有证书也能检查更新；发布页有独立按钮。自动检查默认关闭，关闭时不弹全局更新提醒。
 - 可选自动下载：发现新版后点击更新，静默下载并准备，完成后再提示安装；已下载文件跨重启复用，避免重复下载／发现新版弹窗。
 - 证书安装：同时选择 P12／PFX 与描述文件，再输入密码统一验证，材料长期保存在本机；本地签名后通过 LCSign 清单服务交给 iOS。
@@ -114,7 +116,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 
 ## 设置入口
 
-功能配置集中在 **设置 → Regram Pro**，首页按九个分类与「显摆一下」专区组织：
+功能配置集中在 **设置 → Reza Pro**，首页按九个分类与「显摆一下」专区组织：
 
 | 分类 | 内容 |
 | --- | --- |
@@ -129,7 +131,7 @@ IP 策略约束原生 Telegram DC 和 SOCKS5／MTProto 代理连接；网页、H
 | 显摆一下 | 本地会员、星币／TON 礼物模拟、手机号、评级和资料卡 |
 | 管理与工具 | 备份、更新、数据清理 |
 
-分类内直接展示基础设置，聊天与消息、媒体与链接通过文件夹式原生横栏切换相关选项；底栏路径为「Regram Pro → 外观与界面 → 底栏布局」。复杂编辑器保留独立页面。
+分类内直接展示基础设置，聊天与消息、媒体与链接通过文件夹式原生横栏切换相关选项；底栏路径为「Reza Pro → 外观与界面 → 底栏布局」。复杂编辑器保留独立页面。
 
 Pro 内的全局设置搜索放在首页，覆盖分类与高级页面，点击结果打开并定位对应项；分类页不重复放置搜索或常用区。长按设置项可复制设置深链，链接只包含页面和控件标识，不包含保存值。书签管理入口独立放在设置首页「我的收藏」下方。
 
@@ -141,11 +143,11 @@ b34663 在 iPhone 16 Pro 的独立诊断应用中完成 939 条样本对照，�
 
 ## 构建
 
-需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Regram**。13.1.1 上游同步及兼容检查范围见[同步记录](docs/upstream-sync-20261023.md)。
+需要 macOS、完整 Xcode 27.1、Python 3 和 Git。版本要求见 [versions.json](versions.json)，构建目标为 **//Telegram:Reza**。13.1.1 上游同步及兼容检查范围见[同步记录](docs/upstream-sync-20261023.md)。
 
 ```sh
-git clone --recursive https://github.com/RegramDev/Regram-ios.git
-cd Regram-ios
+git clone --recursive https://github.com/RegramDev/Regram-ios.git Reza-ios
+cd Reza-ios
 git submodule update --init --recursive
 ```
 
@@ -160,7 +162,7 @@ git -C build-system/bazel-rules/rules_apple apply ../../patches/rules_apple-loca
 
 ```sh
 mkdir -p build-input
-cp build-system/template_minimal_development_configuration.json build-input/regram-development.json
+cp build-system/template_minimal_development_configuration.json build-input/reza-development.json
 ```
 
 生成模拟器项目：
@@ -169,7 +171,7 @@ cp build-system/template_minimal_development_configuration.json build-input/regr
 python3 build-system/Make/Make.py --overrideXcodeVersion \
   --cacheDir="$PWD/build-input/bazel-cache" \
   generateProject \
-  --configurationPath=build-input/regram-development.json \
+  --configurationPath=build-input/reza-development.json \
   --xcodeManagedCodesigning --disableProvisioningProfiles
 ```
 
@@ -179,13 +181,13 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 python3 build-system/Make/Make.py --overrideXcodeVersion \
   --cacheDir="$PWD/build-input/bazel-cache" \
   build \
-  --configurationPath=build-input/regram-development.json \
+  --configurationPath=build-input/reza-development.json \
   --codesigningInformationPath=build-input/codesigning \
   --buildNumber=10001 --configuration=release_arm64 \
-  --target=//Telegram:Regram
+  --target=//Telegram:Reza
 ```
 
-输出为 `bazel-bin/Telegram/Regram.ipa`。需要给 LCSign 等工具处理的 ad-hoc 参考包时，按[参考包说明](docs/lcsign-reference-packaging.md)打包。覆盖升级需保留相同的应用身份和数据容器。
+输出为 `bazel-bin/Telegram/Reza.ipa`。需要给 LCSign 等工具处理的 ad-hoc 参考包时，按[参考包说明](docs/lcsign-reference-packaging.md)打包。覆盖升级需保留相同的应用身份和数据容器。
 
 `--overrideXcodeVersion` 只跳过版本检查，不保证工具链兼容。不要提交 API 凭据、证书、描述文件、IPA 或真实账号数据。
 
@@ -199,8 +201,8 @@ python3 build-system/Make/Make.py --overrideXcodeVersion \
 - [UI 测试](docs/ui-testing.md)
 - [贡献指南](.github/CONTRIBUTING.md)
 
-Regram 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及第三方依赖的许可证，并明确标识为非官方客户端。
+Reza 与 Telegram 官方没有隶属关系。分发修改版请遵守仓库及第三方依赖的许可证，并明确标识为非官方客户端。
 
 ## 社区与致谢
 
-感谢 [LINUX DO](https://linux.do/) 社区为开源项目提供交流与分享的平台，欢迎佬友交流 Regram 的使用体验与改进建议。
+感谢 [LINUX DO](https://linux.do/) 社区为开源项目提供交流与分享的平台，欢迎佬友交流 Reza 的使用体验与改进建议。

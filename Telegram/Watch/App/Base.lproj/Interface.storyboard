@@ -1104,10 +1104,10 @@ contacts found.</string>
             </objects>
             <point key="canvasLocation" x="1130" y="463"/>
         </scene>
-        <!--Regram-->
+        <!--Reza-->
         <scene sceneID="A9d-DL-l8r">
             <objects>
-                <controller identifier="TGNeoChatsController" title="Regram" hidesWhenLoading="NO" id="umr-Wa-jBL" customClass="TGNeoChatsController">
+                <controller identifier="TGNeoChatsController" title="Reza" hidesWhenLoading="NO" id="umr-Wa-jBL" customClass="TGNeoChatsController">
                     <items>
                         <group width="1" alignment="center" verticalAlignment="center" hidden="YES" layout="vertical" spacing="0.0" id="7GZ-1r-Kdn" userLabel="AuthAlertGroup">
                             <items>

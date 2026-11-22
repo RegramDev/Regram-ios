@@ -35,9 +35,9 @@
 
 ## b34628 构建与发布
 
-本地 Xcode 27.0（27A266a）、iPhoneOS 27.0 SDK 完成 `//Telegram:Regram` 的 arm64 Release 构建。构建源码与 Release 目标均为 `b307d847f3811ab0391e51e207ccb7f105d1e6b3`；最终构建前后提交、34 个相关文件摘要和工作树差异一致。后续文档提交只记录交付状态，不改变本版 IPA。
+本地 Xcode 27.0（27A266a）、iPhoneOS 27.0 SDK 完成 `//Telegram:Reza` 的 arm64 Release 构建。构建源码与 Release 目标均为 `b307d847f3811ab0391e51e207ccb7f105d1e6b3`；最终构建前后提交、34 个相关文件摘要和工作树差异一致。后续文档提交只记录交付状态，不改变本版 IPA。
 
-原有本地构建例外保留且未纳入提交：`Telegram/BUILD` 的 RGMacKeyboard 依赖、`Regram/RGMacWindow/`、未跟踪的命名检查脚本，以及已应用跟踪兼容补丁的 rules_apple 工作树。它们的摘要与子模块状态一并记录。
+原有本地构建例外保留且未纳入提交：`Telegram/BUILD` 的 RGMacKeyboard 依赖、`Reza/RGMacWindow/`、未跟踪的命名检查脚本，以及已应用跟踪兼容补丁的 rules_apple 工作树。它们的摘要与子模块状态一并记录。
 
 按 LCSign 参考包流程重新解包验收：主应用和六扩展、版本与构建号、最低 iOS 15.0、arm64、严格 ad-hoc 签名、零描述文件、12 个 Mach-O 与 12 份匹配 dSYM、字体许可、三语资源、通知与实时活动声明均通过。七个 Bundle 的安装身份及选定权限声明与 b34627 一致；这是静态对照，不能替代覆盖升级验收。
 

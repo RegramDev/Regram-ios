@@ -48,7 +48,7 @@ private func peerVerificationDescriptionEntities(_ verification: PeerVerificatio
 enum InfoSection: Int, CaseIterable {
     case unofficial
     case community
-    case regram
+    case reza
     case messageFilters // MARK: Regram — switches share a native card, followed by one footer.
     case antiRevoke
     case groupLocation
@@ -1002,7 +1002,7 @@ func infoItems(
     
     // MARK: Regram
     if showProfileId {
-        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: "id: \(idText)", text: "", textColor: .primary, action: nil, longTapAction: { sourceNode in
+        items[.reza]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: "id: \(idText)", text: "", textColor: .primary, action: nil, longTapAction: { sourceNode in
             interaction.openPeerInfoContextMenu(.copy(idText), sourceNode, nil)
         }, requestLayout: { _ in
             interaction.requestLayout(false)
@@ -1045,7 +1045,7 @@ func infoItems(
         }
 
         if !dcText.isEmpty || !dcLabel.isEmpty {
-            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: dcLabel, text: dcText, textColor: .primary, action: nil, longTapAction: { sourceNode in
+            items[.reza]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: dcLabel, text: dcText, textColor: .primary, action: nil, longTapAction: { sourceNode in
                 interaction.openPeerInfoContextMenu(.aboutDC, sourceNode, nil)
             }, requestLayout: { _ in
                 interaction.requestLayout(false)
@@ -1057,7 +1057,7 @@ func infoItems(
     if RGSimpleSettings.shared.showCreationDate {
         if let channelCreationTimestamp = data.channelCreationTimestamp {
             let creationDateString = stringForDate(timestamp: channelCreationTimestamp, strings: presentationData.strings)
-            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.Created", presentationData.strings.baseLanguageCode, creationDateString), text: "", action: nil, longTapAction: { sourceNode in
+            items[.reza]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.Created", presentationData.strings.baseLanguageCode, creationDateString), text: "", action: nil, longTapAction: { sourceNode in
                 interaction.openPeerInfoContextMenu(.copy(creationDateString), sourceNode, nil)
             }, requestLayout: { _ in
                 interaction.requestLayout(false)
@@ -1068,7 +1068,7 @@ func infoItems(
     
     if let invitedAt = nearestChatParticipant.1 {
         let joinedDateString = stringForDate(timestamp: invitedAt, strings: presentationData.strings)
-        items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.JoinedDateTitle", presentationData.strings.baseLanguageCode, nearestChatParticipant.0 ?? "chat") , text: joinedDateString, action: nil, longTapAction: { sourceNode in
+        items[.reza]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.JoinedDateTitle", presentationData.strings.baseLanguageCode, nearestChatParticipant.0 ?? "chat") , text: joinedDateString, action: nil, longTapAction: { sourceNode in
             interaction.openPeerInfoContextMenu(.copy(joinedDateString), sourceNode, nil)
         }, requestLayout: { _ in
             interaction.requestLayout(false)
@@ -1108,7 +1108,7 @@ func infoItems(
             regDateString = "~\(regDateString)"
         }
         if !regDateString.isEmpty {
-            items[.regram]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.RegDate", presentationData.strings.baseLanguageCode), text: regDateString, action: nil, longTapAction: { sourceNode in
+            items[.reza]!.append(PeerInfoScreenLabeledValueItem(id: rgItemId, label: i18n("Chat.RegDate", presentationData.strings.baseLanguageCode), text: regDateString, action: nil, longTapAction: { sourceNode in
                 interaction.openPeerInfoContextMenu(.copy(regDateString), sourceNode, nil)
             }, requestLayout: { _ in
                 interaction.requestLayout(false)
@@ -1121,9 +1121,9 @@ func infoItems(
     // MARK: Regram — local group/channel names do not require administration rights.
     if let peer = data.peer, peer.rgCanSetGroupRemark {
         let lang = presentationData.strings.rgLanguageCode
-        items[.regram] = items[.regram] ?? []
+        items[.reza] = items[.reza] ?? []
         let name = RGGroupRemarks.shared.name(accountId: context.account.peerId.toInt64(), peerId: peer.id.toInt64())
-        items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 9510, label: .text(name ?? "GroupRemark.NotSet".i18n(lang)), text: "\(peer.rgRemarkLocalizationPrefix).Title".i18n(lang), action: {
+        items[.reza]!.append(PeerInfoScreenDisclosureItem(id: 9510, label: .text(name ?? "GroupRemark.NotSet".i18n(lang)), text: "\(peer.rgRemarkLocalizationPrefix).Title".i18n(lang), action: {
             guard let controller = interaction.getController() else { return }
             (controller.navigationController as? NavigationController)?.pushViewController(rgGroupRemarkController(context: context, peer: peer))
         }))
@@ -1140,11 +1140,11 @@ func infoItems(
         if isGroup {
             let lang = presentationData.strings.rgLanguageCode
             let accountId = context.account.peerId.toInt64()
-            items[.regram] = items[.regram] ?? []
+            items[.reza] = items[.reza] ?? []
             for (index, mode) in [RGGroupMemberSettingsMode.hidden, .reminders].enumerated() {
                 let selection = mode == .hidden ? RGSimpleSettings.shared.groupHiddenSenders : RGSimpleSettings.shared.groupNotificationSenders
                 let count = selection.senderIds(accountId: accountId, groupId: peer.id.toInt64()).count
-                items[.regram]!.append(PeerInfoScreenDisclosureItem(id: 9511 + index, label: .text(count == 0 ? "" : "\(count)"), text: (mode == .hidden ? "GroupMembers.Hidden.Title" : "GroupMembers.Reminders.Title").i18n(lang), action: {
+                items[.reza]!.append(PeerInfoScreenDisclosureItem(id: 9511 + index, label: .text(count == 0 ? "" : "\(count)"), text: (mode == .hidden ? "GroupMembers.Hidden.Title" : "GroupMembers.Reminders.Title").i18n(lang), action: {
                     guard let controller = interaction.getController() else { return }
                     (controller.navigationController as? NavigationController)?.pushViewController(rgGroupMemberSettingsController(context: context, groupId: peer.id, mode: mode))
                 }))
@@ -1156,8 +1156,9 @@ func infoItems(
     // are global by default, and a group where the keyword is legitimate traffic needs an off switch
     // that does not require editing every rule's scope. Hidden senders are unaffected: hiding a
     // person has to hold wherever they post.
-    if !isMyProfile, let rgFilterPeerId = data.peer?.id.toInt64() {
-        items[.regram] = items[.regram] ?? []
+    if !isMyProfile, let filterPeer = data.peer {
+        let rgFilterPeerId = filterPeer.id.toInt64()
+        items[.reza] = items[.reza] ?? []
         let rgLang = presentationData.strings.baseLanguageCode
         items[.messageFilters]!.append(PeerInfoScreenSwitchItem(id: 9500, text: "MessageFilter.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isMessageFilterEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
             RGSimpleSettings.shared.setMessageFilterEnabled(value, forPeer: rgFilterPeerId)
@@ -1174,6 +1175,11 @@ func infoItems(
                 preferences.adFiltering = value ? nil : false
                 RGSimpleSettings.shared.setChatPreferences(preferences, accountId: accountId, peerId: rgFilterPeerId)
             }))
+            // MARK: Regram — history remains available even when filtering is paused.
+            items[.messageFilters]!.append(PeerInfoScreenDisclosureItem(id: 9515, label: .text(""), text: "AdSamples.PerChat.Records".i18n(rgLang), action: {
+                guard let navigation = interaction.getController()?.navigationController as? NavigationController else { return }
+                navigation.pushViewController(context.sharedContext.makeRGAdRecordsController(context: context, peerId: filterPeer.id))
+            }))
             items[.messageFilters]!.append(PeerInfoScreenCommentItem(id: 9514, text: "AdSamples.PerChat.Notice".i18n(rgLang)))
         } else {
             items[.messageFilters]!.append(PeerInfoScreenCommentItem(id: 9501, text: "MessageFilter.PerChat.Notice".i18n(rgLang)))
@@ -1182,7 +1188,7 @@ func infoItems(
         // MARK: Regram — per-chat anti-revoke, the same shape as hiding a sender: a switch here and
         // a list on the Pro screen. With anti-revoke on for every chat there is nothing to toggle.
         if RGSimpleSettings.shared.antiRevoke {
-            items[.regram]!.append(PeerInfoScreenCommentItem(id: 9503, text: "AntiRevoke.PerChat.AllChats".i18n(rgLang)))
+            items[.reza]!.append(PeerInfoScreenCommentItem(id: 9503, text: "AntiRevoke.PerChat.AllChats".i18n(rgLang)))
         } else {
             items[.antiRevoke]!.append(PeerInfoScreenSwitchItem(id: 9502, text: "AntiRevoke.PerChat.Title".i18n(rgLang), value: RGSimpleSettings.shared.isAntiRevokeEnabled(forPeer: rgFilterPeerId), isLocked: false, toggled: { value in
                 RGSimpleSettings.shared.setAntiRevokeEnabled(value, forPeer: rgFilterPeerId)

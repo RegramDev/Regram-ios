@@ -10,9 +10,9 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
-        "//Regram/RGGalleryUI:RGGalleryUI",
-        "//Regram/RGStrings:RGStrings",
-        "//Regram/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
+        "//Reza/RGGalleryUI:RGGalleryUI",
+        "//Reza/RGStrings:RGStrings",
+        "//Reza/RGSimpleSettings:RGSimpleSettings", # MARK: Regram
         "//submodules/UrlWhitelist",
         "//submodules/SSignalKit/SwiftSignalKit:SwiftSignalKit",
         "//submodules/AsyncDisplayKit:AsyncDisplayKit",
@@ -81,7 +81,7 @@ swift_library(
         "//submodules/TelegramUI/Components/VideoPlaybackControlsComponent",
         "//submodules/UIKitRuntimeUtils",
         # MARK: Regram — "Media Info" in the photo/video viewer menu.
-        "//Regram/RGMediaMetadata:RGMediaMetadata",
+        "//Reza/RGMediaMetadata:RGMediaMetadata",
     ],
     visibility = [
         "//visibility:public",
